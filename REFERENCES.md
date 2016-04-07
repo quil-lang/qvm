@@ -18,7 +18,7 @@ of this software.
 * Q-Lisp Project. Schloer Consulting Group. [URL](http://www.schloerconsulting.com/quantum-computer-q-lisp-programming-language)
 * BLACK-STONE. Lupton. [URL](https://github.com/thephoeron/black-stone)
 * Automatic Quantum Computer Programming: A Genetic Programming Approach. Spector. (Note: Uses QGAME, a simulator that was in Lisp and now C++.)
-* QGAME++ Documentation. Spector, et al. [URL](http://faculty.hampshire.edu/lspector/qgame++/qgame-0.4.1/doc/html/index.html) [Language Description](http://faculty.hampshire.edu/lspector/qgame++/qgame-0.4.1/doc/html/qgame_lang_desc.html)
+* QGAME++ Documentation. Spector, et al. [URL](http://faculty.hampshire.edu/lspector/qgame++/qgame-0.4.1/doc/html/index.html), [Language Description](http://faculty.hampshire.edu/lspector/qgame++/qgame-0.4.1/doc/html/qgame_lang_desc.html)
 * D-Wave Blog Comment. Geordie Rose. [URL](https://dwave.wordpress.com/2011/05/20/learning-to-program-the-d-wave-one-software-you-should-install-a-book-you-should-buy/#comment-21948)
 
 ## ANSI Common Lisp Standard:

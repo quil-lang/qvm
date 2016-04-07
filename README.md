@@ -12,9 +12,9 @@ Lisp.
 
 You need to install SBCL. You can do this in a few ways:
 
-    1. From somewhere like `apt-get`.
-    2. From the distributed binaries [here](http://sbcl.org/platform-table.html).
-    3. From the git, also referred to by the above link.
+1. From somewhere like `apt-get`.
+2. From the distributed binaries [here](http://sbcl.org/platform-table.html).
+3. From the git, also referred to by the above link.
 
 Once SBCL is installed, to start, do the following.
 
@@ -32,7 +32,6 @@ with. To test, load the demo code and try running the QFT.
 ```
 * (load "demo/demo.lisp")
 * (qvm::test-fourier)
-
 ```
 
 If all goes right, you'll see the output of four 2-qubit Fourier
