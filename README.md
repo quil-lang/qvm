@@ -16,6 +16,8 @@ You need to install SBCL. You can do this in a few ways:
 2. From the distributed binaries [here](http://sbcl.org/platform-table.html).
 3. From the git, also referred to by the above link.
 
+Next install [quicklisp](https://www.quicklisp.org/beta/). 
+
 Once SBCL is installed, to start, do the following.
 
 ```
