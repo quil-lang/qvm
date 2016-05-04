@@ -57,6 +57,19 @@
   "1/sqrt2 * (|0000> + |1111>)"
   (execute 4 (bell-state 4)))
 
+(defun grid-bell-state (width height)
+  "Construct an N-qubit Bell state on a qubit grid of width by height."
+  (cons
+   '(hadamard 0)
+    (loop :for i :from 1 :below (* width height)
+          :collect `(CNOT ,(if (zerop (mod i width))
+                               (- i width)
+                               (- i 1))
+                          ,i))))
+
+(defun test-grid-bell (width height)
+  (execute (* width height) (grid-bell-state width height))
+  )
 
 ;;; Test that we can create |01>.
 
