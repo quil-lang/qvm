@@ -17,7 +17,7 @@ $ cd path/to/qvm
 $ sbcl
 <output elided>
 * (load "qvm.asd")
-* (asdf:load-system :qvm)
+* (ql:quickload :qvm)
 ```
 
 The system will get compiled and loaded, and now can be interacted

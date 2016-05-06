@@ -39,6 +39,16 @@ Quicklisp is like Python's `pip` for Lisp. Follow the instructions on the [Quick
 
 4. Run `(ql:add-to-init-file)` and press enter.
 
+### Updating Quicklisp
+
+Quicklisp can be periodically updated. Both the Quicklisp client, as
+well as all of the Quicklisp software, can be updated. The two
+respectively can be done via:
+
+1. Update QL Client: `(ql:update-client)`
+
+2. Update all QL software: `(ql:update-all-dists)`
+
 ## Install Buildapp
 
 Lisp is an *image-based language*. This means that almost all
