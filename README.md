@@ -1,24 +1,16 @@
 # qvm
 
-This directory contains an implementation of the Quantum Abstract
-Machine, called a "Quantum Virtual Machine" or QVM.
+This directory contains a classical implementation of the Quantum
+Abstract Machine, called a "Quantum Virtual Machine" or QVM.
 
-## How To Run
+## How To Run Interactively
 
 The QVM is written in ANSI Common Lisp. An efficient, optimizing,
 machine-code compiler called SBCL is recommended for its
 execution. This is a free and open source implementation of Common
-Lisp.
+Lisp. Follow the instructions in `doc/lisp-setup.md` for details.
 
-You need to install SBCL. You can do this in a few ways:
-
-1. From somewhere like `apt-get`.
-2. From the distributed binaries [here](http://sbcl.org/platform-table.html).
-3. From the git, also referred to by the above link.
-
-Next install [quicklisp](https://www.quicklisp.org/beta/). 
-
-Once SBCL is installed, to start, do the following.
+Once setup, load the QVM by the following commands.
 
 ```
 $ cd path/to/qvm
