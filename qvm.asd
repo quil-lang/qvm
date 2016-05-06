@@ -5,6 +5,7 @@
 (asdf:defsystem #:qvm
   :description "An implementation of the Quantum Abstract Machine."
   :author "Robert Smith"
+  :depends-on (#:command-line-arguments)
   :serial t
   :components ((:file "package")
                (:file "utilities")
@@ -12,4 +13,7 @@
                (:file "measurement")
                (:file "execution")
                (:file "gates")
-               (:file "qft")))
+               (:file "qft")
+
+               ;; For executable creation.
+               (:file "entry-point")))
