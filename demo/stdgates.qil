@@ -1,0 +1,42 @@
+# Some standard gate defintions.
+
+DEFGATE I:
+    1, 0
+    0, 1
+
+DEFGATE X:
+    0, 1
+    1, 0
+
+DEFGATE Y:
+    0, -i
+    i, 0
+
+DEFGATE Z:
+    1, 0
+    0, -1
+
+DEFGATE H:
+    1/sqrt(2), 1/sqrt(2)
+    1/sqrt(2), -1/sqrt(2)
+
+DEFGATE S:
+    1, 0
+    0, i
+
+DEFGATE T:
+    1, 0
+    0, cis(pi/4)
+
+DEFGATE Rx(%theta):
+    cos(%theta/2), -i*sin(%theta/2)
+    -i*sin(%theta/2), cos(%theta/2)
+
+DEFGATE Ry(%theta):
+    cos(%theta/2), -sin(%theta/2)
+    sin(%theta/2), cos(%theta/2)
+
+DEFGATE Rz(%theta):
+    cis(-%theta/2), 0
+    0, cis(%theta/2)
+
