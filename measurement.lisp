@@ -23,10 +23,11 @@
   "Normalize the wavefunction, making it a unit vector in the constituent Hilbert space."
   (let ((amps (amplitudes qvm)))
     (loop :for amp :across amps
-          :sum (probability amp) :into normalization-factor
+          :sum (probability amp) :into square-norm
           :finally (map-into amps
-                             (lambda (amp)
-                               (/ amp normalization-factor))
+                             (let ((norm (sqrt square-norm)))
+                               (lambda (amp)
+                                 (/ amp norm)))
                              amps)))
   ;; Return the normalized QVM.
   qvm)
@@ -50,10 +51,10 @@
 
 (defun measure (qvm q c)
   "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum virtual machine QVM. Store the bit in at the classical bit memory address C. If C is instead NIL, don't store."
-  (let ((cbit (if (<= (random 1.0d0)
-                      (qubit-probability qvm q))
-                  1
-                  0)))
+  (let* ((r (random 1.0d0))
+         (cbit (if (<= r (qubit-probability qvm q))
+                   1
+                   0)))
     ;; Force the non-deterministic measurement.
     (force-measurement cbit q qvm)
 
