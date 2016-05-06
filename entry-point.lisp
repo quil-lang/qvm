@@ -60,6 +60,7 @@
     (format-log "Loading quantum program.")
     (load-program qvm program)
     (format-log "Executing quantum program.")
+    (setf *random-state* (make-random-state t)) ; Seed random.
     (with-timing (exec-time)
       (run qvm))
     (format-log "Execution completed in ~D ms. Printing state." exec-time)
