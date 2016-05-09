@@ -5,16 +5,29 @@
 (in-package #:qvm)
 
 (defun index-to-address (index qubit)
+  "Given an amplitude index INDEX, find the amplitude address for qubit QUBIT.
+
+Specifically, given an integer whose bit string is
+
+    INDEX = LLLLLRRRR,
+
+compute the address
+
+    Result = LLLLL0RRRR
+
+which is the index with a zero injected at the QUBIT'th position."
   (let ((left (ash index (- qubit)))
         (right (ldb (byte qubit 0) index)))
     (logior (ash left (1+ qubit))
             right)))
 
-;; This can be implemented in terms of STATE-PROBABILITIES.
 (defun qubit-probability (qvm qubit)
   "The probability that the qubit addressed by QUBIT is 1."
   #+#:alternate-implementation
   (second (state-probabilities qvm (nat-tuple qubit)))
+
+  ;; Sum up all the probabilities of the qubit QUBIT being 0, and
+  ;; compute the complement of that.
   (- 1.0d0 (loop :for i :below (expt 2 (1- (number-of-qubits qvm)))
                  :for address := (index-to-address i qubit)
                  :sum (probability (aref (amplitudes qvm) address)))))
