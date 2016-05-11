@@ -198,7 +198,13 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
 
 
 ;;; Meta-operators
-;;;
+
+(defun reset (qvm)
+  "Perform a reset. Bring all qubits to |0>."
+  (map-into (amplitudes qvm) (constantly #C(0.0d0 0.0d0)))
+  (setf (aref (amplitudes qvm) 0) #C(1.0d0 0.0d0))
+  qvm)
+
 ;;; These are useful for debugging and other classical execution. They
 ;;; are a particular feature of this implementation, not a part of the
 ;;; specification of the QAM/QIL.
