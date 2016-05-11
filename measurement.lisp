@@ -63,7 +63,7 @@ which is the index with a zero injected at the QUBIT'th position."
   (normalize-wavefunction qvm))
 
 (defun measure (qvm q c)
-  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum virtual machine QVM. Store the bit in at the classical bit memory address C. If C is instead NIL, don't store."
+  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum virtual machine QVM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store."
   (let* ((r (random 1.0d0))
          (cbit (if (<= r (qubit-probability qvm q))
                    1

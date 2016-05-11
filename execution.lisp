@@ -58,6 +58,18 @@
              (setf (program qvm) rest-program)
              (run qvm)))
 
+          ((reset)
+           (let ((resulting-qvm (reset qvm)))
+             (pop (program resulting-qvm))
+             (run resulting-qvm)))
+
+          ((measure)
+           (let ((resulting-qvm (measure qvm
+                                         (second instruction)
+                                         (third instruction))))
+             (pop (program resulting-qvm))
+             (run resulting-qvm)))
+
           ((wait defgate defcircuit)
            (error 'unsupported-instruction
                   :instruction instruction
