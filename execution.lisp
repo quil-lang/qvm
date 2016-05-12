@@ -26,6 +26,16 @@
              (format stream "Invalid invocation of the gate ~A."
                      (invalid-gate-invocation-gate-name condition)))))
 
+(defun parse-parameter (qvm param)
+  "Parse the parameter PARAM in the context of QVM."
+  (etypecase param
+    (real  (coerce param 'double-float))
+    (complex (coerce param '(complex double-float)))
+    (bit-range
+     (ecase (bit-range-width param)
+       (64  (classical-double-float qvm param))
+       (128 (classical-complex-double-float qvm param))))))
+
 (defun run (qvm)
   "Simulate until completion the quantum virtual machine QVM. Return the QVM in its end state."
   ;; If the program is empty then we are done.
@@ -120,6 +130,7 @@
                                   qubits (rest args))
                             (setf params nil
                                   qubits args))
+                        (map-into params (lambda (p) (parse-parameter qvm p)) params)
                         ;; Do some sanity checking.
                         (assert (every #'integerp qubits))
                         ;; Get the gate operator and apply it.
