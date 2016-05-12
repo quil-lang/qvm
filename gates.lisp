@@ -10,15 +10,16 @@
   (let* ((column-length (length truth-table-outputs))
          (operator-size (* 2 column-length))
          (matrix (make-array (list operator-size operator-size)
-                             :initial-element 0)))
+                             :initial-element #C(0.0d0 0.0d0)))
+         (one #C(1.0d0 0.0d0)))
     (loop :for i :below column-length
           :for x :in truth-table-outputs
           :for offset := (* 2 i)
           :do (if (zerop x)
-                  (setf (aref matrix offset offset) 1
-                        (aref matrix (1+ offset) (1+ offset)) 1)
-                  (setf (aref matrix offset (1+ offset)) 1
-                        (aref matrix (1+ offset) offset) 1)))
+                  (setf (aref matrix offset offset)           one
+                        (aref matrix (1+ offset) (1+ offset)) one)
+                  (setf (aref matrix offset (1+ offset))      one
+                        (aref matrix (1+ offset) offset)      one)))
     matrix))
 
 (defun controlled (U)
