@@ -39,6 +39,7 @@
           ((halt)
            qvm)
 
+          ;; WHEN, UNLESS: Conditional branching.
           ((when unless)
            (let ((rest-program (rest (program qvm)))
                  (test-for (ecase (first instruction)
@@ -49,6 +50,7 @@
              (setf (program qvm) rest-program)
              (run qvm)))
 
+          ;; WHILE, UNTIL: Looping.
           ((while until)
            (let ((rest-program (rest (program qvm)))
                  (test-index (second instruction))
@@ -67,11 +69,13 @@
              (setf (program qvm) rest-program)
              (run qvm)))
 
+          ;; RESET: Reset qubits to 0.
           ((reset)
            (let ((resulting-qvm (reset qvm)))
              (pop (program resulting-qvm))
              (run resulting-qvm)))
 
+          ;; MEASURE: Perform a measurement on qubits.
           ((measure)
            (let ((resulting-qvm (measure qvm
                                          (second instruction)
@@ -84,6 +88,7 @@
                   :instruction instruction
                   :opcode (first instruction)))
 
+          ;; Gate/function application.
           (otherwise
            (let ((gate (lookup-gate qvm (first instruction))))
              (cond
