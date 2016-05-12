@@ -17,13 +17,6 @@
   (apply 'format *trace-output* fmt-string args)
   (terpri *trace-output*))
 
-(defun read-qil-file (filespec)
-  (let ((*read-eval* nil))
-    (with-open-file (s filespec :direction ':input
-                                :if-does-not-exist ':error)
-      (let ((*package* (find-package :qvm)))
-        (read s)))))
-
 (defun show-help ()
   (format t "Usage: ~A <num-qubits> <qil-file> [<options>...]~%~%" *program-name*)
   (command-line-arguments:show-option-help *option-spec* :sort-names t))

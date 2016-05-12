@@ -98,7 +98,16 @@
              (pop (program resulting-qvm))
              (run resulting-qvm)))
 
-          ((wait defgate defcircuit include)
+          ((include)
+           (let ((filename (second instruction)))
+             (check-type filename string)
+             (assert (probe-file filename) () "The file ~A does not exist." filename)
+             (let ((forms (read-qil-file filename)))
+               (pop (program qvm))
+               (setf (program qvm) (append forms (program qvm)))
+               (run qvm))))
+
+          ((wait defgate defcircuit)
            (error 'unsupported-instruction
                   :instruction instruction
                   :opcode (first instruction)))

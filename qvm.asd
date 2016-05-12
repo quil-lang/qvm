@@ -11,6 +11,7 @@
                (:file "utilities")
                (:file "qvm")
                (:file "measurement")
+               (:file "qil")
                (:file "execution")
                (:file "gates")
                (:file "qft")
