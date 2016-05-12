@@ -202,6 +202,12 @@
                  (cis (- theta/2)) 0
                  0                 (cis theta/2))))
 
+(define-default-gate phase 1 (alpha)
+  "A regular phase gate. Equivalent to R_z multiplied by a phase."
+  (make-matrix 2
+               1 0
+               0 (cis alpha)))
+
 (define-default-gate cphase 2 (alpha)
   "The controlled phase gate.
 
