@@ -39,7 +39,7 @@
 
 (defparameter *bell-00*
   '((hadamard 0)
-    (cnot 1 0))
+    (cnot 0 1))
   "Program to construct a Bell pair.")
 
 (defun test-bell-pair ()
