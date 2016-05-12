@@ -6,8 +6,14 @@
 
 ;;; Quantum Virtual Machine
 
+(defvar *default-gate-definitions* (make-hash-table :test 'equal)
+  ;; This is populated later when gates are loaded.
+  "A table of default gate definitions.")
+
 (defclass quantum-virtual-machine ()
-  ((number-of-qubits :accessor number-of-qubits
+  (
+   ;; --- Machine state
+   (number-of-qubits :accessor number-of-qubits
                      :initarg :number-of-qubits
                      :documentation "Number of qubits being simulated.")
 
@@ -26,14 +32,22 @@
                      :initform nil
                      :documentation "Bit vector of classical memory.")
 
+   ;; --- Program and Definitions
+
    (program :accessor program
             :initarg :program
             :initform nil
             :documentation "The program to be executed.")
 
+   (gate-definitions :accessor gate-definitions
+                     :initarg :gate-definitions
+                     :initform *default-gate-definitions*
+                     :documentation "A table mapping gate names to their GATE-instance definition.")
+
+   ;; --- Bookkeeping
    ;; The following two additional registers are used primarily for
    ;; controlled iteration through the amplitude space.
-   
+
    (qubit-numbers :accessor qubit-numbers
                   :initform (make-nat-tuple)
                   :documentation "Valid qubit indexes represented as a NAT-TUPLE.")
@@ -213,3 +227,9 @@ N.B. This function does not reset the amplitude address of the QVM."
     ;; Return the probabilities.
     (nreverse probabilities)))
 
+(defun lookup-gate (qvm gate)
+  "Look up the definition of the gate named GATE (a symbol or string) within the QVM. Return NIL if not found."
+  (let ((name (etypecase gate
+                (symbol (symbol-name gate))
+                (string gate))))
+    (values (gethash name (gate-definitions qvm)))))

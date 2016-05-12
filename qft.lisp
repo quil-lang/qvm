@@ -26,7 +26,7 @@
                      (loop :with n := (1+ (length qs))
                            :for i :from (1- n) :downto 1
                            :for qi :in qs
-                           :do (push `(CPHASE ,q ,qi ,(/ pi (expt 2 (- n i)))) cR))
+                           :do (push `(CPHASE (,(/ pi (expt 2 (- n i)))) ,q ,qi) cR))
                      (append
                       (qft qs)
                       cR

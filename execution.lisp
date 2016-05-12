@@ -16,10 +16,19 @@
              (format stream "Unsupported instruction opcode ~A encountered."
                      (unsupported-instruction-opcode condition)))))
 
+(define-condition invalid-gate-invocation (error)
+  ((gate-name :initarg :gate-name
+              :reader invalid-gate-invocation-gate-name)
+   (instruction :initarg :instruction
+                :reader unsupported-instruction-full))
+  (:documentation "An error raised when a gate is invoked incorrectly.")
+  (:report (lambda (condition stream)
+             (format stream "Invalid invocation of the gate ~A."
+                     (invalid-gate-invocation-gate-name condition)))))
+
 (defun run (qvm)
   "Simulate until completion the quantum virtual machine QVM. Return the QVM in its end state."
-  ;; If the program is empty or if there was a zero probability of
-  ;; achieving this state, then bail out.
+  ;; If the program is empty then we are done.
   (if (null (program qvm))
       qvm
       ;; Get the next instruction and add it to the history of
@@ -70,16 +79,44 @@
              (pop (program resulting-qvm))
              (run resulting-qvm)))
 
-          ((wait defgate defcircuit)
+          ((wait defgate defcircuit include)
            (error 'unsupported-instruction
                   :instruction instruction
                   :opcode (first instruction)))
 
           (otherwise
-           (let ((resulting-qvm
-                   (apply (first instruction) (cons qvm (rest instruction)))))
-             (pop (program resulting-qvm))
-             (run resulting-qvm)))))))
+           (let ((gate (lookup-gate qvm (first instruction))))
+             (cond
+               ;; The gate wasn't found. Perform the legacy operation
+               ;; of computing the function.
+               ((null gate)
+                (let ((resulting-qvm
+                        (apply (first instruction) (cons qvm (rest instruction)))))
+                  (pop (program resulting-qvm))
+                  (run resulting-qvm)))
+
+               ;; The gate is defined. Parse out the rest of the
+               ;; instruction and apply it.
+               (t
+                (let ((args (rest instruction)))
+                  (if (null args)
+                      (error 'invalid-gate-invocation
+                             :gate-name (gate-name gate)
+                             :instruction instruction)
+                      (let (params qubits)
+                        ;; Parse out the complex params.
+                        (if (listp (first args))
+                            (setf params (first args)
+                                  qubits (rest args))
+                            (setf params nil
+                                  qubits args))
+                        ;; Do some sanity checking.
+                        (assert (every #'integerp qubits))
+                        ;; Get the gate operator and apply it.
+                        (let* ((operator (apply #'gate-operator gate params))
+                               (resulting-qvm (apply-operator qvm operator (apply #'nat-tuple qubits))))
+                          (pop (program resulting-qvm))
+                          (run resulting-qvm)))))))))))))
 
 (defun run-program (num-qubits program &key (classical-memory-size 8))
   "Run the program PROGRAM on a QVM of NUM-QUBITS qubits, with a classical memory size of CLASSICAL-MEMORY-SIZE."

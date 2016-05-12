@@ -11,7 +11,7 @@
 ;;; Test that we can make the state |11>.
 
 (defun test-inversion ()
-  (execute 2 '((qnot 0) (qnot 1))))
+  (execute 2 '((not 0) (not 1))))
 
 ;;; Hadamard initialization of qubits.
 
@@ -68,13 +68,12 @@
                           ,i))))
 
 (defun test-grid-bell (width height)
-  (execute (* width height) (grid-bell-state width height))
-  )
+  (execute (* width height) (grid-bell-state width height)))
 
 ;;; Test that we can create |01>.
 
 (defparameter *test-swap*
-  '((qnot 1)
+  '((not 1)
     (print-probabilities "Before swap")
     (swap 0 1)
     (print-probabilities "After swap "))
@@ -101,12 +100,12 @@
             ((0)                                ; |00>
              nil)
             ((1)                                ; |01>
-             '((qnot 0)))
+             '((not 0)))
             ((2)                                ; |10>
-             '((qnot 1)))
+             '((not 1)))
             ((3)                                ; |11>
-             '((qnot 0)
-               (qnot 1))))))
+             '((not 0)
+               (not 1))))))
     `(,@initialization
       (print-amplitudes ,(format nil "Initial state |~2,'0B> " type))
       ,@ (qft-circuit '(0 1))
@@ -130,7 +129,7 @@
   ;;
   ;; Measurement of teleported value will be in [2].
   `(;; Teleport classical bit 1
-    (QNOT 0)
+    (NOT 0)
     ;; Teleportation circuit
     (HADAMARD 1)
     (CNOT 1 2)
