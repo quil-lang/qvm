@@ -69,6 +69,11 @@
              (setf (program qvm) rest-program)
              (run qvm)))
 
+          ;; NOP: Do nothing.
+          ((nop)
+           (pop (program qvm))
+           (run qvm))
+
           ;; RESET: Reset qubits to 0.
           ((reset)
            (let ((resulting-qvm (reset qvm)))
