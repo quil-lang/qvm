@@ -64,12 +64,10 @@
   (declare (ignore args))
   (let ((num-qubits (number-of-qubits qvm))
         (num-octets (classical-memory-size qvm)))
+    (declare (ignore num-octets))
     ;; Allocate the classical memory if needed.
     (when (null (classical-memory qvm))
-      (setf (classical-memory qvm)
-            (make-array (* 8 num-octets)
-                        :element-type 'bit
-                        :initial-element 0)))
+      (setf (classical-memory qvm) 0))
 
     ;; If the amplitudes weren't specified, initialize to |0...>.
     (when (null (amplitudes qvm))
@@ -137,12 +135,88 @@ N.B. This function does not reset the amplitude address of the QVM."
 
 (defun classical-bit (qvm n)
   "Extract the classical bit addressed by N from the quantum virtual machine QVM."
-  (sbit (classical-memory qvm) n))
+  (ldb (byte 1 n) (classical-memory qvm)))
 
 (defun (setf classical-bit) (new-value qvm n)
   "Set the classical bit addressed by N in the quantum virtual machine QVM to the value NEW-VALUE."
   (check-type new-value bit)
-  (setf (sbit (classical-memory qvm) n) new-value))
+  (setf (ldb (byte 1 n) (classical-memory qvm)) new-value))
+
+(deftype bit-range ()
+  "Representation of a range of bits."
+  `(cons (integer 0) (integer 1)))
+
+(defun make-bit-range (a b)
+  "Construct a new bit range whose endpoints are A and B."
+  (check-type a (integer 0))
+  (check-type b (integer 1))
+  (assert (< a b))
+  (cons a b))
+
+(defun bit-range-left (br)
+  "Get the left endpoint of the bit range BR."
+  (car br))
+
+(defun bit-range-right (br)
+  "Get the right endpoint of the bit range BR."
+  (cdr br))
+
+(defun bit-range-width (br)
+  "Compute the width of the bit range BR."
+  (1+ (- (bit-range-right br) (bit-range-left br))))
+
+(defun classical-bit-range (qvm br)
+  "Extract the value in the bit range BR from the classical memory of QVM."
+  (check-type br bit-range)
+  (ldb (byte (bit-range-width br) (bit-range-left br))
+       (classical-memory qvm)))
+
+(defun (setf classical-bit-range) (new-value qvm br)
+  "Set the value contained within the bit range BR of the classical memory of QVM to NEW-VALUE."
+  (check-type new-value (integer 0))
+  (check-type br bit-range)
+  (let ((range-width (bit-range-width br))
+        (len (integer-length new-value)))
+    (assert (<= len range-width) (new-value)
+            "The value being set in the bit range [~D-~D] exceeds the width of the range."
+            (bit-range-left br)
+            (bit-range-right br))
+    (setf (ldb (byte range-width (bit-range-left br))
+               (classical-memory qvm))
+          new-value)))
+
+(defun classical-double-float (qvm br)
+  "Get the double precision floating point number from the bits specified by the bit range BR from the classical memory of QVM."
+  (assert (= 64 (bit-range-width br)))
+  (ieee-floats:decode-float64 (classical-bit-range qvm br)))
+
+(defun (setf classical-double-float) (new-value qvm br)
+  "Set the double precision floating point number NEW-VALUE into the bits specified by the bit range BR from the classical memory of QVM."
+  (assert (= 64 (bit-range-width br)))
+  (check-type new-value double-float)
+  (setf (classical-bit-range qvm br)
+        (ieee-floats:encode-float64 new-value))
+  new-value)
+
+(defun classical-complex-double-float (qvm br)
+  "Get the complex double precision floating point number from the bits specified by the bit range BR from the classical memory of QVM."
+  (assert (= 128 (bit-range-width br)))
+  (let ((left (bit-range-left br))
+        (right (bit-range-right br)))
+    (complex (classical-double-float qvm (make-bit-range left (+ left 63)))
+             (classical-double-float qvm (make-bit-range (+ left 64) right)))))
+
+(defun (setf classical-complex-double-float) (new-value qvm br)
+    "Set the complex double precision floating point number NEW-VALUE into the bits specified by the bit range BR from the classical memory of QVM."
+  (assert (= 128 (bit-range-width br)))
+  (check-type new-value (complex double-float))
+  (let ((left (bit-range-left br))
+        (right (bit-range-right br))
+        (re (realpart new-value))
+        (im (imagpart new-value)))
+    (setf (classical-double-float qvm (make-bit-range left (+ 63 left)))  re
+          (classical-double-float qvm (make-bit-range (+ 64 left) right)) im)
+    new-value))
 
 (defun extract-amplitudes (qvm qubits)
   "Returns a column vector of amplitudes represented by the tuple of qubits QUBITS."

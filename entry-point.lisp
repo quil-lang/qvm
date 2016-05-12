@@ -67,7 +67,7 @@
     (when (<= qubits 5)
       (format-log "Amplitudes: ~{~A~^, ~}" (map 'list 'format-complex (amplitudes qvm)))
       (format-log "Probabilities: ~{~F~^, ~}" (map 'list 'probability (amplitudes qvm))))
-    (format-log "Classical memory: ~A" (classical-memory qvm)))
+    (format-log "Classical memory (MSB -> LSB): ~v,'0B" (* 8 (classical-memory-size qvm)) (classical-memory qvm)))
   
   (uiop:quit))
 
