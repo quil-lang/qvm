@@ -1,5 +1,7 @@
 # qvm
 
+[![Build Status](https://semaphoreci.com/api/v1/projects/ba9d589a-9d74-400d-980f-785dec5657aa/811586/badge.svg)](https://semaphoreci.com/spikecurtis/qvm)
+
 This directory contains a classical implementation of the Quantum
 Abstract Machine, called a "Quantum Virtual Machine" or QVM.
 
