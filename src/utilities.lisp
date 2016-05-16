@@ -16,15 +16,15 @@
   `(and fixnum unsigned-byte))
 
 (deftype nat-tuple ()
-  "The NAT-TUPLE type. Represents an ordered list of non-negative integer indexes."
+  "The NAT-TUPLE type. A \"nat tuple\" represents an ordered list of non-negative integer indexes."
   `list)
 
 (deftype nat-tuple-element ()
-  "The set of valid elements in a bit set."
+  "The set of valid elements in a nat tuple."
   `(integer 0 (#.+max-nat-tuple-cardinality+)))
 
 (deftype nat-tuple-cardinality ()
-  "A representation of the set of cardinalities of a bit set."
+  "A representation of the set of cardinalities of a nat tuple."
   `(integer 0 #.+max-nat-tuple-cardinality+))
 
 (declaim (inline make-nat-tuple
@@ -35,60 +35,64 @@
                  nat-tuple-difference))
 
 (defun make-nat-tuple ()
-  "Make a new (immutable) empty bit set."
+  "Make a new (immutable) empty nat tuple."
   nil)
 
-(defun nat-tuple-add (bs elt)
-  "Add the element ELT (of type NAT-TUPLE-ELEMENT) to the bitset BS."
-  (declare (type nat-tuple bs)
+(defun nat-tuple-add (nt elt)
+  "Add the element ELT (of type NAT-TUPLE-ELEMENT) to the nat tuple NT."
+  (declare (type nat-tuple nt)
            (type nat-tuple-element elt))
-  (if (find elt bs)
-      bs
-      (cons elt bs)))
+  (if (find elt nt)
+      nt
+      (cons elt nt)))
 
-(defun nat-tuple-remove (bs elt)
-  "Remove, if it exists, the element ELT (of type NAT-TUPLE-ELEMENT) to the bitset BS."
-  (declare (type nat-tuple bs)
+(defun nat-tuple-remove (nt elt)
+  "Remove, if it exists, the element ELT (of type NAT-TUPLE-ELEMENT) to the nat tuple NT."
+  (declare (type nat-tuple nt)
            (type nat-tuple-element elt))
-  (remove elt bs))
+  (remove elt nt))
 
-(defun nat-tuple-cardinality (bs)
-  "Compute the number of elements in the bit set BS."
-  (declare (type nat-tuple bs))
-  (length bs))
+(defun nat-tuple-cardinality (nt)
+  "Compute the number of elements in the nat tuple NT."
+  (declare (type nat-tuple nt))
+  (length nt))
 
-(defun nat-tuple-union (bs1 bs2)
-  "Compute the union of the bit sets BS1 and BS2."
-  (declare (type nat-tuple bs1 bs2))
-  (union bs1 bs2))
+(defun nat-tuple-union (nt1 nt2)
+  "Compute the union of the nat tuple NT1 and NT2."
+  (declare (type nat-tuple nt1 nt2))
+  ;; FIXME? This will produce non-deterministic ordering of the
+  ;; output.
+  (union nt1 nt2))
 
-(defun nat-tuple-difference (bs1 bs2)
-  "Compute the set difference between the bit sets BS1 and BS2. The resulting bit set will contain all of the elements in BS1 but not in BS2."
-  (declare (type nat-tuple bs1 bs2))
-  (set-difference bs1 bs2))
+(defun nat-tuple-difference (nt1 nt2)
+  "Compute the set difference between the nat tuples NT1 and NT2. The resulting nat tuple will contain all of the elements in NT1 but not in NT2."
+  (declare (type nat-tuple nt1 nt2))
+  ;; FIXME? This will produce non-deterministic ordering of the
+  ;; output.
+  (set-difference nt1 nt2))
 
 (defun nat-tuple (&rest elements)
   "Create a new bit set with the elements ELEMENTS (each of type NAT-TUPLE-ELEMENT)."
   (declare (dynamic-extent elements))
-  (let ((bs (make-nat-tuple)))
-    (declare (type nat-tuple bs))
-    (dolist (elt elements bs)
-      (setf bs (nat-tuple-add bs elt)))))
+  (let ((nt (make-nat-tuple)))
+    (declare (type nat-tuple nt))
+    (dolist (elt elements nt)
+      (setf nt (nat-tuple-add nt elt)))))
 
-(defmacro do-nat-tuple ((i elt bs) &body body)
-  "Iterate over the elements of the bit set BS in increasing order. The return value is unspecified.
+(defmacro do-nat-tuple ((i elt nt) &body body)
+  "Iterate over the elements of the nat tuple NT in increasing order. The return value is unspecified.
 
 I will be bound to the (zero-indexed) index of the element found.
 
 ELT will be bound to the element itself.
 
-BS should be the bit set."
+NT should be the bit set."
   (check-type i symbol)
   (check-type elt symbol)
-  (let ((g-bs (gensym "BS-")))
-    `(loop :with ,g-bs := ,bs
+  (let ((g-nt (gensym "NT-")))
+    `(loop :with ,g-nt := ,nt
            :for ,i :from 0
-           :for ,elt :of-type nat-tuple-element :in ,g-bs
+           :for ,elt :of-type nat-tuple-element :in ,g-nt
            :do (progn
                  ,@body))))
 
