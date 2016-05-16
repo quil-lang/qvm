@@ -62,3 +62,35 @@ you can exit by choosing the appropriate option number (usually that
 which is labeled `ABORT`, in this case `1`), or pressing control-d.
 
 To quit, type control-d.
+
+## How To Test
+
+Within Lisp, do this once to install all of the requisite packages:
+
+```
+(ql:quickload :qvm-tests)
+```
+
+If you get an error saying that the system `QVM-TESTS` cannot be
+found, look in the directory above `qvm` for a `system-index.txt` file
+and delete it, and then retry.
+
+Once installed, once you've loaded `qvm` using the normal means, you
+can test the system by doing
+
+```
+(asdf:test-system :qvm)
+```
+
+This will load all of the tests and run them. Here is example output
+for passing tests.
+
+```
+CL-USER> (asdf:test-system :qvm)
+WARNING: redefining SB-KERNEL:LINE-LENGTH in DEFUN    ; can be ignored
+.....
+T
+```
+
+Each dot is a passed test. The `T` (Lisp true value) indicates there
+was no error in all of the tests.
