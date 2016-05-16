@@ -67,6 +67,12 @@ To quit, type control-d.
 
 ## How To Test
 
+There is what might be considered beta support for Semaphore CI. Every
+build will get built and tested. A failure can indicate failure to
+build or failure of the test suite. However, per Issue #5, the output
+of *test failures* isn't so instructive. However, if a test failure is
+encountered, one should try to reproduce with the steps below.
+
 Within Lisp, do this once to install all of the requisite packages:
 
 ```
