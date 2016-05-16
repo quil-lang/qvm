@@ -7,6 +7,7 @@
   :author "Robert Smith <robert@rigetti.com>"
   :depends-on (#:alexandria #:command-line-arguments #:ieee-floats)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
+  :pathname "src/"
   :serial t
   :components ((:file "package")
                (:file "utilities")
