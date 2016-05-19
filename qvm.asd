@@ -8,8 +8,6 @@
   :depends-on (
                ;; General utilities.
                #:alexandria
-               ;; Command line argument parsing
-               #:command-line-arguments
                ;; IEEE-754 float parsing
                #:ieee-floats
                )
@@ -23,7 +21,4 @@
                (:file "qil")
                (:file "execution")
                (:file "gates")
-               (:file "qft")
-
-               ;; For executable creation.
-               (:file "entry-point")))
+               (:file "qft")))
