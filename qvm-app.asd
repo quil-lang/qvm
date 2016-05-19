@@ -2,6 +2,10 @@
 ;;;;
 ;;;; Author: Robert Smith
 
+;;; FIXME: Do this properly.
+(require :sb-posix)
+(sb-posix:setenv "CC" "/usr/bin/cc" 1)
+
 (asdf:defsystem #:qvm-app
   :description "Application server for the QVM."
   :author "Robert Smith <robert@rigetti.com>"
@@ -10,8 +14,12 @@
                #:command-line-arguments
                ;; ASDF-companion utility library
                #:uiop
+               ;; JSON parsing
+               #:yason
                ;; The QVM, of course.
                #:qvm
+               ;; Fast non-blocking HTTP web server
+               #:woo
                )
   :pathname "app-src/"
   :serial t

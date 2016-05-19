@@ -1,10 +1,10 @@
-;;;; entry-point.lisp
+;;;; qvm-app/entry-point.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
-(in-package #:qvm)
+(in-package #:qvm-app)
 
-;;;; Entry-point into (optional) binary executable.
+;;;; Entry-point into binary executable.
 
 (defvar *program-name* "qvm")
 
@@ -64,6 +64,62 @@
   
   (uiop:quit))
 
+(defun slurp-stream (stream)
+  (with-output-to-string (s)
+    (loop :for byte := (read-byte stream nil nil) :then (read-byte stream nil nil)
+          :until (null byte)
+          :do (write-char (code-char byte) s))))
+
+(defun keywordify (str)
+  (intern (string-upcase str) :keyword))
+
+(defun run-experiment (num-qubits qubits-to-measure trials qil)
+  (let ((qvm (qvm:make-qvm num-qubits))
+        (stats (make-array (length qubits-to-measure) :initial-element 0))
+        timing)
+    (format-log "Running experiment with ~D trials" trials)
+    (with-timing (timing)
+      (dotimes (i trials)
+        (qvm:load-program qvm qil)
+        (qvm:run qvm)
+        (multiple-value-bind (new-qvm cbits)
+            (qvm:parallel-measure qvm qubits-to-measure)
+          (setf qvm (qvm::reset new-qvm))
+          (map-into stats #'+ stats cbits))))
+    (format-log "Finished ~D trials in ~D ms" trials timing)
+    (coerce stats 'list)))
+
+(defun %main (argv)
+  (woo:run
+   (lambda (env)
+     (let ((body-stream (getf env :raw-body)))
+       (cond
+         ((null body-stream)
+          '(400 (:content-type "text/plain") ("Nothing received.")))
+         (t
+          (let* ((data (slurp-stream body-stream))
+                 (js (let ((yason:*parse-object-key-fn* #'keywordify))
+                       (yason:parse data)))
+                 (qubits (gethash :QUBITS js))
+                 (qubits-to-measure (gethash :MEASURE js))
+                 (trials (gethash :TRIALS js))
+                 (isns (gethash :QIL-INSTRUCTIONS js)))
+            (format-log "HTTP Payload: ~S" data)
+            (format-log "  Qubits: ~A" qubits)
+            (format-log "  Measure: ~A" qubits-to-measure)
+            (format-log "  Trials: ~A" trials)
+            (format-log "  Isns: ~A" isns)
+            (let* ((counts (run-experiment qubits
+                                           qubits-to-measure
+                                           trials
+                                           (mapcar #'qvm::parse-qil-instruction isns)))
+                   (res-payload
+                     (yason:with-output-to-string* (:indent t)
+                       (yason:with-object ()
+                         (yason:encode-object-element "statistics" counts)))))
+              `(200 (:content-type "text/plain") (,res-payload))))))))))
+
+#+#:ignore
 (defun %main (argv)
   ;; Save the program name away.
   (setf *program-name* (pop argv))
