@@ -63,7 +63,12 @@ which is the index with a zero injected at the QUBIT'th position."
   (normalize-wavefunction qvm))
 
 (defun measure (qvm q c)
-  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum virtual machine QVM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store."
+  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum virtual machine QVM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store.
+
+Return two values:
+
+    1. The resulting QVM.
+    2. The measured classical bit."
   (let* ((r (random 1.0d0))
          (cbit (if (<= r (qubit-probability qvm q))
                    1
@@ -76,4 +81,16 @@ which is the index with a zero injected at the QUBIT'th position."
       (setf (classical-bit qvm c) cbit))
 
     ;; Return the qvm.
-    qvm))
+    (values qvm cbit)))
+
+(defun parallel-measure (qvm qubits)
+  "Perform a measurement on the list of qubits QUBITS within the QVM, returning two values:
+
+    1. The resulting QVM.
+    2. A list of the measurements in the same order as the provided qubits."
+  (loop :for q :in qubits
+        :collect (multiple-value-bind (new-qvm cbit)
+                     (measure qvm q nil)
+                   (setf qvm new-qvm)
+                   cbit) :into measurements
+        :finally (return (values qvm measurements))))

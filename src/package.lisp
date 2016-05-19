@@ -1,4 +1,4 @@
-;;;; package.lisp
+;;;; src/package.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
@@ -19,6 +19,7 @@
    #:qubit-probability                  ; FUNCTION
    #:force-measurement                  ; FUNCTION
    #:measure                            ; FUNCTION
+   #:parallel-measure                   ; FUNCTION
    )
 
   ;; execution.lisp
