@@ -160,7 +160,25 @@
                   1 0
                   0 -1))
 
+(alias-default-gate Z pauli-Z)
 (alias-default-gate not pauli-X)
+(alias-default-gate X pauli-X)
+(alias-default-gate Y pauli-Y)
+(alias-default-gate H hadamard)
+
+(define-default-gate Yb 1 ()
+  "The Yb gate."
+  '#.(let ((1/sqrt2 (/ (sqrt 2.0d0))))
+       (make-matrix 2
+                    1/sqrt2 (complex 0 1/sqrt2)
+                    (complex 0 1/sqrt2) 1/sqrt2)))
+
+(define-default-gate Ybd 1 ()
+  "The Ybd gate."
+  '#.(let ((1/sqrt2 (/ (sqrt 2.0d0))))
+       (make-matrix 2
+                    1/sqrt2 (complex 0 (- 1/sqrt2))
+                    (complex 0 (- 1/sqrt2)) 1/sqrt2)))
 
 (define-default-gate cnot 2 ()
   "The controlled NOT gate."
@@ -201,6 +219,10 @@
     (make-matrix 2
                  (cis (- theta/2)) 0
                  0                 (cis theta/2))))
+
+(alias-default-gate Rx rotation-x)
+(alias-default-gate Ry rotation-y)
+(alias-default-gate Rz rotation-z)
 
 (define-default-gate phase 1 (alpha)
   "A regular phase gate. Equivalent to R_z multiplied by a phase."
@@ -257,7 +279,6 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
                   0 0 0 0 0 0 1 0
                   0 0 0 0 0 1 0 0
                   0 0 0 0 0 0 0 1))
-
 
 ;;; Meta-operators
 
