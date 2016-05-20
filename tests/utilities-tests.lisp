@@ -4,7 +4,7 @@
 
 (in-package #:qvm-tests)
 
-(deftest nat-tuple-operations ()
+(deftest test-nat-tuple-operations ()
   "Test various operations on the NAT-TUPLE data structure."
   (flet ((members (nt)
            (let ((membership 0))

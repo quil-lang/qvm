@@ -42,3 +42,60 @@
           :for amps := (run-bell i)
           :do (is (double-float= 1/2 (probability (vector-first amps)) 1/10000))
               (is (double-float= 1/2 (probability (vector-last amps)) 1/10000)))))
+
+(deftest test-swap ()
+  "Test |01> -> |10>."
+  (let* ((qvm (make-qvm 2))
+         (amps (qvm::amplitudes qvm)))
+    (load-program qvm '((NOT 0)))
+    (setf qvm (run qvm))
+    (is (double-float= 1 (probability (aref amps #b01)) 1/10000))
+    (load-program qvm '((SWAP 0 1)))
+    (setf qvm (run qvm))
+    (is (double-float= 1 (probability (aref amps #b10)) 1/10000))))
+
+
+(defun fourier-test-program (type)
+  "Generate a test program for the QFT algorithm for two qubits. The types are as follows:
+
+    TYPE     STATE
+    ----     -----
+    0        |00>
+    1        |01>
+    2        |10>
+    3        |11>
+"
+  (let ((initialization
+          (ecase type
+            ((0)                                ; |00>
+             nil)
+            ((1)                                ; |01>
+             '((not 0)))
+            ((2)                                ; |10>
+             '((not 1)))
+            ((3)                                ; |11>
+             '((not 0)
+               (not 1))))))
+    `(,@initialization
+      ,@(qft-circuit '(0 1)))))
+
+;; 1 0 0 0 => 0.5    0.5     0.5    0.5
+;; 0 1 0 0 => 0.5    0.5i   -0.5   -0.5i
+;; 0 0 1 0 => 0.5   -0.5     0.5   -0.5
+;; 0 0 0 1 => 0.5   -0.5i   -0.5    0.5i
+(deftest test-fourier ()
+  "Test 2-qubit QFT."
+  (let ((expected #(#(0.5 0.5 0.5 0.5)
+                    #(0.5 #C(0.0 0.5) -0.5 #C (0.0 -0.5))
+                    #(0.5 -0.5 0.5 -0.5)
+                    #(0.5 #C(0.0 -0.5) -0.5 #C(0.0 0.5)))))
+    (dotimes (type 4)
+      (is (every (lambda (z w)
+                   (and (absolute-float= (realpart z)
+                                         (realpart w)
+                                         1/10000)
+                        (absolute-float= (imagpart z)
+                                         (imagpart w)
+                                         1/10000)))
+                 (aref expected type)
+                 (qvm::amplitudes (run-program 2 (fourier-test-program type))))))))
