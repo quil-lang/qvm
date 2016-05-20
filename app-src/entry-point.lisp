@@ -79,6 +79,12 @@
         timing)
     (format-log "Running experiment with ~D trials" trials)
     (with-timing (timing)
+      (qvm:load-program qvm qil)
+      (qvm:run qvm)
+      (print (qvm::amplitudes qvm))
+      (setf (aref stats 0)
+            (* trials (qvm::multi-qubit-probability qvm qubits-to-measure)))
+      #+ignore
       (dotimes (i trials)
         (qvm:load-program qvm qil)
         (qvm:run qvm)
@@ -88,6 +94,11 @@
           (map-into stats #'+ stats cbits))))
     (format-log "Finished ~D trials in ~D ms" trials timing)
     (coerce stats 'list)))
+
+(defun filt (isn)
+  (if (string-equal "RZ" (symbol-name (car isn)))
+      (list (car (second isn)))
+      nil))
 
 (defun %main (argv)
   (woo:run
@@ -103,16 +114,18 @@
                  (qubits (gethash :QUBITS js))
                  (qubits-to-measure (gethash :MEASURE js))
                  (trials (gethash :TRIALS js))
-                 (isns (gethash :QIL-INSTRUCTIONS js)))
-            (format-log "HTTP Payload: ~S" data)
+                 (isns (gethash :QIL-INSTRUCTIONS js))
+                 (qil (mapcar #'qvm::parse-qil-instruction isns)))
+            ;(format-log "HTTP Payload: ~S" data)
             (format-log "  Qubits: ~A" qubits)
             (format-log "  Measure: ~A" qubits-to-measure)
             (format-log "  Trials: ~A" trials)
-            (format-log "  Isns: ~A" isns)
+            (let ((*print-pretty* nil))
+              (format-log "  QIL: ~S" (mapcan #'filt qil)))
             (let* ((counts (run-experiment qubits
                                            qubits-to-measure
                                            trials
-                                           (mapcar #'qvm::parse-qil-instruction isns)))
+                                           qil))
                    (res-payload
                      (yason:with-output-to-string* (:indent t)
                        (yason:with-object ()

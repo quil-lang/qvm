@@ -8,13 +8,15 @@
 
 (defun parse-qil-instruction (string)
   (with-standard-io-syntax
-    (let ((*read-eval* nil))
-      (read-from-string string nil nil))))
+    (let ((*read-eval* nil)
+          (*read-default-float-format* 'double-float))
+      (read-from-string (concatenate 'string "(" string ")") nil nil))))
 
 (defun slurp-forms (stream)
   "Slurp all of the forms of the stream STREAM into a list."
   (with-standard-io-syntax
-    (let ((*read-eval* nil))
+    (let ((*read-eval* nil)
+          (*read-default-float-format* 'double-float))
       (loop :with eof := (gensym "EOF")
             :for form := (read stream nil eof nil) :then (read stream nil eof nil)
             :until (eq eof form)

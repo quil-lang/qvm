@@ -32,6 +32,10 @@ which is the index with a zero injected at the QUBIT'th position."
                  :for address := (index-to-address i qubit)
                  :sum (probability (aref (amplitudes qvm) address)))))
 
+(defun multi-qubit-probability (qvm &rest qubits)
+  "Compute the probability that the qubits QUBITS will measure to 1 within the quantum virtual machine QVM."
+  (first (last (state-probabilities qvm (apply #'nat-tuple qubits)))))
+
 (defun normalize-wavefunction (qvm)
   "Normalize the wavefunction, making it a unit vector in the constituent Hilbert space."
   (let ((amps (amplitudes qvm)))
