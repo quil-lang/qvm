@@ -57,23 +57,8 @@
 (define-float= single-float= single-float)
 (define-float= double-float= double-float)
 
-(declaim (inline complex=))
-(defun complex= (x y epsilon)
-  "Are the complex floats X and Y equal within the epsilon EPSILON?"
-  (check-type epsilon real)
-  (check-type x complex)
-  (check-type y complex)
-  (etypecase x
-    ((complex single-float) (and (single-float= (realpart x)
-                                                (realpart y)
-                                                epsilon)
-                                 (single-float= (imagpart x)
-                                                (imagpart y)
-                                                epsilon)))
-    ((complex double-float) (and (double-float= (realpart x)
-                                                (realpart y)
-                                                epsilon)
-                                 (double-float= (imagpart x)
-                                                (imagpart y)
-                                                epsilon)))))
-(declaim (notinline complex=))
+(defun absolute-float= (a b eps)
+  (cond
+    ((zerop a) (< (abs b) eps))
+    ((zerop b) (< (abs a) eps))
+    (t (< (abs (- a b)) eps))))
