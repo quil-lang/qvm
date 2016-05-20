@@ -5,6 +5,21 @@
 This directory contains a classical implementation of the Quantum
 Abstract Machine, called a "Quantum Virtual Machine" or QVM.
 
+## Dependencies
+
+System `qvm` and tests depend on:
+
+- Relatively up-to-date SBCL and ASDF. Follow the instructions in
+  `doc/lisp-setup.md` for details.
+
+Otherwise, system `qvm` is intended to be written portably.
+
+System `QVM-APP` depends on
+
+- `libev`: Mac: Install `libev` with `brew`; Linux: Install `libev4` with `apt-get`.
+
+This will only run on a UNIX-like.
+
 ## How To Run Interactively
 
 The QVM is written in ANSI Common Lisp. An efficient, optimizing,

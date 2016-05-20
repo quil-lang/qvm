@@ -6,16 +6,16 @@ For quick running, you can install SBCL from `apt` (Linux) or `brew`
 (Mac OS X). A Windows (32- or 64-bit) binary installer can be found in
 the table from [this page](http://www.sbcl.org/platform-table.html).
 
-Despite the ease of the above, it's not the preferred way.
+Despite the ease of the above, it's not the preferred way. In fact, some components of the QVM project depend on an up-to-date SBCL and 
 
 The preferred way is to install from source code. This will give you
 the full compiler documentation, as well as the full source code. It
 also allows for pretty rapid upgrading. First, install the binaries
 from [this page](http://www.sbcl.org/platform-table.html), selecting
-your platform appropriately. Installation instructions come
-with. After installing, download the source code, either from the
-source release, or bleeding-edge from `git`. The source release can be
-found on the same page.
+your platform appropriately. Installation instructions come with the
+distribution in an `INSTALL` file. After installing, download the
+source code, either from a stable source release, or bleeding-edge
+from `git`. The source release can be found on the same page.
 
 Make sure that `sbcl` is in your path.
 
