@@ -2,10 +2,8 @@
 ;;;;
 ;;;; Author: Robert Smith
 
-(defpackage #:qvm-tests
-  (:use #:cl)
-  (:use #:hu.dwim.stefil
-        #:qvm)
+(fiasco:define-test-package #:qvm-tests
+  (:use #:qvm)
   
   ;; suite.lisp
   (:export

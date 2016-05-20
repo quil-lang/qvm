@@ -4,8 +4,6 @@
 
 (in-package #:qvm-tests)
 
-(in-suite qvm-test-suite)
-
 (deftest test-index-to-address ()
   "Test the INDEX-TO-ADDRESS function."
   (let ((index        #b1111)

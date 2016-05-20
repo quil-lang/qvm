@@ -4,8 +4,6 @@
 
 (in-package #:qvm-tests)
 
-(in-suite qvm-test-suite)
-
 (deftest nat-tuple-operations ()
   (flet ((members (nt)
            (let ((membership 0))
