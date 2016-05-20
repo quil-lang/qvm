@@ -3,7 +3,6 @@ all:
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
 		 --asdf-path "." \
 		 --load-system qvm-app \
-		 --compress-core \
 		 --logfile build-output.log \
 		 --entry qvm-app::%main
 
