@@ -49,6 +49,21 @@ respectively can be done via:
 
 2. Update all QL software: `(ql:update-all-dists)`
 
+### Telling Quicklisp Where Your Code Is
+
+In order to be able to simply do `(ql:quickload :qvm)` as a one-liner,
+you need to tell Quicklisp where to find your code. Append to your
+`.sbclrc` file the following snippet, replacing `/path/to/code/dir/`
+with the path which contains the `qvm` directory.
+
+```
+#+quicklisp
+(progn
+(push "/Users/robert/Source/Rigetti/"
+      ql:*local-project-directories*)
+)
+```
+
 ## Install Buildapp
 
 Lisp is an *image-based language*. This means that almost all
