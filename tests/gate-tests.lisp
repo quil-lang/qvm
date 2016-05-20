@@ -15,3 +15,9 @@
                     (qvm::amplitudes qvm)))))
     (dotimes (i 7)
       (is (test-size i)))))
+
+(deftest test-inversion ()
+  "Test |000> -> |111> inversion."
+  (let* ((qil '((NOT 0) (NOT 1) (NOT 2)))
+         (qvm (run-program 3 qil)))
+    (is (double-float= 1 (abs (aref (qvm::amplitudes qvm) (1- (expt 2 3)))) 1/10000))))
