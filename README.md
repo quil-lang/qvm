@@ -110,10 +110,21 @@ for passing tests.
 
 ```
 CL-USER> (asdf:test-system :qvm)
-WARNING: redefining SB-KERNEL:LINE-LENGTH in DEFUN    ; can be ignored
-.....
+<...elided compilation output...>
+QVM-TESTS (Suite)
+  TEST-NAT-TUPLE-OPERATIONS                                               [ OK ]
+  TEST-INDEX-TO-ADDRESS                                                   [ OK ]
+  TEST-HADAMARD                                                           [ OK ]
+  TEST-INVERSION                                                          [ OK ]
+  TEST-BELL                                                               [ OK ]
+  TEST-SWAP                                                               [ OK ]
+  TEST-FOURIER                                                            [ OK ]
+
+; 
+; compilation unit finished
+;   printed 40 notes
 T
 ```
 
-Each dot is a passed test. The `T` (Lisp true value) indicates there
-was no error in all of the tests.
+The `T` (Lisp true value) indicates there was no error in all of the
+tests.
