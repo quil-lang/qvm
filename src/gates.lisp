@@ -142,6 +142,8 @@
                     1/sqrt2 1/sqrt2
                     1/sqrt2 (- 1/sqrt2))))
 
+(alias-default-gate H hadamard)
+
 (define-default-gate pauli-X 1 ()
   "The Pauli-X gate."
   '#.(make-matrix 2
@@ -160,25 +162,26 @@
                   1 0
                   0 -1))
 
-(alias-default-gate Z pauli-Z)
 (alias-default-gate not pauli-X)
 (alias-default-gate X pauli-X)
 (alias-default-gate Y pauli-Y)
-(alias-default-gate H hadamard)
+(alias-default-gate Z pauli-Z)
 
 (define-default-gate Yb 1 ()
   "The Yb gate."
-  '#.(let ((1/sqrt2 (/ (sqrt 2.0d0))))
+  '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
+            (1/sqrt2i (complex 0 1/sqrt2)))
        (make-matrix 2
-                    1/sqrt2 (complex 0 1/sqrt2)
-                    (complex 0 1/sqrt2) 1/sqrt2)))
+                    1/sqrt2  1/sqrt2i
+                    1/sqrt2i 1/sqrt2)))
 
 (define-default-gate Ybd 1 ()
   "The Ybd gate."
-  '#.(let ((1/sqrt2 (/ (sqrt 2.0d0))))
+  '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
+            (-1/sqrt2i (complex 0 (- 1/sqrt2))))
        (make-matrix 2
-                    1/sqrt2 (complex 0 (- 1/sqrt2))
-                    (complex 0 (- 1/sqrt2)) 1/sqrt2)))
+                     1/sqrt2  -1/sqrt2i
+                    -1/sqrt2i  1/sqrt2)))
 
 (define-default-gate cnot 2 ()
   "The controlled NOT gate."
@@ -215,7 +218,7 @@
 
 (define-default-gate rotation-z 1 (theta)
   "The R_z(theta) gate."
-  (let* ((theta/2 (/ theta 2)))
+  (let ((theta/2 (/ theta 2)))
     (make-matrix 2
                  (cis (- theta/2)) 0
                  0                 (cis theta/2))))
