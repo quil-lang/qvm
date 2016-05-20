@@ -138,8 +138,19 @@ NT should be the bit set."
           (incf element (* (aref matrix i j) (aref column j))))
         (setf (aref result i) element)))))
 
+(defun outer-multiply (u v)
+  "Compute the outer product of column vectors U and V (specifically UV^dagger)."
+  (let* ((len-u (length u))
+         (len-v (length v))
+         (result (make-array (list len-u len-v))))
+    (dotimes (r len-u result)
+      (dotimes (c len-v)
+        (setf (aref result r c)
+              (* (aref u r)
+                 (conjugate (aref v c))))))))
+
 (defun kronecker-multiply (A B)
-  "Compute the Kronecker product of M1 and M2."
+  "Compute the Kronecker product of matrices M1 and M2."
   (destructuring-bind (m n) (array-dimensions A)
     (destructuring-bind (p q) (array-dimensions B)
       (labels ((A-coord-to-R-start (i j)
