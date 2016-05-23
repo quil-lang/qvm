@@ -100,15 +100,15 @@
             ((0)                                ; |00>
              nil)
             ((1)                                ; |01>
-             '((not 0)))
+             '((NOT 0)))
             ((2)                                ; |10>
-             '((not 1)))
+             '((NOT 1)))
             ((3)                                ; |11>
-             '((not 0)
-               (not 1))))))
+             '((NOT 0)
+               (NOT 1))))))
     `(,@initialization
       (print-amplitudes ,(format nil "Initial state |~2,'0B> " type))
-      ,@ (qft-circuit '(0 1))
+      ,@(qvm-examples:qft-circuit '(0 1))
       (print-amplitudes ,(format nil "Final state QFT|~2,'0B>" type)))))
 
 ;; 1 0 0 0 => 0.5    0.5     0.5    0.5

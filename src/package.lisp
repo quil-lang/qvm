@@ -55,10 +55,4 @@
    #:print-probabilities                ; FUNCTION
    #:classical-call                     ; FUNCTION
    )
-
-  ;; qft.lisp
-  (:export
-   #:bit-reversal-circuit               ; FUNCTION
-   #:qft-circuit                        ; FUNCTION
-   )
   )

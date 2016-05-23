@@ -38,9 +38,14 @@ $ sbcl
 ```
 
 The system will get compiled and loaded, and now can be interacted
-with. To test, load the demo code and try running the QFT.
+with.
+
+To do a fun test, load the examples package and the demo code and try
+running the QFT.
 
 ```
+* (load "qvm-examples.asd")
+* (ql:quickload :qvm-examples)
 * (load "demo/demo.lisp")
 * (qvm::test-fourier)
 ```

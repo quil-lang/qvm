@@ -6,6 +6,7 @@
   :description "Regression tests for the QVM."
   :author "Robert Smith <robert@rigetti.com>"
   :depends-on (#:qvm
+               #:qvm-examples
                #:alexandria
                #:fiasco)
   :perform (asdf:test-op (o s)

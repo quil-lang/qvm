@@ -77,7 +77,7 @@
              '((not 0)
                (not 1))))))
     `(,@initialization
-      ,@(qft-circuit '(0 1)))))
+      ,@(qvm-examples:qft-circuit '(0 1)))))
 
 ;; 1 0 0 0 => 0.5    0.5     0.5    0.5
 ;; 0 1 0 0 => 0.5    0.5i   -0.5   -0.5i

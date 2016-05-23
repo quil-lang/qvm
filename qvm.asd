@@ -20,5 +20,4 @@
                (:file "measurement")
                (:file "qil")
                (:file "execution")
-               (:file "gates")
-               (:file "qft")))
+               (:file "gates")))

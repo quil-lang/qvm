@@ -1,8 +1,8 @@
-;;;; qft.lisp
+;;;; examples/qft.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
-(in-package #:qvm)
+(in-package #:qvm-examples)
 
 ;;;; Circuit generators for the Quantum Fourier Transform.
 
@@ -14,7 +14,7 @@
         (loop :for i :below (floor n 2)
               :for qs :in qubits
               :for qe :in (reverse qubits)
-              :collect `(swap ,qs ,qe)))))
+              :collect `(SWAP ,qs ,qe)))))
 
 (defun qft-circuit (qubits)
   "Generate the QFT circuit on the given qubits."
