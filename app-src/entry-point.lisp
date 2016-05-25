@@ -31,19 +31,28 @@
          (setf ,var (round (* 1000 (- (get-internal-real-time) ,start))
                            internal-time-units-per-second))))))
 
+(defun parity-even-p (state qubits)
+  (labels ((qubits-mask (qubits)
+             (loop :with mask := 0
+                   :for q :in qubits
+                   :do (setf (ldb (byte 1 q) mask) 1)
+                   :finally (return mask))))
+    (evenp (logcount (logand state (qubits-mask qubits))))))
+
 (defun expectation-value (qvm qubits)
-  (flet ((parity (i)
-           (if (oddp (logcount i))
-               -1
-               1)))
-    (loop :for i :from 0
-          :for p :in (qvm::state-probabilities qvm (apply #'qvm::nat-tuple qubits))
-          :sum (* p (parity i)))))
+  (loop :with expectation := 0.0d0
+        :for state :from 0
+        :for a :across (qvm::amplitudes qvm)
+        :do (if (parity-even-p state qubits)
+                (incf expectation (probability a))
+                (decf expectation (probability a)))
+        :finally (return expectation)))
 
 (defun run-experiment (num-qubits qubits-to-measure trials qil)
   (let ((qvm (qvm:make-qvm num-qubits))
         (stats (make-array (length qubits-to-measure) :initial-element 0))
-        timing)
+        timing
+        (expectation 0))
     (format-log "Running experiment with ~D trial~:P" trials)
     ;; Direct wavefunction probability computation
     #-ignore
@@ -61,7 +70,9 @@
         (multiple-value-bind (new-qvm cbits)
             (qvm:parallel-measure qvm qubits-to-measure)
           (setf qvm (qvm::reset new-qvm))
-          (map-into stats #'+ stats cbits))))
+          (if (oddp (count 1 cbits))
+              (decf expectation)
+              (incf expectation)))))
     (format-log "Finished in ~D ms" timing)
     (coerce stats 'list)))
 

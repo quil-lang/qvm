@@ -168,7 +168,7 @@
 (alias-default-gate Z pauli-Z)
 
 (define-default-gate Yb 1 ()
-  "The Yb gate."
+  "The Yb gate. (Used for QVE.)"
   '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
             (1/sqrt2i (complex 0 1/sqrt2)))
        (make-matrix 2
@@ -176,7 +176,7 @@
                     1/sqrt2i 1/sqrt2)))
 
 (define-default-gate Ybd 1 ()
-  "The Ybd gate."
+  "The Ybd gate. (Used for QVE.)"
   '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
             (-1/sqrt2i (complex 0 (- 1/sqrt2))))
        (make-matrix 2
