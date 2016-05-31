@@ -18,8 +18,8 @@
                #:yason
                ;; The QVM, of course.
                #:qvm
-               ;; Fast non-blocking HTTP web server
-               #:woo
+               ;; HTTP web server
+               #:hunchentoot
                )
   :pathname "app-src/"
   :serial t

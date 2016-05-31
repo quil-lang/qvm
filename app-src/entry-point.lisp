@@ -76,8 +76,6 @@
     (format-log "Finished in ~D ms" timing)
     (coerce stats 'list)))
 
-(defparameter *default-port* 5000)
-
 (defun slurp-stream (stream)
   (with-output-to-string (s)
     (loop :for byte := (read-byte stream nil nil) :then (read-byte stream nil nil)
@@ -87,40 +85,9 @@
 (defun keywordify (str)
   (intern (string-upcase str) :keyword))
 
-(defun start-server ()
-  (format-log "Starting server on port ~D." *default-port*)
-  (woo:run
-   (lambda (env)
-     (let ((body-stream (getf env :raw-body)))
-       (cond
-         ((null body-stream)
-          '(400 (:content-type "text/plain") ("Nothing received.")))
-         (t
-          (let* ((data (slurp-stream body-stream))
-                 (js (let ((yason:*parse-object-key-fn* #'keywordify))
-                       (yason:parse data)))
-                 (qubits (gethash :QUBITS js))
-                 (qubits-to-measure (gethash :MEASURE js))
-                 (trials (gethash :TRIALS js))
-                 (isns (gethash :QIL-INSTRUCTIONS js))
-                 (qil (mapcar #'qvm::parse-qil-instruction isns)))
-            (format-log "~D qubits, measuring ~A, over ~D trial~:P"
-                        qubits
-                        qubits-to-measure
-                        trials)
-            (let ((*print-pretty* nil)
-                  (*print-length* 8))
-              (format-log "QIL Code: ~S" qil))
-            (let* ((counts (run-experiment qubits
-                                           qubits-to-measure
-                                           trials
-                                           qil))
-                   (res-payload
-                     (yason:with-output-to-string* (:indent t)
-                       (yason:with-object ()
-                         (yason:encode-object-element "statistics" counts)))))
-              `(200 (:content-type "text/plain") (,res-payload))))))))
-   :port *default-port*))
+(defun start-server-app ()
+  (format-log "Starting server on port ~D." *host-port*)
+  (start-server))
 
 (defun format-complex (c)
   (cond
@@ -139,7 +106,7 @@
   (setf qubits (parse-integer qubits :junk-allowed nil))
 
   (cond
-    (server (start-server))
+    (server (start-server-app))
     (t
      (let (qvm program alloc-time exec-time)
        (format-log "Allocating memory for QVM")
@@ -172,7 +139,8 @@
   (handler-case
       (cond
         ((null argv)
-         (start-server))
+         (start-server-app)
+         (loop (sleep 1)))
         ((null (cdr argv))
          (show-help)
          (uiop:quit))
@@ -187,3 +155,88 @@
     (condition (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
       (uiop:quit 1))))
+
+(defparameter *host-address* "127.0.0.1")
+(defparameter *host-port* 5000)
+
+(defclass vhost (tbnl:acceptor)
+  ((dispatch-table
+    :initform '()
+    :accessor dispatch-table
+    :documentation "List of dispatch functions"))
+  (:default-initargs
+   :address *host-address*))
+
+(defun create-prefix/method-dispatcher (prefix method handler)
+  "Creates a request dispatch function which will dispatch to the
+function denoted by HANDLER if the file name of the current request
+starts with the string PREFIX."
+  (lambda (request)
+    (and (eq method (tbnl:request-method request))
+         (let ((mismatch (mismatch (tbnl:script-name request) prefix
+                                   :test #'char=)))
+           (and (or (null mismatch)
+                    (>= mismatch (length prefix)))
+                handler)))))
+
+(defmethod tbnl:acceptor-dispatch-request ((vhost vhost) request)
+  ;; try REQUEST on each dispatcher in turn
+  (mapc (lambda (dispatcher)
+          (let ((handler (funcall dispatcher request)))
+            (when handler               ; Handler found. FUNCALL it and return result
+              (return-from tbnl:acceptor-dispatch-request (funcall handler request)))))
+        (dispatch-table vhost))
+  (call-next-method))
+
+(defun handle-get-request (request)
+  (declare (ignore request))
+  "<marquee direction=\"right\">Hello from the <strong><blink>Rigetti</blink> QVM</strong>.</marquee>")
+
+(defun handle-post-request (request)
+  (let* ((data (hunchentoot:raw-post-data :request request
+                                          :force-text t))
+         (js (let ((yason:*parse-object-key-fn* #'keywordify))
+               (yason:parse data)))
+         (qubits (gethash :QUBITS js))
+         (qubits-to-measure (gethash :MEASURE js))
+         (trials (gethash :TRIALS js))
+         (isns (gethash :QIL-INSTRUCTIONS js))
+         (qil (mapcar #'qvm::parse-qil-instruction isns)))
+    (format-log "~D qubits, measuring ~A, over ~D trial~:P"
+                qubits
+                qubits-to-measure
+                trials)
+    (let ((*print-pretty* nil)
+          (*print-length* 8))
+      (format-log "QIL Code: ~S" qil))
+    (let* ((counts (run-experiment qubits
+                                   qubits-to-measure
+                                   trials
+                                   qil))
+           (res-payload
+             (yason:with-output-to-string* (:indent t)
+               (yason:with-object ()
+                 (yason:encode-object-element "statistics" counts)))))
+      ;; Return the payload.
+      res-payload)))
+
+(defparameter *app* nil)
+
+(defun start-server ()
+  (setq tbnl:*show-lisp-errors-p* nil
+        tbnl:*show-lisp-backtraces-p* nil
+        tbnl:*catch-errors-p* nil)
+  (setq *app* (make-instance 'vhost
+                             :address *host-address*
+                             :port *host-port*))
+  (when (null (dispatch-table *app*))
+    (push
+     (create-prefix/method-dispatcher "/" :GET 'handle-get-request)
+     (dispatch-table *app*))
+    (push
+     (create-prefix/method-dispatcher "/" :POST 'handle-post-request)
+     (dispatch-table *app*)))
+  (tbnl:start *app*))
+
+(defun stop-server ()
+  (tbnl:stop *app*))
