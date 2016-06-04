@@ -6,10 +6,12 @@
   :description "An implementation of the Quantum Abstract Machine."
   :author "Robert Smith <robert@rigetti.com>"
   :depends-on (
-               ;; General utilities.
+               ;; General utilities
                #:alexandria
                ;; IEEE-754 float parsing
                #:ieee-floats
+               ;; Quil parsing
+               #:cl-quil
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :pathname "src/"
@@ -18,6 +20,6 @@
                (:file "utilities")
                (:file "qvm")
                (:file "measurement")
-               (:file "qil")
+               (:file "quil")
                (:file "execution")
                (:file "gates")))

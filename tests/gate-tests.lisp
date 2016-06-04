@@ -13,8 +13,10 @@
 (deftest test-hadamard ()
   "Test Hadamard initialization on several qubits."
   (flet ((test-size (size)
-           (let* ((qil (loop :for q :below size :collect `(H ,q)))
-                  (qvm (run-program size qil))
+           (let* ((quil (with-output-to-quil (s)
+                          (loop :for q :below size :do
+                            (format s "HADAMARD ~D~%" q))))
+                  (qvm (run-program size quil))
                   (expected-probability (expt 2 (- size))))
              (every (lambda (z)
                       (double-float= expected-probability (probability z) 1/10000))
@@ -24,18 +26,20 @@
 
 (deftest test-inversion ()
   "Test |000> -> |111> inversion."
-  (let* ((qil '((NOT 0) (NOT 1) (NOT 2)))
-         (qvm (run-program 3 qil)))
+  (let* ((quil (with-output-to-quil (s)
+                 (loop :for q :below 3 :do
+                   (format s "NOT ~D~%" q))))
+         (qvm (run-program 3 quil)))
     (is (double-float= 1 (probability (vector-last (qvm::amplitudes qvm))) 1/10000))))
 
 (deftest test-bell ()
   "Test the construction of a Bell pair."
   (labels ((bell-state (n)
              "Construct an N-qubit Bell state."
-             (cons
-              '(H 0)
-              (loop :for i :from 1 :below n
-                    :collect `(cnot 0 ,i))))
+             (with-output-to-quil (s)
+               (format s "HADAMARD 0~%")
+               (loop :for i :from 1 :below n :do
+                 (format s "CNOT 0 ~D~%" i))))
            (run-bell (i)
              (qvm::amplitudes (run-program i (bell-state i)))))
     (loop :for i :from 1 :to 7 
@@ -47,10 +51,12 @@
   "Test |01> -> |10>."
   (let* ((qvm (make-qvm 2))
          (amps (qvm::amplitudes qvm)))
-    (load-program qvm '((NOT 0)))
+    (load-program qvm (with-output-to-quil (s)
+                        (format s "NOT 0~%")))
     (setf qvm (run qvm))
     (is (double-float= 1 (probability (aref amps #b01)) 1/10000))
-    (load-program qvm '((SWAP 0 1)))
+    (load-program qvm (with-output-to-quil (s)
+                        (format s "SWAP 0 1~%")))
     (setf qvm (run qvm))
     (is (double-float= 1 (probability (aref amps #b10)) 1/10000))))
 
@@ -65,19 +71,19 @@
     2        |10>
     3        |11>
 "
-  (let ((initialization
-          (ecase type
-            ((0)                                ; |00>
-             nil)
-            ((1)                                ; |01>
-             '((not 0)))
-            ((2)                                ; |10>
-             '((not 1)))
-            ((3)                                ; |11>
-             '((not 0)
-               (not 1))))))
-    `(,@initialization
-      ,@(qvm-examples:qft-circuit '(0 1)))))
+  (with-output-to-quil (s)
+    (ecase type
+      ((0)                                ; |00>
+       nil)
+      ((1)                                ; |01>
+       (format s "NOT 0~%"))
+      ((2)                                ; |10>
+       (format s "NOT 1~%"))
+      ((3)                                ; |11>
+       (format s "NOT 0~%NOT 1~%")))
+    ;; Write out
+    (flet ((f (x) (format s "~{~A~^ ~}~%" x)))
+      (mapc #'f (qvm-examples:qft-circuit '(0 1))))))
 
 ;; 1 0 0 0 => 0.5    0.5     0.5    0.5
 ;; 0 1 0 0 => 0.5    0.5i   -0.5   -0.5i

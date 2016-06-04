@@ -26,7 +26,9 @@
                      (loop :with n := (1+ (length qs))
                            :for i :from (1- n) :downto 1
                            :for qi :in qs
-                           :do (push `(CPHASE (,(/ pi (expt 2 (- n i)))) ,q ,qi) cR))
+                           ;; single-float hack to get tests to work.
+                           :for angle := (coerce (/ pi (expt 2 (- n i))) 'single-float)
+                           :do (push `(CPHASE (,angle) ,q ,qi) cR))
                      (append
                       (qft qs)
                       cR

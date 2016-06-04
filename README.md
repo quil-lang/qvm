@@ -12,6 +12,10 @@ System `qvm` and tests depend on:
 - Relatively up-to-date SBCL and ASDF. Follow the instructions in
   `doc/lisp-setup.md` for details.
 
+- Up-to-date [`cl-quil`](https://github.com/rigetticomputing/cl-quil)
+  (which itself depends on up-to-date
+  [`alexa`](https://github.com/rigetticomputing/alexa)).
+
 Otherwise, system `qvm` is intended to be written portably.
 
 System `QVM-APP` depends on

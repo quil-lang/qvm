@@ -5,7 +5,8 @@
 (asdf:defsystem #:qvm-tests
   :description "Regression tests for the QVM."
   :author "Robert Smith <robert@rigetti.com>"
-  :depends-on (#:qvm
+  :depends-on (#:cl-quil
+               #:qvm
                #:qvm-examples
                #:alexandria
                #:fiasco)

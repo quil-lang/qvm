@@ -34,9 +34,12 @@
 
    ;; --- Program and Definitions
 
+   (program-counter :accessor pc
+                    :initform 0
+                    :documentation "The program counter.")
+
    (program :accessor program
-            :initarg :program
-            :initform nil
+            :initform #()
             :documentation "The program to be executed.")
 
    (gate-definitions :accessor gate-definitions
@@ -91,10 +94,23 @@
 
 (defun load-program (qvm program &key append)
   "Load the program PROGRAM into the quantum virtual machine QVM. If APPEND is T (default: NIL), then the program will be appended to the currently loaded program. Otherwise, whatever program is loaded will be superseded."
-  (if (null append)
-      (setf (program qvm) program)
-      (setf (program qvm) (append (program qvm) program))))
+  (check-type program quil:parsed-program)
+  (let ((code-vector (quil:parsed-program-executable-code program)))
+    (cond
+      ((null append)
+       ;; TODO: Install gates.
+       (setf (program qvm) code-vector))
+      (t
+       (setf (program qvm)
+             (concatenate 'vector (program qvm) code-vector))))
+    qvm))
 
+(defun current-instruction (qvm)
+  "What is the next instruction to be executed on the QVM?"
+  (aref (program qvm) (pc qvm)))
+
+(defun loaded-program-length (qvm)
+  (length (program qvm)))
 
 ;;; Fundamental Manipulation of the QVM
 

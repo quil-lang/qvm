@@ -6,16 +6,6 @@
 
 ;;;; Execution of the QVM.
 
-(define-condition unsupported-instruction (error)
-  ((opcode :initarg :opcode
-           :reader unsupported-instruction-opcode)
-   (instruction :initarg :instruction
-                :reader unsupported-instruction-full))
-  (:documentation "An error raised when an unsupported or unimplemented instruction is encountered.")
-  (:report (lambda (condition stream)
-             (format stream "Unsupported instruction opcode ~A encountered."
-                     (unsupported-instruction-opcode condition)))))
-
 (define-condition invalid-gate-invocation (error)
   ((gate-name :initarg :gate-name
               :reader invalid-gate-invocation-gate-name)
@@ -36,117 +26,94 @@
        (64  (classical-double-float qvm param))
        (128 (classical-complex-double-float qvm param))))))
 
+(defgeneric transition-qvm (qvm instr)
+  (:documentation "Execute the instruction INSTR on the QVM.
+
+Return two values:
+
+    1. The resulting (possibly modified) QVM after executing INSTR.
+
+    2. The new value the program counter should be to execute the next
+       relevant instruction. If this value is null, then execution
+       should be halted."))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:no-operation))
+  (values qvm (1+ (pc qvm))))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:halt))
+  (values qvm nil))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:reset))
+  (values (reset qvm) (1+ (pc qvm))))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:wait))
+  (warn "WAITing. Beware of busy-loop.")
+  (loop :with address := (quil:address-value (quil:wait-address instr))
+        :while (zerop (classical-bit qvm address)))
+  (values qvm nil))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:toggle))
+  (let* ((address (quil:address-value (quil:toggle-address instr)))
+         (b (classical-bit qvm address)))
+    (setf (classical-bit qvm address) (- 1 b))
+    (values qvm (1+ (pc qvm)))))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:unconditional-jump))
+  (values qvm (quil:jump-label instr)))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:jump-when))
+  (values qvm
+          (if (= 1 (classical-bit qvm (quil:address-value
+                                       (quil:conditional-jump-address instr))))
+              (quil:jump-label qvm)
+              (1+ (pc qvm)))))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:jump-unless))
+  (values qvm
+          (if (zerop (classical-bit qvm (quil:address-value
+                                         (quil:conditional-jump-address instr))))
+              (quil:jump-label qvm)
+              (1+ (pc qvm)))))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:measure))
+  (values
+   (measure qvm
+            (quil:qubit-index (quil:measure-qubit instr))
+            (quil:address-value (quil:measure-address instr)))
+   (1+ (pc qvm))))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:measure-discard))
+  (values
+   (measure qvm (quil:qubit-index (quil:measure-discard-qubit instr)) nil)
+   (1+ (pc qvm))))
+
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:gate-application))
+  (let* ((gate (lookup-gate qvm (quil:application-operator instr)))
+         (params (quil:application-parameters instr))
+         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
+         (operator (apply #'gate-operator gate params)))
+    (values
+     (apply-operator qvm operator (apply #'nat-tuple qubits))
+     (1+ (pc qvm)))))
+
+;;; XXX: Temporary measure.
+(defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil::unresolved-application))
+  (let* ((gate (lookup-gate qvm (quil:application-operator instr)))
+         (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
+         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
+         (operator (apply #'gate-operator gate params)))
+    (values
+     (apply-operator qvm operator (apply #'nat-tuple qubits))
+     (1+ (pc qvm)))))
+
 (defun run (qvm)
   "Simulate until completion the quantum virtual machine QVM. Return the QVM in its end state."
-  ;; If the program is empty then we are done.
-  (if (null (program qvm))
-      qvm
-      ;; Get the next instruction and add it to the history of
-      ;; executed instructions.
-      (let ((instruction (first (program qvm))))
-        (case (first instruction)
-          ;; HALT: End execution.
-          ((halt)
-           qvm)
-
-          ;; WHEN, UNLESS: Conditional branching.
-          ((when unless)
-           (let ((rest-program (rest (program qvm)))
-                 (test-for (ecase (first instruction)
-                             ((when) 1)
-                             ((unless) 0))))
-             (when (= test-for (classical-bit qvm (second instruction)))
-               (setf rest-program (append (cddr instruction) rest-program)))
-             (setf (program qvm) rest-program)
-             (run qvm)))
-
-          ;; WHILE, UNTIL: Looping.
-          ((while until)
-           (let ((rest-program (rest (program qvm)))
-                 (test-index (second instruction))
-                 (loop-body (cddr instruction))
-                 (test-for (ecase (first instruction)
-                             ((while) 1)
-                             ((until) 0))))
-             ;; Loop, constantly resetting the program to the loop
-             ;; body.
-             (loop :while (= test-for (classical-bit qvm test-index)) :do
-               (setf (program qvm) loop-body)
-               (run qvm))
-
-             ;; Loop finished. Continue executing the rest of the
-             ;; program.
-             (setf (program qvm) rest-program)
-             (run qvm)))
-
-          ;; NOP: Do nothing.
-          ((nop)
-           (pop (program qvm))
-           (run qvm))
-
-          ;; RESET: Reset qubits to 0.
-          ((reset)
-           (let ((resulting-qvm (reset qvm)))
-             (pop (program resulting-qvm))
-             (run resulting-qvm)))
-
-          ;; MEASURE: Perform a measurement on qubits.
-          ((measure)
-           (let ((resulting-qvm (measure qvm
-                                         (second instruction)
-                                         (third instruction))))
-             (pop (program resulting-qvm))
-             (run resulting-qvm)))
-
-          ((include)
-           (let ((filename (second instruction)))
-             (check-type filename string)
-             (assert (probe-file filename) () "The file ~A does not exist." filename)
-             (let ((forms (read-qil-file filename)))
-               (pop (program qvm))
-               (setf (program qvm) (append forms (program qvm)))
-               (run qvm))))
-
-          ((wait defgate defcircuit)
-           (error 'unsupported-instruction
-                  :instruction instruction
-                  :opcode (first instruction)))
-
-          ;; Gate/function application.
-          (otherwise
-           (let ((gate (lookup-gate qvm (first instruction))))
-             (cond
-               ;; The gate wasn't found. Perform the legacy operation
-               ;; of computing the function.
-               ((null gate)
-                (let ((resulting-qvm
-                        (apply (first instruction) (cons qvm (rest instruction)))))
-                  (pop (program resulting-qvm))
-                  (run resulting-qvm)))
-
-               ;; The gate is defined. Parse out the rest of the
-               ;; instruction and apply it.
-               (t
-                (let ((args (rest instruction)))
-                  (if (null args)
-                      (error 'invalid-gate-invocation
-                             :gate-name (gate-name gate)
-                             :instruction instruction)
-                      (let (params qubits)
-                        ;; Parse out the complex params.
-                        (if (listp (first args))
-                            (setf params (first args)
-                                  qubits (rest args))
-                            (setf params nil
-                                  qubits args))
-                        (map-into params (lambda (p) (parse-parameter qvm p)) params)
-                        ;; Do some sanity checking.
-                        (assert (every #'integerp qubits))
-                        ;; Get the gate operator and apply it.
-                        (let* ((operator (apply #'gate-operator gate params))
-                               (resulting-qvm (apply-operator qvm operator (apply #'nat-tuple qubits))))
-                          (pop (program resulting-qvm))
-                          (run resulting-qvm)))))))))))))
+  (let ((pc 0))
+    (loop :until (or (null pc) (>= pc (loaded-program-length qvm))) :do
+      (setf (pc qvm) pc)
+      (multiple-value-setq (qvm pc)
+        (transition-qvm qvm (current-instruction qvm)))))
+  qvm)
 
 (defun run-program (num-qubits program &key (classical-memory-size 8))
   "Run the program PROGRAM on a QVM of NUM-QUBITS qubits, with a classical memory size of CLASSICAL-MEMORY-SIZE."
