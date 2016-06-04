@@ -9,7 +9,8 @@
 (defvar *program-name* "qvm")
 
 (defparameter *option-spec*
-  '((("memory" #\m) :type integer :initial-value 8 :documentation "classical memory size in bytes")
+  '((("server" #\S) :type boolean :optional t :documentation "start the QVE server")
+    (("memory" #\m) :type integer :initial-value 8 :documentation "classical memory size in bytes")
     (("help" #\h) :type boolean :optional t :documentation "display help")))
 
 (defun format-log (fmt-string &rest args)
@@ -18,8 +19,8 @@
   (terpri *trace-output*))
 
 (defun show-help ()
-  (format t "Run QIL file:~%")
-  (format t "    ~A <num-qubits> <qil-file> [<options>...]~%~%" *program-name*)
+  (format t "Run Quil file:~%")
+  (format t "    ~A <num-qubits> <quil-file> [<options>...]~%~%" *program-name*)
   (format t "Start QVE server:~%")
   (format t "    ~A~%~%" *program-name*)
   (command-line-arguments:show-option-help *option-spec* :sort-names t))
@@ -48,7 +49,7 @@
                 (decf expectation (probability a)))
         :finally (return expectation)))
 
-(defun run-experiment (num-qubits qubits-to-measure trials qil)
+(defun run-experiment (num-qubits qubits-to-measure trials quil)
   (let ((qvm (qvm:make-qvm num-qubits))
         (stats (make-array (length qubits-to-measure) :initial-element 0))
         timing
@@ -57,7 +58,7 @@
     ;; Direct wavefunction probability computation
     #-ignore
     (with-timing (timing)
-      (qvm:load-program qvm qil)
+      (qvm:load-program qvm quil)
       (qvm:run qvm)
       (setf (aref stats 0)
             (* trials (expectation-value qvm qubits-to-measure))))
@@ -65,7 +66,7 @@
     #+ignore
     (with-timing (timing)
       (dotimes (i trials)
-        (qvm:load-program qvm qil)
+        (qvm:load-program qvm quil)
         (qvm:run qvm)
         (multiple-value-bind (new-qvm cbits)
             (qvm:parallel-measure qvm qubits-to-measure)
@@ -85,6 +86,9 @@
 (defun keywordify (str)
   (intern (string-upcase str) :keyword))
 
+(defparameter *host-address* "127.0.0.1")
+(defparameter *host-port* 5000)
+
 (defun start-server-app ()
   (format-log "Starting server on port ~D." *host-port*)
   (start-server))
@@ -98,7 +102,7 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (qubits file &key help memory)
+(defun process-options (qubits file &key help memory server)
   (when help
     (show-help)
     (uiop:quit))
@@ -113,7 +117,8 @@
        (with-timing (alloc-time)
          (setf qvm (make-qvm qubits :classical-memory-size memory)))
        (format-log "Allocation completed in ~D ms. Reading in program," alloc-time)
-       (setf program (read-qil-file file))
+       (setf program (let ((quil::*allow-unresolved-applications* t))
+                       (quil:read-quil-file file)))
        (format-log "Loading quantum program.")
        (load-program qvm program)
        (format-log "Executing quantum program.")
@@ -122,9 +127,11 @@
          (run qvm))
        (format-log "Execution completed in ~D ms. Printing state." exec-time)
        (when (<= qubits 5)
-         (format-log "Amplitudes: ~{~A~^, ~}" (map 'list 'format-complex (amplitudes qvm)))
-         (format-log "Probabilities: ~{~F~^, ~}" (map 'list 'probability (amplitudes qvm))))
-       (format-log "Classical memory (MSB -> LSB): ~v,'0B" (* 8 (classical-memory-size qvm)) (classical-memory qvm)))))
+         (format-log "Amplitudes: ~{~A~^, ~}" (map 'list 'format-complex (qvm::amplitudes qvm)))
+         (format-log "Probabilities: ~{~F~^, ~}" (map 'list 'probability (qvm::amplitudes qvm))))
+       (format-log "Classical memory (MSB -> LSB): ~v,'0B"
+                   (* 8 (qvm::classical-memory-size qvm))
+                   (qvm::classical-memory qvm)))))
 
   (uiop:quit))
 
@@ -155,9 +162,6 @@
     (condition (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
       (uiop:quit 1))))
-
-(defparameter *host-address* "127.0.0.1")
-(defparameter *host-port* 5000)
 
 (defclass vhost (tbnl:acceptor)
   ((dispatch-table
@@ -200,19 +204,20 @@ starts with the string PREFIX."
          (qubits (gethash :QUBITS js))
          (qubits-to-measure (gethash :MEASURE js))
          (trials (gethash :TRIALS js))
-         (isns (gethash :QIL-INSTRUCTIONS js))
-         (qil (mapcar #'qvm::parse-qil-instruction isns)))
+         (isns (gethash :QUIL-INSTRUCTIONS js))
+         (quil (let ((quil::*allow-unresolved-applications* t))
+                 (quil:parse-quil-string isns))))
     (format-log "~D qubits, measuring ~A, over ~D trial~:P"
                 qubits
                 qubits-to-measure
                 trials)
     (let ((*print-pretty* nil)
           (*print-length* 8))
-      (format-log "QIL Code: ~S" qil))
+      (format-log "QUIL Code: ~S" quil))
     (let* ((counts (run-experiment qubits
                                    qubits-to-measure
                                    trials
-                                   qil))
+                                   quil))
            (res-payload
              (yason:with-output-to-string* (:indent t)
                (yason:with-object ()

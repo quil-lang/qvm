@@ -1,7 +1,7 @@
 all:
 	buildapp --output qvm \
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
-		 --asdf-path "." \
+		 --asdf-tree "./../" \
 		 --load-system qvm-app \
 		 --logfile build-output.log \
 		 --entry qvm-app::%main
