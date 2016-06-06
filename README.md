@@ -44,30 +44,6 @@ $ sbcl
 The system will get compiled and loaded, and now can be interacted
 with.
 
-To do a fun test, load the examples package and the demo code and try
-running the QFT.
-
-```
-* (load "qvm-examples.asd")
-* (ql:quickload :qvm-examples)
-* (load "demo/demo.lisp")
-* (qvm::test-fourier)
-```
-
-If all goes right, you'll see the output of four 2-qubit Fourier
-transforms. Note that `#C(a b)` is syntax for the complex number `a + bi`.
-
-```
-Initial state |00> : #C(1.0d0 0.0d0), #C(0.0d0 0.0d0), #C(0.0d0 0.0d0), #C(0.0d0 0.0d0)
-Final state QFT|00>: #C(0.4999999999999999d0 0.0d0), #C(0.4999999999999999d0 0.0d0), #C(0.4999999999999999d0 0.0d0), #C(0.4999999999999999d0 0.0d0)
-Initial state |01> : #C(0.0d0 0.0d0), #C(1.0d0 0.0d0), #C(0.0d0 0.0d0), #C(0.0d0 0.0d0)
-Final state QFT|01>: #C(0.4999999999999999d0 0.0d0), #C(3.0616169978683824d-17 0.4999999999999999d0), #C(-0.4999999999999999d0 0.0d0), #C(-3.0616169978683824d-17 -0.4999999999999999d0)
-Initial state |10> : #C(0.0d0 0.0d0), #C(0.0d0 0.0d0), #C(1.0d0 0.0d0), #C(0.0d0 0.0d0)
-Final state QFT|10>: #C(0.4999999999999999d0 0.0d0), #C(-0.4999999999999999d0 0.0d0), #C(0.4999999999999999d0 0.0d0), #C(-0.4999999999999999d0 0.0d0)
-Initial state |11> : #C(0.0d0 0.0d0), #C(0.0d0 0.0d0), #C(0.0d0 0.0d0), #C(1.0d0 0.0d0)
-Final state QFT|11>: #C(0.4999999999999999d0 0.0d0), #C(-3.0616169978683824d-17 -0.4999999999999999d0), #C(-0.4999999999999999d0 0.0d0), #C(3.0616169978683824d-17 0.4999999999999999d0)
-```
-
 If you ever find yourself in a debugger, like so:
 
 ```
