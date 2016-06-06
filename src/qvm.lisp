@@ -6,10 +6,6 @@
 
 ;;; Quantum Virtual Machine
 
-(defvar *default-gate-definitions* (make-hash-table :test 'equal)
-  ;; This is populated later when gates are loaded.
-  "A table of default gate definitions.")
-
 (defclass quantum-virtual-machine ()
   (
    ;; --- Machine state
@@ -92,9 +88,23 @@
                  :number-of-qubits num-qubits
                  :classical-memory-size classical-memory-size))
 
+(defun install-gates (qvm program)
+  "Install the gates specified by the program PROGRAM into the QVM.
+
+This will not clear previously installed gates from the QVM."
+  (loop :with gate-table := (gate-definitions qvm)
+        :for gate-def :in (quil:parsed-program-gate-definitions program)
+        :for gate := (gate-definition-to-gate gate-def)
+        :do (setf (gethash (gate-name gate) gate-table) gate)))
+
 (defun load-program (qvm program &key append)
   "Load the program PROGRAM into the quantum virtual machine QVM. If APPEND is T (default: NIL), then the program will be appended to the currently loaded program. Otherwise, whatever program is loaded will be superseded."
   (check-type program quil:parsed-program)
+
+  ;; Install the gates.
+  (install-gates qvm program)
+
+  ;; Load the code vector.
   (let ((code-vector (quil:parsed-program-executable-code program)))
     (cond
       ((null append)

@@ -43,6 +43,9 @@
               actual))
     (apply (parameterized-gate-matrix-function g) parameters)))
 
+(defvar *default-gate-definitions* (make-hash-table :test 'equal)
+  "A table of default gate definitions.")
+
 (defmacro define-default-gate (name qubits (&rest params) &body matrix-code)
   "Defines a gate and adds it to the default-provided gate table.
 

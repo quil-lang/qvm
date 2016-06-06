@@ -18,8 +18,8 @@
   :serial t
   :components ((:file "package")
                (:file "utilities")
+               (:file "gates")
+               (:file "quil")
                (:file "qvm")
                (:file "measurement")
-               (:file "quil")
-               (:file "execution")
-               (:file "gates")))
+               (:file "execution")))
