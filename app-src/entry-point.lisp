@@ -159,7 +159,7 @@
           :name "qvm"
           :positional-arity 2
           :rest-arity nil)))
-    (condition (c)
+    (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
       (uiop:quit 1))))
 
