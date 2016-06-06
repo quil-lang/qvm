@@ -145,6 +145,9 @@ writing 76087296 bytes from the dynamic space at 0x1000000000
 done]
 ```
 
+If there were issues building it, then a full log of compilation
+output can be found in `build-output.log`.
+
 Now you should have an executable called `qvm`. A simple test is to
 run the `hello.quil` example. Copy the `qvm` executable into the
 `demo/` directory and run it like so:
