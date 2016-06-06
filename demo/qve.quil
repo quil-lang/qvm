@@ -1,0 +1,9 @@
+# Some gates useful for QVE.
+
+DEFGATE Yb:
+    1/sqrt(2), i/sqrt(2)
+    i/sqrt(2), 1/sqrt(2)
+
+DEFGATE Ybd:
+    1/sqrt(2), -i/sqrt(2)
+    -i/sqrt(2), 1/sqrt(2)
