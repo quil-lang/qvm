@@ -18,13 +18,7 @@ System `qvm` and tests depend on:
 
 Otherwise, system `qvm` is intended to be written portably.
 
-System `QVM-APP` depends on
-
-- `libev`: Mac: Install `libev` with `brew`; Linux: Install `libev4` with `apt-get`.
-
-This will only run on a UNIX-like.
-
-## How To Run Interactively
+## How to Run Interactively
 
 The QVM is written in ANSI Common Lisp. An efficient, optimizing,
 machine-code compiler called SBCL is recommended for its
@@ -65,7 +59,7 @@ which is labeled `ABORT`, in this case `1`), or pressing control-d.
 
 To quit, type control-d.
 
-## How To Test
+## How to Test
 
 There is what might be considered beta support for Semaphore CI. Every
 build will get built and tested. A failure can indicate failure to
@@ -113,3 +107,63 @@ T
 
 The `T` (Lisp true value) indicates there was no error in all of the
 tests.
+
+# How to Build a Stand-Alone Executable
+
+Building an executable requires `buildapp`. See the Lisp instructions
+in `doc/lisp-setup.md` for details.
+
+Before building, you must ensure that all dependencies are downloaded
+from the internet. To do this, follow the instructions to run `qvm`
+interactively, but do the following step additionally:
+
+```
+(load "qvm-app.asd")
+(ql:quickload :qvm-app)
+```
+
+This only needs to be done once (any time new third-party dependencies
+are introduced).
+
+Building is otherwise easy, just call `make` in the `qvm`
+directory. This should produce output like the following:
+
+```
+$ make
+buildapp --output qvm \
+	 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
+	 --asdf-tree "./../" \
+	 --load-system qvm-app \
+	 --logfile build-output.log \
+	 --entry qvm-app::%main
+;; loading system "qvm-app"
+[undoing binding stack and other enclosing state... done]
+[saving current Lisp image into qvm:
+writing 4832 bytes from the read-only space at 0x20000000
+writing 4624 bytes from the static space at 0x20100000
+writing 76087296 bytes from the dynamic space at 0x1000000000
+done]
+```
+
+Now you should have an executable called `qvm`. A simple test is to
+run the `hello.quil` example. Copy the `qvm` executable into the
+`demo/` directory and run it like so:
+
+```
+$ cp qvm demo/ && cd demo/
+$ ./qvm 2 hello.quil
+[3674244758] Welcome to the Rigetti QVM.
+[3674244758] Allocating memory for QVM
+[3674244758] Allocation completed in 175 ms. Reading in program,
+WARNING: Reached end of file when parsing indented gate entries.
+[3674244758] Loading quantum program.
+[3674244758] Executing quantum program.
+[3674244758] Execution completed in 8 ms. Printing state.
+[3674244758] Amplitudes: 0.7071067811865475, 0.0, 0.0, 0.7071067811865475
+[3674244758] Probabilities: 0.4999999999999999, 0.0, 0.0, 0.4999999999999999
+[3674244758] Classical memory (MSB -> LSB): 0000000000000000000000000000000000000000000000000000000000000000
+```
+
+As seen, a classical Bell state was produced.
+
+You can get a brief help message with `qvm --help`.
