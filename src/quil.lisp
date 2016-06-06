@@ -20,7 +20,11 @@
 
 (defmethod gate-definition-to-gate ((gate-def quil:parameterized-gate-definition))
   (labels ((substitute-param (p sym body)
-             (subst sym p body :test #'eq))
+             (subst sym p body :test (lambda (x y)
+                                       (and (quil:is-param x)
+                                            (quil:is-param y)
+                                            (string= (quil:param-name x)
+                                                     (quil:param-name y))))))
            (substitute-params (params syms body)
              (if (null params)
                  body
