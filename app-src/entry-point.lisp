@@ -245,3 +245,10 @@ starts with the string PREFIX."
 
 (defun stop-server ()
   (tbnl:stop *app*))
+
+#+#:ignore
+(defmethod tbnl:handle-request :before ((acceptor vhost) (request tbnl:request))
+  (multiple-value-bind (username pwd) (tbnl:authorization)
+    (if (string= pwd "spandex")
+        nil
+        (tbnl:require-authorization))))
