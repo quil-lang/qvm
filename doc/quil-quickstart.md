@@ -47,6 +47,8 @@ CPHASE(1.4142135) 1 0
 Rx(3.14159) 2
 ```
 
+Currently and very inconveniently, arithmetic expressions are not currently supported as parameters. (See Issue #11.)
+
 ## Including Files
 
 You can include files/gate libraries with `INCLUDE`. A popular one to include is `stdgates.quil`:
