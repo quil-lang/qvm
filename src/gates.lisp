@@ -170,7 +170,7 @@
 (alias-default-gate Y pauli-Y)
 (alias-default-gate Z pauli-Z)
 
-(define-default-gate Yb 1 ()
+(define-default-gate |Yb| 1 ()
   "The Yb gate. (Used for QVE.)"
   '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
             (1/sqrt2i (complex 0 1/sqrt2)))
@@ -178,7 +178,7 @@
                     1/sqrt2  1/sqrt2i
                     1/sqrt2i 1/sqrt2)))
 
-(define-default-gate Ybd 1 ()
+(define-default-gate |Ybd| 1 ()
   "The Ybd gate. (Used for QVE.)"
   '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
             (-1/sqrt2i (complex 0 (- 1/sqrt2))))
@@ -226,9 +226,9 @@
                  (cis (- theta/2)) 0
                  0                 (cis theta/2))))
 
-(alias-default-gate Rx rotation-x)
-(alias-default-gate Ry rotation-y)
-(alias-default-gate Rz rotation-z)
+(alias-default-gate |Rx| rotation-x)
+(alias-default-gate |Ry| rotation-y)
+(alias-default-gate |Rz| rotation-z)
 
 (define-default-gate phase 1 (alpha)
   "A regular phase gate. Equivalent to R_z multiplied by a phase."

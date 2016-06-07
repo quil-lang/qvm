@@ -88,7 +88,7 @@ Return two values:
    (1+ (pc qvm))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:gate-application))
-  (let* ((gate (lookup-gate qvm (quil:application-operator instr)))
+  (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
          (params (quil:application-parameters instr))
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
          (operator (apply #'gate-operator gate params)))
@@ -98,7 +98,7 @@ Return two values:
 
 ;;; XXX: Temporary measure.
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil::unresolved-application))
-  (let* ((gate (lookup-gate qvm (quil:application-operator instr)))
+  (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
          (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
          (operator (apply #'gate-operator gate params)))

@@ -211,9 +211,6 @@ starts with the string PREFIX."
                 qubits
                 qubits-to-measure
                 trials)
-    (let ((*print-pretty* nil)
-          (*print-length* 8))
-      (format-log "QUIL Code: ~S" quil))
     (let* ((counts (run-experiment qubits
                                    qubits-to-measure
                                    trials
