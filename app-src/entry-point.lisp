@@ -41,7 +41,7 @@
 (defun keywordify (str)
   (intern (string-upcase str) :keyword))
 
-(defparameter *host-address* "127.0.0.1")
+(defparameter *host-address* "0.0.0.0")
 (defparameter *host-port* 5000)
 
 (defun start-server-app ()
