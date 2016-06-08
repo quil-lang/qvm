@@ -32,51 +32,6 @@
          (setf ,var (round (* 1000 (- (get-internal-real-time) ,start))
                            internal-time-units-per-second))))))
 
-(defun parity-even-p (state qubits)
-  (labels ((qubits-mask (qubits)
-             (loop :with mask := 0
-                   :for q :in qubits
-                   :do (setf (ldb (byte 1 q) mask) 1)
-                   :finally (return mask))))
-    (evenp (logcount (logand state (qubits-mask qubits))))))
-
-(defun expectation-value (qvm qubits)
-  (loop :with expectation := 0.0d0
-        :for state :from 0
-        :for a :across (qvm::amplitudes qvm)
-        :do (if (parity-even-p state qubits)
-                (incf expectation (probability a))
-                (decf expectation (probability a)))
-        :finally (return expectation)))
-
-(defun run-experiment (num-qubits qubits-to-measure trials quil)
-  (let ((qvm (qvm:make-qvm num-qubits))
-        (stats (make-array (length qubits-to-measure) :initial-element 0))
-        timing
-        (expectation 0))
-    (format-log "Running experiment with ~D trial~:P" trials)
-    ;; Direct wavefunction probability computation
-    #-ignore
-    (with-timing (timing)
-      (qvm:load-program qvm quil)
-      (qvm:run qvm)
-      (setf (aref stats 0)
-            (* trials (expectation-value qvm qubits-to-measure))))
-    ;; Sampling
-    #+ignore
-    (with-timing (timing)
-      (dotimes (i trials)
-        (qvm:load-program qvm quil)
-        (qvm:run qvm)
-        (multiple-value-bind (new-qvm cbits)
-            (qvm:parallel-measure qvm qubits-to-measure)
-          (setf qvm (qvm::reset new-qvm))
-          (if (oddp (count 1 cbits))
-              (decf expectation)
-              (incf expectation)))))
-    (format-log "Finished in ~D ms" timing)
-    (coerce stats 'list)))
-
 (defun slurp-stream (stream)
   (with-output-to-string (s)
     (loop :for byte := (read-byte stream nil nil) :then (read-byte stream nil nil)
@@ -201,26 +156,49 @@ starts with the string PREFIX."
                                           :force-text t))
          (js (let ((yason:*parse-object-key-fn* #'keywordify))
                (yason:parse data)))
-         (qubits (gethash :QUBITS js))
-         (qubits-to-measure (gethash :MEASURE js))
-         (trials (gethash :TRIALS js))
-         (isns (gethash :QUIL-INSTRUCTIONS js))
-         (quil (let ((quil::*allow-unresolved-applications* t))
-                 (quil:parse-quil-string isns))))
-    (format-log "~D qubits, measuring ~A, over ~D trial~:P"
-                qubits
-                qubits-to-measure
-                trials)
-    (let* ((counts (run-experiment qubits
-                                   qubits-to-measure
-                                   trials
-                                   quil))
-           (res-payload
-             (yason:with-output-to-string* (:indent t)
-               (yason:with-object ()
-                 (yason:encode-object-element "statistics" counts)))))
-      ;; Return the payload.
-      res-payload)))
+         (type (gethash ':TYPE js)))
+    (ecase (keywordify type)
+      ((:multishot)
+       (let* ((num-qubits (gethash ':NUM-QUBITS js))
+              (addresses (gethash ':ADDRESSES js))
+              (num-trials (gethash ':TRIALS js))
+              (isns (gethash ':QUIL-INSTRUCTIONS js))
+              (quil (let ((quil::*allow-unresolved-applications* t))
+                      (quil:parse-quil-string isns)))
+              (results (perform-multishot quil num-qubits addresses num-trials)))
+         (with-output-to-string (s)
+           (yason:encode results s))))
+      ;;((:wavefunction))
+      )))
+
+(defun perform-multishot (quil num-qubits addresses num-trials)
+  (check-type quil quil:parsed-program)
+  (check-type num-qubits (integer 0))
+  (check-type num-trials (integer 0))
+  (check-type addresses alexandria:proper-list)
+  (assert (every (alexandria:conjoin #'integerp (complement #'minusp)) addresses))
+
+  (let ((qvm (qvm:make-qvm num-qubits))
+        (trial-results nil)
+        timing)
+    (flet ((collect-bits (qvm)
+             (loop :for address :in addresses
+                   :collect (qvm:classical-bit qvm address))))
+      (qvm:load-program qvm quil)
+      (format-log "Running experiment with ~D trial~:P" num-trials)
+      (with-timing (timing)
+        (dotimes (trial num-trials)
+          ;; Reset the program counter.
+          (setf (qvm::pc qvm) 0)
+          ;; Reset the amplitudes.
+          (qvm::reset qvm)
+          ;; Run the program.
+          (qvm:run qvm)
+          ;; Collect bits.
+          (push (collect-bits qvm) trial-results)))
+      (format-log "Finished in ~D ms" timing)
+      (nreverse trial-results))))
+
 
 (defparameter *app* nil)
 
@@ -233,10 +211,10 @@ starts with the string PREFIX."
                              :port *host-port*))
   (when (null (dispatch-table *app*))
     (push
-     (create-prefix/method-dispatcher "/" :GET 'handle-get-request)
+     (create-prefix/method-dispatcher "/" ':GET 'handle-get-request)
      (dispatch-table *app*))
     (push
-     (create-prefix/method-dispatcher "/" :POST 'handle-post-request)
+     (create-prefix/method-dispatcher "/" ':POST 'handle-post-request)
      (dispatch-table *app*)))
   (tbnl:start *app*))
 

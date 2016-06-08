@@ -18,6 +18,8 @@
                #:qvm
                ;; HTTP web server
                #:hunchentoot
+               ;; Utilities
+               #:alexandria
                )
   :pathname "app-src/"
   :serial t
