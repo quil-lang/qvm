@@ -168,8 +168,17 @@ starts with the string PREFIX."
               (results (perform-multishot quil num-qubits addresses num-trials)))
          (with-output-to-string (s)
            (yason:encode results s))))
-      ;;((:wavefunction))
-      )))
+      ((:wavefunction)
+       (let* ((num-qubits (gethash ':NUM-QUBITS js))
+              (isns (gethash ':QUIL-INSTRUCTIONS js))
+              (quil (let ((quil::*allow-unresolved-applications* t))
+                      (quil:parse-quil-string isns)))
+              (results (perform-wavefunction quil num-qubits)))
+         (with-output-to-string (s)
+           (yason:encode
+            (map 'list (lambda (z) (list (realpart z) (imagpart z)))
+                 results)
+            s)))))))
 
 (defun perform-multishot (quil num-qubits addresses num-trials)
   (check-type quil quil:parsed-program)
@@ -198,6 +207,19 @@ starts with the string PREFIX."
           (push (collect-bits qvm) trial-results)))
       (format-log "Finished in ~D ms" timing)
       (nreverse trial-results))))
+
+(defun perform-wavefunction (quil num-qubits)
+  (check-type quil quil:parsed-program)
+  (check-type num-qubits (integer 0))
+
+  (let ((qvm (qvm:make-qvm num-qubits))
+        timing)
+    (qvm:load-program qvm quil)
+    (format-log "Running experiment")
+    (with-timing (timing)
+      (qvm:run qvm))
+    (format-log "Finished in ~D ms" timing)
+    (qvm::amplitudes qvm)))
 
 
 (defparameter *app* nil)
