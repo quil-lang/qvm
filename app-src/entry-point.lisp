@@ -224,6 +224,16 @@ starts with the string PREFIX."
 
 (defparameter *app* nil)
 
+(defun static-file-dispatcher (uri path)
+  ;; the dispatcher
+  (lambda (request)
+    (when (string= uri (tbnl:script-name request))
+      ;; the handler
+      (lambda (&rest args)
+        (declare (ignore args))
+        (tbnl:handle-static-file path nil)))))
+
+
 (defun start-server ()
   (setq tbnl:*show-lisp-errors-p* nil
         tbnl:*show-lisp-backtraces-p* nil
@@ -233,7 +243,19 @@ starts with the string PREFIX."
                              :port *host-port*))
   (when (null (dispatch-table *app*))
     (push
-     (create-prefix/method-dispatcher "/" ':GET 'handle-get-request)
+     (static-file-dispatcher
+      "/"
+      (asdf:system-relative-pathname ':qvm-app "app-src/index.html"))
+     (dispatch-table *app*))
+    (push
+     (static-file-dispatcher
+      "/index.html"
+      (asdf:system-relative-pathname ':qvm-app "app-src/index.html"))
+     (dispatch-table *app*))
+    (push
+     (static-file-dispatcher
+      "/main.css"
+      (asdf:system-relative-pathname ':qvm-app "app-src/assets/css/main.css"))
      (dispatch-table *app*))
     (push
      (create-prefix/method-dispatcher "/" ':POST 'handle-post-request)
