@@ -6,12 +6,16 @@
 
 ;;;; Entry-point into binary executable.
 
+(defvar *entered-from-main* nil)
+
 (defun image-p ()
-  uiop/image:*image-dumped-p*)
+  *entered-from-main*)
 
 (defun image-directory-pathname ()
-  (cl-fad:pathname-directory-pathname
-   sb-ext:*core-pathname*))
+  (if (image-p)
+      (cl-fad:pathname-directory-pathname
+       sb-ext:*core-pathname*)
+      nil))
 
 (defvar *program-name* "qvm")
 
@@ -98,6 +102,7 @@
   (uiop:quit))
 
 (defun %main (argv)
+  (setf *entered-from-main* t)
   ;; Save the program name away.
   (setf *program-name* (pop argv))
 
