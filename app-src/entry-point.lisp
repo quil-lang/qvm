@@ -234,7 +234,7 @@ starts with the string PREFIX."
     (qvm::amplitudes qvm)))
 
 
-(defparameter *app* nil)
+(defvar *app* nil)
 
 (defun static-file-dispatcher (uri path)
   ;; the dispatcher
@@ -256,10 +256,12 @@ starts with the string PREFIX."
 (defun start-server ()
   (setq tbnl:*show-lisp-errors-p* nil
         tbnl:*show-lisp-backtraces-p* nil
-        tbnl:*catch-errors-p* nil)
-  (setq *app* (make-instance 'vhost
-                             :address *host-address*
-                             :port *host-port*))
+        tbnl:*catch-errors-p* (image-p))
+  (setq *app* (make-instance
+               'vhost
+               :address *host-address*
+               :port *host-port*
+               :taskmaster (make-instance 'tbnl:one-thread-per-connection-taskmaster)))
   (when (null (dispatch-table *app*))
     (push
      (static-file-dispatcher
