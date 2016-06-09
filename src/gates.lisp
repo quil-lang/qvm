@@ -190,7 +190,7 @@
   "The controlled NOT gate."
   '#.(controlled #2A((0 1) (1 0))))
 
-(define-default-gate sqrt-qnot 1 ()
+(define-default-gate sqrt-not 1 ()
   "The quantum square-root-of-NOT gate."
   '#.(let ((1/sqrt2 (/ (sqrt 2.0d0))))
        (make-matrix 2
