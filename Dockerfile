@@ -8,8 +8,8 @@ RUN apt-get clean
 
 WORKDIR /root/
 
-# Install Quicklisp
 ADD ./qvm /root/qvm
+ADD ./assets /root/assets
 RUN chmod +x /root/qvm
 
 CMD /root/qvm

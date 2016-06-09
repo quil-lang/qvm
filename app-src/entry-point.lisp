@@ -6,6 +6,13 @@
 
 ;;;; Entry-point into binary executable.
 
+(defun image-p ()
+  uiop/image:*image-dumped-p*)
+
+(defun image-directory-pathname ()
+  (cl-fad:pathname-directory-pathname
+   sb-ext:*core-pathname*))
+
 (defvar *program-name* "qvm")
 
 (defparameter *option-spec*
@@ -233,6 +240,13 @@ starts with the string PREFIX."
         (declare (ignore args))
         (tbnl:handle-static-file path nil)))))
 
+(defun assets/ (relative-pathname)
+  (if (image-p)
+      (merge-pathnames relative-pathname
+                       (image-directory-pathname))
+      (asdf:system-relative-pathname
+       ':qvm-app
+       relative-pathname)))
 
 (defun start-server ()
   (setq tbnl:*show-lisp-errors-p* nil
@@ -245,17 +259,17 @@ starts with the string PREFIX."
     (push
      (static-file-dispatcher
       "/"
-      (asdf:system-relative-pathname ':qvm-app "app-src/index.html"))
+      (assets/ "assets/index.html"))
      (dispatch-table *app*))
     (push
      (static-file-dispatcher
       "/index.html"
-      (asdf:system-relative-pathname ':qvm-app "app-src/index.html"))
+      (assets/ "assets/index.html"))
      (dispatch-table *app*))
     (push
      (static-file-dispatcher
       "/main.css"
-      (asdf:system-relative-pathname ':qvm-app "app-src/assets/css/main.css"))
+      (assets/ "assets/css/main.css"))
      (dispatch-table *app*))
     (push
      (create-prefix/method-dispatcher "/" ':POST 'handle-post-request)

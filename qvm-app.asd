@@ -20,6 +20,8 @@
                #:hunchentoot
                ;; Utilities
                #:alexandria
+               ;; CL-FAD
+               #:cl-fad
                )
   :pathname "app-src/"
   :serial t
