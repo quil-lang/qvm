@@ -65,14 +65,14 @@ Return two values:
   (values qvm
           (if (= 1 (classical-bit qvm (quil:address-value
                                        (quil:conditional-jump-address instr))))
-              (quil:jump-label qvm)
+              (quil:jump-label instr)
               (1+ (pc qvm)))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:jump-unless))
   (values qvm
           (if (zerop (classical-bit qvm (quil:address-value
                                          (quil:conditional-jump-address instr))))
-              (quil:jump-label qvm)
+              (quil:jump-label instr)
               (1+ (pc qvm)))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:measure))
