@@ -35,7 +35,7 @@ $ sbcl
 * (ql:quickload :qvm)
 ```
 
-The system will get compiled and loaded, and now can be interacted
+The system will get compiled and loaded, and can now be interacted
 with.
 
 If you ever find yourself in a debugger, like so:
