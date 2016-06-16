@@ -63,7 +63,7 @@ which is the index with a zero injected at the QUBIT'th position."
          (1 (setf (aref x 0) #C(0.0D0 0.0D0))))
        ;; Insert it back.
        (insert-amplitudes qvm x (nat-tuple qubit))))
-   (nat-tuple-remove (qubit-numbers qvm) qubit))
+   (nat-tuple-complement (number-of-qubits qvm) (nat-tuple qubit)))
   (normalize-wavefunction qvm))
 
 (defun measure (qvm q c)

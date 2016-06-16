@@ -15,10 +15,6 @@
   "A non-negative fixnum."
   `(and fixnum unsigned-byte))
 
-(deftype nat-tuple ()
-  "The NAT-TUPLE type. A \"nat tuple\" represents an ordered list of non-negative integer indexes."
-  `list)
-
 (deftype nat-tuple-element ()
   "The set of valid elements in a nat tuple."
   `(integer 0 (#.+max-nat-tuple-cardinality+)))
@@ -29,55 +25,42 @@
 
 (declaim (inline make-nat-tuple
                  nat-tuple-add
-                 nat-tuple-remove
-                 nat-tuple-cardinality
-                 nat-tuple-union
-                 nat-tuple-difference))
+                 nat-tuple-cardinality))
+
+(defstruct (nat-tuple (:constructor %make-nat-tuple))
+  "The NAT-TUPLE type. A \"nat tuple\" represents an ordered list of non-negative integer indexes."
+  (list nil :read-only t)
+  (membership 0 :read-only t :type non-negative-fixnum))
 
 (defun make-nat-tuple ()
-  "Make a new (immutable) empty nat tuple."
-  nil)
+  "Make a new, empty nat tuple."
+  (load-time-value
+   (%make-nat-tuple :list nil
+                    :membership 0)
+   t))
 
 (defun nat-tuple-add (nt elt)
   "Add the element ELT (of type NAT-TUPLE-ELEMENT) to the nat tuple NT."
   (declare (type nat-tuple nt)
            (type nat-tuple-element elt))
-  (if (find elt nt)
+  (if (logbitp elt (nat-tuple-membership nt))
       nt
-      (cons elt nt)))
-
-(defun nat-tuple-remove (nt elt)
-  "Remove, if it exists, the element ELT (of type NAT-TUPLE-ELEMENT) to the nat tuple NT."
-  (declare (type nat-tuple nt)
-           (type nat-tuple-element elt))
-  (remove elt nt))
+      (%make-nat-tuple :list (cons elt (nat-tuple-list nt))
+                       :membership (dpb 1 (byte 1 elt) (nat-tuple-membership nt)))))
 
 (defun nat-tuple-cardinality (nt)
   "Compute the number of elements in the nat tuple NT."
   (declare (type nat-tuple nt))
-  (length nt))
-
-(defun nat-tuple-union (nt1 nt2)
-  "Compute the union of the nat tuple NT1 and NT2."
-  (declare (type nat-tuple nt1 nt2))
-  ;; FIXME? This will produce non-deterministic ordering of the
-  ;; output.
-  (union nt1 nt2))
-
-(defun nat-tuple-difference (nt1 nt2)
-  "Compute the set difference between the nat tuples NT1 and NT2. The resulting nat tuple will contain all of the elements in NT1 but not in NT2."
-  (declare (type nat-tuple nt1 nt2))
-  ;; FIXME? This will produce non-deterministic ordering of the
-  ;; output.
-  (set-difference nt1 nt2))
+  (length (nat-tuple-list nt)))
 
 (defun nat-tuple (&rest elements)
-  "Create a new bit set with the elements ELEMENTS (each of type NAT-TUPLE-ELEMENT)."
-  (declare (dynamic-extent elements))
-  (let ((nt (make-nat-tuple)))
-    (declare (type nat-tuple nt))
-    (dolist (elt elements nt)
-      (setf nt (nat-tuple-add nt elt)))))
+  "Create a new nat tuple with the elements ELEMENTS (each of type NAT-TUPLE-ELEMENT)."
+  (let ((membership 0))
+    (declare (type non-negative-fixnum membership))
+    (dolist (elt elements)
+      (setf membership (dpb 1 (byte 1 elt) membership)))
+    (%make-nat-tuple :list (reverse elements)
+                     :membership membership)))
 
 (defmacro do-nat-tuple ((i elt nt) &body body)
   "Iterate over the elements of the nat tuple NT in increasing order. The return value is unspecified.
@@ -90,11 +73,21 @@ NT should be the bit set."
   (check-type i symbol)
   (check-type elt symbol)
   (let ((g-nt (gensym "NT-")))
-    `(loop :with ,g-nt := ,nt
+    `(loop :with ,g-nt := (nat-tuple-list ,nt)
            :for ,i :from 0
            :for ,elt :of-type nat-tuple-element :in ,g-nt
            :do (progn
                  ,@body))))
+
+(defun nat-tuple-complement (n nt)
+  "Compute the complement of the nat tuple NT in a universe of (0 1 2 ... N-1)."
+  (let* ((comp-membership (logandc2 (1- (expt 2 n))
+                                    (nat-tuple-membership nt)))
+         (comp-list (loop :for i :below n
+                          :when (logbitp i comp-membership)
+                            :collect i)))
+    (%make-nat-tuple :list comp-list
+                     :membership comp-membership)))
 
 ;;; Complex Linear Algebra
 

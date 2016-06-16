@@ -44,12 +44,8 @@
                      :documentation "A table mapping gate names to their GATE-instance definition.")
 
    ;; --- Bookkeeping
-   ;; The following two additional registers are used primarily for
-   ;; controlled iteration through the amplitude space.
-
-   (qubit-numbers :accessor qubit-numbers
-                  :initform (make-nat-tuple)
-                  :documentation "Valid qubit indexes represented as a NAT-TUPLE.")
+   ;; The following register is used primarily for controlled
+   ;; iteration through the amplitude space.
 
    (amplitude-address :accessor amplitude-address
                       :documentation "Non-negative integer address into the amplitudes."))
@@ -72,11 +68,6 @@
     (when (null (amplitudes qvm))
       (setf (amplitudes qvm)
             (make-vector (expt 2 num-qubits) 1))) ; Pr[|00..>] = 1
-
-    ;; Initilize list of valid qubit indices.
-    (dotimes (qubit num-qubits)
-      (setf (qubit-numbers qvm)
-            (nat-tuple-add (qubit-numbers qvm) qubit)))
 
     ;; Initialize address register for amplitudes.
     (setf (amplitude-address qvm) 0)))
@@ -120,6 +111,7 @@ This will not clear previously installed gates from the QVM."
   (aref (program qvm) (pc qvm)))
 
 (defun loaded-program-length (qvm)
+  "Number of executable instructions in the program loaded into the QVM."
   (length (program qvm)))
 
 ;;; Fundamental Manipulation of the QVM
@@ -299,7 +291,7 @@ N.B. This function does not reset the amplitude address of the QVM."
      (let* ((x (extract-amplitudes qvm qubits))
             (Ux (matrix-multiply operator x)))
        (insert-amplitudes qvm Ux qubits)))
-   (nat-tuple-difference (qubit-numbers qvm) qubits))
+   (nat-tuple-complement (number-of-qubits qvm) qubits))
   qvm)
 
 (defun probability (amplitude)
@@ -309,7 +301,7 @@ N.B. This function does not reset the amplitude address of the QVM."
 (defun state-probabilities (qvm qubits)
   "Returns a list of the probabilities for all combinations for the given qubits represented as a tuple. The output will be in binary order."
   (let ((probabilities nil)
-        (other-qubits (nat-tuple-difference (qubit-numbers qvm) qubits)))
+        (other-qubits (nat-tuple-complement (number-of-qubits qvm) qubits)))
     (map-relevant-amplitudes
      qvm
      (lambda (combo)
