@@ -47,9 +47,7 @@ Return two values:
   (values (reset qvm) (1+ (pc qvm))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:wait))
-  (warn "WAITing. Beware of busy-loop.")
-  (loop :with address := (quil:address-value (quil:wait-address instr))
-        :while (zerop (classical-bit qvm address)))
+  (warn "WAIT executed. Nothing to wait on.")
   (values qvm nil))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:toggle))
