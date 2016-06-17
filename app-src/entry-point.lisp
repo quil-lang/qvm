@@ -245,14 +245,6 @@ starts with the string PREFIX."
         (declare (ignore args))
         (tbnl:handle-static-file path nil)))))
 
-(defun assets/ (relative-pathname)
-  (if (image-p)
-      (merge-pathnames relative-pathname
-                       (image-directory-pathname))
-      (asdf:system-relative-pathname
-       ':qvm-app
-       relative-pathname)))
-
 (defun start-server ()
   (setq tbnl:*show-lisp-errors-p* nil
         tbnl:*show-lisp-backtraces-p* nil
@@ -263,21 +255,6 @@ starts with the string PREFIX."
                :port *host-port*
                :taskmaster (make-instance 'tbnl:one-thread-per-connection-taskmaster)))
   (when (null (dispatch-table *app*))
-    (push
-     (static-file-dispatcher
-      "/"
-      (assets/ "assets/index.html"))
-     (dispatch-table *app*))
-    (push
-     (static-file-dispatcher
-      "/index.html"
-      (assets/ "assets/index.html"))
-     (dispatch-table *app*))
-    (push
-     (static-file-dispatcher
-      "/main.css"
-      (assets/ "assets/css/main.css"))
-     (dispatch-table *app*))
     (push
      (create-prefix/method-dispatcher "/" ':POST 'handle-post-request)
      (dispatch-table *app*)))

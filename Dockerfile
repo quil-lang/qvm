@@ -9,7 +9,6 @@ RUN apt-get clean
 WORKDIR /root/
 
 ADD ./qvm /root/qvm
-ADD ./assets /root/assets
 RUN chmod +x /root/qvm
 
 CMD /root/qvm
