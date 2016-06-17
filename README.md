@@ -170,3 +170,6 @@ WARNING: Reached end of file when parsing indented gate entries.
 As seen, a classical Bell state was produced.
 
 You can get a brief help message with `qvm --help`.
+
+# Deloyment to AWS
+Instructions can be found [here](https://github.com/rigetticomputing/qvm/wiki)
