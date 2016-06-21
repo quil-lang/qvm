@@ -6,11 +6,14 @@ For quick running, you can install SBCL from `apt` (Linux) or `brew`
 (Mac OS X). A Windows (32- or 64-bit) binary installer can be found in
 the table from [this page](http://www.sbcl.org/platform-table.html).
 
-Despite the ease of the above, it's not the preferred way to acquire
-SBCL. In fact, some components of the QVM project depend on an
-up-to-date SBCL. The fastest way to get this is to download the latest
-binary release from [this page](http://www.sbcl.org/platform-table.html).
+Despite the ease of the above, it's *not* the preferred way to acquire
+SBCL. *In fact, some components of the QVM project depend on an
+up-to-date SBCL.* The fastest way to get this is to download the latest
+binary release from [this page](http://www.sbcl.org/platform-table.html). 
 
+**N.B.**: Make sure to get a binary for your platform's processor architecture, probably AMD64.
+
+**N.B.**: The Windows and Linux binaries are usually up-to-date, but the Mac ones seem to sometimes lag behind. This is unfortunate, because you need a relatively up-to-date SBCL to build the QVM (at least 1.3.6 is known to work). If your platform is not up-to-date, you will need to install the binaries, and then do an update from the source release, as described in the next paragraph.
 
 For someone who intends to hack on the QVM project, the preferred way
 is to install from source code. This will give you the full compiler
