@@ -147,6 +147,14 @@
 
 (alias-default-gate H hadamard)
 
+(define-default-gate identity 1 ()
+  "The identity gate."
+  '#.(make-matrix 2
+                  1 0
+                  0 1))
+
+(alias-default-gate I identity)
+
 (define-default-gate pauli-X 1 ()
   "The Pauli-X gate."
   '#.(make-matrix 2
