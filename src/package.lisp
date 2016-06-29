@@ -55,4 +55,9 @@
    #:print-probabilities                ; FUNCTION
    #:classical-call                     ; FUNCTION
    )
+  
+  ;; depolarizing-noise.lisp
+  (:export
+   #:noisy-qvm                          ; CLASS
+   )
   )
