@@ -31,7 +31,7 @@
 
 (defun show-help ()
   (format t "Run Quil file:~%")
-  (format t "    ~A <num-qubits> <quil-file> [<options>...]~%~%" *program-name*)
+  (format t "    ~A <quil-file> [<options>...]~%~%" *program-name*)
   (format t "Start QVE server:~%")
   (format t "    ~A~%~%" *program-name*)
   (command-line-arguments:show-option-help *option-spec* :sort-names t))
@@ -68,31 +68,35 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (qubits file &key help memory server)
+(defun process-options (file &key help memory server)
   (when help
     (show-help)
     (uiop:quit))
 
-  (setf qubits (parse-integer qubits :junk-allowed nil))
-
   (cond
     (server (start-server-app))
     (t
-     (let (qvm program alloc-time exec-time)
-       (format-log "Allocating memory for QVM")
-       (with-timing (alloc-time)
-         (setf qvm (make-qvm qubits :classical-memory-size memory)))
-       (format-log "Allocation completed in ~D ms. Reading in program," alloc-time)
+     (let (qvm program alloc-time exec-time qubits)
+       (format-log "Reading program.")
        (setf program (let ((quil::*allow-unresolved-applications* t))
                        (quil:read-quil-file file)))
+       (setf qubits (cl-quil:qubits-needed program))
+
+       (format-log "Allocating memory for QVM of ~D qubits." qubits)
+       (with-timing (alloc-time)
+         (setf qvm (make-qvm qubits :classical-memory-size memory)))
+       (format-log "Allocation completed in ~D ms." alloc-time)
+
        (format-log "Loading quantum program.")
        (load-program qvm program)
+
        (format-log "Executing quantum program.")
        (setf *random-state* (make-random-state t)) ; Seed random.
        (with-timing (exec-time)
          (run qvm))
-       (format-log "Execution completed in ~D ms. Printing state." exec-time)
+       (format-log "Execution completed in ~D ms." exec-time)
        (when (<= qubits 5)
+         (format-log "Printing state.")
          (format-log "Amplitudes: ~{~A~^, ~}" (map 'list 'format-complex (qvm::amplitudes qvm)))
          (format-log "Probabilities: ~{~F~^, ~}" (map 'list 'probability (qvm::amplitudes qvm))))
        (format-log "Classical memory (MSB -> LSB): ~v,'0B"
@@ -115,16 +119,13 @@
         ((null argv)
          (start-server-app)
          (loop (sleep 1)))
-        ((null (cdr argv))
-         (show-help)
-         (uiop:quit))
         (t
          (command-line-arguments:handle-command-line
           *option-spec*
           'process-options
           :command-line argv
           :name "qvm"
-          :positional-arity 2
+          :positional-arity 1
           :rest-arity nil)))
     (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
@@ -173,22 +174,22 @@ starts with the string PREFIX."
          (measurement-noise (gethash ':MEASUREMENT-NOISE js)))
     (ecase (keywordify type)
       ((:multishot)
-       (let* ((num-qubits (gethash ':NUM-QUBITS js))
-              (addresses (gethash ':ADDRESSES js))
+       (let* ((addresses (gethash ':ADDRESSES js))
               (num-trials (gethash ':TRIALS js))
               (isns (gethash ':QUIL-INSTRUCTIONS js))
               (quil (let ((quil::*allow-unresolved-applications* t))
                       (quil:parse-quil-string isns)))
+              (num-qubits (cl-quil:qubits-needed quil))
               (results (perform-multishot quil num-qubits addresses num-trials
                                           :gate-noise gate-noise
                                           :measurement-noise measurement-noise)))
          (with-output-to-string (s)
            (yason:encode results s))))
       ((:wavefunction)
-       (let* ((num-qubits (gethash ':NUM-QUBITS js))
-              (isns (gethash ':QUIL-INSTRUCTIONS js))
+       (let* ((isns (gethash ':QUIL-INSTRUCTIONS js))
               (quil (let ((quil::*allow-unresolved-applications* t))
                       (quil:parse-quil-string isns)))
+              (num-qubits (cl-quil:qubits-needed quil))
               (results (perform-wavefunction quil num-qubits
                                              :gate-noise gate-noise
                                              :measurement-noise measurement-noise)))
