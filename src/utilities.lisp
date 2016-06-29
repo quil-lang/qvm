@@ -158,3 +158,8 @@ NT should be the bit set."
                     (loop :for v :below q :do
                       (setf (aref result (+ y u) (+ x v))
                             (* Aij (aref B u v))))))))))))))
+
+(defmacro probabilistically (p &body body)
+  "Execute BODY with probability 0 <= P <= 1."
+  `(when (<= (random 1.0) ,p)
+     ,@body))

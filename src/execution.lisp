@@ -76,13 +76,13 @@ Return two values:
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:measure))
   (values
    (measure qvm
-            (quil:qubit-index (quil:measure-qubit instr))
+            (quil:qubit-index (quil:measurement-qubit instr))
             (quil:address-value (quil:measure-address instr)))
    (1+ (pc qvm))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:measure-discard))
   (values
-   (measure qvm (quil:qubit-index (quil:measure-discard-qubit instr)) nil)
+   (measure qvm (quil:qubit-index (quil:measurement-qubit instr)) nil)
    (1+ (pc qvm))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:gate-application))
