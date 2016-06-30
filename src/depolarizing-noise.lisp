@@ -43,16 +43,30 @@
     * Probability of an X-gate PX,
     * Probability of a Y-gate PY, and
     * Probability of a Z-gate PZ.
+
+It should be that PX + PY + PZ <= 1.
 "
+  (assert (<= (+ px py pz) 1))
   (let ((X (gate-operator (lookup-gate qvm "X")))
         (Y (gate-operator (lookup-gate qvm "Y")))
-        (Z (gate-operator (lookup-gate qvm "Z"))))
-    (probabilistically px
-      (apply-operator qvm X (nat-tuple qubit)))
-    (probabilistically py
-      (apply-operator qvm Y (nat-tuple qubit)))
-    (probabilistically pz
-      (apply-operator qvm Z (nat-tuple qubit)))))
+        (Z (gate-operator (lookup-gate qvm "Z")))
+        (sum (+ px py pz)))
+    (probabilistically sum
+      (setf px (/ px sum)
+            py (/ py sum)
+            pz (/ pz sum))
+      (let ((r (random 1.0)))
+        (when (< r px)
+          (apply-operator qvm X (nat-tuple qubit))
+          (return-from add-depolarizing-noise))
+        (decf r px)
+        (when (< r py)
+          (apply-operator qvm Y (nat-tuple qubit))
+          (return-from add-depolarizing-noise))
+        (decf r py)
+        (when (< r pz)
+          (apply-operator qvm Z (nat-tuple qubit))
+          (return-from add-depolarizing-noise))))))
 
 ;;; Noise gets added to every qubit after an application or RESET.
 (defmethod transition-qvm :after ((qvm noisy-qvm) (instr cl-quil:application))
