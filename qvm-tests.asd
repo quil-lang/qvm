@@ -20,4 +20,5 @@
                (:file "utilities")
                (:file "utilities-tests")
                (:file "measurement-tests")
-               (:file "gate-tests")))
+               (:file "gate-tests")
+               (:file "noisy-qvm-tests")))
