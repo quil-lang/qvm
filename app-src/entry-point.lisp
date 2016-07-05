@@ -140,7 +140,14 @@
     :accessor dispatch-table
     :documentation "List of dispatch functions"))
   (:default-initargs
-   :address *host-address*))
+   :address *host-address*
+   :document-root nil
+   :error-template-directory nil))
+
+(defmethod tbnl:acceptor-status-message ((acceptor vhost) http-status-code &key error &allow-other-keys)
+  (if (eql http-status-code tbnl:+http-internal-server-error+)
+      error
+      (call-next-method)))
 
 (defun create-prefix/method-dispatcher (prefix method handler)
   "Creates a request dispatch function which will dispatch to the
@@ -163,10 +170,6 @@ starts with the string PREFIX."
         (dispatch-table vhost))
   (call-next-method))
 
-(defun handle-get-request (request)
-  (declare (ignore request))
-  "<marquee direction=\"right\">Hello from the <strong><blink>Rigetti</blink> QVM</strong>.</marquee>")
-
 (defun handle-post-request (request)
   (let* ((data (hunchentoot:raw-post-data :request request
                                           :force-text t))
@@ -176,6 +179,11 @@ starts with the string PREFIX."
          (gate-noise (gethash ':GATE-NOISE js))
          (measurement-noise (gethash ':MEASUREMENT-NOISE js)))
     (ecase (keywordify type)
+      ;; For simple tests.
+      ((:ping)
+       "pong")
+
+      ;; Multishot experiments.
       ((:multishot)
        (let* ((addresses (gethash ':ADDRESSES js))
               (num-trials (gethash ':TRIALS js))
@@ -188,6 +196,8 @@ starts with the string PREFIX."
                                           :measurement-noise measurement-noise)))
          (with-output-to-string (s)
            (yason:encode results s))))
+
+      ;; Wavefunction computation.
       ((:wavefunction)
        (let* ((isns (gethash ':QUIL-INSTRUCTIONS js))
               (quil (let ((quil::*allow-unresolved-applications* t))
@@ -303,10 +313,3 @@ starts with the string PREFIX."
 
 (defun stop-server ()
   (tbnl:stop *app*))
-
-#+#:ignore
-(defmethod tbnl:handle-request :before ((acceptor vhost) (request tbnl:request))
-  (multiple-value-bind (username pwd) (tbnl:authorization)
-    (if (string= pwd "spandex")
-        nil
-        (tbnl:require-authorization))))
