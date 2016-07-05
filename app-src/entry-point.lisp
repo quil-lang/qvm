@@ -25,9 +25,12 @@
     (("help" #\h) :type boolean :optional t :documentation "display help")))
 
 (defun format-log (fmt-string &rest args)
-  (format *trace-output* "~&[~A] " (get-universal-time))
-  (apply 'format *trace-output* fmt-string args)
-  (terpri *trace-output*))
+  (cond
+    ((boundp 'tbnl:*acceptor*)
+     (apply #'tbnl:log-message* ':INFO fmt-string args))
+    (t
+     (format t "[~A] ~?" (tbnl::iso-time) fmt-string args)
+     (terpri))))
 
 (defun show-help ()
   (format t "Run Quil file:~%")
