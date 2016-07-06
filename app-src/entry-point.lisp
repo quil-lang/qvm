@@ -24,10 +24,21 @@
     (("memory" #\m) :type integer :initial-value 8 :documentation "classical memory size in bytes")
     (("help" #\h) :type boolean :optional t :documentation "display help")))
 
+(defun session-info ()
+  (if (or (not (boundp 'tbnl:*session*))
+          (null tbnl:*session*))
+      ""
+      (format nil
+              "[~A Session:~D] "
+              (tbnl:session-remote-addr tbnl:*session*)
+              (tbnl:session-id tbnl:*session*))))
+
 (defun format-log (fmt-string &rest args)
   (cond
     ((boundp 'tbnl:*acceptor*)
-     (apply #'tbnl:log-message* ':INFO fmt-string args))
+     (apply #'tbnl:log-message* ':INFO
+            (concatenate 'string (session-info) fmt-string)
+            args))
     (t
      (format t "[~A] ~?" (tbnl::iso-time) fmt-string args)
      (terpri))))
@@ -142,7 +153,8 @@
   (:default-initargs
    :address *host-address*
    :document-root nil
-   :error-template-directory nil))
+   :error-template-directory nil
+   :persistent-connections-p t))
 
 (defmethod tbnl:acceptor-status-message ((acceptor vhost) http-status-code &key error &allow-other-keys)
   (if (eql http-status-code tbnl:+http-internal-server-error+)
@@ -171,6 +183,8 @@ starts with the string PREFIX."
   (call-next-method))
 
 (defun handle-post-request (request)
+  (when (null tbnl:*session*)
+    (tbnl:start-session))
   (let* ((data (hunchentoot:raw-post-data :request request
                                           :force-text t))
          (js (let ((yason:*parse-object-key-fn* #'keywordify))
@@ -213,6 +227,7 @@ starts with the string PREFIX."
             s)))))))
 
 (defun make-appropriate-qvm (num-qubits gate-noise measurement-noise)
+  (format-log "Making qvm of ~D qubit~:P" num-qubits)
   (if (and (null gate-noise) (null measurement-noise))
       (qvm:make-qvm num-qubits)
       (let ((gate-noise (or gate-noise '(0.0 0.0 0.0)))
