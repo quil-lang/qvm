@@ -5,13 +5,14 @@
 (asdf:defsystem #:qvm
   :description "An implementation of the Quantum Abstract Machine."
   :author "Robert Smith <robert@rigetti.com>"
+  :version (:read-file-form "VERSION.txt")
   :depends-on (
                ;; General utilities
                #:alexandria
                ;; IEEE-754 float parsing
                #:ieee-floats
                ;; Quil parsing
-               #:cl-quil
+               (:version #:cl-quil "0.1.0")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :pathname "src/"
