@@ -1,6 +1,0 @@
-# The "Hello, world!" of Quil: a Bell state.
-
-INCLUDE "stdgates.quil"
-
-H    0
-CNOT 0 1
