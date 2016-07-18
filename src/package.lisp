@@ -7,6 +7,9 @@
 
   ;; qvm.lisp
   (:export
+   #:quantum-virtual-machine            ; CLASS
+   #:number-of-qubits                   ; ACCESSOR
+   #:classical-memory-size              ; ACCESSOR
    #:make-qvm                           ; FUNCTION
    #:load-program                       ; FUNCTION
    #:classical-bit                      ; ACCESSOR
