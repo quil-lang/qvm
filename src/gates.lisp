@@ -105,7 +105,12 @@
 ;; Evaluate this stuff earlier so we can have access while reading.
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun operator-matrix-from-truth-table (truth-table-outputs)
-    "Return an appropriate matrix which can act as an operator for the truth table outputs TRUTH-TABLE-OUTPUTS (represented as a list) encoded in binary lexicographic order."
+    "Return an appropriate matrix which can act as an operator for the truth table outputs TRUTH-TABLE-OUTPUTS (represented as a list) encoded in binary lexicographic order.
+
+Example: A NAND gate can be made with
+
+    (operator-matrix-from-truth-table '(1 1 1 0))
+"
     (let* ((column-length (length truth-table-outputs))
            (operator-size (* 2 column-length))
            (matrix (make-array (list operator-size operator-size)
@@ -138,45 +143,165 @@
 
 ;;; Some default gates
 
-(define-default-gate hadamard 1 ()
+(define-default-gate H 1 ()
   "The Hadamard gate."
   '#.(let ((1/sqrt2 (/ (sqrt 2.0d0))))
        (make-matrix 2
                     1/sqrt2 1/sqrt2
                     1/sqrt2 (- 1/sqrt2))))
 
-(alias-default-gate H hadamard)
-
-(define-default-gate identity 1 ()
+(define-default-gate I 1 ()
   "The identity gate."
   '#.(make-matrix 2
                   1 0
                   0 1))
 
-(alias-default-gate I identity)
-
-(define-default-gate pauli-X 1 ()
+(define-default-gate X 1 ()
   "The Pauli-X gate."
   '#.(make-matrix 2
                   0 1
                   1 0))
 
-(define-default-gate pauli-Y 1 ()
+(define-default-gate Y 1 ()
   "The Pauli-Y gate."
   '#.(make-matrix 2
                   0       #C(0 -1)
                   #C(0 1) 0))
 
-(define-default-gate pauli-Z 1 ()
+(define-default-gate Z 1 ()
   "The Pauli-Z gate."
   '#.(make-matrix 2
                   1 0
                   0 -1))
 
-(alias-default-gate not pauli-X)
-(alias-default-gate X pauli-X)
-(alias-default-gate Y pauli-Y)
-(alias-default-gate Z pauli-Z)
+(define-default-gate CNOT 2 ()
+  "The controlled NOT gate."
+  '#.(controlled #2A((0 1) (1 0))))
+
+(define-default-gate CCNOT 3 ()
+  "The Toffoli gate, AKA the CCNOT gate."
+  '#.(make-matrix 8
+                  1 0 0 0 0 0 0 0
+                  0 1 0 0 0 0 0 0
+                  0 0 1 0 0 0 0 0
+                  0 0 0 1 0 0 0 0
+                  0 0 0 0 1 0 0 0
+                  0 0 0 0 0 1 0 0
+                  0 0 0 0 0 0 0 1
+                  0 0 0 0 0 0 1 0))
+
+(define-default-gate RX 1 (theta)
+  "The R_x(theta) gate."
+  (let* ((theta/2 (/ theta 2))
+         (cos (cos theta/2))
+         (isin (complex 0.0d0 (- (sin theta/2)))))
+    (make-matrix 2
+                 cos isin
+                 isin cos)))
+
+(define-default-gate RY 1 (theta)
+  "The R_y(theta) gate."
+  (let* ((theta/2 (/ theta 2))
+         (cos (cos theta/2))
+         (sin (sin theta/2)))
+    (make-matrix 2
+                 cos (- sin)
+                 sin cos)))
+
+(define-default-gate RZ 1 (theta)
+  "The R_z(theta) gate."
+  (let ((theta/2 (/ theta 2)))
+    (make-matrix 2
+                 (cis (- theta/2)) 0
+                 0                 (cis theta/2))))
+
+(define-default-gate phase 1 (alpha)
+  "A regular phase gate. Equivalent to R_z multiplied by a phase."
+  (make-matrix 2
+               1 0
+               0 (cis alpha)))
+
+(define-default-gate S 1 ()
+  "The S gate."
+  '#.(make-matrix 2
+                  1 0
+                  0 #C(0 1)))
+
+(define-default-gate T 1 ()
+  "The T gate."
+  '#.(make-matrix 2
+                  1 0
+                  0 (cis (/ pi 4))))
+
+(define-default-gate CPHASE00 2 (alpha)
+  "The controlled phase gate (00-variant)."
+  (make-matrix 4
+               (cis alpha) 0 0 0
+               0           1 0 0
+               0           0 1 0
+               0           0 0 1))
+
+(define-default-gate CPHASE01 2 (alpha)
+  "The controlled phase gate (01-variant)."
+  (make-matrix 4
+               1 0           0 0
+               0 (cis alpha) 0 0
+               0 0           1 0
+               0 0           0 1))
+
+(define-default-gate CPHASE10 2 (alpha)
+  "The controlled phase gate (10-variant)."
+  (make-matrix 4
+               1 0 0           0
+               0 1 0           0
+               0 0 (cis alpha) 0
+               0 0 0           1))
+
+(define-default-gate CPHASE 2 (alpha)
+  "The controlled phase gate (11-variant).
+
+Note that this is a controlled version of a R_z gate multiplied by a phase."
+  (make-matrix 4
+               1 0 0 0
+               0 1 0 0
+               0 0 1 0
+               0 0 0 (cis alpha)))
+
+(define-default-gate SWAP 2 ()
+  "A quantum gate that swaps the relevant amplitudes of two qubits."
+  '#.(make-matrix 4
+                  1 0 0 0
+                  0 0 1 0
+                  0 1 0 0
+                  0 0 0 1))
+
+(define-default-gate CSWAP 3 ()
+  "The Fredkin gate, AKA the CSWAP gate."
+  '#.(make-matrix 8
+                  1 0 0 0 0 0 0 0
+                  0 1 0 0 0 0 0 0
+                  0 0 1 0 0 0 0 0
+                  0 0 0 1 0 0 0 0
+                  0 0 0 0 1 0 0 0
+                  0 0 0 0 0 0 1 0
+                  0 0 0 0 0 1 0 0
+                  0 0 0 0 0 0 0 1))
+
+(define-default-gate ISWAP 2 ()
+  "The ISWAP gate, for superconducting quantum computers."
+  '#.(make-matrix 4
+                  1 0       0       0
+                  0 0       #C(0 1) 0
+                  0 #C(0 1) 0       0
+                  0 0       0       1))
+
+(define-default-gate PSWAP 2 (theta)
+  "The parametric SWAP gate, for superconducting quantum computers."
+  (make-matrix 4
+               1 0           0           0
+               0 0           (cis theta) 0
+               0 (cis theta) 0           0
+               0 0           0           1))
 
 (define-default-gate |Yb| 1 ()
   "The Yb gate. (Used for QVE.)"
@@ -193,106 +318,6 @@
        (make-matrix 2
                      1/sqrt2  -1/sqrt2i
                     -1/sqrt2i  1/sqrt2)))
-
-(define-default-gate cnot 2 ()
-  "The controlled NOT gate."
-  '#.(controlled #2A((0 1) (1 0))))
-
-(define-default-gate sqrt-not 1 ()
-  "The quantum square-root-of-NOT gate."
-  '#.(let ((1/sqrt2 (/ (sqrt 2.0d0))))
-       (make-matrix 2
-                    1/sqrt2 (- 1/sqrt2)
-                    1/sqrt2 1/sqrt2)))
-
-(define-default-gate nand 3 ()
-  "The quantum NAND gate."
-  '#.(operator-matrix-from-truth-table '(1 1 1 0)))
-
-(define-default-gate rotation-x 1 (theta)
-  "The R_x(theta) gate."
-  (let* ((theta/2 (/ theta 2))
-         (cos (cos theta/2))
-         (isin (complex 0.0d0 (- (sin theta/2)))))
-    (make-matrix 2
-                 cos isin
-                 isin cos)))
-
-(define-default-gate rotation-y 1 (theta)
-  "The R_y(theta) gate."
-  (let* ((theta/2 (/ theta 2))
-         (cos (cos theta/2))
-         (sin (sin theta/2)))
-    (make-matrix 2
-                 cos (- sin)
-                 sin cos)))
-
-(define-default-gate rotation-z 1 (theta)
-  "The R_z(theta) gate."
-  (let ((theta/2 (/ theta 2)))
-    (make-matrix 2
-                 (cis (- theta/2)) 0
-                 0                 (cis theta/2))))
-
-(alias-default-gate |Rx| rotation-x)
-(alias-default-gate |Ry| rotation-y)
-(alias-default-gate |Rz| rotation-z)
-
-(define-default-gate phase 1 (alpha)
-  "A regular phase gate. Equivalent to R_z multiplied by a phase."
-  (make-matrix 2
-               1 0
-               0 (cis alpha)))
-
-(define-default-gate cphase 2 (alpha)
-  "The controlled phase gate.
-
-Note that this is a controlled version of a R_z gate multiplied by a phase."
-  (make-matrix 4
-               1 0 0 0
-               0 1 0 0
-               0 0 1 0
-               0 0 0 (cis alpha)))
-
-(define-default-gate swap 2 ()
-  "A quantum gate that swaps the relevant amplitudes of two qubits."
-  '#.(make-matrix 4
-                  1 0 0 0
-                  0 0 1 0
-                  0 1 0 0
-                  0 0 0 1))
-
-(define-default-gate sqrt-swap 2 ()
-  "The square-root-of-SWAP gate."
-  '#.(make-matrix 4
-                  1 0 0 0
-                  0 #C(0.5 0.5) #C(0.5 -0.5) 0
-                  0 #C(0.5 -0.5) #C(0.5 0.5) 0
-                  0 0 0 1))
-
-(define-default-gate toffoli 3 ()
-  "The Toffoli gate, AKA the CCNOT gate."
-  '#.(make-matrix 8
-                  1 0 0 0 0 0 0 0
-                  0 1 0 0 0 0 0 0
-                  0 0 1 0 0 0 0 0
-                  0 0 0 1 0 0 0 0
-                  0 0 0 0 1 0 0 0
-                  0 0 0 0 0 1 0 0
-                  0 0 0 0 0 0 0 1
-                  0 0 0 0 0 0 1 0))
-
-(define-default-gate fredkin 3 ()
-  "The Fredkin gate, AKA the CSWAP gate."
-  '#.(make-matrix 8
-                  1 0 0 0 0 0 0 0
-                  0 1 0 0 0 0 0 0
-                  0 0 1 0 0 0 0 0
-                  0 0 0 1 0 0 0 0
-                  0 0 0 0 1 0 0 0
-                  0 0 0 0 0 0 1 0
-                  0 0 0 0 0 1 0 0
-                  0 0 0 0 0 0 0 1))
 
 ;;; Meta-operators
 

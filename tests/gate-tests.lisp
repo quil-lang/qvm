@@ -15,7 +15,7 @@
   (flet ((test-size (size)
            (let* ((quil (with-output-to-quil
                           (loop :for q :below size :do
-                            (format t "HADAMARD ~D~%" q))))
+                            (format t "H ~D~%" q))))
                   (qvm (run-program size quil))
                   (expected-probability (expt 2 (- size))))
              (every (lambda (z)
@@ -28,7 +28,7 @@
   "Test |000> -> |111> inversion."
   (let* ((quil (with-output-to-quil
                  (loop :for q :below 3 :do
-                   (format t "NOT ~D~%" q))))
+                   (format t "X ~D~%" q))))
          (qvm (run-program 3 quil)))
     (is (double-float= 1 (probability (vector-last (qvm::amplitudes qvm))) 1/10000))))
 
@@ -37,7 +37,7 @@
   (labels ((bell-state (n)
              "Construct an N-qubit Bell state."
              (with-output-to-quil
-               (format t "HADAMARD 0~%")
+               (format t "H 0~%")
                (loop :for i :from 1 :below n :do
                  (format t "CNOT 0 ~D~%" i))))
            (run-bell (i)
@@ -52,7 +52,7 @@
   (let* ((qvm (make-qvm 2))
          (amps (qvm::amplitudes qvm)))
     (load-program qvm (with-output-to-quil
-                        (format t "NOT 0~%")))
+                        (format t "X 0~%")))
     (setf qvm (run qvm))
     (is (double-float= 1 (probability (aref amps #b01)) 1/10000))
     (load-program qvm (with-output-to-quil
@@ -76,11 +76,11 @@
       ((0)                                ; |00>
        nil)
       ((1)                                ; |01>
-       (format t "NOT 0~%"))
+       (format t "X 0~%"))
       ((2)                                ; |10>
-       (format t "NOT 1~%"))
+       (format t "X 1~%"))
       ((3)                                ; |11>
-       (format t "NOT 0~%NOT 1~%")))
+       (format t "X 0~%X 1~%")))
     ;; Write out
     (flet ((f (x) (format t "~{~A~^ ~}~%" x)))
       (mapc #'f (qvm-examples:qft-circuit '(0 1))))))
