@@ -303,21 +303,6 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
                0 (cis theta) 0           0
                0 0           0           1))
 
-(define-default-gate |Yb| 1 ()
-  "The Yb gate. (Used for QVE.)"
-  '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
-            (1/sqrt2i (complex 0 1/sqrt2)))
-       (make-matrix 2
-                    1/sqrt2  1/sqrt2i
-                    1/sqrt2i 1/sqrt2)))
-
-(define-default-gate |Ybd| 1 ()
-  "The Ybd gate. (Used for QVE.)"
-  '#.(let* ((1/sqrt2 (/ (sqrt 2.0d0)))
-            (-1/sqrt2i (complex 0 (- 1/sqrt2))))
-       (make-matrix 2
-                     1/sqrt2  -1/sqrt2i
-                    -1/sqrt2i  1/sqrt2)))
 
 ;;; Meta-operators
 
