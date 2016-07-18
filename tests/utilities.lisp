@@ -4,11 +4,11 @@
 
 (in-package #:qvm-tests)
 
-(defmacro with-output-to-quil ((var) &body body)
+(defmacro with-output-to-quil (&body body)
   ;; FIXME: Temporary
   `(let ((quil::*allow-unresolved-applications* t))
      (quil:parse-quil-string
-      (with-output-to-string (,var)
+      (with-output-to-string (*standard-output*)
         ,@body))))
 
 (defmacro define-float= (name float-type)

@@ -18,12 +18,12 @@
 
 (deftest test-simple-measurements ()
   "Test that some simple measurements work."
-  (let ((p (with-output-to-quil (s)
-             (write-line "X 0" s)
-             (write-line "X 2" s)
-             (write-line "MEASURE 0 [0]" s)
-             (write-line "MEASURE 1 [1]" s)
-             (write-line "MEASURE 2 [2]" s))))
+  (let ((p (with-output-to-quil
+             (write-line "X 0")
+             (write-line "X 2")
+             (write-line "MEASURE 0 [0]")
+             (write-line "MEASURE 1 [1]")
+             (write-line "MEASURE 2 [2]"))))
     (let ((qvm (qvm:run-program (cl-quil:qubits-needed p) p)))
       (is (= 1 (qvm::classical-bit qvm 0)))
       (is (= 0 (qvm::classical-bit qvm 1)))

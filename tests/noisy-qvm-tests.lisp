@@ -6,8 +6,8 @@
 
  (deftest test-simple-noise ()
    "Test that the noisy gate behaves as expected."
-   (let ((p (with-output-to-quil (s)
-              (write-line "X 0" s)))
+   (let ((p (with-output-to-quil
+              (write-line "X 0")))
          (tries 500)
          (results-desired
            (list
