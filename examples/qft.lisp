@@ -21,7 +21,7 @@
   (labels ((qft (qubits)
              (destructuring-bind (q . qs) qubits
                (if (null qs)
-                   (list `(HADAMARD ,q))
+                   (list `(H ,q))
                    (let ((cR nil))
                      (loop :with n := (1+ (length qs))
                            :for i :from (1- n) :downto 1
@@ -32,7 +32,7 @@
                      (append
                       (qft qs)
                       cR
-                      (list `(HADAMARD ,q))))))))
+                      (list `(H ,q))))))))
     (append
      ;; Core QFT with normalization.
      (qft qubits)
