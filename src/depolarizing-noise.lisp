@@ -46,6 +46,7 @@
 
 It should be that PX + PY + PZ <= 1.
 "
+  (check-type qubit unsigned-byte)
   (assert (<= (+ px py pz) 1))
   (let ((X (gate-operator (lookup-gate qvm "X")))
         (Y (gate-operator (lookup-gate qvm "Y")))
@@ -83,11 +84,10 @@ It should be that PX + PY + PZ <= 1.
                             (probability-gate-y qvm)
                             (probability-gate-z qvm))))
 
-
 ;;; Noise gets added to only the qubit being measured, before
 ;;; measurement occurs.
 (defmethod transition-qvm :before ((qvm noisy-qvm) (instr cl-quil:measurement))
-  (let ((q (cl-quil:measurement-qubit instr)))
+  (let ((q (cl-quil:qubit-index (cl-quil:measurement-qubit instr))))
     (add-depolarizing-noise qvm q
                             (probability-measure-x qvm)
                             (probability-measure-y qvm)
