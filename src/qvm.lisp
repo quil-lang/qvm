@@ -15,7 +15,6 @@
 
    (amplitudes :accessor amplitudes
                :initarg :amplitudes
-               :initform nil
                :documentation "The estimated wavefunction.")
 
    (classical-memory-size :accessor classical-memory-size
@@ -25,7 +24,6 @@
    ;; Currently this is just represented as a bit vector.
    (classical-memory :accessor classical-memory
                      :initarg :classical-memory
-                     :initform nil
                      :documentation "Bit vector of classical memory.")
 
    ;; --- Program and Definitions
@@ -61,11 +59,11 @@
         (num-octets (classical-memory-size qvm)))
     (declare (ignore num-octets))
     ;; Allocate the classical memory if needed.
-    (when (null (classical-memory qvm))
+    (unless (slot-boundp qvm 'classical-memory)
       (setf (classical-memory qvm) 0))
 
     ;; If the amplitudes weren't specified, initialize to |0...>.
-    (when (null (amplitudes qvm))
+    (unless (slot-boundp qvm 'amplitudes)
       (setf (amplitudes qvm)
             (make-vector (expt 2 num-qubits) 1))) ; Pr[|00..>] = 1
 
