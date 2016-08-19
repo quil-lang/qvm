@@ -21,7 +21,7 @@
                                                          :y 1/3
                                                          :z 1/3
                                                          :number-of-qubits 1
-                                                         :classical-memory-size 8))
+                                                         :classical-memory-size 64))
                      (psi (qvm::amplitudes (progn
                                              (qvm:load-program qvm p)
                                              (qvm:run qvm)))))
@@ -40,7 +40,7 @@
           :do (decf tries)
               (let* ((qvm (make-instance 'qvm::noisy-qvm :measure-x 1/5
                                                          :number-of-qubits 1
-                                                         :classical-memory-size 8))
+                                                         :classical-memory-size 64))
                      (result (qvm::classical-bit (progn
                                                    (qvm:load-program qvm p)
                                                    (qvm:run qvm))

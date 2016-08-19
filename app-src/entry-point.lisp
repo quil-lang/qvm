@@ -21,7 +21,7 @@
 
 (defparameter *option-spec*
   '((("server" #\S) :type boolean :optional t :documentation "start the QVE server")
-    (("memory" #\m) :type integer :initial-value 8 :documentation "classical memory size in bytes")
+    (("memory" #\m) :type integer :initial-value 64 :documentation "classical memory size in bits")
     (("help" #\h) :type boolean :optional t :documentation "display help")))
 
 (defun session-info ()
@@ -114,7 +114,7 @@
          (format-log "Amplitudes: ~{~A~^, ~}" (map 'list 'format-complex (qvm::amplitudes qvm)))
          (format-log "Probabilities: ~{~F~^, ~}" (map 'list 'probability (qvm::amplitudes qvm))))
        (format-log "Classical memory (MSB -> LSB): ~v,'0B"
-                   (* 8 (qvm::classical-memory-size qvm))
+                   (qvm::classical-memory-size qvm)
                    (qvm::classical-memory qvm)))))
 
   (uiop:quit))

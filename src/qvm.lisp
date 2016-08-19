@@ -15,16 +15,16 @@
 
    (amplitudes :accessor amplitudes
                :initarg :amplitudes
-               :documentation "The estimated wavefunction.")
+               :documentation "The (estimated) wavefunction.")
 
    (classical-memory-size :accessor classical-memory-size
                           :initarg :classical-memory-size
-                          :documentation "The number of octets of classical memory.")
+                          :documentation "The number of bits of classical memory.")
 
-   ;; Currently this is just represented as a bit vector.
+   ;; Currently this is just represented as an integer.
    (classical-memory :accessor classical-memory
                      :initarg :classical-memory
-                     :documentation "Bit vector of classical memory.")
+                     :documentation "An integer representing bits of classical memory.")
 
    ;; --- Program and Definitions
 
@@ -56,9 +56,10 @@
 (defmethod initialize-instance :after ((qvm quantum-virtual-machine) &rest args)
   (declare (ignore args))
   (let ((num-qubits (number-of-qubits qvm))
-        (num-octets (classical-memory-size qvm)))
-    (declare (ignore num-octets))
-    ;; Allocate the classical memory if needed.
+        (num-bits (classical-memory-size qvm)))
+    (declare (ignore num-bits))
+    ;; Allocate the classical memory if needed. This is represented as
+    ;; an integer so we don't need to do an explicit allocation.
     (unless (slot-boundp qvm 'classical-memory)
       (setf (classical-memory qvm) 0))
 
@@ -70,8 +71,8 @@
     ;; Initialize address register for amplitudes.
     (setf (amplitude-address qvm) 0)))
 
-(defun make-qvm (num-qubits &key (classical-memory-size 8))
-  "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE octets."
+(defun make-qvm (num-qubits &key (classical-memory-size 64))
+  "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits."
   (check-type classical-memory-size (integer 0))
   (make-instance 'quantum-virtual-machine
                  :number-of-qubits num-qubits
