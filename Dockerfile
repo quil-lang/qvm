@@ -13,4 +13,4 @@ ADD ./quil/stdgates.quil /root/stdgates.quil
 ADD ./quil/qve.quil /root/qve.quil
 RUN chmod +x /root/qvm
 
-CMD /root/qvm
+CMD /root/qvm -S

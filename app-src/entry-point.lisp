@@ -20,9 +20,30 @@
 (defvar *program-name* "qvm")
 
 (defparameter *option-spec*
-  '((("server" #\S) :type boolean :optional t :documentation "start the QVE server")
-    (("memory" #\m) :type integer :initial-value 64 :documentation "classical memory size in bits")
-    (("help" #\h) :type boolean :optional t :documentation "display help")))
+  '((("execute" #\e)
+     :type string
+     :optional t
+     :documentation "execute a Quil file")
+
+    (("server" #\S)
+     :type boolean
+     :optional t
+     :documentation "start a QVM server")
+
+    (("port" #\p)
+     :type integer
+     :optional t
+     :documentation "port to start the QVM server on")
+
+    (("memory" #\m)
+     :type integer
+     :initial-value 64
+     :documentation "classical memory size in bits")
+
+    (("help" #\h)
+     :type boolean
+     :optional t
+     :documentation "display help")))
 
 (defun session-info ()
   (if (or (not (boundp 'tbnl:*session*))
@@ -44,10 +65,8 @@
      (terpri))))
 
 (defun show-help ()
-  (format t "Run Quil file:~%")
-  (format t "    ~A <quil-file> [<options>...]~%~%" *program-name*)
-  (format t "Start QVE server:~%")
-  (format t "    ~A~%~%" *program-name*)
+  (format t "Usage:~%")
+  (format t "    ~A [<options>...]~%~%" *program-name*)
   (command-line-arguments:show-option-help *option-spec* :sort-names t))
 
 (defmacro with-timing ((var) &body body)
@@ -67,11 +86,16 @@
   (intern (string-upcase str) :keyword))
 
 (defparameter *host-address* "0.0.0.0")
-(defparameter *host-port* 5000)
+(defparameter *default-host-port* 5000)
 
-(defun start-server-app ()
-  (format-log "Starting server on port ~D." *host-port*)
-  (start-server))
+(defun start-server-app (port)
+  (check-type port (or null (integer 0 65535))
+              "The port must be between 0 and 65535.")
+  (when (null port)
+    (setf port *default-host-port*))
+  (format-log "Starting server on port ~D." port)
+  (start-server port)
+  (loop (sleep 1)))
 
 (defun format-complex (c)
   (cond
@@ -82,18 +106,21 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (file &key help memory server)
+(defun process-options (&key execute help memory server port)
   (when help
     (show-help)
     (uiop:quit))
 
   (cond
-    (server (start-server-app))
+    ((or server port)
+     (when execute
+       (format-log "Ignoring execute option: ~S" execute))
+     (start-server-app port))
     (t
      (let (qvm program alloc-time exec-time qubits)
        (format-log "Reading program.")
        (setf program (let ((quil::*allow-unresolved-applications* t))
-                       (quil:read-quil-file file)))
+                       (quil:read-quil-file execute)))
        (setf qubits (cl-quil:qubits-needed program))
 
        (format-log "Allocating memory for QVM of ~D qubits." qubits)
@@ -131,15 +158,14 @@
   (handler-case
       (cond
         ((null argv)
-         (start-server-app)
-         (loop (sleep 1)))
+         (show-help)
+         (uiop:quit))
         (t
          (command-line-arguments:handle-command-line
           *option-spec*
           'process-options
           :command-line argv
           :name "qvm"
-          :positional-arity 1
           :rest-arity nil)))
     (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
@@ -311,14 +337,14 @@ starts with the string PREFIX."
         (declare (ignore args))
         (tbnl:handle-static-file path nil)))))
 
-(defun start-server ()
+(defun start-server (port)
   (setq tbnl:*show-lisp-errors-p* nil
         tbnl:*show-lisp-backtraces-p* nil
         tbnl:*catch-errors-p* (image-p))
   (setq *app* (make-instance
                'vhost
                :address *host-address*
-               :port *host-port*
+               :port port
                :taskmaster (make-instance 'tbnl:one-thread-per-connection-taskmaster)))
   (when (null (dispatch-table *app*))
     (push
