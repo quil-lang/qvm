@@ -11,6 +11,8 @@
       (with-output-to-string (*standard-output*)
         ,@body))))
 
+(defvar *default-epsilon* 0.00001)
+
 (defmacro define-float= (name float-type)
   (assert (subtypep float-type 'cl:float))
   (let* ((type-name (symbol-name float-type))
@@ -44,12 +46,11 @@
                 (declare (type ,float-type abs-x abs-y magnitude)
                          (dynamic-extent abs-x abs-y magnitude))
                 (< (/ delta (min ,most-positive magnitude)) epsilon))))))
-       (defun ,name (x y epsilon)
+       (defun ,name (x y &optional (epsilon *default-epsilon*))
          ;; Doc string
          ,(format nil "Are the ~A numbers X and Y approximately equal ~
                      within the relative epsilon EPSILON?"
                   type-name)
-         (declare (optimize speed (safety 0) (debug 0) (space 0)))
          (check-type x real)
          (check-type y real)
          (check-type epsilon real)
