@@ -238,7 +238,7 @@ N.B. This function does not reset the amplitude address of the QVM."
 (defun extract-amplitudes (qvm qubits)
   "Returns a column vector of amplitudes represented by the tuple of qubits QUBITS."
   (declare (type nat-tuple qubits))
-  (let ((col (make-array (expt 2 (nat-tuple-cardinality qubits)))))
+  (let ((col (make-vector (expt 2 (nat-tuple-cardinality qubits)))))
     (map-relevant-amplitudes
      qvm
      (lambda (combo)
@@ -254,32 +254,6 @@ N.B. This function does not reset the amplitude address of the QVM."
    (lambda (combo)
      (setf (addressed-amplitude qvm) (aref column combo)))
    qubits))
-
-;; Equivalent to a Extract -> Multiply -> Insert
-;;
-;; Uses temporary stack space instead of allocating extra lists.
-(defun matrix-multiply-in-place (qvm matrix qubits-to-vary)
-  (let* ((matrix-size (array-dimension matrix 0))
-         (result (make-array matrix-size)))
-    (declare (type (simple-array t (*)) result)
-             (type (integer 1 32) matrix-size)
-             (dynamic-extent result))
-    (dotimes (i matrix-size)
-      (let ((element 0.0d0))
-        (map-relevant-amplitudes
-         qvm
-         (lambda (j)
-           (incf element (* (aref matrix i j)
-                            (addressed-amplitude qvm))))
-         qubits-to-vary)
-        (setf (aref result i) element)))
-    ;; Insert.
-    (map-relevant-amplitudes
-     qvm
-     (lambda (j)
-       (setf (addressed-amplitude qvm) (aref result j)))
-     qubits-to-vary))
-  qvm)
 
 (defun apply-operator (qvm operator qubits)
   "Apply the operator (given as a matrix) OPERATOR to the amplitudes of the QVM specified by the qubits QUBITS."

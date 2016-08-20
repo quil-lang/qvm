@@ -91,6 +91,11 @@ NT should be the bit set."
 
 ;;; Complex Linear Algebra
 
+(deftype quantum-state ()
+  "A representation of a quantum state. This will have a power-of-2 length."
+  `(simple-array (complex double-float) (*)))
+
+(declaim (ftype (function (fixnum &rest number) quantum-state) make-vector))
 (defun make-vector (size &rest elements)
   "Make a SIZE-length complex vector whose elements are ELEMENTS."
   (let ((vec (make-array size :element-type '(complex double-float)
@@ -101,6 +106,11 @@ NT should be the bit set."
           :do (setf (aref vec i) element)
           :finally (return vec))))
 
+(deftype quantum-operator ()
+  "A representation of an operator on a quantum state. This will be a unitary square matrix where each dimension is a power-of-two."
+  `(simple-array (complex double-float) (* *)))
+
+(declaim (ftype (function (fixnum &rest number) quantum-operator) make-matrix))
 (defun make-matrix (size &rest elements)
   "Make a SIZE x SIZE complex matrix whose elements are ELEMENTS. Each of ELEMENTS must be able to be coerced into a complex double-float."
   (declare (dynamic-extent elements))
@@ -115,6 +125,9 @@ NT should be the bit set."
 
 (defun matrix-multiply (matrix column)
   "Compute the product of the complex matrix (represented as a square array of complex double-floats) and a complex column vector (represented as a complex double-float vector)."
+  (declare (type quantum-operator matrix)
+           (type quantum-state column)
+           (optimize speed (safety 2)))
   (assert (= (array-dimension matrix 0)
              (array-dimension matrix 1))
           (matrix)
@@ -124,40 +137,13 @@ NT should be the bit set."
           (matrix column)
           "The given matrix and column vector don't have compatible dimensions.")
   (let* ((matrix-size (array-dimension matrix 0))
-         (result (make-array matrix-size)))
+         (result (make-vector matrix-size)))
     (dotimes (i matrix-size result)
       (let ((element #C(0.0d0 0.0d0)))
+        (declare (type (complex double-float) element))
         (dotimes (j matrix-size)
           (incf element (* (aref matrix i j) (aref column j))))
         (setf (aref result i) element)))))
-
-(defun outer-multiply (u v)
-  "Compute the outer product of column vectors U and V (specifically UV^dagger)."
-  (let* ((len-u (length u))
-         (len-v (length v))
-         (result (make-array (list len-u len-v))))
-    (dotimes (r len-u result)
-      (dotimes (c len-v)
-        (setf (aref result r c)
-              (* (aref u r)
-                 (conjugate (aref v c))))))))
-
-(defun kronecker-multiply (A B)
-  "Compute the Kronecker product of matrices M1 and M2."
-  (destructuring-bind (m n) (array-dimensions A)
-    (destructuring-bind (p q) (array-dimensions B)
-      (labels ((A-coord-to-R-start (i j)
-                 (values (* i p) (* j q))))
-        (let ((result (make-array (list (* m p) (* n q))
-                                  :element-type (array-element-type A))))
-          (dotimes (i m result)
-            (dotimes (j n)
-              (let ((Aij (aref A i j)))
-                (multiple-value-bind (y x) (A-coord-to-R-start i j)
-                  (loop :for u :below p :do
-                    (loop :for v :below q :do
-                      (setf (aref result (+ y u) (+ x v))
-                            (* Aij (aref B u v))))))))))))))
 
 (defmacro probabilistically (p &body body)
   "Execute BODY with probability 0 <= P <= 1."

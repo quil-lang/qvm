@@ -113,8 +113,7 @@ Example: A NAND gate can be made with
 "
     (let* ((column-length (length truth-table-outputs))
            (operator-size (* 2 column-length))
-           (matrix (make-array (list operator-size operator-size)
-                               :initial-element #C(0.0d0 0.0d0)))
+           (matrix (make-matrix operator-size))
            (one #C(1.0d0 0.0d0)))
       (loop :for i :below column-length
             :for x :in truth-table-outputs

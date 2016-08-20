@@ -70,3 +70,20 @@
     ((zerop a) (< (abs b) eps))
     ((zerop b) (< (abs a) eps))
     (t (< (abs (- a b)) eps))))
+
+(defun kronecker-multiply (A B)
+  "Compute the Kronecker product of matrices M1 and M2."
+  (destructuring-bind (m n) (array-dimensions A)
+    (destructuring-bind (p q) (array-dimensions B)
+      (labels ((A-coord-to-R-start (i j)
+                 (values (* i p) (* j q))))
+        (let ((result (make-array (list (* m p) (* n q))
+                                  :element-type (array-element-type A))))
+          (dotimes (i m result)
+            (dotimes (j n)
+              (let ((Aij (aref A i j)))
+                (multiple-value-bind (y x) (A-coord-to-R-start i j)
+                  (loop :for u :below p :do
+                    (loop :for v :below q :do
+                      (setf (aref result (+ y u) (+ x v))
+                            (* Aij (aref B u v))))))))))))))
