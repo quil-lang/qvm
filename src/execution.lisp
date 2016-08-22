@@ -100,6 +100,20 @@ Return two values:
          (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
          (operator (apply #'gate-operator gate params)))
+    ;; Do some error checking.
+    (let ((given-qubits (length qubits))
+          (expected-qubits (1- (integer-length (array-dimension operator 0)))))
+      (assert (= given-qubits expected-qubits)
+              ()
+              "Attempting to apply the ~D-qubit gate ~A to ~D qubit~:P ~
+               in the instruction:~2%    ~A"
+              expected-qubits
+              (gate-name gate)
+              given-qubits
+              (with-output-to-string (s)
+                (quil::print-instruction instr s))))
+
+    ;; Transition the QVM.
     (values
      (apply-operator qvm operator (apply #'nat-tuple qubits))
      (1+ (pc qvm)))))
