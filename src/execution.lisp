@@ -38,15 +38,19 @@ Return two values:
        should be halted."))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:no-operation))
+  (declare (ignore instr))
   (values qvm (1+ (pc qvm))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:halt))
+  (declare (ignore instr))
   (values qvm nil))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:reset))
+  (declare (ignore instr))
   (values (reset qvm) (1+ (pc qvm))))
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:wait))
+  (declare (ignore instr))
   (warn "WAIT executed. Nothing to wait on.")
   (values qvm nil))
 

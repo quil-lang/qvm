@@ -71,6 +71,7 @@ It should be that PX + PY + PZ <= 1.
 
 ;;; Noise gets added to every qubit after an application or RESET.
 (defmethod transition-qvm :after ((qvm noisy-qvm) (instr cl-quil:application))
+  (declare (ignore instr))
   (dotimes (q (number-of-qubits qvm))
     (add-depolarizing-noise qvm q
                             (probability-gate-x qvm)
@@ -78,6 +79,7 @@ It should be that PX + PY + PZ <= 1.
                             (probability-gate-z qvm))))
 
 (defmethod transition-qvm :after ((qvm noisy-qvm) (instr cl-quil:reset))
+  (declare (ignore instr))
   (dotimes (q (number-of-qubits qvm))
     (add-depolarizing-noise qvm q
                             (probability-gate-x qvm)
