@@ -22,8 +22,12 @@
                #:alexandria
                ;; CL-FAD
                #:cl-fad
+               ;; Redis integration
+               #:cl-redis
+               #:usocket
                )
   :pathname "app-src/"
   :serial t
   :components ((:file "package")
+               (:file "db")
                (:file "entry-point")))

@@ -133,8 +133,9 @@
 
        (format-log "Executing quantum program.")
        (setf *random-state* (make-random-state t)) ; Seed random.
-       (with-timing (exec-time)
-         (run qvm))
+       (with-redis
+         (with-timing (exec-time)
+           (run qvm)))
        (format-log "Execution completed in ~D ms." exec-time)
        (when (<= qubits 5)
          (format-log "Printing state.")
@@ -290,17 +291,20 @@ starts with the string PREFIX."
              (loop :for address :in addresses
                    :collect (qvm:classical-bit qvm address))))
       (qvm:load-program qvm quil)
-      (format-log "Running experiment with ~D trial~:P" num-trials)
-      (with-timing (timing)
-        (dotimes (trial num-trials)
-          ;; Reset the program counter.
-          (setf (qvm::pc qvm) 0)
-          ;; Reset the amplitudes.
-          (qvm::reset qvm)
-          ;; Run the program.
-          (qvm:run qvm)
-          ;; Collect bits.
-          (push (collect-bits qvm) trial-results)))
+      (format-log "Running experiment with ~D trial~:P on ~A"
+                  num-trials
+                  (class-name (class-of qvm)))
+      (with-redis
+        (with-timing (timing)
+          (dotimes (trial num-trials)
+            ;; Reset the program counter.
+            (setf (qvm::pc qvm) 0)
+            ;; Reset the amplitudes.
+            (qvm::reset qvm)
+            ;; Run the program.
+            (qvm:run qvm)
+            ;; Collect bits.
+            (push (collect-bits qvm) trial-results))))
       (format-log "Finished in ~D ms" timing)
       (nreverse trial-results))))
 
@@ -319,9 +323,10 @@ starts with the string PREFIX."
   (let ((qvm (make-appropriate-qvm num-qubits gate-noise measurement-noise))
         timing)
     (qvm:load-program qvm quil)
-    (format-log "Running experiment")
-    (with-timing (timing)
-      (qvm:run qvm))
+    (format-log "Running experiment on ~A" (class-name (class-of qvm)))
+    (with-redis
+      (with-timing (timing)
+        (qvm:run qvm)))
     (format-log "Finished in ~D ms" timing)
     (qvm::amplitudes qvm)))
 
