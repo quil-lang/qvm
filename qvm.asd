@@ -23,5 +23,5 @@
                (:file "quil")
                (:file "qvm")
                (:file "measurement")
-               (:file "execution")
+               (:file "transition")
                (:file "depolarizing-noise")))

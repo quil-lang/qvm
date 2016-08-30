@@ -1,10 +1,10 @@
-;;;; execution.lisp
+;;;; transition.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
 (in-package #:qvm)
 
-;;;; Execution of the QVM.
+;;;; Transition of the QVM state as a QAM.
 
 (define-condition invalid-gate-invocation (error)
   ((gate-name :initarg :gate-name
