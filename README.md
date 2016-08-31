@@ -131,40 +131,47 @@ directory. This should produce output like the following:
 ```
 $ make
 buildapp --output qvm \
-	 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
-	 --asdf-tree "./../" \
-	 --load-system qvm-app \
-	 --logfile build-output.log \
-	 --entry qvm-app::%main
+       		 --dynamic-space-size 1024 \
+       		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
+       		 --asdf-tree "./../" \
+       		 --load-system qvm-app \
+       		 --logfile build-output.log \
+       		 --entry qvm-app::%main
 ;; loading system "qvm-app"
 [undoing binding stack and other enclosing state... done]
 [saving current Lisp image into qvm:
 writing 4832 bytes from the read-only space at 0x20000000
 writing 4624 bytes from the static space at 0x20100000
-writing 76087296 bytes from the dynamic space at 0x1000000000
+writing 82509824 bytes from the dynamic space at 0x1000000000
 done]
 ```
 
 If there were issues building it, then a full log of compilation
 output can be found in `build-output.log`.
 
-Now you should have an executable called `qvm`. A simple test is to
-run the `hello.quil` example. Copy the `qvm` executable into the
-`demo/` directory and run it like so:
+By default, the QVM reserves 1 GB of workspace for computations. This is probably good enough for around 20 or so qubits. If you are doing large computations or you find that you get errors akin to "heap exhausted", you may opt to build the QVM with a larger workspace. To do this, run `make` with the variable `QVM_WORKSPACE` equal to the number of megabytes desired. For example,
 
 ```
-$ cp qvm demo/ && cd demo/
-$ ./qvm 2 hello.quil
-[3674244758] Welcome to the Rigetti QVM.
-[3674244758] Allocating memory for QVM
-[3674244758] Allocation completed in 175 ms. Reading in program,
-WARNING: Reached end of file when parsing indented gate entries.
-[3674244758] Loading quantum program.
-[3674244758] Executing quantum program.
-[3674244758] Execution completed in 8 ms. Printing state.
-[3674244758] Amplitudes: 0.7071067811865475, 0.0, 0.0, 0.7071067811865475
-[3674244758] Probabilities: 0.4999999999999999, 0.0, 0.0, 0.4999999999999999
-[3674244758] Classical memory (MSB -> LSB): 0000000000000000000000000000000000000000000000000000000000000000
+$ make QVM_WORKSPACE=4096
+```
+
+Now you should have an executable called `qvm`. A simple test is to
+run the `bell.quil` example to produce a Bell state, using the QVM's `-e` option.
+
+```
+$ ./qvm -e examples/bell.quil
+[2016-08-31 14:16:02] Welcome to the Rigetti QVM.
+[2016-08-31 14:16:02] (Configured with 1024 MiB of workspace.)
+[2016-08-31 14:16:02] Reading program.
+[2016-08-31 14:16:03] Allocating memory for QVM of 2 qubits.
+[2016-08-31 14:16:03] Allocation completed in 8 ms.
+[2016-08-31 14:16:03] Loading quantum program.
+[2016-08-31 14:16:03] Executing quantum program.
+[2016-08-31 14:16:03] Execution completed in 75 ms.
+[2016-08-31 14:16:03] Printing state.
+[2016-08-31 14:16:03] Amplitudes: 0.7071067811865475, 0.0, 0.0, 0.7071067811865475
+[2016-08-31 14:16:03] Probabilities: 0.4999999999999999, 0.0, 0.0, 0.4999999999999999
+[2016-08-31 14:16:03] Classical memory (MSB -> LSB): 0000000000000000000000000000000000000000000000000000000000000000
 ```
 
 As seen, a classical Bell state was produced.

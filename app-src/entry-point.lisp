@@ -154,6 +154,8 @@
 
   ;; Welcome message.
   (format-log "Welcome to the Rigetti QVM.")
+  (format-log "(Configured with ~D MiB of workspace.)"
+              (floor (sb-ext:dynamic-space-size) (expt 1024 2)))
 
   ;; Run the program.
   (handler-case
