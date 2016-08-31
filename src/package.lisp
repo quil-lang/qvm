@@ -25,9 +25,14 @@
    #:parallel-measure                   ; FUNCTION
    )
 
+  ;; transition.lisp
+  (:export
+   #:invalid-gate-invocation            ; CONDITION
+   #:transition-qvm                     ; GENERIC, METHOD
+   )
+
   ;; execution.lisp
   (:export
-   #:qvm                                ; CLASS
    #:run                                ; FUNCTION
    #:run-program                        ; FUNCTION
    )
@@ -36,29 +41,12 @@
   (:export
    #:operator-matrix-from-truth-table   ; FUNCTION
    #:controlled                         ; FUNCTION
-   #:hadamard                           ; FUNCTION
-   #:pauli-X                            ; FUNCTION
-   #:pauli-Y                            ; FUNCTION
-   #:pauli-Z                            ; FUNCTION
-   #:qnot                               ; FUNCTION
-   #:cnot                               ; FUNCTION
-   #:sqrt-qnot                          ; FUNCTION
-   #:nand                               ; FUNCTION
-   #:rotation-x                         ; FUNCTION
-   #:rotation-y                         ; FUNCTION
-   #:rotation-z                         ; FUNCTION
-   #:cphase                             ; FUNCTION
-   #:swap                               ; FUNCTION
-   #:sqrt-swap                          ; FUNCTION
-   #:toffoli                            ; FUNCTION
-   #:fredkin                            ; FUNCTION
 
-   ;; meta-operators
    #:print-amplitudes                   ; FUNCTION
    #:print-probabilities                ; FUNCTION
    #:classical-call                     ; FUNCTION
    )
-  
+
   ;; depolarizing-noise.lisp
   (:export
    #:noisy-qvm                          ; CLASS
