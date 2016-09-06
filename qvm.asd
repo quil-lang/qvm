@@ -12,7 +12,7 @@
                ;; IEEE-754 float parsing
                #:ieee-floats
                ;; Quil parsing
-               (:version #:cl-quil "0.1.1")
+               (:version #:cl-quil "0.1.2")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :pathname "src/"
