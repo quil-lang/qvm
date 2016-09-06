@@ -211,6 +211,21 @@ starts with the string PREFIX."
         (dispatch-table vhost))
   (call-next-method))
 
+(defun process-quil (quil)
+  (let* ((mapping (quil::compute-qubit-mapping quil))
+         (trivial-mapping-p
+           (loop :for x :across mapping
+                 :for i :from 0
+                 :always (= x i))))
+    (unless trivial-mapping-p
+      (format-log "Mapping qubits: ~{~A~^, ~}"
+                  (loop :for x :across mapping
+                        :for i :from 0
+                        :when (/= i x)
+                          :collect (format nil "~D -> ~D" x i)))
+      (quil::transform 'quil::compress-qubits quil))
+    quil))
+
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
@@ -232,7 +247,7 @@ starts with the string PREFIX."
               (num-trials (gethash ':TRIALS js))
               (isns (gethash ':QUIL-INSTRUCTIONS js))
               (quil (let ((quil::*allow-unresolved-applications* t))
-                      (quil:parse-quil-string isns)))
+                      (process-quil (quil:parse-quil-string isns))))
               (num-qubits (cl-quil:qubits-needed quil))
               (results (perform-multishot quil num-qubits addresses num-trials
                                           :gate-noise gate-noise
@@ -244,7 +259,7 @@ starts with the string PREFIX."
       ((:wavefunction)
        (let* ((isns (gethash ':QUIL-INSTRUCTIONS js))
               (quil (let ((quil::*allow-unresolved-applications* t))
-                      (quil:parse-quil-string isns)))
+                      (process-quil (quil:parse-quil-string isns))))
               (num-qubits (cl-quil:qubits-needed quil))
               (results (perform-wavefunction quil num-qubits
                                              :gate-noise gate-noise
