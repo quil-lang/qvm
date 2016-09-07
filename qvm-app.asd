@@ -25,6 +25,8 @@
                ;; Redis integration
                #:cl-redis
                #:usocket
+               ;; Remote Lisp connection
+               #:swank
                )
   :pathname "app-src/"
   :serial t

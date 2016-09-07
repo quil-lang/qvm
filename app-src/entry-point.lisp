@@ -43,7 +43,12 @@
     (("help" #\h)
      :type boolean
      :optional t
-     :documentation "display help")))
+     :documentation "display help")
+
+    (("swank-port")
+     :type integer
+     :optional t
+     :documentation "port to start a Swank server on")))
 
 (defun session-info ()
   (if (or (not (boundp 'tbnl:*session*))
@@ -106,10 +111,16 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (&key execute help memory server port)
+(defun process-options (&key execute help memory server port swank-port)
   (when help
     (show-help)
     (uiop:quit))
+
+  (when swank-port
+    (format-log "Starting Swank on port ~D" swank-port)
+    (setf swank:*use-dedicated-output-stream* nil)
+    (swank:create-server :port swank-port
+                         :dont-close t))
 
   (cond
     ((or server port)
