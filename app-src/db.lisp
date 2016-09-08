@@ -8,10 +8,10 @@
   :test #'string=
   :documentation "The database key to store the number of instructions executed.")
 
-(defvar *qvm-db-host* #(127 0 0 1)
+(defvar *qvm-db-host* nil
   "The hostname of the QVM stats DB.")
 
-(defvar *qvm-db-port* 6379
+(defvar *qvm-db-port* nil
   "The port of the QVM stats DB.")
 
 (defmacro with-redis (&body body)
@@ -19,18 +19,22 @@
   (let ((fun (gensym "BODY-"))
         (c   (gensym "C")))
     `(flet ((,fun () ,@body))
-       (handler-case (redis:with-connection (:host *qvm-db-host*
-                                             :port *qvm-db-port*)
-                       (redis:with-pipelining
-                         (,fun)))
-         (usocket:connection-refused-error (,c)
-           (declare (ignore ,c))
-           (warn "Connection refused, continuing without Redis connection.")
-           (,fun))
-         (usocket:host-unreachable-error (,c)
-           (declare (ignore ,c))
-           (warn "Host unreachable, continuing without Redis connection.")
-           (,fun))))))
+       (cond
+         ((not (and *qvm-db-host* *qvm-db-port*))
+          (,fun))
+         (t
+          (handler-case (redis:with-connection (:host *qvm-db-host*
+                                                :port *qvm-db-port*)
+                          (redis:with-pipelining
+                            (,fun)))
+            (usocket:connection-refused-error (,c)
+              (declare (ignore ,c))
+              (warn "Connection refused, continuing without Redis connection.")
+              (,fun))
+            (usocket:host-unreachable-error (,c)
+              (declare (ignore ,c))
+              (warn "Host unreachable, continuing without Redis connection.")
+              (,fun))))))))
 
 (defmethod qvm::transition-qvm :after ((qvm qvm:quantum-virtual-machine) instr)
   (unless (null redis:*connection*)

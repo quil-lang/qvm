@@ -48,7 +48,17 @@
     (("swank-port")
      :type integer
      :optional t
-     :documentation "port to start a Swank server on")))
+     :documentation "port to start a Swank server on")
+
+    (("db-host")
+     :type string
+     :optional t
+     :documentation "hostname of Redis DB")
+
+    (("db-port")
+     :type integer
+     :optional t
+     :documentation "port of Redis DB")))
 
 (defun session-info ()
   (if (or (not (boundp 'tbnl:*session*))
@@ -111,10 +121,13 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (&key execute help memory server port swank-port)
+(defun process-options (&key execute help memory server port swank-port db-host db-port)
   (when help
     (show-help)
     (uiop:quit))
+
+  (setf *qvm-db-host* db-host
+        *qvm-db-port* db-port)
 
   (when swank-port
     (format-log "Starting Swank on port ~D" swank-port)
