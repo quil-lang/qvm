@@ -9,7 +9,8 @@
                #:qvm
                #:qvm-examples
                #:alexandria
-               #:fiasco)
+               #:fiasco
+               #:trivial-garbage)
   :perform (asdf:test-op (o s)
                          (uiop:symbol-call :qvm-tests
                                            '#:run-tests))

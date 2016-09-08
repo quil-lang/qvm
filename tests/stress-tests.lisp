@@ -9,7 +9,7 @@
 
 (deftest test-garbage-collection ()
   "Test that large QVMs get garbage collected and do so without erroring."
-  (sb-ext:gc :full t)
+  (tg:gc :full t)
   (loop :with big-qubit-amount := 23
         ;; This should allocate about
         ;;
