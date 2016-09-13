@@ -6,6 +6,23 @@
 
 ;;;; Entry-point into binary executable.
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun system-version (system-designator)
+    (let ((sys (asdf:find-system system-designator nil)))
+      (if (and sys (slot-boundp sys 'asdf:version))
+          (asdf:component-version sys)
+          "unknown"))))
+
+(alexandria:define-constant +APP-VERSION+
+    (system-version '#:qvm-app)
+  :test #'string=
+  :documentation "The version of the QVM application.")
+
+(alexandria:define-constant +QVM-VERSION+
+    (system-version '#:qvm)
+  :test #'string=
+  :documentation "The version of the QVM itself.")
+
 (defvar *entered-from-main* nil)
 
 (defun image-p ()
@@ -44,6 +61,11 @@
      :type boolean
      :optional t
      :documentation "display help")
+
+    (("version" #\v)
+     :type boolean
+     :optional t
+     :documentation "display the versions of the app and underlying QVM")
 
     (("swank-port")
      :type integer
@@ -84,6 +106,17 @@
   (format t "    ~A [<options>...]~%~%" *program-name*)
   (command-line-arguments:show-option-help *option-spec* :sort-names t))
 
+(defun show-version ()
+  (format t "~A (qvm: ~A)~%" +APP-VERSION+ +QVM-VERSION+))
+
+(defun show-welcome ()
+  (format t "~&~
+******************************
+* Welcome to the Rigetti QVM *~%~
+******************************~%")
+  (format t "(Configured with ~D MiB of workspace.)~2%"
+          (floor (sb-ext:dynamic-space-size) (expt 1024 2))))
+
 (defmacro with-timing ((var) &body body)
   (let ((start (gensym "START-")))
     `(let ((,start (get-internal-real-time)))
@@ -121,25 +154,37 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (&key execute help memory server port swank-port db-host db-port)
+(defun process-options (&key version execute help memory server port swank-port db-host db-port)
   (when help
     (show-help)
+    (uiop:quit))
+
+  (when version
+    (show-version)
     (uiop:quit))
 
   (setf *qvm-db-host* db-host
         *qvm-db-port* db-port)
 
+  ;; Show the welcome message.
+  (show-welcome)
+
+  ;; Start Swank if we were asked. Re-enable the debugger.
+
   (when swank-port
-    (format-log "Starting Swank on port ~D" swank-port)
-    (setf swank:*use-dedicated-output-stream* nil)
-    (swank:create-server :port swank-port
-                         :dont-close t))
+   (sb-ext:enable-debugger)
+   (format-log "Starting Swank on port ~D" swank-port)
+   (setf swank:*use-dedicated-output-stream* nil)
+   (swank:create-server :port swank-port
+                        :dont-close t))
 
   (cond
+    ;; Server mode.
     ((or server port)
      (when execute
        (format-log "Ignoring execute option: ~S" execute))
      (start-server-app port))
+    ;; Batch mode.
     (t
      (let (qvm program alloc-time exec-time qubits)
        (format-log "Reading program.")
@@ -172,14 +217,10 @@
   (uiop:quit))
 
 (defun %main (argv)
+  (sb-ext:disable-debugger)
   (setf *entered-from-main* t)
   ;; Save the program name away.
   (setf *program-name* (pop argv))
-
-  ;; Welcome message.
-  (format-log "Welcome to the Rigetti QVM.")
-  (format-log "(Configured with ~D MiB of workspace.)"
-              (floor (sb-ext:dynamic-space-size) (expt 1024 2)))
 
   ;; Run the program.
   (handler-case
@@ -194,6 +235,11 @@
           :command-line argv
           :name "qvm"
           :rest-arity nil)))
+    ;; Handle Ctrl-C
+    (sb-sys:interactive-interrupt (c)
+      (declare (ignore c))
+      (uiop:quit 0))
+    ;; General errors.
     (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
       (uiop:quit 1))))

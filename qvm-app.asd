@@ -5,6 +5,7 @@
 (asdf:defsystem #:qvm-app
   :description "Application server for the QVM."
   :author "Robert Smith <robert@rigetti.com>"
+  :version (:read-file-form "APP-VERSION.txt")
   :depends-on (
                ;; Quil parsing
                #:cl-quil
