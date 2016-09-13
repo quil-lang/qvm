@@ -16,6 +16,8 @@
                #:yason
                ;; The QVM, of course.
                #:qvm
+               ;; Float encoding
+               #:ieee-floats
                ;; HTTP web server
                #:hunchentoot
                ;; Utilities

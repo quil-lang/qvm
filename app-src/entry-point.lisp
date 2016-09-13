@@ -250,6 +250,46 @@ starts with the string PREFIX."
       (quil::transform 'quil::compress-qubits quil))
     quil))
 
+(declaim (inline write-64-be))
+(defun write-64-be (byte stream)
+  "Write the 64-bit unsigned-byte BYTE to the binary stream STREAM."
+  (declare (optimize speed (safety 0) (debug 0))
+           (type (unsigned-byte 64) byte))
+  (let ((a (ldb (byte 8 0) byte))
+        (b (ldb (byte 8 8) byte))
+        (c (ldb (byte 8 16) byte))
+        (d (ldb (byte 8 24) byte))
+        (e (ldb (byte 8 32) byte))
+        (f (ldb (byte 8 40) byte))
+        (g (ldb (byte 8 48) byte))
+        (h (ldb (byte 8 56) byte)))
+    (declare (type (unsigned-byte 8) a b c d e f g h))
+    (write-byte h stream)
+    (write-byte g stream)
+    (write-byte f stream)
+    (write-byte e stream)
+    (write-byte d stream)
+    (write-byte c stream)
+    (write-byte b stream)
+    (write-byte a stream)
+    nil))
+
+(declaim (inline write-complex-double-float-as-binary))
+(defun write-complex-double-float-as-binary (z stream)
+  "Take a complex double-float and write to STREAM its binary representation in big endian (total 16 octets)."
+  (declare (optimize speed (safety 0) (debug 0))
+           (type (complex double-float) z))
+  (let ((re (realpart z))
+        (im (imagpart z)))
+    (declare (type double-float re im)
+             (dynamic-extent re im))
+    (let ((encoded-re (ieee-floats:encode-float64 re))
+          (encoded-im (ieee-floats:encode-float64 im)))
+      (declare (type (unsigned-byte 64) encoded-re encoded-im)
+               (dynamic-extent encoded-re encoded-im))
+      (write-64-be encoded-re stream)
+      (write-64-be encoded-im stream))))
+
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
@@ -288,11 +328,13 @@ starts with the string PREFIX."
               (results (perform-wavefunction quil num-qubits
                                              :gate-noise gate-noise
                                              :measurement-noise measurement-noise)))
-         (with-output-to-string (s)
-           (yason:encode
-            (map 'list (lambda (z) (list (realpart z) (imagpart z)))
-                 results)
-            s)))))))
+         (setf (tbnl:content-type*) "application/octet-stream")
+         (setf (tbnl:content-length*) (* 2 ; doubles/complex
+                                         8 ; octets/double
+                                         (length results)))
+         (let ((reply-stream (tbnl:send-headers)))
+           (loop :for z :across results
+                 :do (write-complex-double-float-as-binary z reply-stream))))))))
 
 (defun make-appropriate-qvm (num-qubits gate-noise measurement-noise)
   (format-log "Making qvm of ~D qubit~:P" num-qubits)
