@@ -17,6 +17,7 @@ quilbasic:
 		 --dynamic-space-size 1024 \
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
 		 --asdf-tree "./../" \
+		 --eval '(push :RELEASE *features*)' \
 		 --load-system quil-basic \
 		 --load "./quil-basic/zap-info.lisp" \
 		 --eval '(zap-info)' \

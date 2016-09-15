@@ -8,10 +8,11 @@
   "The lines of the program.")
 
 (defun print-program ()
+  (terpri)
   (loop :for i :from 0
         :for line :in *lines*
-        :do (format t "~&~D) ~A~%" i line))
-  (format t "~&~D)~%" (length *lines*))
+        :do (format t "~&  ~D) ~A~%" i line))
+  (format t "~&  ~D)~%" (length *lines*))
   (terpri)
   nil)
 
@@ -49,11 +50,20 @@
          (declare (ignore c))
          (format t "~&Got an error.~%")))))
 
-(defun command-loop ()
-  (loop-without-errors
+(defun get-line ()
+  #-RELEASE
+  (progn
     (format t "? ")
     (finish-output)
-    (let ((line (read-line *standard-input* nil nil nil)))
+    (read-line *standard-input* nil nil nil))
+  #+RELEASE
+  (progn
+    (cl-readline:readline :prompt "? " :add-history t)))
+
+(defun command-loop ()
+  (loop-without-errors
+    (finish-output)
+    (let ((line (get-line)))
       ;; End if we reach EOF.
       (when (null line)
         (return))
@@ -106,7 +116,7 @@
                             (loop :for i :from 0
                                   :for z :across (qvm::amplitudes qvm)
                                   :for p := (qvm::probability z)
-                                  :do (format t "|~v,'0B>: ~12F, ~12F; P=~5F%~%"
+                                  :do (format t "  |~v,'0B>: ~12F, ~12F; P=~5F%~%"
                                               qubits
                                               i
                                               (realpart z)
@@ -116,7 +126,7 @@
                             (loop :for i :below (qvm:classical-memory-size qvm)
                                   :for b := (qvm:classical-bit qvm i)
                                   :do (when (zerop (mod i 8))
-                                        (format t "~&~2D to ~2D: " i (1- (+ i 8))))
+                                        (format t "~&  ~2D to ~2D: " i (1- (+ i 8))))
                                       (format t "~A" b))
                             (terpri)))))))
                 ;; Add/Zap line
@@ -156,12 +166,9 @@
   (write-line "    /+<NUM> <Quil> : Add Quil instruction at line <NUM>.")
   (terpri))
 
-(sb-alien:define-alien-variable "lose_on_corruption_p" sb-alien:boolean)
-
 (defun %main (argv)
   (declare (ignore argv))
   (sb-ext:disable-debugger)
-  (setf lose-on-corruption-p t)
   (setf *standard-error* (make-broadcast-stream))
   (write-line "Welcome to Quil Basic by Rigetti Computing!")
   (write-line "A tool to explore quantum programming.")
