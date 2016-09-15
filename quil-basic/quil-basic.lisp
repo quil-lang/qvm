@@ -36,18 +36,18 @@
   (string-trim '(#\Space #\Tab) s))
 
 (defun bad-input (l)
-  (format t "bad input, ignoring: ~A~%" l))
+  (format t "~&bad input, ignoring: ~A~%" l))
 
-(defparameter *command-letters* (coerce "qlwr+-c" 'list))
+(defparameter *command-letters* (coerce "hqlwr+-c" 'list))
 
 (defmacro loop-without-errors (&body body)
   `(loop
      (handler-case (progn ,@body)
        (simple-error (c)
-         (format t "Got an error: ~A~%" c))
+         (format t "~&Got an error: ~A~%" c))
        (error (c)
          (declare (ignore c))
-         (format t "Got an error.")))))
+         (format t "~&Got an error.~%")))))
 
 (defun command-loop ()
   (loop-without-errors
@@ -76,6 +76,9 @@
            (t
             (let ((command-letter (char-downcase (char line 1))))
               (case command-letter
+                ;; Help
+                (#\h
+                 (show-help))
                 ;; Quit
                 (#\q
                  (write-line "Bye.")
@@ -139,15 +142,11 @@
         (t
          (append-line line))))))
 
-(defun %main (argv)
-  (declare (ignore argv))
-  (sb-ext:disable-debugger)
-  (write-line "Welcome to Quil Basic by Rigetti Computing!")
-  (write-line "A tool to explore quantum programming.")
-  (terpri)
+(defun show-help ()
   (write-line "Type Quil or type commands that start with the '/' character.")
   (terpri)
   (write-line "Commands:")
+  (write-line "    /h             : Show this help.")
   (write-line "    /q             : Quit.")
   (write-line "    /l             : List the program.")
   (write-line "    /c             : Clear the program.")
@@ -155,9 +154,21 @@
   (write-line "    /r             : Run the program and show classical memory.")
   (write-line "    /-<NUM>        : Delete line <NUM>.")
   (write-line "    /+<NUM> <Quil> : Add Quil instruction at line <NUM>.")
+  (terpri))
+
+(sb-alien:define-alien-variable "lose_on_corruption_p" sb-alien:boolean)
+
+(defun %main (argv)
+  (declare (ignore argv))
+  (sb-ext:disable-debugger)
+  (setf lose-on-corruption-p t)
+  (setf *standard-error* (make-broadcast-stream))
+  (write-line "Welcome to Quil Basic by Rigetti Computing!")
+  (write-line "A tool to explore quantum programming.")
   (terpri)
+  (show-help)
   (finish-output)
-  (handler-case (command-loop)
+  (handler-case (handler-bind ((warning #'muffle-warning)) (command-loop))
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
       (format t "~&Bye.~%")

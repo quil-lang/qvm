@@ -18,6 +18,8 @@ quilbasic:
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
 		 --asdf-tree "./../" \
 		 --load-system quil-basic \
+		 --load "./quil-basic/zap-info.lisp" \
+		 --eval '(zap-info)' \
 		 --logfile build-output.log \
 		 --entry quil-basic::%main
 
