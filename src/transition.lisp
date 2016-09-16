@@ -91,7 +91,7 @@ Return two values:
 
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil:gate-application))
   (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
-         (params (quil:application-parameters instr))
+         (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
          (operator (apply #'gate-operator gate params)))
     (values

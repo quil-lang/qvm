@@ -60,6 +60,15 @@
     (setf qvm (run qvm))
     (is (double-float= 1 (probability (aref amps #b10)) 1/10000))))
 
+(deftest test-parametric-gate ()
+  "Test a parametric gate."
+  (let* ((qvm (make-qvm 1))
+         (amps (qvm::amplitudes qvm)))
+    (load-program qvm (with-output-to-quil
+                          (format t "DEFGATE G(%a):~%    cos(%a), sin(%a)~%    -sin(%a), cos(%a)~%G(0.0) 0")))
+    (run qvm)
+    (is (double-float= 1 (probability (aref amps 0)) 1/10000))))
+
 
 (defun fourier-test-program (type)
   "Generate a test program for the QFT algorithm for two qubits. The types are as follows:
