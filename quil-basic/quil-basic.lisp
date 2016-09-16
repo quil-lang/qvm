@@ -67,8 +67,6 @@
       ;; End if we reach EOF.
       (when (null line)
         (return))
-      ;; Trim the string
-      (setf line (trim-whitespace line))
       
       (cond
         ;; Empty line
