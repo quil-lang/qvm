@@ -24,6 +24,14 @@
     (dotimes (i 7)
       (is (test-size i)))))
 
+(deftest test-full-rotation ()
+  "Test four RX(pi/2) gates."
+    (let* ((quil (with-output-to-quil
+                   (loop :repeat 4 :do
+                     (format t "RX(pi/2) 0~%"))))
+         (qvm (run-program 1 quil)))
+    (is (double-float= 1 (probability (aref (qvm::amplitudes qvm) 0)) 1/10000))))
+
 (deftest test-inversion ()
   "Test |000> -> |111> inversion."
   (let* ((quil (with-output-to-quil
@@ -42,7 +50,7 @@
                  (format t "CNOT 0 ~D~%" i))))
            (run-bell (i)
              (qvm::amplitudes (run-program i (bell-state i)))))
-    (loop :for i :from 1 :to 7 
+    (loop :for i :from 1 :to 7
           :for amps := (run-bell i)
           :do (is (double-float= 1/2 (probability (vector-first amps)) 1/10000))
               (is (double-float= 1/2 (probability (vector-last amps)) 1/10000)))))
@@ -65,7 +73,7 @@
   (let* ((qvm (make-qvm 1))
          (amps (qvm::amplitudes qvm)))
     (load-program qvm (with-output-to-quil
-                          (format t "DEFGATE G(%a):~%    cos(%a), sin(%a)~%    -sin(%a), cos(%a)~%G(0.0) 0")))
+                        (format t "DEFGATE G(%a):~%    cos(%a), sin(%a)~%    -sin(%a), cos(%a)~%G(0.0) 0")))
     (run qvm)
     (is (double-float= 1 (probability (aref amps 0)) 1/10000))))
 
