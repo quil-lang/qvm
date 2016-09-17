@@ -14,7 +14,7 @@ qvm:
 
 quilbasic:
 	buildapp --output quilbasic \
-		 --dynamic-space-size 1024 \
+		 --dynamic-space-size $(QVM_WORKSPACE) \
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
 		 --asdf-tree "./../" \
 		 --eval '(push :RELEASE *features*)' \
