@@ -39,7 +39,7 @@
 (defun bad-input (l)
   (format t "~&bad input, ignoring: ~A~%" l))
 
-(defparameter *command-letters* (coerce "hqlwr+-c" 'list))
+(defparameter *command-letters* (coerce "hqlwr+-csp" 'list))
 
 (defmacro loop-without-errors (&body body)
   `(loop
@@ -95,9 +95,39 @@
                 (#\c
                  (write-line "Clearing program.")
                  (setf *lines* nil))
-                ;; List program
-                (#\l
+                ;; List/Print program
+                (#\p
                  (print-program))
+                ;; Save program
+                (#\s
+                 (let ((filename (string-left-trim '(#\Space #\Tab)
+                                                   (subseq line 2))))
+                   (cond
+                     ((notany #'graphic-char-p filename)
+                      (format t "~&Invalid file name.~%"))
+                     (t
+                      (with-open-file (s filename :direction ':output
+                                                  :if-does-not-exist ':create
+                                                  :if-exists ':supersede)
+                        (dolist (line *lines*)
+                          (write-line line s))
+                        (format t "~&Wrote program to file '~A'.~%" filename))))))
+                ;; Open a program
+                (#\l
+                 (let ((filename (string-left-trim '(#\Space #\Tab)
+                                                   (subseq line 2))))
+                   (cond
+                     ((not (uiop:file-exists-p filename))
+                      (format t "~&The file '~A' doesn't exist.~%" filename))
+                     (t
+                      (with-open-file (s filename :direction ':input
+                                                  :if-does-not-exist ':error)
+                        (setf *lines* nil)
+                        (loop :for line := (read-line s nil nil nil)
+                              :until (null line)
+                              :do (push line *lines*)
+                              :finally (setf *lines* (nreverse *lines*)))
+                        (format t "~&Loaded program from '~A'.~%" filename))))))
                 ;; Execution
                 ((#\w #\r)
                  (let ((p (ignore-errors (quil-program))))
@@ -156,8 +186,10 @@
   (write-line "Commands:")
   (write-line "    /h             : Show this help.")
   (write-line "    /q             : Quit.")
-  (write-line "    /l             : List the program.")
+  (write-line "    /p             : Print the program.")
   (write-line "    /c             : Clear the program.")
+  (write-line "    /s <filename>  : Save the program to <filename>.")
+  (write-line "    /l <filename>  : Load the program at <filename>.")
   (write-line "    /w             : Show the wavefunction.")
   (write-line "    /r             : Run the program and show classical memory.")
   (write-line "    /-<NUM>        : Delete line <NUM>.")
