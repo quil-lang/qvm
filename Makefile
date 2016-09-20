@@ -11,7 +11,7 @@ deps:
 	     --eval "(ql:quickload '(:qvm-app :quil-basic))" \
 	     --eval "(uiop:quit)"
 
-qvm: deps
+qvm:
 	buildapp --output qvm \
 		 --dynamic-space-size $(QVM_WORKSPACE) \
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
@@ -20,7 +20,7 @@ qvm: deps
 		 --logfile build-output.log \
 		 --entry qvm-app::%main
 
-quilbasic: deps
+quilbasic:
 	buildapp --output quilbasic \
 		 --dynamic-space-size $(QVM_WORKSPACE) \
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \

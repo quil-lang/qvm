@@ -114,12 +114,10 @@ Building an executable requires `buildapp`. See the Lisp instructions
 in `doc/lisp-setup.md` for details.
 
 Before building, you must ensure that all dependencies are downloaded
-from the internet. To do this, follow the instructions to run `qvm`
-interactively, but do the following step additionally:
+from the internet. To do this, just type the command
 
 ```
-(load "qvm-app.asd")
-(ql:quickload :qvm-app)
+make deps
 ```
 
 This only needs to be done once (any time new third-party dependencies
