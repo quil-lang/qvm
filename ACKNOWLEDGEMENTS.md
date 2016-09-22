@@ -1,8 +1,11 @@
-QVM and the QVM server app use open source software. Below is a list of all transitive dependencies that QVM and derivatives depend on.
+This software uses open source software. Below is a list of all transitive dependencies that QVM and derivatives depend on.
 
-## QVM, QVM-APP, ALEXA, CL-QUIL
+## QVM, QVM-APP, QUIL-BASIC, ALEXA, CL-QUIL
 
 **License**: Rigetti Computing proprietary
+
+The terms of this software may be governed by the Rigetti & Co,
+Inc. PILOT AND EVALUATION AGREEMENT.
 
 ## SBCL
 
@@ -125,7 +128,7 @@ Gerd Moellmann are retained.
 ;;; DAMAGE.
 ```
 
-## ASDF
+## ASDF, UIOP
 
 **URL**: https://common-lisp.net/project/asdf/
 
@@ -907,4 +910,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ;;; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 ;;; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## SLIME/SWANK
+**URL**: https://github.com/slime/slime
+
+**License**: Public Domain
+
+```
+SLIME is free software. All files, unless explicitly stated otherwise, are public domain.
 ```
