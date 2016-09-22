@@ -51,14 +51,9 @@
          (format t "~&Got an error.~%")))))
 
 (defun get-line ()
-  #-RELEASE
-  (progn
-    (format t "? ")
-    (finish-output)
-    (read-line *standard-input* nil nil nil))
-  #+RELEASE
-  (progn
-    (cl-readline:readline :prompt "? " :add-history t)))
+  (format t "? ")
+  (finish-output)
+  (read-line *standard-input* nil nil nil))
 
 (defun command-loop ()
   (loop-without-errors

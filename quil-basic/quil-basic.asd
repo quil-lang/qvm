@@ -10,8 +10,6 @@
                #:qvm
                #:cl-quil
                #:uiop
-               #+RELEASE
-               #:cl-readline
                )
   :serial t
   :components ((:file "quil-basic")))

@@ -4,8 +4,7 @@ QVM_WORKSPACE ?= 1024
 all: qvm
 
 deps:
-	sbcl --eval '(push :RELEASE *features*)' \
-	     --load "qvm.asd" \
+	sbcl --load "qvm.asd" \
 	     --load "qvm-app.asd" \
 	     --load "quil-basic/quil-basic.asd" \
 	     --eval "(ql:quickload '(:qvm-app :quil-basic))" \
@@ -25,7 +24,6 @@ quilbasic:
 		 --dynamic-space-size $(QVM_WORKSPACE) \
 		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
 		 --asdf-tree "./../" \
-		 --eval '(push :RELEASE *features*)' \
 		 --load-system quil-basic \
 		 --load "./quil-basic/zap-info.lisp" \
 		 --eval '(zap-info)' \
