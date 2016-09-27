@@ -91,9 +91,9 @@ NT should be the bit set."
 
 ;;; Complex Linear Algebra
 
-(deftype quantum-state ()
+(deftype quantum-state (&optional (n '*))
   "A representation of a quantum state. This will have a power-of-2 length."
-  `(simple-array (complex double-float) (*)))
+  `(simple-array (complex double-float) (,n)))
 
 (declaim (ftype (function (fixnum &rest number) quantum-state) make-vector))
 (defun make-vector (size &rest elements)
@@ -106,9 +106,15 @@ NT should be the bit set."
           :do (setf (aref vec i) element)
           :finally (return vec))))
 
-(deftype quantum-operator ()
+(define-compiler-macro make-vector (&whole form size &rest elements)
+  (if (null elements)
+      `(make-array ,size :element-type '(complex double-float)
+                         :initial-element #C(0.0d0 0.0d0))
+      form))
+
+(deftype quantum-operator (&optional (n '*))
   "A representation of an operator on a quantum state. This will be a unitary square matrix where each dimension is a power-of-two."
-  `(simple-array (complex double-float) (* *)))
+  `(simple-array (complex double-float) (,n ,n)))
 
 (declaim (ftype (function (fixnum &rest number) quantum-operator) make-matrix))
 (defun make-matrix (size &rest elements)
@@ -123,11 +129,46 @@ NT should be the bit set."
           :do (setf (row-major-aref matrix i) element)
           :finally (return matrix))))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun matrix-multiply-code (n matrix column)
+    "Compute the product of the complex matrix (represented as a square array of complex double-floats) and a complex column vector (represented as a complex double-float vector)."
+    (check-type n unsigned-byte)
+    `(locally
+         (declare (type (quantum-operator ,n) ,matrix)
+                  (type (quantum-state ,n) ,column)
+                  (optimize speed (safety 0) (debug 0) (space 0)))
+       (let ((result (make-vector ,n))
+             (element #C(0.0d0 0.0d0)))
+         (declare (type (quantum-state ,n) result)
+                  (type (complex double-float) element))
+         ,@(loop :for i :below n
+                 :append `((setf element #C(0.0d0 0.0d0))
+                           ,@(loop :for j :below n
+                                   :collect `(incf element (* (aref ,matrix ,i ,j)
+                                                              (aref ,column ,j))))
+                           (setf (aref result ,i) element)))
+         result))))
+
+(defmacro define-matmul (name size)
+  `(progn
+     (declaim (inline ,name))
+     (declaim (ftype (function ((quantum-operator ,size)
+                                (quantum-state ,size))
+                               (quantum-state ,size))
+                     ,name))
+     (defun ,name (m c)
+       ,(matrix-multiply-code size 'm 'c))
+     (declaim (notinline ,name))))
+
+(define-matmul matmul2 2)
+(define-matmul matmul4 4)
+
 (defun matrix-multiply (matrix column)
   "Compute the product of the complex matrix (represented as a square array of complex double-floats) and a complex column vector (represented as a complex double-float vector)."
   (declare (type quantum-operator matrix)
            (type quantum-state column)
-           (optimize speed (safety 2)))
+           (optimize speed (safety 1))
+           (inline matmul2 matmul4))
   (assert (= (array-dimension matrix 0)
              (array-dimension matrix 1))
           (matrix)
@@ -136,14 +177,18 @@ NT should be the bit set."
              (length column))
           (matrix column)
           "The given matrix and column vector don't have compatible dimensions.")
-  (let* ((matrix-size (array-dimension matrix 0))
-         (result (make-vector matrix-size)))
-    (dotimes (i matrix-size result)
-      (let ((element #C(0.0d0 0.0d0)))
-        (declare (type (complex double-float) element))
-        (dotimes (j matrix-size)
-          (incf element (* (aref matrix i j) (aref column j))))
-        (setf (aref result i) element)))))
+  (let ((matrix-size (array-dimension matrix 0)))
+    (case matrix-size
+      ((2) (matmul2 matrix column))
+      ((4) (matmul4 matrix column))
+      (otherwise
+       (let ((result (make-vector matrix-size)))
+         (dotimes (i matrix-size result)
+           (let ((element #C(0.0d0 0.0d0)))
+             (declare (type (complex double-float) element))
+             (dotimes (j matrix-size)
+               (incf element (* (aref matrix i j) (aref column j))))
+             (setf (aref result i) element))))))))
 
 (defmacro probabilistically (p &body body)
   "Execute BODY with probability 0 <= P <= 1."
