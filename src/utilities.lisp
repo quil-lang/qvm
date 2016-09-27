@@ -91,58 +91,76 @@ NT should be the bit set."
 
 ;;; Complex Linear Algebra
 
+(deftype flonum ()
+  "The float type used in computations."
+  `double-float)
+
+(deftype cflonum ()
+  "The complex float type used in computations. Typically these will represent wavefunction amplitudes."
+  `(complex flonum))
+
+(defun cflonum (x)
+  "Coerce X into a CFLONUM."
+  (coerce x 'cflonum))
+
+(define-compiler-macro cflonum (&whole whole &environment env x)
+  (if (and (constantp x env)
+           (numberp x))
+      (coerce x 'cflonum)
+      whole))
+
 (deftype quantum-state (&optional (n '*))
   "A representation of a quantum state. This will have a power-of-2 length."
-  `(simple-array (complex double-float) (,n)))
+  `(simple-array cflonum (,n)))
 
 (declaim (ftype (function (fixnum &rest number) quantum-state) make-vector))
 (defun make-vector (size &rest elements)
   "Make a SIZE-length complex vector whose elements are ELEMENTS."
-  (let ((vec (make-array size :element-type '(complex double-float)
-                              :initial-element #C(0.0d0 0.0d0))))
+  (let ((vec (make-array size :element-type 'cflonum
+                              :initial-element (cflonum 0))))
     (loop :for i :from 0
           :for raw-element :in elements
-          :for element :of-type (complex double-float) := (coerce raw-element '(complex double-float))
+          :for element :of-type cflonum :=  (cflonum raw-element)
           :do (setf (aref vec i) element)
           :finally (return vec))))
 
 (define-compiler-macro make-vector (&whole form size &rest elements)
   (if (null elements)
-      `(make-array ,size :element-type '(complex double-float)
-                         :initial-element #C(0.0d0 0.0d0))
+      `(make-array ,size :element-type 'cflonum
+                         :initial-element (cflonum 0))
       form))
 
 (deftype quantum-operator (&optional (n '*))
   "A representation of an operator on a quantum state. This will be a unitary square matrix where each dimension is a power-of-two."
-  `(simple-array (complex double-float) (,n ,n)))
+  `(simple-array cflonum (,n ,n)))
 
 (declaim (ftype (function (fixnum &rest number) quantum-operator) make-matrix))
 (defun make-matrix (size &rest elements)
-  "Make a SIZE x SIZE complex matrix whose elements are ELEMENTS. Each of ELEMENTS must be able to be coerced into a complex double-float."
+  "Make a SIZE x SIZE complex matrix whose elements are ELEMENTS. Each of ELEMENTS must be able to be coerced into a CFLONUM."
   (declare (dynamic-extent elements))
   (let ((matrix (make-array (list size size)
-                            :element-type '(complex double-float)
-                            :initial-element #C(0.0d0 0.0d0))))
+                            :element-type 'cflonum
+                            :initial-element (cflonum 0))))
     (loop :for i :from 0
           :for raw-element :in elements
-          :for element :of-type (complex double-float) := (coerce raw-element '(complex double-float))
+          :for element :of-type cflonum := (cflonum raw-element)
           :do (setf (row-major-aref matrix i) element)
           :finally (return matrix))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun matrix-multiply-code (n matrix column)
-    "Compute the product of the complex matrix (represented as a square array of complex double-floats) and a complex column vector (represented as a complex double-float vector)."
+    "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex column vector (represented as a CFLONUM vector)."
     (check-type n unsigned-byte)
     `(locally
          (declare (type (quantum-operator ,n) ,matrix)
                   (type (quantum-state ,n) ,column)
                   (optimize speed (safety 0) (debug 0) (space 0)))
        (let ((result (make-vector ,n))
-             (element #C(0.0d0 0.0d0)))
+             (element (cflonum 0)))
          (declare (type (quantum-state ,n) result)
-                  (type (complex double-float) element))
+                  (type cflonum element))
          ,@(loop :for i :below n
-                 :append `((setf element #C(0.0d0 0.0d0))
+                 :append `((setf element (cflonum 0))
                            ,@(loop :for j :below n
                                    :collect `(incf element (* (aref ,matrix ,i ,j)
                                                               (aref ,column ,j))))
@@ -164,7 +182,7 @@ NT should be the bit set."
 (define-matmul matmul4 4)
 
 (defun matrix-multiply (matrix column)
-  "Compute the product of the complex matrix (represented as a square array of complex double-floats) and a complex column vector (represented as a complex double-float vector)."
+  "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex vector (represented as a CFLONUM vector)."
   (declare (type quantum-operator matrix)
            (type quantum-state column)
            (optimize speed (safety 1))
@@ -184,8 +202,8 @@ NT should be the bit set."
       (otherwise
        (let ((result (make-vector matrix-size)))
          (dotimes (i matrix-size result)
-           (let ((element #C(0.0d0 0.0d0)))
-             (declare (type (complex double-float) element))
+           (let ((element (cflonum 0)))
+             (declare (type cflonum element))
              (dotimes (j matrix-size)
                (incf element (* (aref matrix i j) (aref column j))))
              (setf (aref result i) element))))))))

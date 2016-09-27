@@ -19,12 +19,12 @@
 (defun parse-parameter (qvm param)
   "Parse the parameter PARAM in the context of QVM."
   (etypecase param
-    (real  (coerce param 'double-float))
-    (complex (coerce param '(complex double-float)))
+    (real  (coerce param 'flonum))
+    (complex (coerce param 'cflonum))
     (bit-range
      (ecase (bit-range-width param)
-       (64  (classical-double-float qvm param))
-       (128 (classical-complex-double-float qvm param))))))
+       (64  (coerce (classical-double-float qvm param) 'flonum))
+       (128 (coerce (classical-complex-double-float qvm param) 'cflonum))))))
 
 (defgeneric transition-qvm (qvm instr)
   (:documentation "Execute the instruction INSTR on the QVM.

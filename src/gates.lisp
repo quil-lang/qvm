@@ -114,7 +114,7 @@ Example: A NAND gate can be made with
     (let* ((column-length (length truth-table-outputs))
            (operator-size (* 2 column-length))
            (matrix (make-matrix operator-size))
-           (one #C(1.0d0 0.0d0)))
+           (one (cflonum 1)))
       (loop :for i :below column-length
             :for x :in truth-table-outputs
             :for offset := (* 2 i)
@@ -307,8 +307,8 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
 
 (defun reset (qvm)
   "Perform a reset. Bring all qubits to |0>."
-  (map-into (amplitudes qvm) (constantly #C(0.0d0 0.0d0)))
-  (setf (aref (amplitudes qvm) 0) #C(1.0d0 0.0d0))
+  (map-into (amplitudes qvm) (constantly (cflonum 0)))
+  (setf (aref (amplitudes qvm) 0) (cflonum 1))
   qvm)
 
 ;;; These are useful for debugging and other classical execution. They

@@ -59,8 +59,8 @@ which is the index with a zero injected at the QUBIT'th position."
      (let* ((x (extract-amplitudes qvm (nat-tuple qubit))))
        ;; Collapse x.
        (ecase measured-value
-         (0 (setf (aref x 1) #C(0.0D0 0.0D0)))
-         (1 (setf (aref x 0) #C(0.0D0 0.0D0))))
+         (0 (setf (aref x 1) (cflonum 0)))
+         (1 (setf (aref x 0) (cflonum 0))))
        ;; Insert it back.
        (insert-amplitudes qvm x (nat-tuple qubit))))
    (nat-tuple-complement (number-of-qubits qvm) (nat-tuple qubit)))
