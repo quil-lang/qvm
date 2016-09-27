@@ -194,7 +194,7 @@
 (defun %main (argv)
   (declare (ignore argv))
   (sb-ext:disable-debugger)
-  (setf *standard-error* (make-broadcast-stream))
+  (setf *error-output* (make-broadcast-stream))
   (write-line "Welcome to the Quil Machine by Rigetti Computing!")
   (write-line "A tool to explore quantum programming.")
   (terpri)
