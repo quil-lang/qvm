@@ -373,14 +373,17 @@ starts with the string PREFIX."
               (num-qubits (cl-quil:qubits-needed quil))
               (results (perform-wavefunction quil num-qubits
                                              :gate-noise gate-noise
-                                             :measurement-noise measurement-noise)))
-         (setf (tbnl:content-type*) "application/octet-stream")
-         (setf (tbnl:content-length*) (* 2 ; doubles/complex
-                                         8 ; octets/double
-                                         (length results)))
-         (let ((reply-stream (tbnl:send-headers)))
-           (loop :for z :across results
-                 :do (write-complex-double-float-as-binary z reply-stream))))))))
+                                             :measurement-noise measurement-noise))
+              send-response-time)
+         (with-timing (send-response-time)
+           (setf (tbnl:content-type*) "application/octet-stream")
+           (setf (tbnl:content-length*) (* 2 ; doubles/complex
+                                           8 ; octets/double
+                                           (length results)))
+           (loop :with reply-stream := (tbnl:send-headers)
+                 :for z :across results
+                 :do (write-complex-double-float-as-binary z reply-stream)))
+         (format-log "Response sent in ~D ms." send-response-time))))))
 
 (defun make-appropriate-qvm (num-qubits gate-noise measurement-noise)
   (format-log "Making qvm of ~D qubit~:P" num-qubits)
