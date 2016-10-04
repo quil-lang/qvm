@@ -10,8 +10,8 @@ all: qvm
 quicklisp:
 	curl -o /tmp/quicklisp.lisp "http://beta.quicklisp.org/quicklisp.lisp"
 	sbcl --noinform --non-interactive \
-	     --load /tmp/quicklisp.lisp \
-	     --eval '(quicklisp-quickstart:install)'
+             --load /tmp/quicklisp.lisp \
+             --eval '(quicklisp-quickstart:install)'
 	echo >> ~/.sbclrc
 	echo '#-quicklisp(let ((i(merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname))))(when(probe-file i)(load i)))' >> ~/.sbclrc
 	echo "#+quicklisp(push \"$(shell pwd | xargs dirname)/\" ql:*local-project-directories*)" >> ~/.sbclrc
@@ -22,16 +22,17 @@ quicklisp:
 deps:
         # Update Quicklisp.
 	sbcl --noinform --non-interactive \
-	     --eval "(ql:update-client :prompt nil)"
+             --eval "(ql:update-client :prompt nil)"
         # Update Quicklisp software.
 	sbcl --noinform --non-interactive \
-	     --eval "(ql:update-all-dists :prompt nil)"
+             --eval "(ql:update-all-dists :prompt nil)"
         # Update QVM, etc.
 	sbcl --noinform --non-interactive \
-	     --load "qvm.asd" \
-	     --load "qvm-app.asd" \
-	     --load "quil-basic/quil-basic.asd" \
-	     --eval "(ql:quickload '(:qvm-app :quil-basic))"
+             --load "qvm.asd" \
+             --load "qvm-tests.asd" \
+             --load "qvm-app.asd" \
+             --load "quil-basic/quil-basic.asd" \
+             --eval "(ql:quickload '(:qvm :qvm-tests :qvm-app :quil-basic))"
 
 
 
@@ -39,25 +40,34 @@ deps:
 
 qvm:
 	buildapp --output qvm \
-	         --dynamic-space-size $(QVM_WORKSPACE) \
-	         --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
-	         --asdf-tree "./../" \
-	         --load-system qvm-app \
-	         --logfile build-output.log \
-	         --entry qvm-app::%main
+                 --dynamic-space-size $(QVM_WORKSPACE) \
+                 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
+                 --asdf-tree "./../" \
+                 --load-system qvm-app \
+                 --logfile build-output.log \
+                 --entry qvm-app::%main
 
 quilbasic:
 	buildapp --output quilbasic \
-	         --dynamic-space-size $(QVM_WORKSPACE) \
-	         --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
-	         --asdf-tree "./../" \
-	         --load-system quil-basic \
-	         --load "./quil-basic/zap-info.lisp" \
-	         --eval '(zap-info)' \
-	         --logfile build-output.log \
-	         --entry quil-basic::%main
+                 --dynamic-space-size $(QVM_WORKSPACE) \
+                 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
+                 --asdf-tree "./../" \
+                 --load-system quil-basic \
+                 --load "./quil-basic/zap-info.lisp" \
+                 --eval '(zap-info)' \
+                 --logfile build-output.log \
+                 --entry quil-basic::%main
+
+buildall: cleanall qvm quilbasic
 
 
+
+### Testing
+
+test:
+	sbcl --noinform --non-interactive \
+             --eval '(ql:quickload :qvm)' \
+             --eval '(asdf:test-system :qvm)'
 
 ### Deployment.
 
@@ -73,7 +83,7 @@ docker: qvm
 clean-cache:
 	@echo "Deleting $(LISP_CACHE)"
 	sbcl --noinform --non-interactive \
-	     --eval "(ql:register-local-projects)"
+             --eval "(ql:register-local-projects)"
 	rm -rf $(LISP_CACHE)
 
 # Clean the executables
