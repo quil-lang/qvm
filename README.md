@@ -108,7 +108,7 @@ T
 The `T` (Lisp true value) indicates there was no error in all of the
 tests.
 
-# How to Build a Stand-Alone Executable
+## How to Build a Stand-Alone Executable
 
 Building an executable requires `buildapp`. See the Lisp instructions
 in `doc/lisp-setup.md` for details.
@@ -121,7 +121,7 @@ make deps
 ```
 
 This only needs to be done once (any time new third-party dependencies
-are introduced).
+are introduced). This also updates Quicklisp if needed.
 
 Building is otherwise easy, just call `make` in the `qvm`
 directory. This should produce output like the following:
@@ -176,5 +176,14 @@ As seen, a classical Bell state was produced.
 
 You can get a brief help message with `qvm --help`.
 
-# Deployment to AWS
+### Clearing the Cache
+Lisp caches a lot of builds so that not every single file needs to be recompiled. In rare instances, there's confusion and the cache doesn't get properly invalidated. (This can happen when moving files across machines, for example.) Lisp's cache and Quicklisp's system index can be cleaned by doing the following command:
+
+```
+make cleanall
+```
+
+This will delete any built executables as well.
+
+## Deploying to AWS
 Instructions can be found [here](https://github.com/rigetticomputing/qvm/wiki).

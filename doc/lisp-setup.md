@@ -37,7 +37,22 @@ manager. Then just execute `rlwrap sbcl`, and everything will be good.
 
 ## Install Quicklisp
 
-Quicklisp is like Python's `pip` for Lisp. Follow the instructions on the [Quicklisp website](https://www.quicklisp.org/beta/) for details. The summary is:
+Quicklisp is like Python's `pip` for Lisp. 
+
+### Automated Instructions
+Change to the `qvm` directory and type
+
+```
+make quicklisp
+```
+
+This should download and install Quicklisp.
+
+### Manual Instructions
+If the automated instructions didn't work or you'd like to do it manually for an unsupported platform, then do the following.
+
+#### Step 1: Downloading Quicklisp
+Follow the instructions on the [Quicklisp website](https://www.quicklisp.org/beta/) for details. The summary is:
 
 1. Download `quicklisp.lisp`.
 
@@ -47,17 +62,17 @@ Quicklisp is like Python's `pip` for Lisp. Follow the instructions on the [Quick
 
 4. Run `(ql:add-to-init-file)` and press enter.
 
-### Updating Quicklisp
-
+#### Step 2: Updating Quicklisp
 Quicklisp can be periodically updated. Both the Quicklisp client, as
-well as all of the Quicklisp software, can be updated. The two
-respectively can be done via:
+well as all of the Quicklisp software, can be updated. The two respectively can be done via:
 
-1. Update QL Client: `(ql:update-client)`
+1. Update QL client: `(ql:update-client)`
 
 2. Update all QL software: `(ql:update-all-dists)`
 
-### Telling Quicklisp Where Your Code Is
+**N.B.**: Once you have installed all of the Rigetti source code (QVM, ALEXA, ...), you can update by just doing `make deps`.
+
+#### Step 3: Telling Quicklisp Where Your Code Is
 
 In order to be able to simply do `(ql:quickload :qvm)` as a one-liner,
 you need to tell Quicklisp where to find your code. Append to your
