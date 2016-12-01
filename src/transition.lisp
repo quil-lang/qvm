@@ -125,4 +125,7 @@ Return two values:
 ;;; XXX: This method should not exist in the end.
 (defmethod transition-qvm ((qvm quantum-virtual-machine) (instr quil::circuit-application))
   (cerror "Ignore circuit."
-          "DEFCIRCUIT and circuit expansion is currently not supported."))
+          "DEFCIRCUIT and circuit expansion is currently not supported.")
+  (values
+   qvm
+   (1+ (pc qvm))))
