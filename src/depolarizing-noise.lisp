@@ -56,21 +56,22 @@ It should be that PX + PY + PZ <= 1.
       (setf px (/ px sum)
             py (/ py sum)
             pz (/ pz sum))
-      (let ((r (random 1.0)))
+      (let ((r (random 1.0))
+            (amplitudes (amplitudes qvm)))
         (when (< r px)
-          (apply-operator qvm X (nat-tuple qubit))
+          (apply-operator amplitudes X (nat-tuple qubit))
           (return-from add-depolarizing-noise))
         (decf r px)
         (when (< r py)
-          (apply-operator qvm Y (nat-tuple qubit))
+          (apply-operator amplitudes Y (nat-tuple qubit))
           (return-from add-depolarizing-noise))
         (decf r py)
         (when (< r pz)
-          (apply-operator qvm Z (nat-tuple qubit))
+          (apply-operator amplitudes Z (nat-tuple qubit))
           (return-from add-depolarizing-noise))))))
 
 ;;; Noise gets added to every qubit after an application or RESET.
-(defmethod transition-qvm :after ((qvm noisy-qvm) (instr cl-quil:application))
+(defmethod transition :after ((qvm noisy-qvm) (instr cl-quil:application))
   (declare (ignore instr))
   (dotimes (q (number-of-qubits qvm))
     (add-depolarizing-noise qvm q
@@ -78,7 +79,7 @@ It should be that PX + PY + PZ <= 1.
                             (probability-gate-y qvm)
                             (probability-gate-z qvm))))
 
-(defmethod transition-qvm :after ((qvm noisy-qvm) (instr cl-quil:reset))
+(defmethod transition :after ((qvm noisy-qvm) (instr cl-quil:reset))
   (declare (ignore instr))
   (dotimes (q (number-of-qubits qvm))
     (add-depolarizing-noise qvm q
@@ -88,7 +89,7 @@ It should be that PX + PY + PZ <= 1.
 
 ;;; Noise gets added to only the qubit being measured, before
 ;;; measurement occurs.
-(defmethod transition-qvm :before ((qvm noisy-qvm) (instr cl-quil:measurement))
+(defmethod transition :before ((qvm noisy-qvm) (instr cl-quil:measurement))
   (let ((q (cl-quil:qubit-index (cl-quil:measurement-qubit instr))))
     (add-depolarizing-noise qvm q
                             (probability-measure-x qvm)

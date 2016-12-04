@@ -5,6 +5,13 @@
 (defpackage #:qvm
   (:use #:cl)
 
+  ;; wavefunction.lisp
+  (:export
+   #:probability                        ; FUNCTION
+   #:apply-operator                     ; FUNCTION
+   #:normalize-wavefunction             ; FUNCTION
+   )
+
   ;; qvm.lisp
   (:export
    #:quantum-virtual-machine            ; CLASS
@@ -13,8 +20,8 @@
    #:make-qvm                           ; FUNCTION
    #:load-program                       ; FUNCTION
    #:classical-bit                      ; ACCESSOR
-   #:apply-operator                     ; FUNCTION
-   #:probability                        ; FUNCTION
+   #:print-amplitudes                   ; FUNCTION
+   #:print-probabilities                ; FUNCTION
    )
 
   ;; measurement.lisp
@@ -28,12 +35,12 @@
   ;; transition.lisp
   (:export
    #:invalid-gate-invocation            ; CONDITION
-   #:transition-qvm                     ; GENERIC, METHOD
+   #:transition                         ; GENERIC, METHOD
    )
 
   ;; execution.lisp
   (:export
-   #:run                                ; FUNCTION
+   #:run                                ; GENERIC, METHOD
    #:run-program                        ; FUNCTION
    )
 
@@ -41,10 +48,6 @@
   (:export
    #:operator-matrix-from-truth-table   ; FUNCTION
    #:controlled                         ; FUNCTION
-
-   #:print-amplitudes                   ; FUNCTION
-   #:print-probabilities                ; FUNCTION
-   #:classical-call                     ; FUNCTION
    )
 
   ;; depolarizing-noise.lisp

@@ -21,6 +21,7 @@
                (:file "utilities")
                (:file "gates")
                (:file "quil")
+               (:file "wavefunction")
                (:file "qvm")
                (:file "measurement")
                (:file "transition")

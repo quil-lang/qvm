@@ -4,8 +4,6 @@
 
 (in-package #:qvm)
 
-;;; Quantum Virtual Machine
-
 (defclass quantum-virtual-machine ()
   (
    ;; --- Machine state
@@ -39,14 +37,7 @@
    (gate-definitions :accessor gate-definitions
                      :initarg :gate-definitions
                      :initform *default-gate-definitions*
-                     :documentation "A table mapping gate names to their GATE-instance definition.")
-
-   ;; --- Bookkeeping
-   ;; The following register is used primarily for controlled
-   ;; iteration through the amplitude space.
-
-   (amplitude-address :accessor amplitude-address
-                      :documentation "Non-negative integer address into the amplitudes."))
+                     :documentation "A table mapping gate names to their GATE-instance definition."))
 
   (:documentation "An implementation of the Quantum Abstract Machine."))
 
@@ -66,10 +57,7 @@
     ;; If the amplitudes weren't specified, initialize to |0...>.
     (unless (slot-boundp qvm 'amplitudes)
       (setf (amplitudes qvm)
-            (make-vector (expt 2 num-qubits) 1))) ; Pr[|00..>] = 1
-
-    ;; Initialize address register for amplitudes.
-    (setf (amplitude-address qvm) 0)))
+            (make-vector (expt 2 num-qubits) 1))))) ; Pr[|00..>] = 1
 
 (defun make-qvm (num-qubits &key (classical-memory-size 64))
   "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits."
@@ -115,40 +103,13 @@ This will not clear previously installed gates from the QVM."
 
 ;;; Fundamental Manipulation of the QVM
 
-(defun set-qubit-components-of-amplitude-address (qvm flags qubits)
-  "Set the amplitude address of QVM to the bits within the non-negative integer FLAGS for the corresponding tuple of qubit indices QUBITS. (Ordered LSB to MSB.)
+(defun nth-amplitude (qvm n)
+  "Get the Nth amplitude of the quantum virtual machine QVM."
+  (aref (amplitudes qvm) n))
 
-Note: This is stateful, and will retain any bits untouched by this procedure."
-  (declare (type nat-tuple qubits)
-           (type non-negative-fixnum flags))
-  (let ((x (amplitude-address qvm)))
-    (declare (type non-negative-fixnum x))
-    (do-nat-tuple (i qubit qubits)
-      (if (logbitp i flags)
-          (setf x (dpb 1 (byte 1 qubit) x))
-          (setf x (dpb 0 (byte 1 qubit) x))))
-    (setf (amplitude-address qvm) x)))
-
-(defun map-relevant-amplitudes (qvm function qubits)
-  "Iterate through all variations of the currently loaded amplitude address in the QVM, varying the qubits specified by the tuple QUBITS. For each newly loaded address, call the function FUNCTION.
-
-FUNCTION should be a unary function, and will receive an index running from 0 below 2^|qubits|.
-
-N.B. This function does not reset the amplitude address of the QVM."
-  (declare (type nat-tuple qubits))
-  (let ((number-of-iterations (expt 2 (nat-tuple-cardinality qubits))))
-    (dotimes (combo number-of-iterations)
-      (set-qubit-components-of-amplitude-address qvm combo qubits)
-      (funcall function combo))))
-
-(defun addressed-amplitude (qvm)
-  "Returns the amplitude currently addressed by QVM."
-  (aref (amplitudes qvm) (amplitude-address qvm)))
-
-(defun (setf addressed-amplitude) (new-value qvm)
-  "Sets the amplitude currently addressed by QVM to the complex NEW-VALUE."
-  (setf (aref (amplitudes qvm) (amplitude-address qvm))
-        new-value))
+(defun (setf nth-amplitude) (new-value qvm n)
+  "Set the Nth amplitude of the quantum virtual machine QVM."
+  (setf (aref (amplitudes qvm) n) new-value))
 
 (defun classical-bit (qvm n)
   "Extract the classical bit addressed by N from the quantum virtual machine QVM."
@@ -235,56 +196,20 @@ N.B. This function does not reset the amplitude address of the QVM."
           (classical-double-float qvm (make-bit-range (+ 64 left) right)) im)
     new-value))
 
-(defun extract-amplitudes (qvm qubits)
-  "Returns a column vector of amplitudes represented by the tuple of qubits QUBITS."
-  (declare (type nat-tuple qubits))
-  (let ((col (make-vector (expt 2 (nat-tuple-cardinality qubits)))))
-    (map-relevant-amplitudes
-     qvm
-     (lambda (combo)
-       (setf (aref col combo) (addressed-amplitude qvm)))
-     qubits)
-    col))
-
-(defun insert-amplitudes (qvm column qubits)
-  "Given a column vector of amplitudes COLUMN representing the qubits QUBITS, insert this state back into the quantum virtual machine QVM."
-  (declare (type nat-tuple qubits))
-  (map-relevant-amplitudes
-   qvm
-   (lambda (combo)
-     (setf (addressed-amplitude qvm) (aref column combo)))
-   qubits))
-
-(defun apply-operator (qvm operator qubits)
-  "Apply the operator (given as a matrix) OPERATOR to the amplitudes of the QVM specified by the qubits QUBITS."
-  (map-relevant-amplitudes
-   qvm
-   (lambda (combo)
-     (declare (ignore combo))
-     (let* ((x (extract-amplitudes qvm qubits))
-            (Ux (matrix-multiply operator x)))
-       (insert-amplitudes qvm Ux qubits)))
-   (nat-tuple-complement (number-of-qubits qvm) qubits))
-  qvm)
-
-(defun probability (amplitude)
-  "Convert an amplitude into a probability."
-  (expt (abs amplitude) 2))
-
 (defun state-probabilities (qvm qubits)
   "Returns a list of the probabilities for all combinations for the given qubits represented as a tuple. The output will be in binary order."
   (let ((probabilities nil)
         (other-qubits (nat-tuple-complement (number-of-qubits qvm) qubits)))
-    (map-relevant-amplitudes
+    (map-reordered-amplitudes
      qvm
-     (lambda (combo)
-       (declare (ignore combo))
+     (lambda (combo address)
+       (declare (ignore combo address))
        (push (let ((probability 0.0d0))
-               (map-relevant-amplitudes
+               (map-reordered-amplitudes
                 qvm
-                (lambda (combo)
+                (lambda (combo address)
                   (declare (ignore combo))
-                  (incf probability (probability (addressed-amplitude qvm))))
+                  (incf probability (probability (nth-amplitude qvm address))))
                 other-qubits)
                probability)
              probabilities))
@@ -304,3 +229,30 @@ If ERROR is T, then signal an error when the gate wasn't found."
       (when (and error (not found?))
         (error "Failed to find the gate named ~S" name))
       found-gate)))
+
+(defun reset (qvm)
+  "Perform a reset. Bring all qubits to |0>."
+  (map-into (amplitudes qvm) (constantly (cflonum 0)))
+  (setf (aref (amplitudes qvm) 0) (cflonum 1))
+  qvm)
+
+;;; These are useful for debugging and other classical execution. They
+;;; are a particular feature of this implementation, not a part of the
+;;; specification of the QAM/QIL.
+
+(defun print-amplitudes (qvm &optional string)
+  "Print the amplitudes nicely, prepended with the optional string STRING."
+  (let ((amplitudes
+          (coerce (amplitudes qvm) 'list)))
+    (format t "~@[~A: ~]~{~A~^, ~}~%" string amplitudes)
+    ;; Return the qvm.
+    qvm))
+
+(defun print-probabilities (qvm &optional string)
+  "Print the probabilities nicely, prepended with the optional string STRING."
+  (let ((probabilities
+          (map 'list #'probability (amplitudes qvm))))
+    (format t "~@[~A: ~]~{~5F~^, ~}~%" string probabilities)
+    ;; Return the qvm.
+    qvm))
+

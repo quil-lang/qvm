@@ -90,18 +90,6 @@
                                    :arity ,arity
                                    :matrix-function #',matrix-fn)))))))))
 
-(defmacro alias-default-gate (alias-name real-name)
-  "Create an alias called ALIAS-NAME for the gate named REAL-NAME."
-  (let* ((alias-string (symbol-name alias-name))
-         (real-string (symbol-name real-name))
-         (found-gate (gensym "FOUND-GATE-")))
-    `(let ((,found-gate (gethash ',real-string *default-gate-definitions*)))
-       (when (null ,found-gate)
-         (error "Cannot make alias for ~A because it hasn't been defined." ',real-string))
-       (setf (gethash ',alias-string *default-gate-definitions*)
-             ,found-gate)
-       ',alias-name)))
-
 ;; Evaluate this stuff earlier so we can have access while reading.
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun operator-matrix-from-truth-table (truth-table-outputs)
@@ -140,7 +128,7 @@ Example: A NAND gate can be made with
                    0 0 u00 u01
                    0 0 u10 u11))))
 
-;;; Some default gates
+;;; The default gate set
 
 (define-default-gate H 1 ()
   "The Hadamard gate."
@@ -301,37 +289,3 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
                0 0           (cis theta) 0
                0 (cis theta) 0           0
                0 0           0           1))
-
-
-;;; Meta-operators
-
-(defun reset (qvm)
-  "Perform a reset. Bring all qubits to |0>."
-  (map-into (amplitudes qvm) (constantly (cflonum 0)))
-  (setf (aref (amplitudes qvm) 0) (cflonum 1))
-  qvm)
-
-;;; These are useful for debugging and other classical execution. They
-;;; are a particular feature of this implementation, not a part of the
-;;; specification of the QAM/QIL.
-
-(defun print-amplitudes (qvm &optional string)
-  "Print the amplitudes nicely, prepended with the optional string STRING."
-  (let ((amplitudes
-          (coerce (amplitudes qvm) 'list)))
-    (format t "~@[~A: ~]~{~A~^, ~}~%" string amplitudes)
-    ;; Return the qvm.
-    qvm))
-
-(defun print-probabilities (qvm &optional string)
-  "Print the probabilities nicely, prepended with the optional string STRING."
-  (let ((probabilities
-          (map 'list #'probability (amplitudes qvm))))
-    (format t "~@[~A: ~]~{~5F~^, ~}~%" string probabilities)
-    ;; Return the qvm.
-    qvm))
-
-(defun classical-call (qvm function)
-  "Classically call the function FUNCTION (which takes one argument, the QVM)."
-  (funcall function qvm)
-  qvm)

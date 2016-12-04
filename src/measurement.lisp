@@ -36,35 +36,25 @@ which is the index with a zero injected at the QUBIT'th position."
   "Compute the probability that the qubits QUBITS will measure to 1 within the quantum virtual machine QVM."
   (first (last (state-probabilities qvm (apply #'nat-tuple qubits)))))
 
-(defun normalize-wavefunction (qvm)
-  "Normalize the wavefunction, making it a unit vector in the constituent Hilbert space."
-  (let ((amps (amplitudes qvm)))
-    (loop :for amp :across amps
-          :sum (probability amp) :into square-norm
-          :finally (map-into amps
-                             (let ((norm (sqrt square-norm)))
-                               (lambda (amp)
-                                 (/ amp norm)))
-                             amps)))
-  ;; Return the normalized QVM.
-  qvm)
-
 (defun force-measurement (measured-value qubit qvm)
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly."
   (check-type measured-value bit)
-  (map-relevant-amplitudes
-   qvm
-   (lambda (combo)
+  (map-reordered-amplitudes
+   0
+   (lambda (combo address)
      (declare (ignore combo))
-     (let* ((x (extract-amplitudes qvm (nat-tuple qubit))))
+     (let ((x (extract-amplitudes (amplitudes qvm) (nat-tuple qubit) address)))
        ;; Collapse x.
        (ecase measured-value
          (0 (setf (aref x 1) (cflonum 0)))
          (1 (setf (aref x 0) (cflonum 0))))
        ;; Insert it back.
-       (insert-amplitudes qvm x (nat-tuple qubit))))
-   (nat-tuple-complement (number-of-qubits qvm) (nat-tuple qubit)))
-  (normalize-wavefunction qvm))
+       (insert-amplitudes (amplitudes qvm) x (nat-tuple qubit) address)))
+   (nat-tuple-complement (wavefunction-qubits (amplitudes qvm)) (nat-tuple qubit)))
+  ;; Normalize the wavefunction after projective measurement.
+  (normalize-wavefunction (amplitudes qvm))
+  ;; Return the QVM.
+  qvm)
 
 (defun measure (qvm q c)
   "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum virtual machine QVM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store.
