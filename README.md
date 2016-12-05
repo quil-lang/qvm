@@ -9,6 +9,8 @@ Abstract Machine, called a "Quantum Virtual Machine" or QVM.
 
 System `qvm` and tests depend on:
 
+- A C compiler accessible from the `cc` command.
+
 - Relatively up-to-date SBCL and ASDF. Follow the instructions in
   `doc/lisp-setup.md` for details.
 

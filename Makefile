@@ -28,6 +28,7 @@ deps:
              --eval "(ql:update-all-dists :prompt nil)"
         # Update QVM, etc.
 	sbcl --noinform --non-interactive \
+	     --eval "(ql:quickload :cffi-grovel)" \
              --load "qvm.asd" \
              --load "qvm-tests.asd" \
              --load "qvm-app.asd" \

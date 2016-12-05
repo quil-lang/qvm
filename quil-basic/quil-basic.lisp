@@ -194,6 +194,7 @@
 (defun %main (argv)
   (declare (ignore argv))
   (sb-ext:disable-debugger)
+  (qvm:prepare-for-parallelization)
   (setf *error-output* (make-broadcast-stream))
   (write-line "Welcome to the Quil Machine by Rigetti Computing!")
   (write-line "A tool to explore quantum programming.")

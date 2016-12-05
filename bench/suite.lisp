@@ -6,6 +6,7 @@
 
 (defun run-benchmarks (&key (headless nil))
   "Run all QVM benchmarks. If HEADLESS is T, quit on completion."
+  (qvm:prepare-for-parallelization)
   (cond
     ((null headless)
      (run-package-benchmarks :package ':qvm-benchmarks

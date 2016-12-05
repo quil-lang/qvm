@@ -35,6 +35,7 @@
       nil))
 
 (defvar *program-name* "qvm")
+(defvar *num-workers* nil)
 
 (defparameter *option-spec*
   '((("execute" #\e)
@@ -56,6 +57,11 @@
      :type integer
      :initial-value 64
      :documentation "classical memory size in bits")
+
+    (("num-workers" #\w)
+     :type integer
+     :initial-value 0
+     :documentation "workers to use in parallel (0 => maximum number)")
 
     (("help" #\h)
      :type boolean
@@ -114,8 +120,9 @@
 ******************************
 * Welcome to the Rigetti QVM *~%~
 ******************************~%")
-  (format t "(Configured with ~D MiB of workspace.)~2%"
-          (floor (sb-ext:dynamic-space-size) (expt 1024 2))))
+  (format t "(Configured with ~D MiB of workspace and ~D worker~:P.)~2%"
+          (floor (sb-ext:dynamic-space-size) (expt 1024 2))
+          (or *num-workers* (max 1 (1- (qvm:count-logical-cores))))))
 
 (defmacro with-timing ((var) &body body)
   (let ((start (gensym "START-")))
@@ -154,7 +161,7 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (&key version execute help memory server port swank-port db-host db-port)
+(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers)
   (when help
     (show-help)
     (uiop:quit))
@@ -162,6 +169,13 @@
   (when version
     (show-version)
     (uiop:quit))
+
+  (cond
+    ((zerop num-workers)
+     (qvm:prepare-for-parallelization))
+    (t
+     (qvm:prepare-for-parallelization num-workers)
+     (setf *num-workers* num-workers)))
 
   (setf *qvm-db-host* db-host
         *qvm-db-port* db-port)
@@ -219,6 +233,7 @@
 (defun %main (argv)
   (sb-ext:disable-debugger)
   (setf *entered-from-main* t)
+
   ;; Save the program name away.
   (setf *program-name* (pop argv))
 

@@ -212,3 +212,48 @@ NT should be the bit set."
   "Execute BODY with probability 0 <= P <= 1."
   `(when (<= (random 1.0) ,p)
      ,@body))
+
+;;; Some system-level definitions.
+
+#+unix
+(cffi:defcfun (sysconf "sysconf") :long
+  (name :int))
+
+(defun count-logical-cores ()
+  "Compute the number of logical cores on the machine."
+  #+unix
+  (or (ignore-errors (sysconf $sc-nprocessors-onln)) 1)
+
+  #-unix
+  1)
+
+(let ((prepared? nil)
+      (workers-allotted nil))
+  (defun prepare-for-parallelization (&optional num-workers)
+    "Prepare for parallelization with the correct number of workers scaling with the number of logical cores of your machine.
+
+If NUM-WORKERS is provided, it can force the number of workers. If it's greater than 1, then it should be less than the number of logical cores of your machine.
+
+NOTE: This must be done before computations can be done.
+"
+    (check-type num-workers (or null (integer 1)))
+    (let ((num-logical-cores (or num-workers (count-logical-cores))))
+      (assert (or (null workers-allotted)
+                  (= 1 workers-allotted)
+                  (< workers-allotted num-logical-cores))
+              ()
+              "The number of workers for parallelization exceeds the ~
+               number of cores. This could be because ~
+               #'QVM:PREPARE-FOR-INITIALIZATION was called too early. ~
+               The number of workers is ~D and the number of logical ~
+               cores is ~D."
+              workers-allotted
+              num-logical-cores)
+      (unless prepared?
+        (let ((num-workers (max 1 (1- num-logical-cores))))
+          (setf lparallel:*kernel*
+                (lparallel:make-kernel num-workers :name "QVM Worker"))
+          (setf workers-allotted num-workers)
+          (setf prepared? t))))
+
+    (values)))

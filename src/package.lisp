@@ -5,6 +5,12 @@
 (defpackage #:qvm
   (:use #:cl)
 
+  ;; utilities.lisp
+  (:export
+   #:count-logical-cores                ; FUNCTION
+   #:prepare-for-parallelization        ; FUNCTION
+   )
+
   ;; wavefunction.lisp
   (:export
    #:probability                        ; FUNCTION

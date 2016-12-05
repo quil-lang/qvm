@@ -39,6 +39,14 @@ FUNCTION should be a binary function, and will receive (1) an index running from
       (let ((address (set-qubit-components-of-amplitude-address starting-address combo qubits)))
         (funcall function combo address)))))
 
+(defun map-reordered-amplitudes-in-parallel (starting-address function qubits)
+  "Parallel version of #'MAP-REORDERED-AMPLITUDES."
+  (declare (type nat-tuple qubits))
+  (let ((number-of-iterations (expt 2 (nat-tuple-cardinality qubits))))
+    (lparallel:pdotimes (combo number-of-iterations)
+      (let ((address (set-qubit-components-of-amplitude-address starting-address combo qubits)))
+        (funcall function combo address)))))
+
 (defun extract-amplitudes (wavefunction qubits starting-address)
   "Returns a column vector of amplitudes represented by the tuple of qubits QUBITS."
   (declare (type nat-tuple qubits))
@@ -61,7 +69,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 
 (defun apply-operator (wavefunction operator qubits)
   "Apply the operator (given as a matrix) OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS."
-  (map-reordered-amplitudes
+  (map-reordered-amplitudes-in-parallel
    0
    (lambda (combo address)
      (declare (ignore combo))
