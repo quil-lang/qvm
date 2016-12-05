@@ -30,7 +30,7 @@
 
 (defun quil-program ()
   (let* ((program-string (format nil "~{~A~^~%~}" *lines*))
-         (quil::*allow-unresolved-applications* t))
+         (quil:*allow-unresolved-applications* t))
     (quil:parse-quil-string program-string)))
 
 (defun trim-whitespace (s)
@@ -136,15 +136,18 @@
                          (format t "done!~%")
                          (case command-letter
                            (#\w
-                            (loop :for i :from 0
-                                  :for z :across (qvm::amplitudes qvm)
-                                  :for p := (qvm::probability z)
-                                  :do (format t "  |~v,'0B>: ~12F, ~12F; P=~5F%~%"
-                                              qubits
-                                              i
-                                              (realpart z)
-                                              (imagpart z)
-                                              (* 100 p))))
+                            (qvm:map-amplitudes
+                             qvm
+                             (let ((i 0))
+                               (lambda (z)
+                                 (let ((p (qvm:probability z)))
+                                   (format t "  |~v,'0B>: ~12F, ~12F; P=~5F%~%"
+                                           qubits
+                                           i
+                                           (realpart z)
+                                           (imagpart z)
+                                           (* 100 p))
+                                   (incf i))))))
                            (#\r
                             (loop :for i :below (qvm:classical-memory-size qvm)
                                   :for b := (qvm:classical-bit qvm i)

@@ -89,6 +89,21 @@ NT should be the bit set."
     (%make-nat-tuple :list comp-list
                      :membership comp-membership)))
 
+(deftype permutation ()
+  "A qubit permutation."
+  `(simple-array nat-tuple-elemnt (*)))
+
+(defun make-identity-permutation (n)
+  (check-type n nat-tuple-cardinality)
+  (loop :with perm := (make-array n :element-type 'nat-tuple-element
+                                    :initial-element 0)
+            :for i :below n
+            :do (setf (aref perm i) i)
+            :finally (return perm)))
+
+(defun permutation-to-nat-tuple (perm)
+  (apply #'nat-tuple (nreverse (coerce perm 'list))))
+
 ;;; Complex Linear Algebra
 
 (deftype flonum ()

@@ -11,9 +11,13 @@
                      :initarg :number-of-qubits
                      :documentation "Number of qubits being simulated.")
 
+   (qubit-permutation :accessor qubit-permutation
+                      :initarg :qubit-permutation
+                      :documentation "The permutation on the qubits.")
+
    (amplitudes :accessor amplitudes
                :initarg :amplitudes
-               :documentation "The (estimated) wavefunction.")
+               :documentation "The unpermuted wavefunction.")
 
    (classical-memory-size :accessor classical-memory-size
                           :initarg :classical-memory-size
@@ -54,6 +58,10 @@
     (unless (slot-boundp qvm 'classical-memory)
       (setf (classical-memory qvm) 0))
 
+    ;; Initialize the permutation to the identity.
+    (unless (slot-boundp qvm 'qubit-permutation)
+      (setf (qubit-permutation qvm) (make-identity-permutation num-qubits)))
+    
     ;; If the amplitudes weren't specified, initialize to |0...>.
     (unless (slot-boundp qvm 'amplitudes)
       (setf (amplitudes qvm)
@@ -103,6 +111,17 @@ This will not clear previously installed gates from the QVM."
 
 ;;; Fundamental Manipulation of the QVM
 
+(declaim (inline permuted-qubit))
+(defun permuted-qubit (qvm logical-qubit)
+  "What physical qubit does the logical qubit QUBIT refer to in the quantum virtual machine QVM?"
+  (aref (qubit-permutation qvm) logical-qubit))
+
+(defun swap-qubits (qvm qubit1 qubit2)
+  "Swap the logical qubits QUBIT1 and QUBIT2 in the quantum virtual machine QVM."
+  (let ((perm (qubit-permutation qvm)))
+    (rotatef (aref perm qubit1)
+             (aref perm qubit2))))
+
 (defun nth-amplitude (qvm n)
   "Get the Nth amplitude of the quantum virtual machine QVM."
   (aref (amplitudes qvm) n))
@@ -110,6 +129,17 @@ This will not clear previously installed gates from the QVM."
 (defun (setf nth-amplitude) (new-value qvm n)
   "Set the Nth amplitude of the quantum virtual machine QVM."
   (setf (aref (amplitudes qvm) n) new-value))
+
+(defun map-amplitudes (qvm f)
+  "Apply the function F to the amplitudes of the quantum virtual machine QVM in standard order."
+  (let ((amps (amplitudes qvm)))
+    (map-reordered-amplitudes
+     0
+     (lambda (i addr)
+       (declare (ignore i))
+       (funcall f (aref amps addr)))
+     (permutation-to-nat-tuple (qubit-permutation qvm))))
+  (values))
 
 (defun classical-bit (qvm n)
   "Extract the classical bit addressed by N from the quantum virtual machine QVM."
@@ -234,25 +264,8 @@ If ERROR is T, then signal an error when the gate wasn't found."
   "Perform a reset. Bring all qubits to |0>."
   (map-into (amplitudes qvm) (constantly (cflonum 0)))
   (setf (aref (amplitudes qvm) 0) (cflonum 1))
+  (setf (qubit-permutation qvm) (make-identity-permutation
+                                 (number-of-qubits qvm)))
   qvm)
 
-;;; These are useful for debugging and other classical execution. They
-;;; are a particular feature of this implementation, not a part of the
-;;; specification of the QAM/QIL.
-
-(defun print-amplitudes (qvm &optional string)
-  "Print the amplitudes nicely, prepended with the optional string STRING."
-  (let ((amplitudes
-          (coerce (amplitudes qvm) 'list)))
-    (format t "~@[~A: ~]~{~A~^, ~}~%" string amplitudes)
-    ;; Return the qvm.
-    qvm))
-
-(defun print-probabilities (qvm &optional string)
-  "Print the probabilities nicely, prepended with the optional string STRING."
-  (let ((probabilities
-          (map 'list #'probability (amplitudes qvm))))
-    (format t "~@[~A: ~]~{~5F~^, ~}~%" string probabilities)
-    ;; Return the qvm.
-    qvm))
 

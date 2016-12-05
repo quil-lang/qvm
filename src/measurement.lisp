@@ -22,7 +22,7 @@ which is the index with a zero injected at the QUBIT'th position."
             right)))
 
 (defun qubit-probability (qvm qubit)
-  "The probability that the qubit addressed by QUBIT is 1."
+  "The probability that the physical qubit addressed by QUBIT is 1."
   #+#:alternate-implementation
   (second (state-probabilities qvm (nat-tuple qubit)))
 

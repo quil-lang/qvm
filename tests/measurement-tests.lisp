@@ -28,3 +28,18 @@
       (is (= 1 (qvm::classical-bit qvm 0)))
       (is (= 0 (qvm::classical-bit qvm 1)))
       (is (= 1 (qvm::classical-bit qvm 2))))))
+
+(deftest test-simple-measurements-with-swap ()
+  "Test that some simple measurements work with SWAP."
+  (let ((p (with-output-to-quil
+             (write-line "X 0")
+             (write-line "X 2")
+             (write-line "SWAP 0 1")
+             (write-line "SWAP 0 2")
+             (write-line "MEASURE 0 [0]")
+             (write-line "MEASURE 1 [1]")
+             (write-line "MEASURE 2 [2]"))))
+    (let ((qvm (qvm:run-program (cl-quil:qubits-needed p) p)))
+      (is (= 1 (qvm::classical-bit qvm 0)))
+      (is (= 1 (qvm::classical-bit qvm 1)))
+      (is (= 0 (qvm::classical-bit qvm 2))))))

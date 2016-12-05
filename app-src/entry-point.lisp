@@ -222,8 +222,17 @@
        (format-log "Execution completed in ~D ms." exec-time)
        (when (<= qubits 5)
          (format-log "Printing state.")
-         (format-log "Amplitudes: ~{~A~^, ~}" (map 'list 'format-complex (qvm::amplitudes qvm)))
-         (format-log "Probabilities: ~{~F~^, ~}" (map 'list 'probability (qvm::amplitudes qvm))))
+         (format-log "Amplitudes:")
+         (qvm:map-amplitudes
+          qvm
+          (let ((i 0))
+            (lambda (z)
+              (format-log "  |~v,'0B>: ~A, P=~5F%"
+                          (qvm:number-of-qubits qvm)
+                          i
+                          (format-complex z)
+                          (qvm:probability z))
+              (incf i)))))
        (format-log "Classical memory (MSB -> LSB): ~v,'0B"
                    (qvm::classical-memory-size qvm)
                    (qvm::classical-memory qvm)))))
@@ -364,7 +373,7 @@ starts with the string PREFIX."
     (ecase (keywordify type)
       ;; For simple tests.
       ((:ping)
-       "pong")
+       (format nil "pong ~D" (get-universal-time)))
 
       ;; Multishot experiments.
       ((:multishot)
@@ -386,18 +395,19 @@ starts with the string PREFIX."
               (quil (let ((quil::*allow-unresolved-applications* t))
                       (process-quil (quil:parse-quil-string isns))))
               (num-qubits (cl-quil:qubits-needed quil))
-              (results (perform-wavefunction quil num-qubits
-                                             :gate-noise gate-noise
-                                             :measurement-noise measurement-noise))
+              (qvm (perform-wavefunction quil num-qubits
+                                         :gate-noise gate-noise
+                                         :measurement-noise measurement-noise))
               send-response-time)
          (with-timing (send-response-time)
            (setf (tbnl:content-type*) "application/octet-stream")
            (setf (tbnl:content-length*) (* 2 ; doubles/complex
                                            8 ; octets/double
-                                           (length results)))
-           (loop :with reply-stream := (tbnl:send-headers)
-                 :for z :across results
-                 :do (write-complex-double-float-as-binary z reply-stream)))
+                                           (expt 2 (qvm:number-of-qubits qvm))))
+           (let ((reply-stream (tbnl:send-headers)))
+             (qvm:map-amplitudes
+              qvm
+              (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
          (format-log "Response sent in ~D ms." send-response-time))))))
 
 (defun make-appropriate-qvm (num-qubits gate-noise measurement-noise)
@@ -475,7 +485,7 @@ starts with the string PREFIX."
       (with-timing (timing)
         (qvm:run qvm)))
     (format-log "Finished in ~D ms" timing)
-    (qvm::amplitudes qvm)))
+    qvm))
 
 
 (defvar *app* nil)

@@ -80,21 +80,33 @@ Return two values:
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:measure))
   (values
    (measure qvm
-            (quil:qubit-index (quil:measurement-qubit instr))
+            (permuted-qubit qvm (quil:qubit-index (quil:measurement-qubit instr)))
             (quil:address-value (quil:measure-address instr)))
    (1+ (pc qvm))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:measure-discard))
   (values
-   (measure qvm (quil:qubit-index (quil:measurement-qubit instr)) nil)
+   (measure qvm
+            (permuted-qubit qvm
+                            (quil:qubit-index (quil:measurement-qubit instr)))
+            nil)
    (1+ (pc qvm))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:gate-application))
   (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
          (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
-         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
+         (qubits (mapcar (lambda (q)
+                           (permuted-qubit qvm (quil:qubit-index q)))
+                         (quil:application-arguments instr)))
          (operator (apply #'gate-operator gate params)))
     (apply-operator (amplitudes qvm) operator (apply #'nat-tuple qubits))
+    (values
+     qvm
+     (1+ (pc qvm)))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:swap-application))
+  (destructuring-bind (q0 q1) (quil:application-arguments instr)
+    (swap-qubits qvm (quil:qubit-index q0) (quil:qubit-index q1))
     (values
      qvm
      (1+ (pc qvm)))))
@@ -104,7 +116,9 @@ Return two values:
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil::unresolved-application))
   (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
          (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
-         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
+         (qubits (mapcar (lambda (q)
+                           (permuted-qubit qvm (quil:qubit-index q)))
+                         (quil:application-arguments instr)))
          (operator (apply #'gate-operator gate params)))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))

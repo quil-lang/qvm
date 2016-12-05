@@ -20,6 +20,7 @@
                (:file "suite")
                (:file "utilities")
                (:file "utilities-tests")
+               (:file "qvm-tests")
                (:file "measurement-tests")
                (:file "gate-tests")
                (:file "instruction-tests")

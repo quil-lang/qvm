@@ -26,8 +26,7 @@
    #:make-qvm                           ; FUNCTION
    #:load-program                       ; FUNCTION
    #:classical-bit                      ; ACCESSOR
-   #:print-amplitudes                   ; FUNCTION
-   #:print-probabilities                ; FUNCTION
+   #:map-amplitudes                     ; FUNCTION
    )
 
   ;; measurement.lisp
