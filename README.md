@@ -1,4 +1,4 @@
-# qvm
+# Rigetti Quantum Virtual Machine
 
 [![Build Status](https://semaphoreci.com/api/v1/projects/ba9d589a-9d74-400d-980f-785dec5657aa/811586/badge.svg)](https://semaphoreci.com/spikecurtis/qvm)
 
@@ -7,25 +7,27 @@ Abstract Machine, called a "Quantum Virtual Machine" or QVM.
 
 ## Dependencies
 
-System `qvm` and tests depend on:
+The system `qvm` and associated tests depend on:
 
-- A C compiler accessible from the `cc` command.
+- For UNIX systems, a C compiler accessible from the `cc` command.
 
 - Relatively up-to-date SBCL and ASDF. Follow the instructions in
-  `doc/lisp-setup.md` for details.
+  [`lisp-setup.md`](doc/lisp-setup.md) for details.
 
 - Up-to-date [`cl-quil`](https://github.com/rigetticomputing/cl-quil)
   (which itself depends on up-to-date
   [`alexa`](https://github.com/rigetticomputing/alexa)).
 
-Otherwise, system `qvm` is intended to be written portably.
+Otherwise, system `qvm` is intended to be written portably across operating systems
+and processor architectures.
 
 ## How to Run Interactively
 
 The QVM is written in ANSI Common Lisp. An efficient, optimizing,
 machine-code compiler called SBCL is recommended for its
 execution. This is a free and open source implementation of Common
-Lisp. Follow the instructions in `doc/lisp-setup.md` for details.
+Lisp. Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md)
+for details.
 
 Once setup, load the QVM by the following commands.
 
@@ -65,9 +67,13 @@ To quit, type control-d.
 
 There is what might be considered beta support for Semaphore CI. Every
 build will get built and tested. A failure can indicate failure to
-build or failure of the test suite. However, per Issue #5, the output
-of *test failures* isn't so instructive. However, if a test failure is
-encountered, one should try to reproduce with the steps below.
+build or failure of the test suite. You should check below.
+
+### If you just want to run tests
+
+Just call `make test` at the command line.
+
+### If you want to run tests *and* debug them
 
 Within Lisp, do this once to install all of the requisite packages:
 
@@ -76,8 +82,7 @@ Within Lisp, do this once to install all of the requisite packages:
 ```
 
 If you get an error saying that the system `QVM-TESTS` cannot be
-found, look in the directory above `qvm` for a `system-index.txt` file
-and delete it, and then retry.
+found, try clearing the cache with `make cleanall` at the command line.
 
 Once installed, once you've loaded `qvm` using the normal means, you
 can test the system by doing
@@ -113,7 +118,7 @@ tests.
 ## How to Build a Stand-Alone Executable
 
 Building an executable requires `buildapp`. See the Lisp instructions
-in `doc/lisp-setup.md` for details.
+in [`lisp-setup.md`](doc/lisp-setup.md) for details.
 
 Before building, you must ensure that all dependencies are downloaded
 from the internet. To do this, just type the command
@@ -131,18 +136,21 @@ directory. This should produce output like the following:
 ```
 $ make
 buildapp --output qvm \
-       		 --dynamic-space-size 1024 \
-       		 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
-       		 --asdf-tree "./../" \
-       		 --load-system qvm-app \
-       		 --logfile build-output.log \
-       		 --entry qvm-app::%main
+                 --dynamic-space-size 1024 \
+                 --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
+                 --asdf-tree "./../" \
+                 --load-system qvm-app \
+                 --logfile build-output.log \
+                 --entry qvm-app::%main
 ;; loading system "qvm-app"
 [undoing binding stack and other enclosing state... done]
+[defragmenting immobile space... done]
 [saving current Lisp image into qvm:
-writing 4832 bytes from the read-only space at 0x20000000
-writing 4624 bytes from the static space at 0x20100000
-writing 82509824 bytes from the dynamic space at 0x1000000000
+writing 4800 bytes from the read-only space at 0x20000000
+writing 4048 bytes from the static space at 0x20100000
+writing 2273280 bytes from the immobile space at 0x20300000
+writing 18917136 bytes from the immobile space at 0x21b00000
+writing 56164352 bytes from the dynamic space at 0x1000000000
 done]
 ```
 
@@ -160,18 +168,24 @@ run the `bell.quil` example to produce a Bell state, using the QVM's `-e` option
 
 ```
 $ ./qvm -e examples/bell.quil
-[2016-08-31 14:16:02] Welcome to the Rigetti QVM.
-[2016-08-31 14:16:02] (Configured with 1024 MiB of workspace.)
-[2016-08-31 14:16:02] Reading program.
-[2016-08-31 14:16:03] Allocating memory for QVM of 2 qubits.
-[2016-08-31 14:16:03] Allocation completed in 8 ms.
-[2016-08-31 14:16:03] Loading quantum program.
-[2016-08-31 14:16:03] Executing quantum program.
-[2016-08-31 14:16:03] Execution completed in 75 ms.
-[2016-08-31 14:16:03] Printing state.
-[2016-08-31 14:16:03] Amplitudes: 0.7071067811865475, 0.0, 0.0, 0.7071067811865475
-[2016-08-31 14:16:03] Probabilities: 0.4999999999999999, 0.0, 0.0, 0.4999999999999999
-[2016-08-31 14:16:03] Classical memory (MSB -> LSB): 0000000000000000000000000000000000000000000000000000000000000000
+******************************
+* Welcome to the Rigetti QVM *
+******************************
+(Configured with 1024 MiB of workspace and 7 workers.)
+
+[2016-12-05 10:28:31] Reading program.
+[2016-12-05 10:28:31] Allocating memory for QVM of 2 qubits.
+[2016-12-05 10:28:31] Allocation completed in 3 ms.
+[2016-12-05 10:28:31] Loading quantum program.
+[2016-12-05 10:28:31] Executing quantum program.
+[2016-12-05 10:28:31] Execution completed in 62 ms.
+[2016-12-05 10:28:31] Printing state.
+[2016-12-05 10:28:31] Amplitudes:
+[2016-12-05 10:28:31]   |00>: 0.7071067811865475, P= 50.0%
+[2016-12-05 10:28:31]   |01>: 0.0, P=  0.0%
+[2016-12-05 10:28:31]   |10>: 0.0, P=  0.0%
+[2016-12-05 10:28:31]   |11>: 0.7071067811865475, P= 50.0%
+[2016-12-05 10:28:31] Classical memory (MSB -> LSB): 0000000000000000000000000000000000000000000000000000000000000000
 ```
 
 As seen, a classical Bell state was produced.
