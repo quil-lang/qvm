@@ -231,7 +231,7 @@
                           (qvm:number-of-qubits qvm)
                           i
                           (format-complex z)
-                          (qvm:probability z))
+                          (* 100 (qvm:probability z)))
               (incf i)))))
        (format-log "Classical memory (MSB -> LSB): ~v,'0B"
                    (qvm::classical-memory-size qvm)
