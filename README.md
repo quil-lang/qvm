@@ -209,8 +209,8 @@ If you have docker installed and have been added to our private Dockerhub (ask W
 ```
 docker pull rigetticomputing/qvm
 ```
-This will download the qvm code.  To run this qvm run
+This will download the qvm code.  To start the QVM, run
 ```
-docker run rigetticomputing/qvm
+docker run rigetticomputing/qvm -p 5000:5000
 ```
-This should start the QVM on the default port:5000.  You should see a welcome message!
+This should start the QVM on the default port 5000.  You should see a welcome message!
