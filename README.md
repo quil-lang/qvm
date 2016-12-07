@@ -203,3 +203,14 @@ This will delete any built executables as well.
 
 ## Deploying to AWS
 Instructions can be found [here](https://github.com/rigetticomputing/qvm/wiki).
+
+## Installing using Docker
+If you have docker installed and have been added to our private Dockerhub (ask Will, Robert, or Spike for this) then you can use docker to set up a local copy of the QVM with only a few commands and no other installation. First pull the docker image
+```
+docker pull rigetticomputing/qvm
+```
+This will download the qvm code.  To run this qvm run
+```
+docker run rigetticomputing/qvm
+```
+This should start the QVM on the default port:5000.  You should see a welcome message!
