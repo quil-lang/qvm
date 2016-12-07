@@ -209,7 +209,7 @@ If you have docker installed and have been added to our private Dockerhub (ask W
 ```
 docker pull rigetticomputing/qvm
 ```
-This will download the qvm code.  To start the QVM, run
+This will download the QVM server.  To start the QVM, run
 ```
 docker run rigetticomputing/qvm -p 5000:5000
 ```
