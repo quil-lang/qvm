@@ -18,7 +18,7 @@
                #+unix
                #:cffi
                ;; Quil parsing and analysis
-               (:version #:cl-quil "0.3.0")
+               (:version #:cl-quil "0.4.0")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :pathname "src/"

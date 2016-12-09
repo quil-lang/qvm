@@ -19,29 +19,15 @@
                    :matrix (apply #'make-matrix dim entries))))
 
 (defmethod gate-definition-to-gate ((gate-def quil:parameterized-gate-definition))
-  (labels ((substitute-param (p sym body)
-             (subst sym p body :test (lambda (x y)
-                                       (and (quil:is-param x)
-                                            (quil:is-param y)
-                                            (string= (quil:param-name x)
-                                                     (quil:param-name y))))))
-           (substitute-params (params syms body)
-             (if (null params)
-                 body
-                 (substitute-params (rest params)
-                                    (rest syms)
-                                    (substitute-param (first params)
-                                                      (first syms)
-                                                      body))))
-           (lambda-form (params dimension entries)
-             (let ((syms (mapcar (lambda (p) (gensym (quil:param-name p))) params)))
-               `(lambda ,syms
-                  (make-matrix ,dimension
-                               ,@(substitute-params params syms entries))))))
+  (flet ((lambda-form (params dimension entries)
+           `(lambda ,params
+              (declare (ignorable ,@params))
+              (make-matrix ,dimension ,@entries))))
     (let* ((name (quil:gate-definition-name gate-def))
            (entries (quil:gate-definition-entries gate-def))
            (params (quil:gate-definition-parameters gate-def))
            (dim (isqrt (length entries))))
+      (assert (every #'symbolp params))
       (make-instance 'parameterized-gate
                      :name name
                      :dimension dim
