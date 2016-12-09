@@ -31,7 +31,7 @@
                ;; Remote Lisp connection
                #:swank
                )
-  :pathname "app-src/"
+  :pathname "src-app/"
   :serial t
   :components ((:file "package")
                (:file "db")

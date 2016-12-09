@@ -32,7 +32,7 @@ deps:
              --load "qvm.asd" \
              --load "qvm-tests.asd" \
              --load "qvm-app.asd" \
-             --load "quil-basic/quil-basic.asd" \
+             --load "src-quilbasic/quil-basic.asd" \
              --eval "(ql:quickload '(:qvm :qvm-tests :qvm-app :quil-basic))"
 
 
@@ -54,7 +54,7 @@ quilbasic:
                  --asdf-tree "~/quicklisp/dists/quicklisp/software/" \
                  --asdf-tree "./../" \
                  --load-system quil-basic \
-                 --load "./quil-basic/zap-info.lisp" \
+                 --load "./src-quilbasic/zap-info.lisp" \
                  --eval '(zap-info)' \
                  --logfile build-output.log \
                  --entry quil-basic::%main
