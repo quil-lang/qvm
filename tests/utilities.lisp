@@ -5,11 +5,14 @@
 (in-package #:qvm-tests)
 
 (defmacro with-output-to-quil (&body body)
-  ;; FIXME: Temporary
-  `(let ((quil::*allow-unresolved-applications* t))
+  `(let ((quil:*allow-unresolved-applications* t))
      (quil:parse-quil-string
       (with-output-to-string (*standard-output*)
-        ,@body))))
+        ,@(loop :for form :in body
+                :if (stringp form)
+                  :collect `(write-line ,form)
+                :else
+                  :collect form)))))
 
 (defvar *default-epsilon* 0.00001)
 
