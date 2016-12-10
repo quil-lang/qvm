@@ -70,9 +70,11 @@
     (is (double-float= 1 (qubit-probability q 0)))
     (is (double-float= 0 (qubit-probability q 1)))))
 
-#+#:ignore
 (deftest test-wait ()
-  nil)
+  (let ((p (with-output-to-quil
+             "WAIT")))
+    (not-signals error
+      (run-program 1 p))))
 
 (deftest test-flip-circuit ()
   "Test the FLIP circuit. Will flip [0] once, and [1] twice. Tests in particular the ability to generate unique labels within circuits."
