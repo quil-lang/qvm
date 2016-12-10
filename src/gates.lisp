@@ -199,14 +199,14 @@ Example: A NAND gate can be made with
   "The R_z(theta) gate."
   (let ((theta/2 (/ theta 2)))
     (make-matrix 2
-                 (quil:complex-cis (- theta/2)) 0
-                 0                              (quil:complex-cis theta/2))))
+                 (cis (- theta/2)) 0
+                 0                 (cis theta/2))))
 
 (define-default-gate phase 1 (alpha)
   "A regular phase gate. Equivalent to R_z multiplied by a phase."
   (make-matrix 2
                1 0
-               0 (quil:complex-cis alpha)))
+               0 (cis alpha)))
 
 (define-default-gate S 1 ()
   "The S gate."
@@ -218,31 +218,31 @@ Example: A NAND gate can be made with
   "The T gate."
   '#.(make-matrix 2
                   1 0
-                  0 (quil:complex-cis (/ pi 4))))
+                  0 (cis (/ pi 4))))
 
 (define-default-gate CPHASE00 2 (alpha)
   "The controlled phase gate (00-variant)."
   (make-matrix 4
-               (quil:complex-cis alpha) 0 0 0
-               0                        1 0 0
-               0                        0 1 0
-               0                        0 0 1))
+               (cis alpha) 0 0 0
+               0           1 0 0
+               0           0 1 0
+               0           0 0 1))
 
 (define-default-gate CPHASE01 2 (alpha)
   "The controlled phase gate (01-variant)."
   (make-matrix 4
-               1 0                        0 0
-               0 (quil:complex-cis alpha) 0 0
-               0 0                        1 0
-               0 0                        0 1))
+               1 0           0 0
+               0 (cis alpha) 0 0
+               0 0           1 0
+               0 0           0 1))
 
 (define-default-gate CPHASE10 2 (alpha)
   "The controlled phase gate (10-variant)."
   (make-matrix 4
-               1 0 0                        0
-               0 1 0                        0
-               0 0 (quil:complex-cis alpha) 0
-               0 0 0                        1))
+               1 0 0           0
+               0 1 0           0
+               0 0 (cis alpha) 0
+               0 0 0           1))
 
 (define-default-gate CPHASE 2 (alpha)
   "The controlled phase gate (11-variant).
@@ -252,7 +252,7 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
                1 0 0 0
                0 1 0 0
                0 0 1 0
-               0 0 0 (quil:complex-cis alpha)))
+               0 0 0 (cis alpha)))
 
 (define-default-gate SWAP 2 ()
   "A quantum gate that swaps the relevant amplitudes of two qubits."
@@ -285,7 +285,7 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
 (define-default-gate PSWAP 2 (theta)
   "The parametric SWAP gate, for superconducting quantum computers."
   (make-matrix 4
-               1 0                        0                        0
-               0 0                        (quil:complex-cis theta) 0
-               0 (quil:complex-cis theta) 0                        0
-               0 0                        0                        1))
+               1 0           0           0
+               0 0           (cis theta) 0
+               0 (cis theta) 0           0
+               0 0           0           1))

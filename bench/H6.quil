@@ -1,4 +1,4 @@
-INCLUDE "../quil/qve.quil"
+INCLUDE "../quil/vqe.quil"
 X 2
 X 3
 Yb 2

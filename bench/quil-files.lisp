@@ -18,14 +18,22 @@
         (qvm:load-program qvm program)
         (qvm:run qvm)))))
 
+(benchmark:define-benchmark bench-25-hadamards ()
+  "Benchmark a sequence of 25 Hadamard gates."
+  (timed-run "25H.quil"))
+
 (benchmark:define-benchmark bench-H4 ()
-  "Benchmark for sample QVE run from H4 computation."
+  "Benchmark for sample VQE run from H4 computation."
   (timed-run "H4.quil"))
 
 (benchmark:define-benchmark bench-H6 ()
-  "Benchmark for sample QVE run from H6 computation."
+  "Benchmark for sample VQE run from H6 computation."
   (timed-run "H6.quil"))
 
 (benchmark:define-benchmark bench-big-defgate ()
   "Benchmark a very large DEFGATE and associated invocations."
   (timed-run "qaoa_8q.quil"))
+
+(benchmark:define-benchmark bench-supremacy ()
+  "Benchmark sample code from supremacy studies."
+  (timed-run "5x4x25.quil"))
