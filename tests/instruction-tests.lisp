@@ -70,6 +70,22 @@
     (is (double-float= 1 (qubit-probability q 0)))
     (is (double-float= 0 (qubit-probability q 1)))))
 
-#+ignore
+#+#:ignore
 (deftest test-wait ()
   nil)
+
+(deftest test-flip-circuit ()
+  "Test the FLIP circuit. Will flip [0] once, and [1] twice. Tests in particular the ability to generate unique labels within circuits."
+  (let* ((p (with-output-to-quil
+              ;; We need 3 blank ancillas.
+              "DEFCIRCUIT FLIP addr ancilla:"
+              "    JUMP-WHEN @one addr"
+              "    X ancilla"
+              "    LABEL @one"
+              "    MEASURE ancilla addr"
+              "FLIP [0] 0"
+              "FLIP [1] 1"
+              "FLIP [1] 2"))
+         (q (run-program 3 p)))
+    (is (= 1 (classical-bit q 0)))
+    (is (= 0 (classical-bit q 1)))))
