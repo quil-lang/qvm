@@ -374,6 +374,13 @@ starts with the string PREFIX."
       ((:ping)
        (format nil "pong ~D" (get-universal-time)))
 
+      ;; Get the version of everything.
+      ((:version)
+       (string-right-trim
+        '(#\Newline)
+        (with-output-to-string (*standard-output*)
+          (show-version))))
+
       ;; Multishot experiments.
       ((:multishot)
        (let* ((addresses (gethash ':ADDRESSES js))
