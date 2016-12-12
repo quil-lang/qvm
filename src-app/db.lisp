@@ -36,6 +36,17 @@
               (warn "Host unreachable, continuing without Redis connection.")
               (,fun))))))))
 
-(defmethod qvm::transition-qvm :after ((qvm qvm:quantum-virtual-machine) instr)
-  (unless (null redis:*connection*)
-    (red:INCR +instruction-counter-key+)))
+
+;;; Instruction Counting
+
+(defvar *instruction-counter*)
+
+(defmethod qvm:run :around ((qvm qvm:quantum-virtual-machine))
+  (let ((*instruction-counter* 0))
+    (prog1 (call-next-method)
+      (with-redis
+        (when (and *qvm-db-host* *qvm-db-port*)
+          (red:INCRBY +instruction-counter-key+ *instruction-counter*))))))
+
+(defmethod qvm:transition :after ((qvm qvm:quantum-virtual-machine) instr)
+  (incf *instruction-counter*))
