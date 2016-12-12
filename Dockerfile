@@ -10,7 +10,7 @@ WORKDIR /root/
 
 ADD ./qvm /root/qvm
 ADD ./quil/stdgates.quil /root/stdgates.quil
-ADD ./quil/qve.quil /root/qve.quil
+ADD ./quil/vqe.quil /root/vqe.quil
 RUN chmod +x /root/qvm
 
 CMD /root/qvm -S
