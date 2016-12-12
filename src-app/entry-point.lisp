@@ -11,17 +11,36 @@
     (let ((sys (asdf:find-system system-designator nil)))
       (if (and sys (slot-boundp sys 'asdf:version))
           (asdf:component-version sys)
-          "unknown"))))
+          "unknown")))
 
-(alexandria:define-constant +APP-VERSION+
-    (system-version '#:qvm-app)
-  :test #'string=
-  :documentation "The version of the QVM application.")
+  (defun git-hash (system)
+    "Get the short git hash of the system SYSTEM."
+    (let ((sys-path (namestring (asdf:system-relative-pathname system ""))))
+      (multiple-value-bind (output err-output status)
+          (uiop:run-program `("git" "-C" ,sys-path "rev-parse" "--short" "HEAD")
+                            :output '(:string :stripped t)
+                            :ignore-error-status t)
+        (declare (ignore err-output))
+        (if (not (zerop status))
+            "unknown"
+            output)))))
 
-(alexandria:define-constant +QVM-VERSION+
-    (system-version '#:qvm)
-  :test #'string=
-  :documentation "The version of the QVM itself.")
+(eval-when (:compile-toplevel)
+  (alexandria:define-constant +APP-VERSION+
+      (system-version '#:qvm-app)
+    :test #'string=
+    :documentation "The version of the QVM application.")
+
+  (alexandria:define-constant +QVM-VERSION+
+      (system-version '#:qvm)
+    :test #'string=
+    :documentation "The version of the QVM itself.")
+
+  (alexandria:define-constant +GIT-HASH+
+      (git-hash '#:qvm)
+    :test #'string=
+    :documentation "The git hash of the QVM repo.")
+  )
 
 (defvar *entered-from-main* nil)
 
@@ -113,7 +132,7 @@
   (command-line-arguments:show-option-help *option-spec* :sort-names t))
 
 (defun show-version ()
-  (format t "~A (qvm: ~A)~%" +APP-VERSION+ +QVM-VERSION+))
+  (format t "~A (qvm: ~A) [~A]~%" +APP-VERSION+ +QVM-VERSION+ +GIT-HASH+))
 
 (defun show-welcome ()
   (format t "~&~
