@@ -1,5 +1,5 @@
 # Heap space for QVM in MiB.
-QVM_WORKSPACE ?= 1024
+QVM_WORKSPACE ?= 2048
 LISP_CACHE ?= `sbcl --noinform --non-interactive --eval '(princ asdf:*user-cache*)'`
 
 all: qvm
