@@ -25,7 +25,7 @@
             "unknown"
             output)))))
 
-(eval-when (:compile-toplevel)
+(eval-when (:compile-toplevel :load-toplevel)
   (alexandria:define-constant +APP-VERSION+
       (system-version '#:qvm-app)
     :test #'string=
