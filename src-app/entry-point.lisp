@@ -55,6 +55,16 @@
 
 (defvar *program-name* "qvm")
 (defvar *num-workers* nil)
+(defvar *time-limit* nil)
+
+(defmacro with-timeout (&body body)
+  (let ((f (gensym "TIME-LIMITED-BODY-")))
+    `(flet ((,f () ,@body))
+       (declare (dynamic-extent (function ,f)))
+       (if (null *time-limit*)
+           (,f)
+           (sb-ext:with-timeout *time-limit*
+             (,f))))))
 
 (defparameter *option-spec*
   '((("execute" #\e)
@@ -81,6 +91,11 @@
      :type integer
      :initial-value 0
      :documentation "workers to use in parallel (0 => maximum number)")
+
+    (("time-limit")
+     :type integer
+     :initial-value 0
+     :documentation " time limit for computations (0 => unlimited, ms)")
 
     (("help" #\h)
      :type boolean
@@ -141,7 +156,7 @@
 ******************************~%")
   (format t "(Configured with ~D MiB of workspace and ~D worker~:P.)~2%"
           (floor (sb-ext:dynamic-space-size) (expt 1024 2))
-          (or *num-workers* (max 1 (1- (qvm:count-logical-cores))))))
+          (or *num-workers* (max 1 (qvm:count-logical-cores)))))
 
 (defmacro with-timing ((var) &body body)
   (let ((start (gensym "START-")))
@@ -180,7 +195,7 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers)
+(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit)
   (when help
     (show-help)
     (uiop:quit))
@@ -188,6 +203,9 @@
   (when version
     (show-version)
     (uiop:quit))
+
+  (when (plusp time-limit)
+    (setf *time-limit* (/ time-limit 1000.0d0)))
 
   (cond
     ((zerop num-workers)
@@ -483,7 +501,8 @@ starts with the string PREFIX."
           ;; Reset the amplitudes.
           (qvm::reset qvm)
           ;; Run the program.
-          (qvm:run qvm)
+          (with-timeout
+            (qvm:run qvm))
           ;; Collect bits.
           (push (collect-bits qvm) trial-results)))
       (format-log "Finished in ~D ms" timing)
@@ -506,7 +525,8 @@ starts with the string PREFIX."
     (qvm:load-program qvm quil)
     (format-log "Running experiment on ~A" (class-name (class-of qvm)))
     (with-timing (timing)
-      (qvm:run qvm))
+      (with-timeout
+        (qvm:run qvm)))
     (format-log "Finished in ~D ms" timing)
     qvm))
 

@@ -265,7 +265,7 @@ NOTE: This must be done before computations can be done.
               workers-allotted
               num-logical-cores)
       (unless prepared?
-        (let ((num-workers (max 1 (1- num-logical-cores))))
+        (let ((num-workers (max 1 num-logical-cores)))
           (setf lparallel:*kernel*
                 (lparallel:make-kernel num-workers :name "QVM Worker"))
           (setf workers-allotted num-workers)
