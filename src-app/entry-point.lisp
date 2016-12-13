@@ -444,6 +444,7 @@ starts with the string PREFIX."
               send-response-time)
          (with-timing (send-response-time)
            (setf (tbnl:content-type*) "application/octet-stream")
+           (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
            (setf (tbnl:content-length*) (* 2 ; doubles/complex
                                            8 ; octets/double
                                            (expt 2 (qvm:number-of-qubits qvm))))
