@@ -432,6 +432,21 @@ starts with the string PREFIX."
          (with-output-to-string (s)
            (yason:encode results s))))
 
+      ;; Expectation value computation.
+      ((:expectation)
+       (let* ((quil:*allow-unresolved-applications* t)
+              (state-prep (quil:parse-quil-string
+                           (gethash ':STATE-PREPARATION js)))
+              (operators (map 'list #'quil:parse-quil-string
+                              (gethash ':OPERATORS js)))
+              (num-qubits (loop :for p :in (cons state-prep operators)
+                                :maximize (cl-quil:qubits-needed p)))
+              (results (perform-expectation state-prep operators num-qubits
+                                            :gate-noise gate-noise
+                                            :measurement-noise measurement-noise)))
+         (with-output-to-string (s)
+           (yason:encode results s))))
+
       ;; Wavefunction computation.
       ((:wavefunction)
        (let* ((isns (gethash ':QUIL-INSTRUCTIONS js))
@@ -508,6 +523,74 @@ starts with the string PREFIX."
           (push (collect-bits qvm) trial-results)))
       (format-log "Finished in ~D ms" timing)
       (nreverse trial-results))))
+
+(defun perform-expectation (state-prep operators num-qubits &key gate-noise measurement-noise)
+  "Let F be the wavefunction resulting from STATE-PREP on the zero state. Then compute a list of real expectation values of the operators in OPERATORS, namely,
+
+    <F| O1 |F>,  <F| O2 |F>,  ...    for Oi in OPERATORS.
+"
+  (check-type state-prep quil:parsed-program)
+  (dolist (o operators) (check-type o quil:parsed-program))
+  (check-type num-qubits (integer 0))
+  (check-type gate-noise (or null alexandria:proper-list))
+  (check-type measurement-noise (or null alexandria:proper-list))
+  (assert (and (or (null gate-noise)
+                   (= 3 (length gate-noise)))
+               (every #'realp gate-noise)))
+  (assert (and (or (null measurement-noise)
+                   (= 3 (length measurement-noise)))
+               (every #'realp measurement-noise)))
+
+  ;; If we have nothing to compute the expectation of, then return
+  ;; nothing.
+  (when (null operators)
+    (format-log "No operators to compute expectation of. Returning NIL.")
+    (return-from perform-expectation '()))
+
+  ;; Otherwise, go about business.
+  (let ((qvm (make-appropriate-qvm num-qubits gate-noise measurement-noise))
+        timing)
+    ;; Make the initial state.
+    (qvm:load-program qvm state-prep)
+    (format-log "Computing initial state for expectation value ~
+                 computation on ~A"
+                (class-name (class-of qvm)))
+    (with-timing (timing)
+      (with-timeout
+          (qvm:run qvm)))
+    (format-log "Finished state prep in ~D ms." timing)
+    (format-log "Copying prepared state.")
+    (let ((prepared-wf
+            (with-timing (timing)
+              (copy-seq (qvm::amplitudes qvm))))
+          (first-time t))
+      (format-log "Copied prepared state in ~D ms." timing)
+      (flet ((inner-product (a b)
+               (declare (type qvm::quantum-state a b))
+               (loop :for ai :of-type qvm::cflonum :across a
+                     :for bi :of-type qvm::cflonum :across b
+                     :sum (* (conjugate ai) bi)))
+             (reload (qvm program)
+               (unless first-time
+                 (replace (qvm::amplitudes qvm) prepared-wf))
+               (qvm:load-program qvm program)
+               (setf first-time nil)))
+        ;; Compute the expectations of the operators.
+        (loop :for i :from 1
+              :for op :in operators
+              :collect (let (expectation)
+                         (format-log "Computing the expectation value of the ~:R operator." i)
+                         (with-timing (timing)
+                           (reload qvm op)
+                           (qvm:run qvm)
+                           (setf expectation (inner-product
+                                              prepared-wf
+                                              (qvm::amplitudes qvm))))
+                         (format-log "Computed ~:R expectation value in ~D ms." i timing)
+                         (assert (< (abs (imagpart expectation)) 1e-14))
+                         (unless (zerop (imagpart expectation))
+                           (warn "Non-zero but acceptable imaginary part of expectation value: ~A" expectation))
+                         (realpart expectation)))))))
 
 (defun perform-wavefunction (quil num-qubits &key gate-noise measurement-noise)
   (check-type quil quil:parsed-program)
