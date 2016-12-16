@@ -262,7 +262,7 @@ If ERROR is T, then signal an error when the gate wasn't found."
 
 (defun reset (qvm)
   "Perform a reset. Bring all qubits to |0>."
-  (map-into (amplitudes qvm) (constantly (cflonum 0)))
+  (fill (amplitudes qvm) (cflonum 0))
   (setf (aref (amplitudes qvm) 0) (cflonum 1))
   (setf (qubit-permutation qvm) (make-identity-permutation
                                  (number-of-qubits qvm)))
