@@ -73,8 +73,8 @@ NT should be the bit set."
   (check-type i symbol)
   (check-type elt symbol)
   (let ((g-nt (gensym "NT-")))
-    `(loop :with ,g-nt := (nat-tuple-list ,nt)
-           :for ,i :from 0
+    `(loop :with ,g-nt :of-type list := (nat-tuple-list ,nt)
+           :for ,i :of-type non-negative-fixnum :from 0
            :for ,elt :of-type nat-tuple-element :in ,g-nt
            :do (progn
                  ,@body))))
