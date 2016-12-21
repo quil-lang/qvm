@@ -16,6 +16,27 @@
 
 (defvar *default-epsilon* 0.00001)
 
+(defmacro with-float-traps-masked (() &body body)
+  #+sbcl
+  `(sb-int:with-float-traps-masked (:overflow)
+     ,@body)
+
+  #+ccl
+  (let ((mode (gensym "MODE-")))
+    `(let ((,mode (ccl:get-fpu-mode)))
+       (ccl:set-fpu-mode :overflow nil
+                         ;;:underflow nil
+                         ;;:division-by-zero nil
+                         ;;:invalid nil
+                         ;;:inexact nil
+                         )
+       (prog1 (progn ,@body)
+         (apply #'ccl:set-fpu-mode ,mode))))
+
+  #-(or ccl sbcl)
+  `(progn
+     ,@body))
+
 (defmacro define-float= (name float-type)
   (assert (subtypep float-type 'cl:float))
   (let* ((type-name (symbol-name float-type))
@@ -44,7 +65,7 @@
              (t
               (let* ((abs-x (abs x))
                      (abs-y (abs y))
-                     (magnitude (sb-int:with-float-traps-masked (:overflow)
+                     (magnitude (with-float-traps-masked ()
                                   (+ abs-x abs-y))))
                 (declare (type ,float-type abs-x abs-y magnitude)
                          (dynamic-extent abs-x abs-y magnitude))
