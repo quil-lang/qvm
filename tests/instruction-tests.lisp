@@ -76,6 +76,15 @@
     (not-signals error
       (run-program 1 p))))
 
+(deftest test-pragma ()
+  (let ((p (with-output-to-quil
+             "PRAGMA hello"
+             "PRAGMA hello world"
+             "PRAGMA hello world \"foo\""
+             "PRAGMA \"bar\"")))
+    (not-signals error
+      (run-program 1 p))))
+
 (deftest test-flip-circuit ()
   "Test the FLIP circuit. Will flip [0] once, and [1] twice. Tests in particular the ability to generate unique labels within circuits."
   (let* ((p (with-output-to-quil

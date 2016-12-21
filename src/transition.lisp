@@ -52,7 +52,12 @@ Return two values:
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:wait))
   (declare (ignore instr))
   (warn "WAIT executed. Nothing to wait on.")
-  (values qvm nil))
+  (values qvm (1+ (pc qvm))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:pragma))
+  (declare (ignore instr))
+  (warn "Ignoring PRAGMA: ~A" instr)
+  (values qvm (1+ (pc qvm))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:toggle))
   (let* ((address (quil:address-value (quil:toggle-address instr)))
