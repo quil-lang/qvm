@@ -80,8 +80,7 @@
   (let ((p (with-output-to-quil
              "PRAGMA hello"
              "PRAGMA hello world"
-             "PRAGMA hello world \"foo\""
-             "PRAGMA \"bar\"")))
+             "PRAGMA hello world \"foo\"")))
     (not-signals error
       (run-program 1 p))))
 
