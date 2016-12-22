@@ -104,6 +104,23 @@ NT should be the bit set."
 (defun permutation-to-nat-tuple (perm)
   (apply #'nat-tuple (nreverse (coerce perm 'list))))
 
+;;; Hash table copying!
+
+(defun copy-hash-table (hash-table)
+  "Copy the hash table HASH-TABLE.
+
+NOTE: This will not copy any multiprocessing aspects."
+  (check-type hash-table hash-table)
+  (let ((ht (make-hash-table
+             :test (hash-table-test hash-table)
+             :rehash-size (hash-table-rehash-size hash-table)
+             :rehash-threshold (hash-table-rehash-threshold hash-table)
+             :size (hash-table-size hash-table))))
+    (loop :for key :being :each :hash-key :of hash-table
+            :using (hash-value value)
+          :do (setf (gethash key ht) value)
+          :finally (return ht))))
+
 ;;; Complex Linear Algebra
 
 (deftype flonum ()

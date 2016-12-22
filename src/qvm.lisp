@@ -29,7 +29,6 @@
                      :documentation "An integer representing bits of classical memory.")
 
    ;; --- Program and Definitions
-
    (program-counter :accessor pc
                     :initform 0
                     :documentation "The program counter.")
@@ -40,7 +39,7 @@
 
    (gate-definitions :accessor gate-definitions
                      :initarg :gate-definitions
-                     :initform *default-gate-definitions*
+                     :initform (copy-hash-table *default-gate-definitions*)
                      :documentation "A table mapping gate names to their GATE-instance definition."))
 
   (:documentation "An implementation of the Quantum Abstract Machine."))

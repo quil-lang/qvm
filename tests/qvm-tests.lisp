@@ -39,3 +39,17 @@
        (lambda (amp)
          (is (double-float= i (realpart amp)))
          (incf i))))))
+
+(deftest test-defgate-persistence ()
+  (let ((q1 (qvm:make-qvm 1))
+        (q2 (qvm:make-qvm 1)))
+    (qvm:load-program q1 (with-output-to-quil
+                           "DEFGATE A:"
+                           "    0, 1"
+                           "    1, 0"))
+    (qvm:load-program q2 (with-output-to-quil
+                           "DEFGATE A:"
+                           "    1, 0"
+                           "    0, 1"))
+    (is (not (eq (qvm::lookup-gate q1 "A")
+                 (qvm::lookup-gate q2 "A"))))))
