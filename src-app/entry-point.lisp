@@ -432,6 +432,22 @@ starts with the string PREFIX."
          (with-output-to-string (s)
            (yason:encode results s))))
 
+      ;; Multishot with final measure.
+      ((:multishot-measure)
+       (let* ((quil:*allow-unresolved-applications* t)
+              (qubits (gethash ':QUBITS js))
+              (num-trials (gethash ':TRIALS js))
+              (quil (quil:parse-quil-string
+                     (gethash ':QUIL-INSTRUCTIONS js)))
+              (num-qubits (cl-quil:qubits-needed quil))
+              (results (perform-multishot-measure
+                        quil
+                        num-qubits
+                        qubits
+                        num-trials)))
+         (with-output-to-string (s)
+           (yason:encode results s))))
+
       ;; Expectation value computation.
       ((:expectation)
        (let* ((quil:*allow-unresolved-applications* t)
@@ -500,6 +516,9 @@ starts with the string PREFIX."
                    (= 3 (length measurement-noise)))
                (every #'realp measurement-noise)))
 
+  (when (or (null addresses) (zerop num-trials))
+    (return-from perform-multishot nil))
+
   (let ((qvm (make-appropriate-qvm num-qubits gate-noise measurement-noise))
         (trial-results nil)
         timing)
@@ -523,6 +542,46 @@ starts with the string PREFIX."
           (push (collect-bits qvm) trial-results)))
       (format-log "Finished in ~D ms" timing)
       (nreverse trial-results))))
+
+(defun perform-multishot-measure (quil num-qubits qubits num-trials)
+  (check-type quil quil:parsed-program)
+  (check-type num-qubits (integer 0))
+  (check-type num-trials (integer 0))
+  (check-type qubits alexandria:proper-list)
+  (assert (every (alexandria:conjoin #'integerp (complement #'minusp)) qubits))
+
+  (when (or (null qubits) (zerop num-trials))
+    (return-from perform-multishot-measure nil))
+
+  (let ((qvm (make-appropriate-qvm num-qubits nil nil))
+        timing)
+    ;; Make the initial state.
+    (qvm:load-program qvm quil)
+    (format-log "Computing wavefunction for multishot measure on ~A."
+                (class-name (class-of qvm)))
+    (with-timing (timing)
+      (with-timeout
+          (qvm:run qvm)))
+    (format-log "Finished wavefunction computation in ~D ms." timing)
+    (format-log "Copying state.")
+    (let ((prepared-wf
+            (with-timing (timing)
+              (copy-seq (qvm::amplitudes qvm))))
+          (first-time t))
+      (format-log "Copied prepared state in ~D ms." timing)
+      (flet ((reload (qvm)
+               (unless first-time
+                 (replace (qvm::amplitudes qvm) prepared-wf))
+               (setf first-time nil)))
+        ;; Do the parallel measurements
+        (format-log "Doing ~D ~D-qubit measurements." num-trials (length qubits))
+        (prog1
+            (with-timing (timing)
+              (loop :repeat num-trials
+                    :collect (progn
+                               (reload qvm)
+                               (nth-value 1 (qvm::parallel-measure qvm qubits)))))
+          (format-log "Done measuring in ~D ms." timing))))))
 
 (defun perform-expectation (state-prep operators num-qubits &key gate-noise measurement-noise)
   "Let F be the wavefunction resulting from STATE-PREP on the zero state. Then compute a list of real expectation values of the operators in OPERATORS, namely,

@@ -55,7 +55,6 @@ Return two values:
   (values qvm (1+ (pc qvm))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:pragma))
-  (declare (ignore instr))
   (warn "Ignoring PRAGMA: ~A" instr)
   (values qvm (1+ (pc qvm))))
 
