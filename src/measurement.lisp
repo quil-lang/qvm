@@ -39,20 +39,25 @@ which is the index with a zero injected at the QUBIT'th position."
 (defun force-measurement (measured-value qubit qvm)
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly."
   (check-type measured-value bit)
-  (map-reordered-amplitudes
-   0
-   (lambda (combo address)
-     (declare (ignore combo))
-     (let ((x (extract-amplitudes (amplitudes qvm) (nat-tuple qubit) address)))
-       ;; Collapse x.
-       (ecase measured-value
-         (0 (setf (aref x 1) (cflonum 0)))
-         (1 (setf (aref x 0) (cflonum 0))))
-       ;; Insert it back.
-       (insert-amplitudes (amplitudes qvm) x (nat-tuple qubit) address)))
-   (nat-tuple-complement (wavefunction-qubits (amplitudes qvm)) (nat-tuple qubit)))
+  (let ((qubit (nat-tuple qubit)))
+    (flet ((project (combo address)
+             (declare (ignore combo))
+             (let ((x (extract-amplitudes (amplitudes qvm) qubit address)))
+               ;; Collapse x.
+               (ecase measured-value
+                 (0 (setf (aref x 1) (cflonum 0)))
+                 (1 (setf (aref x 0) (cflonum 0))))
+               ;; Insert it back.
+               (insert-amplitudes (amplitudes qvm) x qubit address))))
+      (declare (dynamic-extent #'project))
+      (map-reordered-amplitudes-in-parallel
+       0
+       #'project
+       (nat-tuple-complement (wavefunction-qubits (amplitudes qvm)) qubit))))
+
   ;; Normalize the wavefunction after projective measurement.
   (normalize-wavefunction (amplitudes qvm))
+
   ;; Return the QVM.
   qvm)
 

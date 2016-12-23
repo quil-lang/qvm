@@ -123,13 +123,25 @@ NOTE: This will not copy any multiprocessing aspects."
 
 ;;; Complex Linear Algebra
 
-(deftype flonum ()
+(deftype flonum (&optional min)
   "The float type used in computations."
-  `double-float)
+  (if (numberp min)
+      `(double-float ,(coerce min 'double-float))
+      `double-float))
 
 (deftype cflonum ()
   "The complex float type used in computations. Typically these will represent wavefunction amplitudes."
   `(complex flonum))
+
+(defun flonum (x)
+  "Coerce X into a FLONUM."
+  (coerce x 'flonum))
+
+(define-compiler-macro flonum (&whole whole &environment env x)
+  (if (and (constantp x env)
+           (numberp x))
+      (coerce x 'flonum)
+      whole))
 
 (defun cflonum (x)
   "Coerce X into a CFLONUM."

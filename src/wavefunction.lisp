@@ -15,9 +15,16 @@
   "An address into an array of amplitudes."
   'non-negative-fixnum)
 
+(declaim (ftype (function (cflonum) flonum) probability))
+(declaim (inline probability))
 (defun probability (amplitude)
   "Convert an amplitude into a probability."
-  (expt (abs amplitude) 2))
+  (declare (type cflonum amplitude))
+  (let ((re (realpart amplitude))
+        (im (imagpart amplitude)))
+    (declare (type flonum re im))
+    (+ (* re re) (* im im))))
+(declaim (notinline probability))
 
 (defun wavefunction-qubits (wavefunction)
   "The number of qubits represented by the wavefunction WAVEFUNCTION."
@@ -114,12 +121,23 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 
 (defun normalize-wavefunction (wavefunction)
   "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space."
-  (declare (type quantum-state wavefunction))
-  (loop :for amp :across wavefunction
-        :sum (probability amp) :into square-norm
-        :finally (map-into wavefunction
-                           (let ((norm (sqrt square-norm)))
-                             (lambda (amp)
-                               (/ amp norm)))
-                           wavefunction))
-  wavefunction)
+  (declare (type quantum-state wavefunction)
+           (inline probability)
+           (optimize speed (safety 1)))
+  ;; Mutate the wavefunction.
+  (let ((norm (flonum 0)))
+    (declare (type flonum norm))
+    ;; Compute the square norm.
+    (loop :for x :of-type cflonum :across wavefunction
+          :do (incf norm (probability x)))
+
+    ;; Compute the norm.
+    (setf norm (sqrt (the (flonum 0) norm)))
+
+    ;; Normalize the wavefunction
+    (loop :for i :below (length wavefunction)
+          :for x :of-type cflonum :across wavefunction
+          :do (setf (aref wavefunction i) (/ x norm)))
+
+    ;; Return the wavefunction.
+    wavefunction))
