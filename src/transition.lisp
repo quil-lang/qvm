@@ -58,10 +58,46 @@ Return two values:
   (warn "Ignoring PRAGMA: ~A" instr)
   (values qvm (1+ (pc qvm))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:toggle))
-  (let* ((address (quil:address-value (quil:toggle-address instr)))
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-true))
+  (let ((address (quil:address-value (quil:classical-target instr))))
+    (setf (classical-bit qvm address) 1)
+    (values qvm (1+ (pc qvm)))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-false))
+  (let ((address (quil:address-value (quil:classical-target instr))))
+    (setf (classical-bit qvm address) 0)
+    (values qvm (1+ (pc qvm)))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-not))
+  (let* ((address (quil:address-value (quil:classical-target instr)))
          (b (classical-bit qvm address)))
     (setf (classical-bit qvm address) (- 1 b))
+    (values qvm (1+ (pc qvm)))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-and))
+  (let ((left   (quil:address-value (quil:classical-left-operand instr)))
+        (target (quil:address-value (quil:classical-target instr))))
+    (setf (classical-bit qvm target) (logand (classical-bit qvm left)
+                                             (classical-bit qvm target)))
+    (values qvm (1+ (pc qvm)))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-or))
+  (let ((left   (quil:address-value (quil:classical-left-operand instr)))
+        (target (quil:address-value (quil:classical-target instr))))
+    (setf (classical-bit qvm target) (logior (classical-bit qvm left)
+                                             (classical-bit qvm target)))
+    (values qvm (1+ (pc qvm)))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-move))
+  (let ((left   (quil:address-value (quil:classical-left-operand instr)))
+        (target (quil:address-value (quil:classical-target instr))))
+    (setf (classical-bit qvm target) (classical-bit qvm left))
+    (values qvm (1+ (pc qvm)))))
+
+(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-exchange))
+  (let ((left   (quil:address-value (quil:classical-left-operand instr)))
+        (right (quil:address-value (quil:classical-right-operand instr))))
+    (rotatef (classical-bit qvm left) (classical-bit qvm right))
     (values qvm (1+ (pc qvm)))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:unconditional-jump))

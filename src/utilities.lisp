@@ -272,7 +272,7 @@ NOTE: This must be done before computations can be done.
     (let ((num-logical-cores (or num-workers (count-logical-cores))))
       (assert (or (null workers-allotted)
                   (= 1 workers-allotted)
-                  (< workers-allotted num-logical-cores))
+                  (<= workers-allotted num-logical-cores))
               ()
               "The number of workers for parallelization exceeds the ~
                number of cores. This could be because ~
