@@ -56,6 +56,7 @@
 (defvar *program-name* "qvm")
 (defvar *num-workers* nil)
 (defvar *time-limit* nil)
+(defvar *safe-include-directory* nil)
 
 (defmacro with-timeout (&body body)
   (let ((f (gensym "TIME-LIMITED-BODY-")))
@@ -120,7 +121,12 @@
     (("db-port")
      :type integer
      :optional t
-     :documentation "port of Redis DB")))
+     :documentation "port of Redis DB")
+
+    (("safe-include-directory")
+     :type string
+     :optional t
+     :documentation "allow INCLUDE only files in this directory")))
 
 (defun session-info ()
   (if (or (not (boundp 'tbnl:*session*))
@@ -195,7 +201,51 @@
     ((minusp (imagpart c))
      (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
 
-(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit)
+
+(defun resolve-safely (filename)
+  (flet ((contains-up (filename)
+           (member-if (lambda (obj)
+                        (or (eql ':UP obj)
+                            (eql ':BACK obj)))
+                      (pathname-directory filename))))
+    (cond
+      ((uiop:absolute-pathname-p filename)
+       (error "Not allowed to specify absolute paths to INCLUDE."))
+
+      ((uiop:relative-pathname-p filename)
+       ;; Only files allowed.
+       (unless (uiop:file-pathname-p filename)
+         (error "INCLUDE requires a pathname to a file."))
+       (when (contains-up filename)
+         (error "INCLUDE can't refer to files above."))
+       (if (null *safe-include-directory*)
+           filename
+           (merge-pathnames filename *safe-include-directory*)))
+
+      (t
+       (error "Invalid pathname: ~S" filename)))))
+
+(defun safely-read-quil (filename)
+  "Safely read the Quil file designated by FILENAME."
+  (flet ((read-it (file)
+           (let ((quil::*allow-unresolved-applications* t))
+             (quil:read-quil-file file))))
+    (if (null *safe-include-directory*)
+        (read-it filename)
+        (let ((quil:*resolve-include-pathname* #'resolve-safely))
+          (read-it filename)))))
+
+(defun safely-parse-quil-string (string)
+  "Safely parse a Quil string STRING."
+  (flet ((parse-it (string)
+           (let ((quil::*allow-unresolved-applications* t))
+             (quil:parse-quil-string string))))
+    (if (null *safe-include-directory*)
+        (parse-it string)
+        (let ((quil:*resolve-include-pathname* #'resolve-safely))
+          (parse-it string)))))
+
+(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory)
   (when help
     (show-help)
     (uiop:quit))
@@ -206,6 +256,14 @@
 
   (when (plusp time-limit)
     (setf *time-limit* (/ time-limit 1000.0d0)))
+
+  (unless (or (null *safe-include-directory*)
+              (uiop:directory-pathname-p *safe-include-directory*))
+    (error "--safe-include-directory must point to a directory. Got ~S. Did you ~
+            forget a trailing slash?"
+           *safe-include-directory*))
+
+  (setf *safe-include-directory* safe-include-directory)
 
   (cond
     ((zerop num-workers)
@@ -239,8 +297,7 @@
     (t
      (let (qvm program alloc-time exec-time qubits)
        (format-log "Reading program.")
-       (setf program (let ((quil::*allow-unresolved-applications* t))
-                       (quil:read-quil-file execute)))
+       (setf program (safely-read-quil execute))
        (setf qubits (cl-quil:qubits-needed program))
 
        (format-log "Allocating memory for QVM of ~D qubits." qubits)
@@ -424,7 +481,7 @@ starts with the string PREFIX."
               (num-trials (gethash ':TRIALS js))
               (isns (gethash ':QUIL-INSTRUCTIONS js))
               (quil (let ((quil::*allow-unresolved-applications* t))
-                      (process-quil (quil:parse-quil-string isns))))
+                      (process-quil (safely-parse-quil-string isns))))
               (num-qubits (cl-quil:qubits-needed quil))
               (results (perform-multishot quil num-qubits addresses num-trials
                                           :gate-noise gate-noise
@@ -437,7 +494,7 @@ starts with the string PREFIX."
        (let* ((quil:*allow-unresolved-applications* t)
               (qubits (gethash ':QUBITS js))
               (num-trials (gethash ':TRIALS js))
-              (quil (quil:parse-quil-string
+              (quil (safely-parse-quil-string
                      (gethash ':QUIL-INSTRUCTIONS js)))
               (num-qubits (cl-quil:qubits-needed quil))
               (results (perform-multishot-measure
@@ -451,9 +508,9 @@ starts with the string PREFIX."
       ;; Expectation value computation.
       ((:expectation)
        (let* ((quil:*allow-unresolved-applications* t)
-              (state-prep (quil:parse-quil-string
+              (state-prep (safely-parse-quil-string
                            (gethash ':STATE-PREPARATION js)))
-              (operators (map 'list #'quil:parse-quil-string
+              (operators (map 'list #'safely-parse-quil-string
                               (gethash ':OPERATORS js)))
               (num-qubits (loop :for p :in (cons state-prep operators)
                                 :maximize (cl-quil:qubits-needed p)))
@@ -467,7 +524,7 @@ starts with the string PREFIX."
       ((:wavefunction)
        (let* ((isns (gethash ':QUIL-INSTRUCTIONS js))
               (quil (let ((quil::*allow-unresolved-applications* t))
-                      (process-quil (quil:parse-quil-string isns))))
+                      (process-quil (safely-parse-quil-string isns))))
               (num-qubits (cl-quil:qubits-needed quil))
               (qvm (perform-wavefunction quil num-qubits
                                          :gate-noise gate-noise

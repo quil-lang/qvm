@@ -8,7 +8,7 @@
   :version (:read-file-form "APP-VERSION.txt")
   :depends-on (
                ;; Quil parsing
-               #:cl-quil
+               (:version #:cl-quil "0.5.1")
                ;; Command line argument parsing
                #:command-line-arguments
                ;; ASDF-companion utility library
