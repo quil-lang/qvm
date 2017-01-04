@@ -15,7 +15,7 @@
 
   (defun git-hash (system)
     "Get the short git hash of the system SYSTEM."
-    (let ((sys-path (namestring (asdf:system-relative-pathname system ""))))
+    (let ((sys-path (namestring (asdf:system-source-directory system))))
       (multiple-value-bind (output err-output status)
           (uiop:run-program `("git" "-C" ,sys-path "rev-parse" "--short" "HEAD")
                             :output '(:string :stripped t)
