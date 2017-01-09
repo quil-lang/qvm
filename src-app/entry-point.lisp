@@ -453,6 +453,11 @@ starts with the string PREFIX."
       (write-64-be encoded-re stream)
       (write-64-be encoded-im stream))))
 
+(defun get-random-state (arg)
+  (etypecase arg
+    (null (make-random-state t))
+    (unsigned-byte (sb-ext:seed-random-state arg))))
+
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
@@ -462,7 +467,8 @@ starts with the string PREFIX."
                (yason:parse data)))
          (type (gethash ':TYPE js))
          (gate-noise (gethash ':GATE-NOISE js))
-         (measurement-noise (gethash ':MEASUREMENT-NOISE js)))
+         (measurement-noise (gethash ':MEASUREMENT-NOISE js))
+         (*random-state* (get-random-state (gethash ':RNG-SEED js))))
     (ecase (keywordify type)
       ;; For simple tests.
       ((:ping)
@@ -502,6 +508,10 @@ starts with the string PREFIX."
                         num-qubits
                         qubits
                         num-trials)))
+         (map nil (lambda (x)
+                    (cl-quil::print-instruction x *standard-output*)
+                    (terpri))
+              (cl-quil::parsed-program-executable-code quil))
          (with-output-to-string (s)
            (yason:encode results s))))
 
@@ -523,24 +533,44 @@ starts with the string PREFIX."
       ;; Wavefunction computation.
       ((:wavefunction)
        (let* ((isns (gethash ':QUIL-INSTRUCTIONS js))
-              (quil (let ((quil::*allow-unresolved-applications* t))
+              (addresses (gethash ':ADDRESSES js))
+              (quil (let ((quil:*allow-unresolved-applications* t))
                       (process-quil (safely-parse-quil-string isns))))
-              (num-qubits (cl-quil:qubits-needed quil))
-              (qvm (perform-wavefunction quil num-qubits
-                                         :gate-noise gate-noise
-                                         :measurement-noise measurement-noise))
-              send-response-time)
-         (with-timing (send-response-time)
-           (setf (tbnl:content-type*) "application/octet-stream")
-           (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
-           (setf (tbnl:content-length*) (* 2 ; doubles/complex
-                                           8 ; octets/double
-                                           (expt 2 (qvm:number-of-qubits qvm))))
-           (let ((reply-stream (tbnl:send-headers)))
-             (qvm:map-amplitudes
-              qvm
-              (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
-         (format-log "Response sent in ~D ms." send-response-time))))))
+              (num-qubits (cl-quil:qubits-needed quil)))
+         ;; Sanity check the addresses, since we are unpacking them
+         ;; here, not in PERMFORM-WAVEFUNCTION.
+         (check-type addresses alexandria:proper-list)
+         (assert (every (alexandria:conjoin #'integerp (complement #'minusp)) addresses))
+
+         (let ((qvm (perform-wavefunction quil num-qubits
+                                          :gate-noise gate-noise
+                                          :measurement-noise measurement-noise))
+               (num-mem-octets (ceiling (/ (length addresses) 8)))
+               send-response-time)
+           (with-timing (send-response-time)
+             (setf (tbnl:content-type*) "application/octet-stream")
+             (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
+             (setf (tbnl:content-length*)
+                   (+ num-mem-octets (* 2 ; doubles/complex
+                                        8 ; octets/double
+                                        (expt 2 (qvm:number-of-qubits qvm)))))
+             (let ((reply-stream (tbnl:send-headers)))
+               ;; Write out the classical bits.
+               (loop :with memory := (make-array num-mem-octets :element-type '(unsigned-byte 8)
+                                                                :initial-element 0)
+                     :for i :from 0
+                     :for a :in addresses
+                     :do (multiple-value-bind (octet-number bit-number) (floor i 8)
+                           (when (= 1 (classical-bit qvm a))
+                             (setf (aref memory octet-number)
+                                   (dpb 1 (byte 1 bit-number) (aref memory octet-number)))))
+                     :finally (map nil (lambda (o) (write-byte o reply-stream)) memory))
+
+               ;; Write out the wavefunction.
+               (qvm:map-amplitudes
+                qvm
+                (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
+           (format-log "Response sent in ~D ms." send-response-time)))))))
 
 (defun make-appropriate-qvm (num-qubits gate-noise measurement-noise)
   (format-log "Making qvm of ~D qubit~:P" num-qubits)
