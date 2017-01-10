@@ -242,7 +242,7 @@ NOTE: This will not copy any multiprocessing aspects."
 
 (defmacro probabilistically (p &body body)
   "Execute BODY with probability 0 <= P <= 1."
-  `(when (<= (random 1.0) ,p)
+  `(when (< (random 1.0) ,p)
      ,@body))
 
 ;;; Some system-level definitions.
