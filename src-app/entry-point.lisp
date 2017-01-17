@@ -83,6 +83,11 @@
      :optional t
      :documentation "port to start the QVM server on")
 
+    (("qubits" #\q)
+     :type integer
+     :optional t
+     :documentation "Number of qubits to force to use.")
+
     (("memory" #\m)
      :type integer
      :initial-value 64
@@ -245,7 +250,7 @@
         (let ((quil:*resolve-include-pathname* #'resolve-safely))
           (parse-it string)))))
 
-(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory)
+(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory qubits)
   (when help
     (show-help)
     (uiop:quit))
@@ -295,14 +300,14 @@
      (start-server-app port))
     ;; Batch mode.
     (t
-     (let (qvm program alloc-time exec-time qubits)
+     (let (qvm program alloc-time exec-time qubits-needed)
        (format-log "Reading program.")
        (setf program (safely-read-quil execute))
-       (setf qubits (cl-quil:qubits-needed program))
+       (setf qubits-needed (or qubits (cl-quil:qubits-needed program)))
 
-       (format-log "Allocating memory for QVM of ~D qubits." qubits)
+       (format-log "Allocating memory for QVM of ~D qubits." qubits-needed)
        (with-timing (alloc-time)
-         (setf qvm (make-qvm qubits :classical-memory-size memory)))
+         (setf qvm (make-qvm qubits-needed :classical-memory-size memory)))
        (format-log "Allocation completed in ~D ms." alloc-time)
 
        (format-log "Loading quantum program.")
@@ -313,7 +318,7 @@
        (with-timing (exec-time)
          (run qvm))
        (format-log "Execution completed in ~D ms." exec-time)
-       (when (<= qubits 5)
+       (when (<= qubits-needed 5)
          (format-log "Printing state.")
          (format-log "Amplitudes:")
          (qvm:map-amplitudes
