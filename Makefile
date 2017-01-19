@@ -65,6 +65,13 @@ buildall: cleanall qvm quilbasic
 
 ### Testing
 
+testsafe:
+	sbcl --noinform --non-interactive \
+	     --eval "(sb-ext:restrict-compiler-policy 'safety 3)" \
+	     --eval "(sb-ext:restrict-compiler-policy 'debug 3)" \
+             --eval '(ql:quickload :qvm)' \
+             --eval '(asdf:test-system :qvm)'
+
 test:
 	sbcl --noinform --non-interactive \
              --eval '(ql:quickload :qvm)' \
