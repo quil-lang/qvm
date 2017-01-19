@@ -27,6 +27,7 @@
                #+unix
                (:cffi-grovel-file "system-constants")
                (:file "utilities")
+               (:file "linear-algebra")
                (:file "gates")
                (:file "quil")
                (:file "wavefunction")
