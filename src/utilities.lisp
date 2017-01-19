@@ -29,7 +29,7 @@
 
 (defstruct (nat-tuple (:constructor %make-nat-tuple))
   "The NAT-TUPLE type. A \"nat tuple\" represents an ordered list of non-negative integer indexes."
-  (list nil :read-only t)
+  (list nil :read-only t :type list)
   (membership 0 :read-only t :type non-negative-fixnum))
 
 (defun make-nat-tuple ()
@@ -48,6 +48,7 @@
       (%make-nat-tuple :list (cons elt (nat-tuple-list nt))
                        :membership (dpb 1 (byte 1 elt) (nat-tuple-membership nt)))))
 
+(declaim (ftype (function (nat-tuple) nat-tuple-cardinality) nat-tuple-cardinality))
 (defun nat-tuple-cardinality (nt)
   "Compute the number of elements in the nat tuple NT."
   (declare (type nat-tuple nt))
