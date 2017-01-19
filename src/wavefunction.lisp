@@ -151,7 +151,14 @@ FUNCTION should be a binary function, and will receive (1) an index running from
                (declare (type quantum-state result)
                         (dynamic-extent result))
                (matrix-multiply operator col result)
+
+               #+ccl                    ; CCL bug.
+               (loop :for i :below (length col)
+                     :do (setf (aref col i) (aref result i)))
+
+               #-ccl
                (replace col result)
+
                (values))))
 
          ;; This is the old way of doing it. It is kept for posterity
