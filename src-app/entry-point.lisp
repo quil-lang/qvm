@@ -101,8 +101,13 @@
     (("time-limit")
      :type integer
      :initial-value 0
-     :documentation " time limit for computations (0 => unlimited, ms)")
+     :documentation "time limit for computations (0 => unlimited, ms)")
 
+    (("benchmark")
+     :type integer
+     :initial-value 0
+     :documentation "run a benchmark entangling N qubits (default: 26)")
+    
     (("help" #\h)
      :type boolean
      :optional t
@@ -250,7 +255,7 @@
         (let ((quil:*resolve-include-pathname* #'resolve-safely))
           (parse-it string)))))
 
-(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory qubits)
+(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory qubits benchmark)
   (when help
     (show-help)
     (uiop:quit))
@@ -293,6 +298,13 @@
                         :dont-close t))
 
   (cond
+    ;; Benchmark mode.
+    ((or (eq T benchmark)
+         (plusp benchmark))
+     (when (eq T benchmark)
+       (setf benchmark 26))
+     (perform-benchmark benchmark))
+
     ;; Server mode.
     ((or server port)
      (when execute
@@ -592,6 +604,31 @@ starts with the string PREFIX."
                        :measure-x (elt measurement-noise 0)
                        :measure-y (elt measurement-noise 1)
                        :measure-z (elt measurement-noise 2)))))
+
+(defun perform-benchmark (num-qubits)
+  (check-type num-qubits (integer 1))
+  (let ((p (let ((quil:*allow-unresolved-applications* t))
+             (safely-parse-quil-string
+              (with-output-to-string (*standard-output*)
+                (format t "H 0~%")
+                (loop :for i :below (1- num-qubits)
+                      :do (format t "CNOT ~D ~D~%" i (1+ i)))
+                (loop :for i :below num-qubits
+                      :do (format t "MEASURE ~D [~D]~%" i i))))))
+        (q (qvm:make-qvm num-qubits))
+        timing)
+    (qvm:load-program q p)
+    
+    (format-log "Benchmarking ~D qubits...~%" num-qubits)
+
+    (sb-ext:gc :full t)
+
+    (with-timing (timing)
+      (time (qvm:run q)))
+
+    (room t)
+    (terpri)
+    (format-log "Total time for program run: ~D ms" timing)))
 
 (defun perform-multishot (quil num-qubits addresses num-trials &key gate-noise measurement-noise)
   (check-type quil quil:parsed-program)
