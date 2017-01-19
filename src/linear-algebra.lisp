@@ -4,11 +4,15 @@
 
 (in-package #:qvm)
 
+(defconstant +octets-per-flonum+ 8)
+
 (deftype flonum (&optional min)
   "The float type used in computations."
   (if (numberp min)
       `(double-float ,(coerce min 'double-float))
       `double-float))
+
+(defconstant +octets-per-cflonum+ (* 2 +octets-per-flonum+))
 
 (deftype cflonum ()
   "The complex float type used in computations. Typically these will represent wavefunction amplitudes."
@@ -38,7 +42,11 @@
   "A representation of a quantum state. This will have a power-of-2 length."
   `(simple-array cflonum (,n)))
 
-(declaim (ftype (function (fixnum &rest number) quantum-state) make-vector))
+(defun octets-required-for-qubits (n)
+  "The number of octets required to represent a state of N qubits."
+  (* (expt 2 n) +octets-per-cflonum+))
+
+(declaim (ftype (function (non-negative-fixnum &rest number) quantum-state) make-vector))
 (defun make-vector (size &rest elements)
   "Make a SIZE-length complex vector whose elements are ELEMENTS."
   (let ((vec (make-array size :element-type 'cflonum

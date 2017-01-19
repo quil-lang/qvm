@@ -11,6 +11,11 @@
    #:prepare-for-parallelization        ; FUNCTION
    )
 
+  ;; linear-algebra.lisp
+  (:export
+   #:octets-required-for-qubits         ; FUNCTION
+   )
+
   ;; wavefunction.lisp
   (:export
    #:probability                        ; FUNCTION
