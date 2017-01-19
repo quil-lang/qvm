@@ -89,7 +89,7 @@
                   (type (quantum-state ,n) ,column)
                   (type (or null (quantum-state ,n)) result)
                   (optimize speed (safety 0) (debug 0) (space 0)))
-       (let ((result (or result (make-vector ,n)))
+       (let ((result (or ,result (make-vector ,n)))
              (element (cflonum 0)))
          (declare (type (quantum-state ,n) result)
                   (type cflonum element))
