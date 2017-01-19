@@ -7,4 +7,5 @@
   
   ;; suite.lisp
   (:export
-   #:run-benchmarks))
+   #:run-benchmarks
+   #:results-as-json))

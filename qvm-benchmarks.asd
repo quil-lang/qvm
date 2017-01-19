@@ -7,7 +7,8 @@
   :author "Robert Smith <robert@rigetti.com>"
   :depends-on (#:cl-quil
                #:qvm
-               #:trivial-benchmark)
+               #:trivial-benchmark
+               #:yason)
   :perform (asdf:test-op (o s)
                          (uiop:symbol-call :qvm-benchmarks
                                            '#:run-benchmarks))
