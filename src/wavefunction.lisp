@@ -106,22 +106,67 @@ FUNCTION should be a binary function, and will receive (1) an index running from
      #'insert
      qubits)))
 
+(defmacro with-modified-amplitudes ((col wavefunction qubits starting-address) &body body)
+  "Given a quantum state WAVEFUNCTION, a NAT-TUPLE of qubits QUBITS, and a starting address STARTING-ADDRESS, bind dynamically to the symbol COL the list of amplitudes that correspond to the qubits provided."
+  (check-type col symbol)
+  (alexandria:with-gensyms (combo address insert extract)
+    (alexandria:once-only (wavefunction qubits starting-address)
+      `(locally (declare (type nat-tuple ,qubits)
+                         (type quantum-state ,wavefunction)
+                         (inline map-reordered-amplitudes))
+         (let ((,col (make-vector (expt 2 (nat-tuple-cardinality ,qubits)))))
+           (declare (type quantum-state ,col)
+                    (dynamic-extent ,col))
+           (flet ((,extract (,combo ,address)
+                    (setf (aref ,col ,combo) (aref ,wavefunction ,address))
+                    (values))
+                  (,insert (,combo ,address)
+                    (setf (aref ,wavefunction ,address) (aref ,col ,combo))
+                    (values)))
+             (declare (dynamic-extent #',extract #',insert))
+             ;; Extract
+             (map-reordered-amplitudes
+              ,starting-address
+              #',extract
+              ,qubits)
+             ;; Execute BODY
+             (progn
+               ,@body)
+             ;; Insert
+             (map-reordered-amplitudes
+              ,starting-address
+              #',insert
+              ,qubits)
+             (values)))))))
+
 (defun apply-operator (wavefunction operator qubits)
   "Apply the operator (given as a matrix) OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS."
   (declare (type quantum-state wavefunction)
            (type quantum-operator operator)
            (inline map-reordered-amplitudes-in-parallel))
-  ;;(declare (optimize speed (safety 1) (debug 1) (space 0)))
-  (flet ((multiply-in (combo address)
+  (flet ((fast-multiply-in (combo address)
+           (declare (ignore combo))
+           (with-modified-amplitudes (col wavefunction qubits address)
+             (let ((result (make-vector (expt 2 (nat-tuple-cardinality qubits)))))
+               (declare (type quantum-state result)
+                        (dynamic-extent result))
+               (matrix-multiply operator col result)
+               (replace col result)
+               (values))))
+
+         ;; This is the old way of doing it. It is kept for posterity
+         ;; and pedagogy.
+         (multiply-in (combo address)
            (declare (ignore combo))
            (let* ((x (extract-amplitudes wavefunction qubits address))
                   (Ux (matrix-multiply operator x)))
              (insert-amplitudes wavefunction Ux qubits address))
            (values)))
-    (declare (dynamic-extent #'multiply-in))
+    (declare (ignore #'multiply-in)
+             (dynamic-extent #'multiply-in #'fast-multiply-in))
     (map-reordered-amplitudes-in-parallel
      0
-     #'multiply-in
+     #'fast-multiply-in
      (nat-tuple-complement (wavefunction-qubits wavefunction) qubits)))
   wavefunction)
 
