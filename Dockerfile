@@ -12,6 +12,7 @@ ADD ./qvm /root/qvm
 RUN mkdir /root/quil/
 ADD ./quil/stdgates.quil /root/quil/stdgates.quil
 ADD ./quil/vqe.quil /root/quil/vqe.quil
+ADD ./quil/ion.quil /root/quil/ion.quil
 RUN chmod +x /root/qvm
 
 CMD /root/qvm --time-limit 30000 --safe-include-directory "/root/quil/"  -S
