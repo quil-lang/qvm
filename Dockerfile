@@ -9,8 +9,9 @@ RUN apt-get clean
 WORKDIR /root/
 
 ADD ./qvm /root/qvm
-ADD ./quil/stdgates.quil /root/stdgates.quil
-ADD ./quil/vqe.quil /root/vqe.quil
+RUN mkdir /root/quil/
+ADD ./quil/stdgates.quil /root/quil/stdgates.quil
+ADD ./quil/vqe.quil /root/quil/vqe.quil
 RUN chmod +x /root/qvm
 
-CMD /root/qvm -S
+CMD /root/qvm --time-limit 30000 --safe-include-directory "/root/quil/"  -S
