@@ -16,23 +16,22 @@
   'non-negative-fixnum)
 
 (declaim (ftype (function (cflonum) flonum) probability))
-(declaim (inline probability))
-(defun probability (amplitude)
+(defun-inlinable probability (amplitude)
   "Convert an amplitude into a probability."
   (declare (type cflonum amplitude))
   (let ((re (realpart amplitude))
         (im (imagpart amplitude)))
     (declare (type flonum re im))
     (+ (* re re) (* im im))))
-(declaim (notinline probability))
+
 
 (defun wavefunction-qubits (wavefunction)
   "The number of qubits represented by the wavefunction WAVEFUNCTION."
   (declare (type quantum-state wavefunction))
   (1- (integer-length (length wavefunction))))
 
-(declaim (inline set-qubit-components-of-amplitude-address))
-(defun set-qubit-components-of-amplitude-address (address flags qubits)
+
+(defun-inlinable set-qubit-components-of-amplitude-address (address flags qubits)
   "Set the amplitude address to the bits within the non-negative integer FLAGS for the corresponding tuple of qubit indices QUBITS. (Ordered LSB to MSB.)"
   (declare (type nat-tuple qubits)
            (type non-negative-fixnum flags)
@@ -42,10 +41,9 @@
         (setf address (dpb 1 (byte 1 qubit) address))
         (setf address (dpb 0 (byte 1 qubit) address))))
   address)
-(declaim (notinline set-qubit-components-of-amplitude-address))
 
-(declaim (inline map-reordered-amplitudes))
-(defun map-reordered-amplitudes (starting-address function qubits)
+
+(defun-inlinable map-reordered-amplitudes (starting-address function qubits)
   "Iterate through all variations of the amplitude address STARTING-ADDRESS, varying the qubits specified by the tuple QUBITS. For each newly loaded address, call the function FUNCTION.
 
 FUNCTION should be a binary function, and will receive (1) an index running from 0 below 2^|qubits|, and (2) the varied amplitude address."
@@ -56,10 +54,9 @@ FUNCTION should be a binary function, and will receive (1) an index running from
     (dotimes (combo number-of-iterations)
       (let ((address (set-qubit-components-of-amplitude-address starting-address combo qubits)))
         (funcall function combo address)))))
-(declaim (notinline map-reordered-amplitudes))
 
-(declaim (inline map-reordered-amplitudes-in-parallel))
-(defun map-reordered-amplitudes-in-parallel (starting-address function qubits)
+
+(defun-inlinable map-reordered-amplitudes-in-parallel-truly (starting-address function qubits)
   "Parallel version of #'MAP-REORDERED-AMPLITUDES."
   (declare (type nat-tuple qubits)
            (type (function (non-negative-fixnum non-negative-fixnum) *) function)
@@ -68,7 +65,16 @@ FUNCTION should be a binary function, and will receive (1) an index running from
     (lparallel:pdotimes (combo number-of-iterations)
       (let ((address (set-qubit-components-of-amplitude-address starting-address combo qubits)))
         (funcall function combo address)))))
-(declaim (notinline map-reordered-amplitudes-in-parallel))
+
+
+(defparameter *qubits-required-for-parallelization* 19
+  "The number of qubits required of a quantum state before it gets operated on in parallel.")
+
+(defun-inlinable map-reordered-amplitudes-in-parallel (starting-address function qubits)
+  "Parallel version of #'MAP-REORDERED-AMPLITUDES, when the number of qubits is large enough."
+  (if (<= *qubits-required-for-parallelization* (nat-tuple-cardinality qubits))
+      (map-reordered-amplitudes-in-parallel-truly starting-address function qubits)
+      (map-reordered-amplitudes starting-address function qubits)))
 
 (defun extract-amplitudes (wavefunction qubits starting-address)
   "Returns a column vector of amplitudes represented by the tuple of qubits QUBITS."

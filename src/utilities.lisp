@@ -125,6 +125,13 @@ NOTE: This will not copy any multiprocessing aspects."
   `(when (< (random 1.0) ,p)
      ,@body))
 
+(defmacro defun-inlinable (name lambda-list &body body)
+  "Define an INLINE-able function."
+  `(progn
+     (declaim (inline ,name))
+     (defun ,name ,lambda-list ,@body)
+     (declaim (notinline ,name))))
+
 ;;; Some system-level definitions.
 
 #+unix
