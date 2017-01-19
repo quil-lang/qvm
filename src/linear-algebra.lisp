@@ -81,14 +81,15 @@
           :finally (return matrix))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun matrix-multiply-code (n matrix column)
+  (defun matrix-multiply-code (n matrix column result)
     "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex column vector (represented as a CFLONUM vector)."
     (check-type n unsigned-byte)
     `(locally
          (declare (type (quantum-operator ,n) ,matrix)
                   (type (quantum-state ,n) ,column)
+                  (type (or null (quantum-state ,n)) result)
                   (optimize speed (safety 0) (debug 0) (space 0)))
-       (let ((result (make-vector ,n))
+       (let ((result (or result (make-vector ,n)))
              (element (cflonum 0)))
          (declare (type (quantum-state ,n) result)
                   (type cflonum element))
@@ -102,22 +103,22 @@
 
 (defmacro define-matmul (name size)
   `(progn
-     (declaim (inline ,name))
      (declaim (ftype (function ((quantum-operator ,size)
-                                (quantum-state ,size))
+                                (quantum-state ,size)
+                                (or null (quantum-state ,size)))
                                (quantum-state ,size))
                      ,name))
-     (defun ,name (m c)
-       ,(matrix-multiply-code size 'm 'c))
-     (declaim (notinline ,name))))
+     (defun-inlinable ,name (m c result)
+       ,(matrix-multiply-code size 'm 'c 'result))))
 
 (define-matmul matmul2 2)
 (define-matmul matmul4 4)
 
-(defun matrix-multiply (matrix column)
+(defun matrix-multiply (matrix column &optional result)
   "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex vector (represented as a CFLONUM vector)."
   (declare (type quantum-operator matrix)
            (type quantum-state column)
+           (type (or null quantum-state) result)
            (optimize speed (safety 1))
            (inline matmul2 matmul4))
   (assert (= (array-dimension matrix 0)
@@ -130,10 +131,10 @@
           "The given matrix and column vector don't have compatible dimensions.")
   (let ((matrix-size (array-dimension matrix 0)))
     (case matrix-size
-      ((2) (matmul2 matrix column))
-      ((4) (matmul4 matrix column))
+      ((2) (matmul2 matrix column result))
+      ((4) (matmul4 matrix column result))
       (otherwise
-       (let ((result (make-vector matrix-size)))
+       (let ((result (or result (make-vector matrix-size))))
          (dotimes (i matrix-size result)
            (let ((element (cflonum 0)))
              (declare (type cflonum element))
