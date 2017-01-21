@@ -31,19 +31,16 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 
 (defun qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
-  (declare (optimize speed (safety 0) (debug 0) (space 0)))
-  #+#:alternate-implementation
-  (second (state-probabilities qvm (nat-tuple qubit)))
-
-  ;; Sum up all the probabilities of the qubit QUBIT being 0, and
-  ;; compute the complement of that.
-  (loop :with P1 :of-type flonum := (flonum 0)
-        :with wavefunction :of-type quantum-state := (amplitudes qvm)
-        ;; We only need to go through half of the basis functions.
-        :for i :below (ash (length wavefunction) -1)
-        :for address :of-type amplitude-address := (index-to-address i qubit 1)
-        :do (incf P1 (probability (aref wavefunction address)))
-        :finally (return P1)))
+  (declare (optimize speed (safety 0) (debug 0) (space 0))
+           (inline probability psum-range))
+  (let ((wavefunction (amplitudes qvm)))
+    (declare (type quantum-state wavefunction))
+    (psum-range (lambda (i)
+                  (declare (type non-negative-fixnum i))
+                  (let ((address (index-to-address i qubit 1)))
+                    (declare (type amplitude-address address))
+                    (probability (aref wavefunction address))))
+                (ash (length wavefunction) -1))))
 
 (defun multi-qubit-probability (qvm &rest qubits)
   "Compute the probability that the qubits QUBITS will measure to 1 within the quantum virtual machine QVM."
@@ -62,7 +59,8 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
     ;;     |...xyzaMbc...>
     ;;             ^ M = 1 - MEASURED-VALUE
     ;;
-    ;; and set them to zero. The old way to do this was to do it as a projective measurement.
+    ;; and set them to zero. The old way to do this was to do it as a
+    ;; projective measurement.
     (if (<= *qubits-required-for-parallelization* (number-of-qubits qvm))
         (lparallel:pdotimes (i (ash (length wavefunction) -1))
           (let ((address (index-to-address i qubit annihilated-state)))

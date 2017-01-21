@@ -188,22 +188,20 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 (defun normalize-wavefunction (wavefunction)
   "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space."
   (declare (type quantum-state wavefunction)
-           (inline probability)
+           (inline probability psum)
            (optimize speed (safety 0)))
   ;; Mutate the wavefunction.
-  (let ((norm (flonum 0)))
+  (let ((num-qubits (wavefunction-qubits wavefunction))
+        ;; Square norm.
+        (norm (psum #'probability wavefunction)))
     (declare (type flonum norm))
-    ;; Compute the square norm.
-    (loop :for x :of-type cflonum :across wavefunction
-          :do (incf norm (probability x)))
 
     ;; Compute the RECIPROCAL norm.
     (setf norm (/ (sqrt (the (flonum 0) norm)) norm))
 
     ;; Normalize the wavefunction
-    (loop :for i :below (length wavefunction)
-          :for x :of-type cflonum :across wavefunction
-          :do (setf (aref wavefunction i) (* x norm)))
+    (lparallel:pdotimes (i (length wavefunction))
+      (setf (aref wavefunction i) (* norm (aref wavefunction i))))
 
     ;; Return the wavefunction.
     wavefunction))

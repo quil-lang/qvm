@@ -132,6 +132,21 @@ NOTE: This will not copy any multiprocessing aspects."
      (defun ,name ,lambda-list ,@body)
      (declaim (notinline ,name))))
 
+(defun subdivide (total num-ranges)
+  "Subdivide TOTAL (probably representing a vector length) into NUM-RANGES as-equal-as-possible ranges.
+
+The result will be a list of cons cells representing half-open intervals (on the right) whose union is [0, total)."
+  (let ((size (floor total num-ranges)))
+    (if (zerop size)
+        (list (cons 0 total))
+        (loop :for worker :from 1 :to num-ranges
+              :for start :from 0 :by size
+              :if (= worker num-ranges)
+                :collect (cons start total)
+              :else
+                :collect (cons start (+ start size))))))
+
+
 ;;; Some system-level definitions.
 
 #+unix
