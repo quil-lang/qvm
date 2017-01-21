@@ -381,10 +381,10 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
                   0 0 0 1))
 
 (record-standard-gate "CSWAP" (make-permutation-gate
-                              "CSWAP"
-                              "The Fredkin gate, AKA the CSWAP gate."
-                              0 1 2 3
-                              4 6 5 7))
+                               "CSWAP"
+                               "The Fredkin gate, AKA the CSWAP gate."
+                               0 1 2 3
+                               4 6 5 7))
 
 (define-default-gate ISWAP 2 ()
   "The ISWAP gate, for superconducting quantum computers."
