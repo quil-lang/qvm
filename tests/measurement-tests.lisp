@@ -14,7 +14,7 @@
                       #b01111)))
     (loop :for i :below (length test-cases)
           :for address :in test-cases
-          :do (is (= address (qvm::index-to-address index i))))))
+          :do (is (= address (qvm::index-to-address index i 0))))))
 
 (deftest test-simple-measurements ()
   "Test that some simple measurements work."

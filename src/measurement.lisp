@@ -4,33 +4,46 @@
 
 (in-package #:qvm)
 
-(defun index-to-address (index qubit)
-  "Given an amplitude index INDEX, find the amplitude address for qubit QUBIT.
+(declaim (inline index-to-address))
+(defun index-to-address (index qubit state)
+  "Given an amplitude index INDEX, find the amplitude address for the INDEX'th basis state with QUBIT in the STATE state.
 
 Specifically, given an integer whose bit string is
 
-    INDEX = LLLLLRRRR,
+    INDEX = LLLLRRRR,
 
 compute the address
 
-    Result = LLLLL0RRRR
+    Result = LLLL{0,1}RRRR
 
-which is the index with a zero injected at the QUBIT'th position."
-  (let ((left (ash index (- qubit)))
-        (right (ldb (byte qubit 0) index)))
-    (logior (ash left (1+ qubit))
-            right)))
+which is the index with a {1, 0} injected at the QUBIT'th position."
+  (declare (type nat-tuple-element qubit)
+           (type amplitude-address index)
+           (type bit state)
+           (optimize speed (safety 0) (debug 0) (space 0)))
+  (let ((LLLLb (let ((LLLL (ash index (- qubit))))
+                 (declare (type amplitude-address LLLL))
+                 (logior state (the amplitude-address (ash LLLL 1)))))
+        (RRRR  (ldb (byte qubit 0) index)))
+    (declare (type amplitude-address LLLLb RRRR))
+    (logior (the amplitude-address (ash LLLLb qubit))
+            RRRR)))
 
 (defun qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
+  (declare (optimize speed (safety 0) (debug 0) (space 0)))
   #+#:alternate-implementation
   (second (state-probabilities qvm (nat-tuple qubit)))
 
   ;; Sum up all the probabilities of the qubit QUBIT being 0, and
   ;; compute the complement of that.
-  (- 1.0d0 (loop :for i :below (expt 2 (1- (number-of-qubits qvm)))
-                 :for address := (index-to-address i qubit)
-                 :sum (probability (aref (amplitudes qvm) address)))))
+  (loop :with P1 :of-type flonum := (flonum 0)
+        :with wavefunction :of-type quantum-state := (amplitudes qvm)
+        ;; We only need to go through half of the basis functions.
+        :for i :below (ash (length wavefunction) -1)
+        :for address :of-type amplitude-address := (index-to-address i qubit 1)
+        :do (incf P1 (probability (aref wavefunction address)))
+        :finally (return P1)))
 
 (defun multi-qubit-probability (qvm &rest qubits)
   "Compute the probability that the qubits QUBITS will measure to 1 within the quantum virtual machine QVM."
@@ -40,27 +53,26 @@ which is the index with a zero injected at the QUBIT'th position."
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly."
   (declare (optimize speed (safety 0) (debug 0) (space 0))
            (type bit measured-value))
-  (let* ((qubit (nat-tuple qubit))
-         (wavefunction (amplitudes qvm))
-         (other-qubits (nat-tuple-complement
-                        (wavefunction-qubits (amplitudes qvm))
-                        qubit)))
-    (flet ((project (combo address)
-             (declare (ignore combo))
-             (with-modified-amplitudes (pair wavefunction qubit address)
-               ;; Perform a projective measurement in the
-               ;; computational basis.
-               (ecase measured-value
-                 (0 (setf (aref pair 1) (cflonum 0)))
-                 (1 (setf (aref pair 0) (cflonum 0)))))))
-      (declare (dynamic-extent #'project)
-               (inline project))
-      (map-reordered-amplitudes-in-parallel
-       0
-       #'project
-       other-qubits))
+  (let ((wavefunction (amplitudes qvm))
+        (annihilated-state (- 1 measured-value)))
+    (declare (type quantum-state wavefunction)
+             (type bit annihilated-state))
+    ;; Here we step through the wavefunction amplitudes
+    ;;
+    ;;     |...xyzaMbc...>
+    ;;             ^ M = 1 - MEASURED-VALUE
+    ;;
+    ;; and set them to zero. The old way to do this was to do it as a projective measurement.
+    (if (<= *qubits-required-for-parallelization* (number-of-qubits qvm))
+        (lparallel:pdotimes (i (ash (length wavefunction) -1))
+          (let ((address (index-to-address i qubit annihilated-state)))
+            (declare (type amplitude-address address))
+            (setf (aref wavefunction address) (cflonum 0))))
+        (dotimes (i (ash (length wavefunction) -1))
+          (let ((address (index-to-address i qubit annihilated-state)))
+            (declare (type amplitude-address address))
+            (setf (aref wavefunction address) (cflonum 0)))))
 
-    ;; Normalize the wavefunction after projective measurement.
     (normalize-wavefunction wavefunction))
 
   ;; Return the QVM.

@@ -15,8 +15,9 @@
   "An address into an array of amplitudes."
   `(integer 0 (,(expt 2 +max-nat-tuple-cardinality+))))
 
-(declaim (ftype (function (cflonum) flonum) probability))
-(defun-inlinable probability (amplitude)
+(declaim (ftype (function (cflonum) flonum) probability)
+         (inline probability))
+(defun probability (amplitude)
   "Convert an amplitude into a probability."
   (declare (type cflonum amplitude))
   (let ((re (realpart amplitude))
@@ -120,25 +121,29 @@ FUNCTION should be a binary function, and will receive (1) an index running from
                     (dynamic-extent ,col))
            (flet ((,extract (,combo ,address)
                     (setf (aref ,col ,combo) (aref ,wavefunction ,address))
-                    (values))
+                    nil)
                   (,insert (,combo ,address)
                     (setf (aref ,wavefunction ,address) (aref ,col ,combo))
-                    (values)))
-             (declare (dynamic-extent #',extract #',insert))
+                    nil))
+             (declare (dynamic-extent #',extract #',insert)
+                      (inline ,extract ,insert))
              ;; Extract
              (map-reordered-amplitudes
               ,starting-address
               #',extract
               ,qubits)
+
              ;; Execute BODY
              (progn
                ,@body)
+
              ;; Insert
              (map-reordered-amplitudes
               ,starting-address
               #',insert
               ,qubits)
-             (values)))))))
+
+             nil))))))
 
 (defun-inlinable apply-operator (operator wavefunction qubits)
   "Apply an operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS. OPERATOR shall be a unary function taking a QUANTUM-STATE as an argument and modifying it."
@@ -184,7 +189,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
   "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space."
   (declare (type quantum-state wavefunction)
            (inline probability)
-           (optimize speed (safety 1)))
+           (optimize speed (safety 0)))
   ;; Mutate the wavefunction.
   (let ((norm (flonum 0)))
     (declare (type flonum norm))
