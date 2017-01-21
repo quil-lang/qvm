@@ -44,6 +44,16 @@
       (is (= 1 (qvm::classical-bit qvm 1)))
       (is (= 0 (qvm::classical-bit qvm 2))))))
 
+(deftest test-unit-wavefunction-after-measurements ()
+  "Test that the wavefunction is of length nearly 1 after measurements."
+  (let ((progs (loop :for i :from 5 :to 15
+                     :collect (with-output-to-quil
+                                (loop :for q :below i
+                                      :do (format t "H ~D~%MEASURE ~D~%" q q))))))
+    (loop :for p :in progs
+          :for q := (qvm:run-program (cl-quil:qubits-needed p) p)
+          :do (is (double-float= 1 (sqrt (reduce #'+ (qvm::amplitudes q) :key #'probability)))))))
+
 (defun test-range (program repetitions percent-zeros percent-ones &key (tolerance 0.05))
   (let ((q (qvm:make-qvm (cl-quil:qubits-needed program)))
         (counts (vector 0 0)))
