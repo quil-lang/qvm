@@ -200,8 +200,11 @@ FUNCTION should be a binary function, and will receive (1) an index running from
     (setf norm (/ (sqrt (the (flonum 0) norm)) norm))
 
     ;; Normalize the wavefunction
-    (lparallel:pdotimes (i (length wavefunction))
-      (setf (aref wavefunction i) (* norm (aref wavefunction i))))
+    (if (<= *qubits-required-for-parallelization* num-qubits)
+        (lparallel:pdotimes (i (length wavefunction))
+          (setf (aref wavefunction i) (* norm (aref wavefunction i))))
+        (dotimes (i (length wavefunction))
+          (setf (aref wavefunction i) (* norm (aref wavefunction i)))))
 
     ;; Return the wavefunction.
     wavefunction))
