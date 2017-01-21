@@ -13,7 +13,7 @@
 
 (deftype amplitude-address ()
   "An address into an array of amplitudes."
-  'non-negative-fixnum)
+  `(integer 0 (,(expt 2 +max-nat-tuple-cardinality+))))
 
 (declaim (ftype (function (cflonum) flonum) probability))
 (defun-inlinable probability (amplitude)
