@@ -176,11 +176,11 @@ The function will just return NIL, and modify the contents of RESULT."
               :do (incf sum (funcall f x))
               :finally (return sum)))
       (flet ((worker-function (start end)
-               (declare (type amplitude-address start)
+               (declare (type non-negative-fixnum start)
                         (type non-negative-fixnum end))
                (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
                  (loop :with partial-sum :of-type flonum := (flonum 0)
-                       :for i :of-type amplitude-address :from start :below end
+                       :for i :of-type non-negative-fixnum :from start :below end
                        :do (incf partial-sum (funcall f (aref state i)))
                        :finally (return partial-sum)))))
         (declare (dynamic-extent #'worker-function))
@@ -207,7 +207,7 @@ The function will just return NIL, and modify the contents of RESULT."
                         (type non-negative-fixnum end))
                (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
                  (loop :with partial-sum :of-type flonum := (flonum 0)
-                       :for i :of-type amplitude-address :from start :below end
+                       :for i :of-type non-negative-fixnum :from start :below end
                        :do (incf partial-sum (funcall f i))
                        :finally (return partial-sum)))))
         (declare (dynamic-extent #'worker-function))
