@@ -82,44 +82,53 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun matrix-multiply-code (n matrix column result)
-    "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex column vector (represented as a CFLONUM vector)."
+    "Generate code to compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex column vector (represented as a CFLONUM vector)."
     (check-type n unsigned-byte)
-    `(locally
-         (declare (type (quantum-operator ,n) ,matrix)
-                  (type (quantum-state ,n) ,column)
-                  (type (or null (quantum-state ,n)) result)
-                  (optimize speed (safety 0) (debug 0) (space 0)))
-       (let ((result (or ,result (make-vector ,n)))
-             (element (cflonum 0)))
-         (declare (type (quantum-state ,n) result)
-                  (type cflonum element))
-         ,@(loop :for i :below n
-                 :append `((setf element (cflonum 0))
-                           ,@(loop :for j :below n
-                                   :collect `(incf element (* (aref ,matrix ,i ,j)
-                                                              (aref ,column ,j))))
-                           (setf (aref result ,i) element)))
-         result))))
+    (check-type matrix symbol)
+    (check-type column symbol)
+    (check-type result symbol)
+    `(let ((element (cflonum 0)))
+       (declare (type cflonum element))
+       ,@(loop :for i :below n
+               :append `((setf element (cflonum 0))
+                         ,@(loop :for j :below n
+                                 :collect `(incf element (* (aref ,matrix ,i ,j)
+                                                            (aref ,column ,j))))
+                         (setf (aref ,result ,i) element)))
+       nil)))
 
 (defmacro define-matmul (name size)
-  `(progn
-     (declaim (ftype (function ((quantum-operator ,size)
-                                (quantum-state ,size)
-                                (or null (quantum-state ,size)))
-                               (quantum-state ,size))
-                     ,name))
-     (defun-inlinable ,name (m c result)
-       ,(matrix-multiply-code size 'm 'c 'result))))
+  "Define a matrix multiplier function named NAME for square matrices operating on vectors of length SIZE. The defined function will take three arguments:
+
+    1. MATRIX: An object of type QUANTUM-OPERATOR, the multiplier.
+    2. COLUMN: An object of type QUANTUM-STATE, the vector being multipled.
+    3. RESULT: An object of type QUANTUM-STATE, where the result is deposited.
+
+The function will just return NIL, and modify the contents of RESULT."
+  (check-type name symbol)
+  (check-type size unsigned-byte)
+  (alexandria:with-gensyms (matrix column result)
+    `(progn
+       (declaim (ftype (function ((quantum-operator ,size)
+                                  (quantum-state ,size)
+                                  (quantum-state ,size))
+                                 null)
+                       ,name))
+       (defun-inlinable ,name (,matrix ,column ,result)
+         (declare (type (quantum-operator ,size) ,matrix)
+                  (type (quantum-state ,size) ,column)
+                  (type (quantum-state ,size) ,result)
+                  (optimize speed (safety 0) (debug 0) (space 0)))
+         ,(matrix-multiply-code size matrix column result)))))
 
 (define-matmul matmul2 2)
 (define-matmul matmul4 4)
 
-(defun matrix-multiply (matrix column &optional result)
-  "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex vector (represented as a CFLONUM vector)."
+(defun matrix-multiply (matrix column)
+  "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex vector (represented as a CFLONUM vector) in-place."
   (declare (type quantum-operator matrix)
            (type quantum-state column)
-           (type (or null quantum-state) result)
-           (optimize speed (safety 1))
+           (optimize speed (safety 0))
            (inline matmul2 matmul4))
   (assert (= (array-dimension matrix 0)
              (array-dimension matrix 1))
@@ -129,15 +138,29 @@
              (length column))
           (matrix column)
           "The given matrix and column vector don't have compatible dimensions.")
-  (let ((matrix-size (array-dimension matrix 0)))
+  (let* ((matrix-size (array-dimension matrix 0))
+         (result (make-vector matrix-size)))
+    (declare (type quantum-state result)
+             (dynamic-extent result))
+    ;; Perform the multiplication.
     (case matrix-size
       ((2) (matmul2 matrix column result))
       ((4) (matmul4 matrix column result))
       (otherwise
-       (let ((result (or result (make-vector matrix-size))))
-         (dotimes (i matrix-size result)
-           (let ((element (cflonum 0)))
-             (declare (type cflonum element))
-             (dotimes (j matrix-size)
-               (incf element (* (aref matrix i j) (aref column j))))
-             (setf (aref result i) element))))))))
+       (dotimes (i matrix-size)
+         (let ((element (cflonum 0)))
+           (declare (type cflonum element))
+           (dotimes (j matrix-size)
+             (incf element (* (aref matrix i j) (aref column j))))
+           (setf (aref result i) element)))))
+
+    ;; Put RESULT back into the column vector.
+    #+ccl                    ; CCL bug.
+    (loop :for i :below (length column)
+          :do (setf (aref column i) (aref result i)))
+
+    #-ccl
+    (replace column result)
+
+    ;; Return the modified column.
+    column))

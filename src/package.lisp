@@ -15,12 +15,17 @@
 
   ;; linear-algebra.lisp
   (:export
+   #:quantum-operator                   ; TYPE
+   #:quantum-state                      ; TYPE
+   #:flonum                             ; TYPE, FUNCTION, COMPILER MACRO
+   #:cflonum                            ; TYPE, FUNCTION, COMPILER MACRO
    #:octets-required-for-qubits         ; FUNCTION
    )
 
   ;; wavefunction.lisp
   (:export
    #:probability                        ; FUNCTION
+   #:apply-operator                     ; FUNCTION
    #:apply-matrix-operator              ; FUNCTION
    #:normalize-wavefunction             ; FUNCTION
    )

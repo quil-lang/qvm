@@ -67,6 +67,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
         (funcall function combo address)))))
 
 
+(declaim (type nat-tuple-cardinality *qubits-required-for-parallelization*))
 (defparameter *qubits-required-for-parallelization* 19
   "The number of qubits required of a quantum state before it gets operated on in parallel.")
 
@@ -84,7 +85,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
   (let ((col (make-vector (expt 2 (nat-tuple-cardinality qubits)))))
     (flet ((extract (combo address)
              (setf (aref col combo) (aref wavefunction address))
-             (values)))
+             nil))
       (declare (dynamic-extent #'extract))
       (map-reordered-amplitudes
        starting-address
@@ -95,11 +96,11 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 (defun insert-amplitudes (wavefunction column qubits starting-address)
   "Given a column vector of amplitudes COLUMN representing the qubits QUBITS, insert this state back into WAVEFUNCTION."
   (declare (type nat-tuple qubits)
-           (type quantum-state wavefunction)
+           (type quantum-state wavefunction column)
            (inline map-reordered-amplitudes))
   (flet ((insert (combo address)
            (setf (aref wavefunction address) (aref column combo))
-           (values)))
+           nil))
     (declare (dynamic-extent #'insert))
     (map-reordered-amplitudes
      starting-address
@@ -139,43 +140,45 @@ FUNCTION should be a binary function, and will receive (1) an index running from
               ,qubits)
              (values)))))))
 
-(defun apply-matrix-operator (operator wavefunction qubits)
-  "Apply the operator (given as a matrix) OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS."
+(defun-inlinable apply-operator (operator wavefunction qubits)
+  "Apply an operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS. OPERATOR shall be a unary function taking a QUANTUM-STATE as an argument and modifying it."
   (declare (type quantum-state wavefunction)
-           (type quantum-operator operator)
+           (type (function (quantum-state) *) operator)
            (inline map-reordered-amplitudes-in-parallel))
   (flet ((fast-multiply-in (combo address)
            (declare (ignore combo))
            (with-modified-amplitudes (col wavefunction qubits address)
-             (let ((result (make-vector (expt 2 (nat-tuple-cardinality qubits)))))
-               (declare (type quantum-state result)
-                        (dynamic-extent result))
-               (matrix-multiply operator col result)
-
-               #+ccl                    ; CCL bug.
-               (loop :for i :below (length col)
-                     :do (setf (aref col i) (aref result i)))
-
-               #-ccl
-               (replace col result)
-
-               (values))))
+             (funcall operator col)))
 
          ;; This is the old way of doing it. It is kept for posterity
          ;; and pedagogy.
+         #+#:unused
          (multiply-in (combo address)
            (declare (ignore combo))
            (let* ((x (extract-amplitudes wavefunction qubits address))
                   (Ux (matrix-multiply operator x)))
              (insert-amplitudes wavefunction Ux qubits address))
-           (values)))
-    (declare (ignore #'multiply-in)
-             (dynamic-extent #'multiply-in #'fast-multiply-in))
+           nil))
+    (declare (dynamic-extent #'fast-multiply-in)
+             (inline fast-multiply-in))
     (map-reordered-amplitudes-in-parallel
      0
      #'fast-multiply-in
      (nat-tuple-complement (wavefunction-qubits wavefunction) qubits)))
+
+  ;; Return the wavefunction.
   wavefunction)
+
+(defun-inlinable apply-matrix-operator (matrix wavefunction qubits)
+  "Apply the matrix operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS."
+  (declare (type quantum-state wavefunction)
+           (type quantum-operator matrix)
+           (inline apply-operator))
+  (flet ((multiply-by-operator (column)
+           (matrix-multiply matrix column)))
+    (declare (dynamic-extent #'multiply-by-operator)
+             (inline multiply-by-operator))
+    (apply-operator #'multiply-by-operator wavefunction qubits)))
 
 (defun normalize-wavefunction (wavefunction)
   "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space."
