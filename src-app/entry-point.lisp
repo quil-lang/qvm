@@ -107,7 +107,7 @@
      :type integer
      :initial-value 0
      :documentation "run a benchmark entangling N qubits (default: 26)")
-    
+
     (("help" #\h)
      :type boolean
      :optional t
@@ -117,6 +117,11 @@
      :type boolean
      :optional t
      :documentation "display the versions of the app and underlying QVM")
+
+    (("verbose")
+     :type boolean
+     :optional t
+     :documentation "display verbose output")
 
     (("swank-port")
      :type integer
@@ -255,7 +260,7 @@
         (let ((quil:*resolve-include-pathname* #'resolve-safely))
           (parse-it string)))))
 
-(defun process-options (&key version execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory qubits benchmark)
+(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory qubits benchmark)
   (when help
     (show-help)
     (uiop:quit))
@@ -263,6 +268,9 @@
   (when version
     (show-version)
     (uiop:quit))
+
+  (when verbose
+    (setf qvm:*transition-verbose* t))
 
   (when (plusp time-limit)
     (setf *time-limit* (/ time-limit 1000.0d0)))
@@ -618,7 +626,7 @@ starts with the string PREFIX."
         (q (qvm:make-qvm num-qubits))
         timing)
     (qvm:load-program q p)
-    
+
     (format-log "Benchmarking ~D qubits...~%" num-qubits)
 
     (sb-ext:gc :full t)

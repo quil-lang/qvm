@@ -26,6 +26,9 @@
        (64  (coerce (classical-double-float qvm param) 'flonum))
        (128 (coerce (classical-complex-double-float qvm param) 'cflonum))))))
 
+(defvar *transition-verbose* nil
+  "Controls whether each transition is printed with a timing.")
+
 (defgeneric transition (qvm instr)
   (:documentation "Execute the instruction INSTR on the QVM.
 
@@ -36,6 +39,18 @@ Return two values:
     2. The new value the program counter should be to execute the next
        relevant instruction. If this value is null, then execution
        should be halted."))
+
+(defmethod transition :around (qvm instr)
+  (cond
+    ((not *transition-verbose*) (call-next-method))
+    (t
+     (let ((start (get-internal-real-time)))
+       (multiple-value-prog1 (call-next-method)
+         (format *trace-output* "~&; Transition ~A took ~D ms~%"
+                 (with-output-to-string (s) (cl-quil::print-instruction instr s))
+                 (* (/ 1000 internal-time-units-per-second)
+                    (- (get-internal-real-time) start)))
+         (finish-output *trace-output*))))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:no-operation))
   (declare (ignore instr))

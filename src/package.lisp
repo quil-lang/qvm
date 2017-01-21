@@ -51,6 +51,7 @@
 
   ;; transition.lisp
   (:export
+   #:*transition-verbose*               ; VARIABLE
    #:invalid-gate-invocation            ; CONDITION
    #:transition                         ; GENERIC, METHOD
    )
