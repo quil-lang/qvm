@@ -55,3 +55,21 @@
     (is (set-equal (qvm::nat-tuple-list ntfull)
                    (union (qvm::nat-tuple-list nt)
                           (qvm::nat-tuple-list ntcomp))))))
+
+(deftest test-transposition-decomposition ()
+  (labels ((random-perm (n)
+             (loop :with taken := (1- (expt 2 n))
+                   :until (zerop taken)
+                   :collect (loop :with r := (random n)
+                                  :until (logbitp (setf r (random n)) taken)
+                                  :finally (progn
+                                             (setf taken (dpb 0 (byte 1 r) taken))
+                                             (return r)))))
+           (verify-decomp (perm)
+             (let ((transpositions (qvm::permutation-to-transpositions perm))
+                   (identity (loop :for i :below (length perm) :collect i)))
+               (loop :for (a . b) :in transpositions
+                     :do (rotatef (elt identity a) (elt identity b))
+                     :finally (is (equalp identity perm))))))
+    (dotimes (i 1000)
+      (verify-decomp (random-perm (expt 2 (1+ (random 5))))))))

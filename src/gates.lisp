@@ -37,6 +37,66 @@
            :documentation "The matrix of the gate."))
   (:documentation "Non-parameterized gate represented as a dense matrix."))
 
+(defclass permutation-gate (static-gate)
+  ((permutation :initarg :permutation
+                :reader permutation-gate-permutation
+                :documentation "The permutation representation of the gate.")
+   (permute-function :initarg :permute-function
+                     :reader permutation-gate-permute-function
+                     :documentation "A function which permutes a vector in-place according to the permutation."))
+  (:documentation "A gate which could be realized as a permutation matrix."))
+
+(defun permutation-to-transpositions (permutation)
+  "Decompose a permutation PERMUTATION represented as a sequence of non-negative integers into a list of transpositions represented as conses."
+  (let ((indices (copy-seq permutation))
+        (swaps nil))
+    (dotimes (dest (length indices) (nreverse swaps))
+      (let ((src (elt indices dest)))
+        (loop :while (< src dest) :do
+          (setf src (elt indices src)))
+        (when (/= src dest)
+          (push (cons src dest) swaps))))))
+
+(defun generate-permutation-gate-function (permutation)
+  "Generate an efficient unary function which modifies a quantum state according to the permutation PERMUTATION."
+  (labels ((generate-code (transpositions)
+             (loop :with variable := (gensym "V")
+                   :for (left . right) :in transpositions
+                   :collect `(rotatef (aref ,variable ,left)
+                                      (aref ,variable ,right))
+                     :into rotations
+                   :finally (return (values variable rotations))))
+
+           (generate-lambda-form (variable code)
+             `(lambda (,variable)
+                (declare (optimize speed
+                                   (safety 0)
+                                   (debug 0)
+                                   (space 0))
+                         (type quantum-state ,variable))
+                ,@code
+                nil)))
+    (multiple-value-bind (variable code)
+        (generate-code (permutation-to-transpositions permutation))
+      (compile nil (print (generate-lambda-form variable code))))))
+
+(defun make-permutation-gate (name documentation &rest permutation)
+  "Make a permutation gate with the permut"
+  (check-type name string)
+  (check-type documentation string)
+  (assert (zerop (logand (length permutation)
+                         (1- (length permutation))))
+          (permutation)
+          "Permutation ~A must be of a power-of-two number of elements."
+          permutation)
+  (make-instance
+   'permutation-gate
+   :name name
+   :documentation documentation
+   :dimension (length permutation)
+   :permutation permutation
+   :permute-function (generate-permutation-gate-function permutation)))
+
 (defclass parameterized-gate (dynamic-gate)
   ((matrix-function :initarg :matrix-function
                     :reader parameterized-gate-matrix-function
@@ -84,6 +144,13 @@
   (:method ((gate parameterized-gate) wavefunction qubits &rest parameters)
     (apply-matrix-operator
      (apply #'gate-operator gate parameters)
+     wavefunction
+     qubits))
+
+  (:method ((gate permutation-gate) wavefunction qubits &rest parameters)
+    (assert (null parameters) (parameters) "Parameters don't make sense for a permutation gate.")
+    (apply-operator
+     (permutation-gate-permute-function gate)
      wavefunction
      qubits)))
 
@@ -194,17 +261,15 @@ Example: A NAND gate can be made with
                     1/sqrt2 1/sqrt2
                     1/sqrt2 (- 1/sqrt2))))
 
-(define-default-gate I 1 ()
-  "The identity gate."
-  '#.(make-matrix 2
-                  1 0
-                  0 1))
+(record-standard-gate "I" (make-permutation-gate
+                           "I"
+                           "The identity gate."
+                           0 1))
 
-(define-default-gate X 1 ()
-  "The Pauli-X gate."
-  '#.(make-matrix 2
-                  0 1
-                  1 0))
+(record-standard-gate "X" (make-permutation-gate
+                           "X"
+                           "The Pauli-X gate."
+                           1 0))
 
 (define-default-gate Y 1 ()
   "The Pauli-Y gate."
@@ -218,21 +283,16 @@ Example: A NAND gate can be made with
                   1 0
                   0 -1))
 
-(define-default-gate CNOT 2 ()
-  "The controlled NOT gate."
-  '#.(controlled #2A((0 1) (1 0))))
+(record-standard-gate "CNOT" (make-permutation-gate
+                              "CNOT"
+                              "The controlled-X or controlled-NOT gate."
+                              0 1 3 2))
 
-(define-default-gate CCNOT 3 ()
-  "The Toffoli gate, AKA the CCNOT gate."
-  '#.(make-matrix 8
-                  1 0 0 0 0 0 0 0
-                  0 1 0 0 0 0 0 0
-                  0 0 1 0 0 0 0 0
-                  0 0 0 1 0 0 0 0
-                  0 0 0 0 1 0 0 0
-                  0 0 0 0 0 1 0 0
-                  0 0 0 0 0 0 0 1
-                  0 0 0 0 0 0 1 0))
+(record-standard-gate "CCNOT" (make-permutation-gate
+                              "CCNOT"
+                              "The Toffoli gate, AKA the CCNOT gate."
+                              0 1 2 3
+                              4 5 7 6))
 
 (define-default-gate RX 1 (theta)
   "The R_x(theta) gate."
@@ -319,17 +379,11 @@ Note that this is a controlled version of a R_z gate multiplied by a phase."
                   0 1 0 0
                   0 0 0 1))
 
-(define-default-gate CSWAP 3 ()
-  "The Fredkin gate, AKA the CSWAP gate."
-  '#.(make-matrix 8
-                  1 0 0 0 0 0 0 0
-                  0 1 0 0 0 0 0 0
-                  0 0 1 0 0 0 0 0
-                  0 0 0 1 0 0 0 0
-                  0 0 0 0 1 0 0 0
-                  0 0 0 0 0 0 1 0
-                  0 0 0 0 0 1 0 0
-                  0 0 0 0 0 0 0 1))
+(record-standard-gate "CSWAP" (make-permutation-gate
+                              "CSWAP"
+                              "The Fredkin gate, AKA the CSWAP gate."
+                              0 1 2 3
+                              4 6 5 7))
 
 (define-default-gate ISWAP 2 ()
   "The ISWAP gate, for superconducting quantum computers."
