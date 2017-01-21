@@ -50,12 +50,9 @@
     `(progn
        (declaim (inline ,name ,%name))
        (defun ,%name (x y epsilon)
-         (declare (optimize speed (safety 0) (debug 0) (space 0))
-                  (type ,float-type x y epsilon)
-                  (dynamic-extent x y epsilon))
+         (declare (type ,float-type x y epsilon))
          (let ((delta (abs (- x y))))
-           (declare (type ,float-type delta)
-                    (dynamic-extent delta))
+           (declare (type ,float-type delta))
            (cond
              ((eql x y) t)
              ((or (zerop x)
@@ -67,8 +64,7 @@
                      (abs-y (abs y))
                      (magnitude (with-float-traps-masked ()
                                   (+ abs-x abs-y))))
-                (declare (type ,float-type abs-x abs-y magnitude)
-                         (dynamic-extent abs-x abs-y magnitude))
+                (declare (type ,float-type abs-x abs-y magnitude))
                 (< (/ delta (min ,most-positive magnitude)) epsilon))))))
        (defun ,name (x y &optional (epsilon *default-epsilon*))
          ;; Doc string
@@ -81,8 +77,7 @@
          (let ((x (coerce x ',float-type))
                (y (coerce y ',float-type))
                (epsilon (coerce epsilon ',float-type)))
-           (declare (type ,float-type x y epsilon)
-                    (dynamic-extent x y epsilon))
+           (declare (type ,float-type x y epsilon))
            (,%name x y epsilon)))
        (declaim (notinline ,name ,%name)))))
 
