@@ -73,12 +73,13 @@
                                    (safety 0)
                                    (debug 0)
                                    (space 0))
-                         (type quantum-state ,variable))
+                         (type quantum-state ,variable)
+                         (ignorable ,variable))
                 ,@code
                 nil)))
     (multiple-value-bind (variable code)
         (generate-code (permutation-to-transpositions permutation))
-      (compile nil (print (generate-lambda-form variable code))))))
+      (compile nil (generate-lambda-form variable code)))))
 
 (defun make-permutation-gate (name documentation &rest permutation)
   "Make a permutation gate with the permut"
