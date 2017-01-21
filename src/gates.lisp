@@ -4,36 +4,55 @@
 
 (in-package #:qvm)
 
+;;;;;;;;;;;;;;;;;;;;;; Gate Object Definitions ;;;;;;;;;;;;;;;;;;;;;;;
+
 (defclass gate ()
   ((dimension :initarg :dimension
-              :reader gate-dimension)
+              :reader gate-dimension
+              :documentation "The minimal dimension of the space the gate acts on.")
    (name :initarg :name
-         :reader gate-name)
+         :reader gate-name
+         :documentation "The name of the gate.")
    (documentation :initarg :documentation
-                  :reader gate-documentation))
+                  :reader gate-documentation
+                  :documentation "Documentation about the gate."))
+  (:metaclass abstract-class)
   (:documentation "Abstract class for gates."))
 
-(defclass simple-gate (gate)
-  ((matrix :initarg :matrix
-           :reader simple-gate-matrix))
-  (:documentation "Non-parameterized gate."))
+(defclass static-gate (gate)
+  ()
+  (:metaclass abstract-class)
+  (:documentation "An abstract class representing gates which could be represented as a static matrix."))
 
-(defclass parameterized-gate (gate)
+(defclass dynamic-gate (gate)
   ((arity :initarg :arity
-          :reader parameterized-gate-arity)
-   (matrix-function :initarg :matrix-function
+          :reader dynamic-gate-arity
+          :documentation "The number of parameters the gate requires."))
+  (:metaclass abstract-class)
+  (:documentation "An abstract class representing gates which could be represented as a static matrix."))
+
+(defclass simple-gate (static-gate)
+  ((matrix :initarg :matrix
+           :reader simple-gate-matrix
+           :documentation "The matrix of the gate."))
+  (:documentation "Non-parameterized gate represented as a dense matrix."))
+
+(defclass parameterized-gate (dynamic-gate)
+  ((matrix-function :initarg :matrix-function
                     :reader parameterized-gate-matrix-function
                     :documentation "Function mapping ARITY complex numbers to a DIMENSION x DIMENSION matrix."))
   (:documentation "A gate parameterized by complex numbers."))
 
 (defgeneric gate-operator (gate &rest parameters)
   (:documentation "Given a gate GATE and possibly some parameters PARAMETERS, compute the associated gate operator matrix.")
+
   (:method ((g simple-gate) &rest parameters)
     (assert (null parameters) () "The simple gate ~A is not parameterized."
             (gate-name g))
     (simple-gate-matrix g))
+
   (:method ((g parameterized-gate) &rest parameters)
-    (let ((expected (parameterized-gate-arity g))
+    (let ((expected (dynamic-gate-arity g))
           (actual   (length parameters)))
       (assert (= expected actual)
               ()
@@ -43,52 +62,90 @@
               actual))
     (apply (parameterized-gate-matrix-function g) parameters)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; One might ask why we define a generic function to act on a
+;;; wavefunction with qubits, as opposed to a state vector. I (Robert)
+;;; think the the latter approach would be more mathematically
+;;; elegant, but unfortunately, it is much harder to optimize. The
+;;; compiler will be unable to inline any of the various chains of
+;;; functions if we need to dispatch on every subspace application.
+
+(defgeneric apply-gate (gate wavefunction qubits &rest parameters)
+  (:documentation "Apply a gate GATE to the wavefunction WAVEFUNCTION on the sub-Hilbert space defined by the NAT-TUPLE of qubit indexes QUBITS. PARAMETERS is a list of numeric parameters passed to a dynamic gate.")
+
+  (:method ((gate simple-gate) wavefunction qubits &rest parameters)
+    (apply-matrix-operator
+     (apply #'gate-operator gate parameters)
+     wavefunction
+     qubits))
+
+  (:method ((gate parameterized-gate) wavefunction qubits &rest parameters)
+    (apply-matrix-operator
+     (apply #'gate-operator gate parameters)
+     wavefunction
+     qubits)))
+
+
+;;;;;;;;;;;;;;;;;;;;;; Default Gate Definitions ;;;;;;;;;;;;;;;;;;;;;;
+
 (defvar *default-gate-definitions* (make-hash-table :test 'equal)
   "A table of default gate definitions.")
 
-(defmacro define-default-gate (name qubits (&rest params) &body matrix-code)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun record-standard-gate (name gate)
+    "Record the standard gate GATE under the name NAME in the default list of standard gates."
+    (check-type name string)
+    (check-type gate gate)
+    (setf (gethash name *default-gate-definitions*) gate)
+    (values)))
+
+(defmacro define-default-gate (name num-qubits (&rest params) &body matrix-code)
   "Defines a gate and adds it to the default-provided gate table.
 
     NAME: The name of the gate (symbol)
-    QUBITS: The number of qubits the gate intends to act on.
+    NUM-QUBITS: The number of qubits the gate intends to act on.
     PARAMS: Parameter list for the gate (may be empty)
     MATRIX-CODE: The code, which may depend on PARAMS, to generate the gate's operator.
 "
   (check-type name symbol)
-  (check-type qubits (integer 1))
+  (check-type num-qubits (integer 1))
   (let ((name-string (symbol-name name))
-        (dimension (expt 2 qubits)))
+        (dimension (expt 2 num-qubits)))
     (multiple-value-bind (forms decls doc-string)
         (alexandria:parse-body matrix-code :documentation t)
       (cond
         ;; Simple gate.
         ((null params)
          (let ((matrix (gensym "MATRIX-")))
-           `(setf (gethash ',name-string *default-gate-definitions*)
-                  (let ((,matrix (locally ,@decls ,@forms)))
-                    (assert (= (array-dimension ,matrix 0)
-                               (array-dimension ,matrix 1)
-                               ,dimension))
-                    (make-instance 'simple-gate
-                                   :name ',name-string
-                                   :documentation ',doc-string
-                                   :dimension ',dimension
-                                   :matrix ,matrix)))))
+           `(record-standard-gate
+             ',name-string
+             (let ((,matrix (locally ,@decls ,@forms)))
+               (assert (= (array-dimension ,matrix 0)
+                          (array-dimension ,matrix 1)
+                          ,dimension))
+               (make-instance 'simple-gate
+                              :name ',name-string
+                              :documentation ',doc-string
+                              :dimension ',dimension
+                              :matrix ,matrix)))))
         ;; Parameterized gate.
         (t
          (let ((arity (length params))
                (matrix-fn (gensym (format nil "~A-MATRIX-FN-" name-string))))
-           `(setf (gethash ',name-string *default-gate-definitions*)
-                  (flet ((,matrix-fn ,params
-                           ,@decls
-                           ;; TODO: Check that DIMENSION matches the generated matrix.
-                           ,@forms))
-                    (make-instance 'parameterized-gate
-                                   :name ',name-string
-                                   :documentation ',doc-string
-                                   :dimension ,dimension
-                                   :arity ,arity
-                                   :matrix-function #',matrix-fn)))))))))
+           `(record-standard-gate
+             ',name-string
+             (flet ((,matrix-fn ,params
+                      ,@decls
+                      ;; TODO: Check that DIMENSION matches the generated matrix.
+                      ,@forms))
+               (make-instance 'parameterized-gate
+                              :name ',name-string
+                              :documentation ',doc-string
+                              :dimension ,dimension
+                              :arity ,arity
+                              :matrix-function #',matrix-fn)))))))))
 
 ;; Evaluate this stuff earlier so we can have access while reading.
 (eval-when (:compile-toplevel :load-toplevel :execute)

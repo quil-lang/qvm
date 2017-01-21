@@ -3,7 +3,9 @@
 ;;;; Author: Robert Smith
 
 (defpackage #:qvm
-  (:use #:cl)
+  (:documentation "Package containing an implementation of a quantum virtual machine.")
+  (:use #:cl
+        #:abstract-classes)
 
   ;; utilities.lisp
   (:export
@@ -19,7 +21,7 @@
   ;; wavefunction.lisp
   (:export
    #:probability                        ; FUNCTION
-   #:apply-operator                     ; FUNCTION
+   #:apply-matrix-operator              ; FUNCTION
    #:normalize-wavefunction             ; FUNCTION
    )
 
@@ -56,6 +58,8 @@
 
   ;; gates.lisp
   (:export
+   #:gate-operator                      ; GENERIC, METHOD
+   #:apply-gate                         ; GENERIC, METHOD
    #:operator-matrix-from-truth-table   ; FUNCTION
    #:controlled                         ; FUNCTION
    )

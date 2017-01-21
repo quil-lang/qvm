@@ -133,13 +133,12 @@ Return two values:
    (1+ (pc qvm))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:gate-application))
-  (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
-         (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
-         (qubits (mapcar (lambda (q)
-                           (permuted-qubit qvm (quil:qubit-index q)))
-                         (quil:application-arguments instr)))
-         (operator (apply #'gate-operator gate params)))
-    (apply-operator (amplitudes qvm) operator (apply #'nat-tuple qubits))
+  (let ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
+        (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
+        (qubits (mapcar (lambda (q)
+                          (permuted-qubit qvm (quil:qubit-index q)))
+                        (quil:application-arguments instr))))
+    (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (values
      qvm
      (1+ (pc qvm)))))
@@ -154,15 +153,14 @@ Return two values:
 ;;; XXX: Temporary measure. Unresolved applications should error at
 ;;; parse time.
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil::unresolved-application))
-  (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
-         (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
-         (qubits (mapcar (lambda (q)
-                           (permuted-qubit qvm (quil:qubit-index q)))
-                         (quil:application-arguments instr)))
-         (operator (apply #'gate-operator gate params)))
+  (let ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
+        (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
+        (qubits (mapcar (lambda (q)
+                          (permuted-qubit qvm (quil:qubit-index q)))
+                        (quil:application-arguments instr))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
-          (expected-qubits (1- (integer-length (array-dimension operator 0)))))
+          (expected-qubits (1- (integer-length (gate-dimension gate)))))
       (assert (= given-qubits expected-qubits)
               ()
               "Attempting to apply the ~D-qubit gate ~A to ~D qubit~:P ~
@@ -173,13 +171,13 @@ Return two values:
               (with-output-to-string (s)
                 (quil::print-instruction instr s))))
 
-    ;; Transition the QVM.
-    (apply-operator (amplitudes qvm) operator (apply #'nat-tuple qubits))
+    (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (values
      qvm
      (1+ (pc qvm)))))
 
-;;; XXX: This method should not exist in the end.
+;;; XXX: This method should not exist after Quil is properly
+;;; processed.
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil::circuit-application))
   (cerror "Ignore circuit."
           "DEFCIRCUIT and circuit expansion is currently not supported.")

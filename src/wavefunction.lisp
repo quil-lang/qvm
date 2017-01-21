@@ -139,7 +139,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
               ,qubits)
              (values)))))))
 
-(defun apply-operator (wavefunction operator qubits)
+(defun apply-matrix-operator (operator wavefunction qubits)
   "Apply the operator (given as a matrix) OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS."
   (declare (type quantum-state wavefunction)
            (type quantum-operator operator)

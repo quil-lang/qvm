@@ -48,9 +48,9 @@ It should be that PX + PY + PZ <= 1.
 "
   (check-type qubit unsigned-byte)
   (assert (<= (+ px py pz) 1))
-  (let ((X (gate-operator (lookup-gate qvm "X")))
-        (Y (gate-operator (lookup-gate qvm "Y")))
-        (Z (gate-operator (lookup-gate qvm "Z")))
+  (let ((X (lookup-gate qvm "X"))
+        (Y (lookup-gate qvm "Y"))
+        (Z (lookup-gate qvm "Z"))
         (sum (+ px py pz)))
     (probabilistically sum
       (setf px (/ px sum)
@@ -59,15 +59,15 @@ It should be that PX + PY + PZ <= 1.
       (let ((r (random 1.0))
             (amplitudes (amplitudes qvm)))
         (when (< r px)
-          (apply-operator amplitudes X (nat-tuple qubit))
+          (apply-gate X amplitudes (nat-tuple qubit))
           (return-from add-depolarizing-noise))
         (decf r px)
         (when (< r py)
-          (apply-operator amplitudes Y (nat-tuple qubit))
+          (apply-gate Y amplitudes (nat-tuple qubit))
           (return-from add-depolarizing-noise))
         (decf r py)
         (when (< r pz)
-          (apply-operator amplitudes Z (nat-tuple qubit))
+          (apply-gate Z amplitudes (nat-tuple qubit))
           (return-from add-depolarizing-noise))))))
 
 ;;; Noise gets added to every qubit after an application or RESET.

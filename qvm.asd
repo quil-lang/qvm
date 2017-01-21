@@ -10,6 +10,8 @@
   :depends-on (
                ;; General utilities
                #:alexandria
+               ;; Abstract classes
+               #:abstract-classes
                ;; IEEE-754 float parsing
                #:ieee-floats
                ;; Parallelization utilities
@@ -28,9 +30,9 @@
                (:cffi-grovel-file "system-constants")
                (:file "utilities")
                (:file "linear-algebra")
+               (:file "wavefunction")
                (:file "gates")
                (:file "quil")
-               (:file "wavefunction")
                (:file "qvm")
                (:file "measurement")
                (:file "transition")
