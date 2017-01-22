@@ -44,12 +44,15 @@ Return two values:
   (cond
     ((not *transition-verbose*) (call-next-method))
     (t
-     (let ((start (get-internal-real-time)))
-       (multiple-value-prog1 (call-next-method)
-         (format *trace-output* "~&; Transition ~A took ~D ms~%"
+     (let ((start (get-internal-real-time))
+           gc-time bytes-alloc)
+       (multiple-value-prog1 (measuring-gc (gc-time bytes-alloc) (call-next-method))
+         (format *trace-output* "~&; Transition ~A took ~D ms (gc: ~D ms; alloc: ~D bytes)~%"
                  (with-output-to-string (s) (cl-quil::print-instruction instr s))
                  (* (/ 1000 internal-time-units-per-second)
-                    (- (get-internal-real-time) start)))
+                    (- (get-internal-real-time) start))
+                 gc-time
+                 bytes-alloc)
          (finish-output *trace-output*))))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:no-operation))

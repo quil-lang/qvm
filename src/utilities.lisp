@@ -146,6 +146,15 @@ The result will be a list of cons cells representing half-open intervals (on the
               :else
                 :collect (cons start (+ start size))))))
 
+(defmacro measuring-gc ((time-var bytes-var) &body body)
+  "Execute BODY setting TIME-VAR to the number of milliseconds spent garbage collecting, and BYTES-VAR to roughly the number of bytes allocated."
+  (alexandria:with-gensyms (bytes-start)
+    `(let ((sb-ext:*gc-run-time* 0)
+           (,bytes-start (sb-ext:get-bytes-consed)))
+       (multiple-value-prog1 (progn ,@body)
+         (setf ,bytes-var (- (sb-ext:get-bytes-consed) ,bytes-start))
+         (setf ,time-var (round (* (/ 1000 internal-time-units-per-second)
+                                   sb-ext:*gc-run-time*)))))))
 
 ;;; Some system-level definitions.
 
