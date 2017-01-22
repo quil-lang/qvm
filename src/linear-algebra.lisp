@@ -200,7 +200,7 @@ The function will just return NIL, and modify the contents of RESULT."
       (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
         (loop :with sum :of-type flonum := (flonum 0)
               :for i :below range
-              :do (incf sum (funcall f i))
+              :do (incf sum (the flonum (funcall f i)))
               :finally (return sum)))
       (flet ((worker-function (start end)
                (declare (type non-negative-fixnum start)
@@ -208,7 +208,7 @@ The function will just return NIL, and modify the contents of RESULT."
                (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
                  (loop :with partial-sum :of-type flonum := (flonum 0)
                        :for i :of-type non-negative-fixnum :from start :below end
-                       :do (incf partial-sum (funcall f i))
+                       :do (incf partial-sum (the flonum (funcall f i)))
                        :finally (return partial-sum)))))
         (declare (dynamic-extent #'worker-function))
         (let ((ch (lparallel:make-channel))
@@ -218,3 +218,30 @@ The function will just return NIL, and modify the contents of RESULT."
                 :do (lparallel:submit-task ch #'worker-function start end))
           (loop :for i :below num-tasks
                 :sum (lparallel:receive-result ch))))))
+
+(defmacro psum-dotimes ((i range) &body body)
+  "Compute the sum of BODY for i in RANGE."
+  (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function)
+    (alexandria:once-only (range)
+      `(if (< ,range (expt 2 *qubits-required-for-parallelization*))
+           (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+             (loop :with ,sum :of-type flonum := (flonum 0)
+                   :for ,i :below ,range
+                   :do (incf ,sum (the flonum (progn ,@body)))
+                   :finally (return ,sum)))
+           (flet ((,worker-function (,start ,end)
+                    (declare (type non-negative-fixnum ,start)
+                             (type non-negative-fixnum ,end))
+                    (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+                      (loop :with ,partial-sum :of-type flonum := (flonum 0)
+                            :for ,i :of-type non-negative-fixnum :from ,start :below ,end
+                            :do (incf ,partial-sum (the flonum (progn ,@body)))
+                            :finally (return ,partial-sum)))))
+             (declare (dynamic-extent #',worker-function))
+             (let ((,ch (lparallel:make-channel))
+                   (,num-tasks (lparallel:kernel-worker-count)))
+               ;; FIXME corner case num actual tasks smaller than num-workers
+               (loop :for (,start . ,end) :in (subdivide ,range ,num-tasks)
+                     :do (lparallel:submit-task ,ch #',worker-function ,start ,end))
+               (loop :repeat ,num-tasks
+                     :sum (lparallel:receive-result ,ch))))))))

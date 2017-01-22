@@ -35,12 +35,10 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
            (inline probability psum-range))
   (let ((wavefunction (amplitudes qvm)))
     (declare (type quantum-state wavefunction))
-    (psum-range (lambda (i)
-                  (declare (type non-negative-fixnum i))
-                  (let ((address (index-to-address i qubit 1)))
-                    (declare (type amplitude-address address))
-                    (probability (aref wavefunction address))))
-                (ash (length wavefunction) -1))))
+    (psum-dotimes (i (ash (length wavefunction) -1))
+      (let ((address (index-to-address i qubit 1)))
+        (declare (type amplitude-address address))
+        (probability (aref wavefunction address))))))
 
 (defun multi-qubit-probability (qvm &rest qubits)
   "Compute the probability that the qubits QUBITS will measure to 1 within the quantum virtual machine QVM."
