@@ -140,13 +140,22 @@ This will not clear previously installed gates from the QVM."
      (permutation-to-nat-tuple (qubit-permutation qvm))))
   (values))
 
+(defun check-bit-in-bounds (qvm n)
+  (assert (<= 0 n (1- (classical-memory-size qvm)))
+          ()
+          "Attempting to access classical bit out of the range of ~
+           the memory provided, which is ~D bits."
+          (classical-memory-size qvm)))
+
 (defun classical-bit (qvm n)
   "Extract the classical bit addressed by N from the quantum virtual machine QVM."
+  (check-bit-in-bounds qvm n)
   (ldb (byte 1 n) (classical-memory qvm)))
 
 (defun (setf classical-bit) (new-value qvm n)
   "Set the classical bit addressed by N in the quantum virtual machine QVM to the value NEW-VALUE."
   (check-type new-value bit)
+  (check-bit-in-bounds qvm n)
   (setf (ldb (byte 1 n) (classical-memory qvm)) new-value))
 
 (deftype bit-range ()
@@ -175,6 +184,8 @@ This will not clear previously installed gates from the QVM."
 (defun classical-bit-range (qvm br)
   "Extract the value in the bit range BR from the classical memory of QVM."
   (check-type br bit-range)
+  (check-bit-in-bounds qvm (bit-range-left br))
+  (check-bit-in-bounds qvm (1- (bit-range-right br)))
   (ldb (byte (bit-range-width br) (bit-range-left br))
        (classical-memory qvm)))
 
@@ -182,6 +193,8 @@ This will not clear previously installed gates from the QVM."
   "Set the value contained within the bit range BR of the classical memory of QVM to NEW-VALUE."
   (check-type new-value (integer 0))
   (check-type br bit-range)
+  (check-bit-in-bounds qvm (bit-range-left br))
+  (check-bit-in-bounds qvm (1- (bit-range-right br)))
   (let ((range-width (bit-range-width br))
         (len (integer-length new-value)))
     (assert (<= len range-width) (new-value)
