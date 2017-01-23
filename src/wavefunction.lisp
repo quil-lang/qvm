@@ -187,19 +187,19 @@ FUNCTION should be a binary function, and will receive (1) an index running from
            (inline probability psum))
   ;; Mutate the wavefunction.
   (let ((num-qubits (wavefunction-qubits wavefunction))
-        ;; Square norm.
-        (norm (psum #'probability wavefunction)))
-    (declare (type flonum norm))
+        ;; Initially the square norm.
+        (inv-norm (psum #'probability wavefunction)))
+    (declare (type flonum inv-norm))
 
     ;; Compute the RECIPROCAL norm.
-    (setf norm (/ (sqrt (the (flonum 0) norm)) norm))
+    (setf inv-norm (/ (sqrt (the (flonum 0) inv-norm)) inv-norm))
 
     ;; Normalize the wavefunction
     (if (<= *qubits-required-for-parallelization* num-qubits)
         (lparallel:pdotimes (i (length wavefunction))
-          (setf (aref wavefunction i) (* norm (aref wavefunction i))))
+          (setf (aref wavefunction i) (* inv-norm (aref wavefunction i))))
         (dotimes (i (length wavefunction))
-          (setf (aref wavefunction i) (* norm (aref wavefunction i)))))
+          (setf (aref wavefunction i) (* inv-norm (aref wavefunction i)))))
 
     ;; Return the wavefunction.
     wavefunction))
