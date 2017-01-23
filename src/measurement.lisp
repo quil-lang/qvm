@@ -32,7 +32,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 (defun qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
   (declare #.*optimize-dangerously-fast*
-           (inline probability psum-range))
+           (inline probability))
   (let ((wavefunction (amplitudes qvm)))
     (declare (type quantum-state wavefunction))
     (psum-dotimes (i (ash (length wavefunction) -1))

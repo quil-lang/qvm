@@ -165,63 +165,9 @@ The function will just return NIL, and modify the contents of RESULT."
     ;; Return the modified column.
     column))
 
-(defun-inlinable psum (f state)
-  "Compute the sum of F(Xi) for Xi in STATE, in parallel."
-  (declare (type (function (cflonum) flonum) f)
-           (type quantum-state state))
-  (if (< (length state) (expt 2 *qubits-required-for-parallelization*))
-      (locally (declare #.*optimize-dangerously-fast*)
-        (loop :with sum :of-type flonum := (flonum 0)
-              :for x :across state
-              :do (incf sum (funcall f x))
-              :finally (return sum)))
-      (flet ((worker-function (start end)
-               (declare (type non-negative-fixnum start)
-                        (type non-negative-fixnum end))
-               (locally (declare #.*optimize-dangerously-fast*)
-                 (loop :with partial-sum :of-type flonum := (flonum 0)
-                       :for i :of-type non-negative-fixnum :from start :below end
-                       :do (incf partial-sum (funcall f (aref state i)))
-                       :finally (return partial-sum)))))
-        (declare (dynamic-extent #'worker-function))
-        (let ((ch (lparallel:make-channel))
-              (num-tasks (lparallel:kernel-worker-count)))
-          ;; FIXME corner case num actual tasks smaller than num-workers
-          (loop :for (start . end) :in (subdivide (length state) num-tasks)
-                :do (lparallel:submit-task ch #'worker-function start end))
-          (loop :for i :below num-tasks
-                :sum (lparallel:receive-result ch))))))
-
-(defun-inlinable psum-range (f range)
-  "Compute the sum of F(i) for i in RANGE."
-  (declare (type (function (non-negative-fixnum) flonum) f)
-           (type non-negative-fixnum range))
-  (if (< range (expt 2 *qubits-required-for-parallelization*))
-      (locally (declare #.*optimize-dangerously-fast*)
-        (loop :with sum :of-type flonum := (flonum 0)
-              :for i :below range
-              :do (incf sum (the flonum (funcall f i)))
-              :finally (return sum)))
-      (flet ((worker-function (start end)
-               (declare (type non-negative-fixnum start)
-                        (type non-negative-fixnum end))
-               (locally (declare #.*optimize-dangerously-fast*)
-                 (loop :with partial-sum :of-type flonum := (flonum 0)
-                       :for i :of-type non-negative-fixnum :from start :below end
-                       :do (incf partial-sum (the flonum (funcall f i)))
-                       :finally (return partial-sum)))))
-        (declare (dynamic-extent #'worker-function))
-        (let ((ch (lparallel:make-channel))
-              (num-tasks (lparallel:kernel-worker-count)))
-          ;; FIXME corner case num actual tasks smaller than num-workers
-          (loop :for (start . end) :in (subdivide range num-tasks)
-                :do (lparallel:submit-task ch #'worker-function start end))
-          (loop :for i :below num-tasks
-                :sum (lparallel:receive-result ch))))))
-
 (defmacro psum-dotimes ((i range) &body body)
-  "Compute the sum of BODY for i in RANGE."
-  (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function)
+  "Compute the sum of BODY for I in ranging over 0 <= I < RANGE."
+  (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function ranges)
     (alexandria:once-only (range)
       `(if (< ,range (expt 2 *qubits-required-for-parallelization*))
            (locally (declare #.*optimize-dangerously-fast*)
@@ -238,10 +184,17 @@ The function will just return NIL, and modify the contents of RESULT."
                             :do (incf ,partial-sum (the flonum (progn ,@body)))
                             :finally (return ,partial-sum)))))
              (declare (dynamic-extent #',worker-function))
-             (let ((,ch (lparallel:make-channel))
-                   (,num-tasks (lparallel:kernel-worker-count)))
-               ;; FIXME corner case num actual tasks smaller than num-workers
-               (loop :for (,start . ,end) :in (subdivide ,range ,num-tasks)
+             (let* ((,ch (lparallel:make-channel))
+                    (,num-tasks (lparallel:kernel-worker-count))
+                    (,ranges (subdivide ,range ,num-tasks)))
+               (loop :for (,start . ,end) :in ,ranges
                      :do (lparallel:submit-task ,ch #',worker-function ,start ,end))
-               (loop :repeat ,num-tasks
+               (loop :repeat (length ,ranges)
                      :sum (lparallel:receive-result ,ch))))))))
+
+(defun-inlinable psum (f state)
+  "Compute the sum of F(X) for X in STATE, in parallel. F should be a unary function mapping CFLONUMs to FLONUMs."
+  (declare (type (function (cflonum) flonum) f)
+           (type quantum-state state))
+  (psum-dotimes (i (length state))
+    (funcall f (aref state i))))

@@ -73,3 +73,27 @@
                      :finally (is (equalp identity perm))))))
     (dotimes (i 1000)
       (verify-decomp (random-perm (expt 2 (1+ (random 5))))))))
+
+(deftest test-subdivide ()
+  "Test that SUBDIVIDE works."
+  (let ((workers 8))
+    ;; Degenerate case
+    (dotimes (i workers)
+      (is (equalp (qvm::subdivide i workers) `((0 . ,i)))))
+
+    ;; Equal case
+    (is (equalp (qvm::subdivide workers workers)
+                (loop :for i :below workers
+                      :collect (cons i (1+ i)))))
+
+    ;; Double equal case
+    (is (equalp (qvm::subdivide (* 2 workers) workers)
+                (loop :for i :below (* 2 workers) :by 2
+                      :collect (cons i (+ 2 i)))))
+
+    ;; Slack case
+    (is (equalp (qvm::subdivide (+ 3 workers) workers)
+                (loop :for i :below (1- workers)
+                      :collect (cons i (1+ i)) :into ranges
+                      :finally (return (append ranges
+                                               `((,(1- workers) . ,(+ 3 workers))))))))))
