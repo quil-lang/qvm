@@ -12,9 +12,7 @@
 
 
 (defun naive-sum (f v)
-  (let ((s 0))
-    (map nil (lambda (x) (incf s (funcall f x))) v)
-    s))
+  (reduce #'+ v :key f))
 
 (deftest test-psum-dotimes ()
   "Test that PSUM-DOTIMES works."
