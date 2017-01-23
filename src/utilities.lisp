@@ -120,6 +120,11 @@ NOTE: This will not copy any multiprocessing aspects."
           :do (setf (gethash key ht) value)
           :finally (return ht))))
 
+(declaim (inline half))
+(defun half (x)
+  "Compute the floor of half of the real number X."
+  (floor x 2))
+
 (defmacro probabilistically (p &body body)
   "Execute BODY with probability 0 <= P <= 1."
   `(when (< (random 1.0) ,p)

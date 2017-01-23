@@ -35,7 +35,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
            (inline probability))
   (let ((wavefunction (amplitudes qvm)))
     (declare (type quantum-state wavefunction))
-    (psum-dotimes (i (ash (length wavefunction) -1))
+    (psum-dotimes (i (half (length wavefunction)))
       (let ((address (index-to-address i qubit 1)))
         (declare (type amplitude-address address))
         (probability (aref wavefunction address))))))
@@ -60,11 +60,11 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
     ;; and set them to zero. The old way to do this was to do it as a
     ;; projective measurement.
     (if (<= *qubits-required-for-parallelization* (number-of-qubits qvm))
-        (lparallel:pdotimes (i (ash (length wavefunction) -1))
+        (lparallel:pdotimes (i (half (length wavefunction)))
           (let ((address (index-to-address i qubit annihilated-state)))
             (declare (type amplitude-address address))
             (setf (aref wavefunction address) (cflonum 0))))
-        (dotimes (i (ash (length wavefunction) -1))
+        (dotimes (i (half (length wavefunction)))
           (let ((address (index-to-address i qubit annihilated-state)))
             (declare (type amplitude-address address))
             (setf (aref wavefunction address) (cflonum 0)))))
