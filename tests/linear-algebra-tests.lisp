@@ -52,3 +52,15 @@
         (is (double-float= a b))
         (is (double-float= a serial-a))
         (is (double-float= b serial-b))))))
+
+(defun naive-norm (v)
+  (loop :for x :across v
+        :sum (expt (abs x) 2) :into sq-norm
+        :finally (return (sqrt sq-norm))))
+
+(deftest test-normalization ()
+  "Test that wavefunction normalization produces a unit vector."
+  (dotimes (i 11)
+    (let ((v (random-wavefunction (expt 2 i))))
+      (normalize-wavefunction v)
+      (is (double-float= 1 (naive-norm v))))))
