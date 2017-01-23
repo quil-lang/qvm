@@ -1,4 +1,4 @@
-;;;; qvm.lisp
+;;;; src/qvm.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
@@ -42,7 +42,7 @@
                      :initform (copy-hash-table *default-gate-definitions*)
                      :documentation "A table mapping gate names to their GATE-instance definition."))
 
-  (:documentation "An implementation of the Quantum Abstract Machine."))
+  (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
 
 
 ;;; Creation and Initialization

@@ -1,4 +1,4 @@
-;;;; quil.lisp
+;;;; src/quil.lisp
 ;;;;
 ;;;; Author: Robert Smith
 

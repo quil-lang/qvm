@@ -26,6 +26,7 @@
   :pathname "src/"
   :serial t
   :components ((:file "package")
+               (:file "config")
                #+unix
                (:cffi-grovel-file "system-constants")
                (:file "utilities")

@@ -1,4 +1,4 @@
-;;;; transition.lisp
+;;;; src/transition.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
@@ -19,15 +19,12 @@
 (defun parse-parameter (qvm param)
   "Parse the parameter PARAM in the context of QVM."
   (etypecase param
-    (real  (coerce param 'flonum))
+    (real (coerce param 'flonum))
     (complex (coerce param 'cflonum))
     (bit-range
      (ecase (bit-range-width param)
        (64  (coerce (classical-double-float qvm param) 'flonum))
        (128 (coerce (classical-complex-double-float qvm param) 'cflonum))))))
-
-(defvar *transition-verbose* nil
-  "Controls whether each transition is printed with a timing.")
 
 (defgeneric transition (qvm instr)
   (:documentation "Execute the instruction INSTR on the QVM.
@@ -113,7 +110,7 @@ Return two values:
     (values qvm (1+ (pc qvm)))))
 
 (defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-exchange))
-  (let ((left   (quil:address-value (quil:classical-left-operand instr)))
+  (let ((left  (quil:address-value (quil:classical-left-operand instr)))
         (right (quil:address-value (quil:classical-right-operand instr))))
     (rotatef (classical-bit qvm left) (classical-bit qvm right))
     (values qvm (1+ (pc qvm)))))

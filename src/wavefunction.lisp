@@ -1,4 +1,4 @@
-;;;; wavefunction.lisp
+;;;; src/wavefunction.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
@@ -6,8 +6,9 @@
 
 ;;; This is very dangerous, unfortunately. With safety > 0, we slow
 ;;; down 33%. With none of the optimizations in this file, we slow
-;;; down >100%.
-(declaim (optimize speed (safety 0) (debug 0) (space 0)))
+;;; down >100%. It might be worth doing a finer-grained study of the
+;;; functions to optimize.
+(declaim #.*optimize-dangerously-fast*)
 
 ;;;; Wavefunction manipulation
 
@@ -66,11 +67,6 @@ FUNCTION should be a binary function, and will receive (1) an index running from
     (lparallel:pdotimes (combo number-of-iterations)
       (let ((address (set-qubit-components-of-amplitude-address starting-address combo qubits)))
         (funcall function combo address)))))
-
-
-(declaim (type nat-tuple-cardinality *qubits-required-for-parallelization*))
-(defparameter *qubits-required-for-parallelization* 19
-  "The number of qubits required of a quantum state before it gets operated on in parallel.")
 
 (defun-inlinable map-reordered-amplitudes-in-parallel (starting-address function qubits)
   "Parallel version of #'MAP-REORDERED-AMPLITUDES, when the number of qubits is large enough."
@@ -188,8 +184,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 (defun normalize-wavefunction (wavefunction)
   "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space."
   (declare (type quantum-state wavefunction)
-           (inline probability psum)
-           (optimize speed (safety 0)))
+           (inline probability psum))
   ;; Mutate the wavefunction.
   (let ((num-qubits (wavefunction-qubits wavefunction))
         ;; Square norm.

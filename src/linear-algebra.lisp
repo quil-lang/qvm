@@ -118,7 +118,7 @@ The function will just return NIL, and modify the contents of RESULT."
          (declare (type (quantum-operator ,size) ,matrix)
                   (type (quantum-state ,size) ,column)
                   (type (quantum-state ,size) ,result)
-                  (optimize speed (safety 0) (debug 0) (space 0)))
+                  ,*optimize-dangerously-fast*)
          ,(matrix-multiply-code size matrix column result)))))
 
 (define-matmul matmul2 2)
@@ -128,7 +128,7 @@ The function will just return NIL, and modify the contents of RESULT."
   "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex vector (represented as a CFLONUM vector) in-place."
   (declare (type quantum-operator matrix)
            (type quantum-state column)
-           (optimize speed (safety 0))
+           #.*optimize-dangerously-fast*
            (inline matmul2 matmul4))
   (assert (= (array-dimension matrix 0)
              (array-dimension matrix 1))
@@ -170,7 +170,7 @@ The function will just return NIL, and modify the contents of RESULT."
   (declare (type (function (cflonum) flonum) f)
            (type quantum-state state))
   (if (< (length state) (expt 2 *qubits-required-for-parallelization*))
-      (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+      (locally (declare #.*optimize-dangerously-fast*)
         (loop :with sum :of-type flonum := (flonum 0)
               :for x :across state
               :do (incf sum (funcall f x))
@@ -178,7 +178,7 @@ The function will just return NIL, and modify the contents of RESULT."
       (flet ((worker-function (start end)
                (declare (type non-negative-fixnum start)
                         (type non-negative-fixnum end))
-               (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+               (locally (declare #.*optimize-dangerously-fast*)
                  (loop :with partial-sum :of-type flonum := (flonum 0)
                        :for i :of-type non-negative-fixnum :from start :below end
                        :do (incf partial-sum (funcall f (aref state i)))
@@ -197,7 +197,7 @@ The function will just return NIL, and modify the contents of RESULT."
   (declare (type (function (non-negative-fixnum) flonum) f)
            (type non-negative-fixnum range))
   (if (< range (expt 2 *qubits-required-for-parallelization*))
-      (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+      (locally (declare #.*optimize-dangerously-fast*)
         (loop :with sum :of-type flonum := (flonum 0)
               :for i :below range
               :do (incf sum (the flonum (funcall f i)))
@@ -205,7 +205,7 @@ The function will just return NIL, and modify the contents of RESULT."
       (flet ((worker-function (start end)
                (declare (type non-negative-fixnum start)
                         (type non-negative-fixnum end))
-               (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+               (locally (declare #.*optimize-dangerously-fast*)
                  (loop :with partial-sum :of-type flonum := (flonum 0)
                        :for i :of-type non-negative-fixnum :from start :below end
                        :do (incf partial-sum (the flonum (funcall f i)))
@@ -224,7 +224,7 @@ The function will just return NIL, and modify the contents of RESULT."
   (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function)
     (alexandria:once-only (range)
       `(if (< ,range (expt 2 *qubits-required-for-parallelization*))
-           (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+           (locally (declare #.*optimize-dangerously-fast*)
              (loop :with ,sum :of-type flonum := (flonum 0)
                    :for ,i :below ,range
                    :do (incf ,sum (the flonum (progn ,@body)))
@@ -232,7 +232,7 @@ The function will just return NIL, and modify the contents of RESULT."
            (flet ((,worker-function (,start ,end)
                     (declare (type non-negative-fixnum ,start)
                              (type non-negative-fixnum ,end))
-                    (locally (declare (optimize speed (safety 0) (debug 0) (space 0)))
+                    (locally (declare #.*optimize-dangerously-fast*)
                       (loop :with ,partial-sum :of-type flonum := (flonum 0)
                             :for ,i :of-type non-negative-fixnum :from ,start :below ,end
                             :do (incf ,partial-sum (the flonum (progn ,@body)))

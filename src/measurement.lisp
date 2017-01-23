@@ -20,7 +20,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
   (declare (type nat-tuple-element qubit)
            (type amplitude-address index)
            (type bit state)
-           (optimize speed (safety 0) (debug 0) (space 0)))
+           #.*optimize-dangerously-fast*)
   (let ((LLLLb (let ((LLLL (ash index (- qubit))))
                  (declare (type amplitude-address LLLL))
                  (logior state (the amplitude-address (ash LLLL 1)))))
@@ -31,7 +31,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 
 (defun qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
-  (declare (optimize speed (safety 0) (debug 0) (space 0))
+  (declare #.*optimize-dangerously-fast*
            (inline probability psum-range))
   (let ((wavefunction (amplitudes qvm)))
     (declare (type quantum-state wavefunction))
@@ -46,7 +46,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 
 (defun force-measurement (measured-value qubit qvm)
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly."
-  (declare (optimize speed (safety 0) (debug 0) (space 0))
+  (declare #.*optimize-dangerously-fast*
            (type bit measured-value))
   (let ((wavefunction (amplitudes qvm))
         (annihilated-state (- 1 measured-value)))

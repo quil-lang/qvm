@@ -7,6 +7,13 @@
   (:use #:cl
         #:abstract-classes)
 
+  ;; config.lisp
+  (:export
+   #:*qubits-required-for-parallelization*
+                                        ; VARIABLE
+   #:*transition-verbose*               ; VARIABLE
+   )
+
   ;; utilities.lisp
   (:export
    #:count-logical-cores                ; FUNCTION
@@ -51,7 +58,6 @@
 
   ;; transition.lisp
   (:export
-   #:*transition-verbose*               ; VARIABLE
    #:invalid-gate-invocation            ; CONDITION
    #:transition                         ; GENERIC, METHOD
    )

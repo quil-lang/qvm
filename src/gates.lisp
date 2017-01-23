@@ -69,10 +69,7 @@
 
            (generate-lambda-form (variable code)
              `(lambda (,variable)
-                (declare (optimize speed
-                                   (safety 0)
-                                   (debug 0)
-                                   (space 0))
+                (declare ,*optimize-dangerously-fast*
                          (type quantum-state ,variable)
                          (ignorable ,variable))
                 ,@code
