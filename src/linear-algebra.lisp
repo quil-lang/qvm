@@ -123,6 +123,7 @@ The function will just return NIL, and modify the contents of RESULT."
 
 (define-matmul matmul2 2)
 (define-matmul matmul4 4)
+(define-matmul matmul8 8)
 
 (defun matrix-multiply (matrix column)
   "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex vector (represented as a CFLONUM vector) in-place."
@@ -146,6 +147,7 @@ The function will just return NIL, and modify the contents of RESULT."
     (case matrix-size
       ((2) (matmul2 matrix column result))
       ((4) (matmul4 matrix column result))
+      ((8) (matmul8 matrix column result))
       (otherwise
        (dotimes (i matrix-size)
          (let ((element (cflonum 0)))
