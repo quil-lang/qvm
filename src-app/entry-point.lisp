@@ -524,8 +524,10 @@ starts with the string PREFIX."
       (with-redis (nil nil)
         ;; Record the API key in the DB.
         (record-api-key api-key)
-        ;; Record the payload.
-        (record-request-payload api-key data)))
+        ;; Record the payload in most cases.
+        (unless (member type '(:ping :version :instructions-served)
+                        :test #'string-equal)
+          (record-request-payload api-key data))))
 
     ;; Dispatch
     (ecase (keywordify type)
