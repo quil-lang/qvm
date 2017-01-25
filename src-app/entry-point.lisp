@@ -512,7 +512,7 @@ starts with the string PREFIX."
     (when (and (not (null api-key))
                (stringp api-key))
       (format-log "Got request from API key: ~S" api-key)
-      (with-redis (nil)
+      (with-redis (nil nil)
         ;; Record the API key in the DB.
         (record-api-key api-key)
         ;; Record the payload.

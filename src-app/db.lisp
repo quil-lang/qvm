@@ -14,10 +14,12 @@
 (defvar *qvm-db-port* nil
   "The port of the QVM stats DB.")
 
-(defmacro with-redis ((&optional (run-anyway nil)) &body body)
-  "Execute BODY, attempting to make a Redis connection around it. If there is a failure in making a Redis connection, then ignore the failure and execute BODY anyway only if RUN-ANYWAY is true."
+(defmacro with-redis ((&optional (run-anyway nil) (pipeline t)) &body body)
+  "Execute BODY, attempting to make a Redis connection around it. If there is a failure in making a Redis connection, then ignore the failure and execute BODY anyway only if RUN-ANYWAY is true.
+
+If PIPELINE is true, then pipeline the requests."
   (alexandria:with-gensyms (fun c)
-    (alexandria:once-only (run-anyway)
+    (alexandria:once-only (run-anyway pipeline)
       `(flet ((,fun () ,@body))
          (cond
            ((not (and *qvm-db-host* *qvm-db-port*))
@@ -26,8 +28,10 @@
            (t
             (handler-case (redis:with-connection (:host *qvm-db-host*
                                                   :port *qvm-db-port*)
-                            (redis:with-pipelining
-                              (,fun)))
+                            (if ,pipeline
+                                (redis:with-pipelining
+                                  (,fun))
+                                (,fun)))
               (usocket:connection-refused-error (,c)
                 (declare (ignore ,c))
                 (warn "Connection refused, continuing without Redis connection.")
