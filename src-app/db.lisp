@@ -61,3 +61,9 @@ If PIPELINE is true, then pipeline the requests."
 
 (defmethod qvm:transition :after ((qvm qvm:quantum-virtual-machine) instr)
   (incf *instruction-counter*))
+
+(defun instructions-served ()
+  "Get the number of instructions served!"
+  (or (with-redis (nil nil)
+        (red:GET +instruction-counter-key+))
+      -1))

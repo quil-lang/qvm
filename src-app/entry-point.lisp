@@ -524,6 +524,9 @@ starts with the string PREFIX."
       ((:ping)
        (format nil "pong ~D" (get-universal-time)))
 
+      ((:instructions-served)
+       (format nil "~D" (instructions-served)))
+
       ;; Get the version of everything.
       ((:version)
        (string-right-trim
