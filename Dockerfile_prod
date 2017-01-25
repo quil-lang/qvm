@@ -15,4 +15,4 @@ ADD ./quil/vqe.quil /root/quil/vqe.quil
 ADD ./quil/ion.quil /root/quil/ion.quil
 RUN chmod +x /root/qvm
 
-CMD /root/qvm -S
+CMD /root/qvm --time-limit 30000 --safe-include-directory "/root/quil/" --db-host 'qvm-statistics.golkmy.ng.0001.usw2.cache.amazonaws.com' --db-port 6379 -S
