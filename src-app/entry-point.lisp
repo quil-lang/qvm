@@ -494,6 +494,11 @@ starts with the string PREFIX."
     (null (make-random-state t))
     (unsigned-byte (sb-ext:seed-random-state arg))))
 
+(defun check-required-fields (hash-table &rest fields)
+  (dolist (field fields t)
+    (when (null (nth-value 1 (gethash field hash-table)))
+      (error "Expected the field ~A to exist." field))))
+
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
@@ -501,8 +506,12 @@ starts with the string PREFIX."
   (let* ((api-key (tbnl:header-in* ':X-API-KEY request))
          (data (hunchentoot:raw-post-data :request request
                                           :force-text t))
-         (js (let ((yason:*parse-object-key-fn* #'keywordify))
-               (yason:parse data)))
+         (js (let* ((yason:*parse-object-key-fn* #'keywordify)
+                    (js (ignore-errors (yason:parse data))))
+               (unless (and (hash-table-p js)
+                            (check-required-fields js ':TYPE))
+                 (error "Invalid request."))
+               js))
          (type (gethash ':TYPE js))
          (gate-noise (gethash ':GATE-NOISE js))
          (measurement-noise (gethash ':MEASUREMENT-NOISE js))
@@ -511,7 +520,7 @@ starts with the string PREFIX."
     ;; Basic analytics
     (when (and (not (null api-key))
                (stringp api-key))
-      (format-log "Got request from API key: ~S" api-key)
+      (format-log "Got ~S request from API key: ~S" type api-key)
       (with-redis (nil nil)
         ;; Record the API key in the DB.
         (record-api-key api-key)
@@ -536,6 +545,10 @@ starts with the string PREFIX."
 
       ;; Multishot experiments.
       ((:multishot)
+       (check-required-fields js
+                              ':ADDRESSES
+                              ':TRIALS
+                              ':QUIL-INSTRUCTIONS)
        (let* ((addresses (gethash ':ADDRESSES js))
               (num-trials (gethash ':TRIALS js))
               (isns (gethash ':QUIL-INSTRUCTIONS js))
@@ -550,6 +563,10 @@ starts with the string PREFIX."
 
       ;; Multishot with final measure.
       ((:multishot-measure)
+       (check-required-fields js
+                              ':QUBITS
+                              ':TRIALS
+                              ':QUIL-INSTRUCTIONS)
        (let* ((quil:*allow-unresolved-applications* t)
               (qubits (gethash ':QUBITS js))
               (num-trials (gethash ':TRIALS js))
@@ -570,6 +587,9 @@ starts with the string PREFIX."
 
       ;; Expectation value computation.
       ((:expectation)
+       (check-required-fields js
+                              ':STATE-PREPARATION
+                              ':OPERATORS)
        (let* ((quil:*allow-unresolved-applications* t)
               (state-prep (safely-parse-quil-string
                            (gethash ':STATE-PREPARATION js)))
@@ -585,6 +605,9 @@ starts with the string PREFIX."
 
       ;; Wavefunction computation.
       ((:wavefunction)
+       (check-required-fields js
+                              ':QUIL-INSTRUCTIONS
+                              ':ADDRESSES)
        (let* ((isns (gethash ':QUIL-INSTRUCTIONS js))
               (addresses (gethash ':ADDRESSES js))
               (quil (let ((quil:*allow-unresolved-applications* t))
