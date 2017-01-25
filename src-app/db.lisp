@@ -36,6 +36,11 @@
               (warn "Host unreachable, continuing without Redis connection.")
               (,fun))))))))
 
+(defun ping-redis ()
+  "Ping Redis with the configured values. Return \"PONG\" if all was well. Error otherwise."
+  (redis:with-connection (:host *qvm-db-host*
+                          :port *qvm-db-port*)
+    (red:PING)))
 
 ;;; Instruction Counting
 

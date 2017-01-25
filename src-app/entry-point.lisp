@@ -290,8 +290,19 @@
      (qvm:prepare-for-parallelization num-workers)
      (setf *num-workers* num-workers)))
 
-  (setf *qvm-db-host* db-host
-        *qvm-db-port* db-port)
+  (when (and db-host db-port)
+    (check-type db-host string)
+    (check-type db-port (integer 0 65535))
+    (setf *qvm-db-host* db-host
+          *qvm-db-port* db-port)
+    (handler-case (ping-redis)
+      (error (c)
+        (warn "Could not connect to Redis at ~S on port ~D. Error was:~2%    ~A"
+              *qvm-db-host*
+              *qvm-db-port*
+              c)
+        (setf *qvm-db-host* nil
+              *qvm-db-port* nil))))
 
   ;; Show the welcome message.
   (show-welcome)
@@ -486,7 +497,9 @@ starts with the string PREFIX."
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
-  (let* ((data (hunchentoot:raw-post-data :request request
+
+  (let* ((api-key (tbnl:header-in* ':X-API-KEY request))
+         (data (hunchentoot:raw-post-data :request request
                                           :force-text t))
          (js (let ((yason:*parse-object-key-fn* #'keywordify))
                (yason:parse data)))
@@ -494,6 +507,13 @@ starts with the string PREFIX."
          (gate-noise (gethash ':GATE-NOISE js))
          (measurement-noise (gethash ':MEASUREMENT-NOISE js))
          (*random-state* (get-random-state (gethash ':RNG-SEED js))))
+
+    ;; Basic analytics
+    (when (and (not (null api-key))
+               (stringp api-key))
+      nil)
+
+    ;; Dispatch
     (ecase (keywordify type)
       ;; For simple tests.
       ((:ping)
