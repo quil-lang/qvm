@@ -1,0 +1,14 @@
+{
+    "AWSEBDockerrunVersion": "1",
+    "Authentication": {
+        "Bucket": "rigetti-releases",
+        "Key": "docker/dockercfg"
+    },
+    "Image": {
+        "Name": "rigetticomputing/qvm-prod",
+        "Update": "true"
+    },
+    "Ports": [{
+        "ContainerPort": "5000"
+    }]
+}

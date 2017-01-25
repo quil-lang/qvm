@@ -83,6 +83,11 @@ test:
 docker: qvm
 	docker build -t qvm .
 
+aws-config: aws-config.zip
+
+aws-config.zip:
+	cd aws-config ; zip -r ../aws-config.zip .
+
 
 
 ### Cleanup.
@@ -96,7 +101,7 @@ clean-cache:
 
 # Clean the executables
 clean:
-	rm -f qvm quilbasic build-output.log
+	rm -f qvm quilbasic build-output.log aws-config.zip
 
 cleanall: clean clean-cache
 	@echo "All cleaned and reindexed."
