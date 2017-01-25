@@ -53,7 +53,7 @@
                               :initial-element (cflonum 0))))
     (loop :for i :from 0
           :for raw-element :in elements
-          :for element :of-type cflonum :=  (cflonum raw-element)
+          :for element :of-type cflonum := (cflonum raw-element)
           :do (setf (aref vec i) element)
           :finally (return vec))))
 

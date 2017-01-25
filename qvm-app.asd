@@ -35,4 +35,5 @@
   :serial t
   :components ((:file "package")
                (:file "db")
+               (:file "analytics")
                (:file "entry-point")))
