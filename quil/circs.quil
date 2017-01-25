@@ -1,0 +1,24 @@
+### Some useful circuits
+
+DEFCIRCUIT BELL p q:
+    # Control p
+    # Target q
+    H p
+    CNOT p q
+
+DEFCIRCUIT ZERO-STATE q c:
+    # Put q into the |0> state.
+    # c is a scratch bit, which will
+    # contain its measurement.
+    MEASURE q c
+    JUMP-UNLESS @end c
+    X q
+    LABEL @end
+
+DEFCIRCUIT ONE-STATE q c:
+    # Put q into the |1> state.
+    # c is a scratch bit, which will
+    # contain its measurement.
+    ZERO-STATE q c
+    X q
+
