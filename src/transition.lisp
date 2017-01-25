@@ -153,6 +153,19 @@ Return two values:
         (qubits (mapcar (lambda (q)
                           (permuted-qubit qvm (quil:qubit-index q)))
                         (quil:application-arguments instr))))
+    ;; Do some error checking.
+    (let ((given-qubits (length qubits))
+          (expected-qubits (1- (integer-length (gate-dimension gate)))))
+      (assert (= given-qubits expected-qubits)
+              ()
+              "Attempting to apply the ~D-qubit gate ~A to ~D qubit~:P ~
+               in the instruction:~2%    ~A"
+              expected-qubits
+              (gate-name gate)
+              given-qubits
+              (with-output-to-string (s)
+                (quil::print-instruction instr s))))
+
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (values
      qvm
