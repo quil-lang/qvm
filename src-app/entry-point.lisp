@@ -349,8 +349,8 @@
        (with-timing (exec-time)
          (run qvm))
        (format-log "Execution completed in ~D ms." exec-time)
-       (when (<= qubits-needed 5)
-         (format-log "Printing state.")
+       (when (or  verbose (<= qubits-needed 10))
+         (format-log "Printing ~D-qubit state." qubits-needed)
          (format-log "Amplitudes:")
          (qvm:map-amplitudes
           qvm
@@ -362,9 +362,11 @@
                           (format-complex z)
                           (* 100 (qvm:probability z)))
               (incf i)))))
-       (format-log "Classical memory (MSB -> LSB): ~v,'0B"
-                   (qvm::classical-memory-size qvm)
-                   (qvm::classical-memory qvm)))))
+       (format-log "Classical memory (LSB -> MSB): ~v,'0B"
+                   (reverse
+                    (format nil "~v,'0B"
+                            (qvm::classical-memory-size qvm)
+                            (qvm::classical-memory qvm)))))))
 
   (uiop:quit))
 
