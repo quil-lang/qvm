@@ -70,15 +70,18 @@ It should be that PX + PY + PZ <= 1.
           (apply-gate Z amplitudes (nat-tuple qubit))
           (return-from add-depolarizing-noise))))))
 
-;;; Noise gets added to every qubit after an application or RESET.
+;;; Noise gets added to only the qubits being changed.
 (defmethod transition :after ((qvm noisy-qvm) (instr cl-quil:application))
   (declare (ignore instr))
-  (dotimes (q (number-of-qubits qvm))
-    (add-depolarizing-noise qvm q
-                            (probability-gate-x qvm)
-                            (probability-gate-y qvm)
-                            (probability-gate-z qvm))))
+  (dolist (arg (cl-quil:application-arguments instr))
+    (when (typep arg 'cl-quil:qubit)
+      (let ((q (cl-quil:qubit-index arg)))
+        (add-depolarizing-noise qvm q
+                                (probability-gate-x qvm)
+                                (probability-gate-y qvm)
+                                (probability-gate-z qvm))))))
 
+;;; Noise gets added to every qubit after a RESET.
 (defmethod transition :after ((qvm noisy-qvm) (instr cl-quil:reset))
   (declare (ignore instr))
   (dotimes (q (number-of-qubits qvm))
