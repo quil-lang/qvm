@@ -866,15 +866,6 @@ starts with the string PREFIX."
 
 (defvar *app* nil)
 
-(defun static-file-dispatcher (uri path)
-  ;; the dispatcher
-  (lambda (request)
-    (when (string= uri (tbnl:script-name request))
-      ;; the handler
-      (lambda (&rest args)
-        (declare (ignore args))
-        (tbnl:handle-static-file path nil)))))
-
 (defun start-server (port)
   (setq tbnl:*show-lisp-errors-p* nil
         tbnl:*show-lisp-backtraces-p* nil
