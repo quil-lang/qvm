@@ -51,7 +51,7 @@ A **system** is a collection of files that make up a coherent piece of a library
 
 Systems are where dependencies are specified. If your system depends on another system, it is declared in the `.asd` file. Most Lisp code doesn't have the Python equivalent of `import`. You specify the dependencies you need in your `.asd` file and you can readily use them in your own system.
 
-A **package** is a Lisp entity that represents a collection of names. The package doesn't know what the names actually represent. In Lisp, a "name" is called a **symbol**. A symbol may be **external** if they were **exported** by the package file. You do *not* export functions, you export symbols.
+A **package** is a Lisp entity that represents a collection of names. The package doesn't know what the names actually represent. In Lisp, a "name" is called a **symbol**. Symbols may be **external** if they were **exported** by the package file. You do *not* export functions, you export symbols. This is not unlike math or physics: The letter *F* may name a function, or may name a scalar value. The letter *F* could possibly even represent both at different times, although that could be confusing.
 
 Packages provide *namespaces* for names. External symbols are accessible by other packages. Internal symbols are also accessible with a special syntax. Namespaces ultimately are just to help you give identifying names to things.
 
