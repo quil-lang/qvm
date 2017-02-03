@@ -130,7 +130,7 @@ The function will just return NIL, and modify the contents of RESULT."
   (declare (type quantum-operator matrix)
            (type quantum-state column)
            #.*optimize-dangerously-fast*
-           (inline matmul2 matmul4))
+           (inline matmul2 matmul4 matmul8))
   (assert (= (array-dimension matrix 0)
              (array-dimension matrix 1))
           (matrix)
@@ -166,6 +166,66 @@ The function will just return NIL, and modify the contents of RESULT."
 
     ;; Return the modified column.
     column))
+
+(defun tr (M)
+  "Compute the trace of M."
+  (declare (type quantum-operator M))
+  (loop :for i :below (array-dimension M 0) :sum (aref M i i)))
+
+(defun dagger (M)
+  "Compute the Hermitian transpose of M."
+  (declare (type quantum-operator M))
+  (let* ((size (array-dimension M 0))
+         (result (make-matrix size)))
+    (loop :for i :below size :do
+      (loop :for j :below size :do
+        (setf (aref result i j)
+              (conjugate (aref M j i)))))
+    result))
+
+(defun compose-operators (A B)
+  "Compute the product of the matrices A and B."
+  (declare (type (simple-array cflonum (* *)) A B))
+  (destructuring-bind (m n) (array-dimensions A)
+    (let* ((l (array-dimension B 1))
+           (result (make-array (list m l) :element-type 'cflonum)))
+      (loop :for i :below m :do
+        (loop :for k :below l :do
+          (loop :for j :below n :do
+            (incf (aref result i k)
+                  (* (aref A i j)
+                     (aref B j k))))))
+      result)))
+
+(defun outer-multiply (u v)
+  "Compute the outer product of two equally-sized column vectors U and V (specifically UV^dagger)."
+  (declare (type quantum-state u v))
+  (assert (= (length u) (length v)))
+  (let* ((len (length u))
+         (result (make-matrix len)))
+    (dotimes (r len result)
+      (dotimes (c len)
+        (setf (aref result r c)
+              (* (aref u r)
+                 (conjugate (aref v c))))))))
+
+(defun kronecker-multiply (A B)
+  "Compute the Kronecker product of matrices A and B."
+  (declare (type (simple-array cflonum (* *)) A B))
+  (destructuring-bind (m n) (array-dimensions A)
+    (destructuring-bind (p q) (array-dimensions B)
+      (let ((result (make-array (list (* m p) (* n q))
+                                :element-type 'cflonum)))
+        (dotimes (i m result)
+          (dotimes (j n)
+            (let ((Aij (aref A i j))
+                  (y (* i p))
+                  (x (* j q)))
+              (loop :for u :below p :do
+                (loop :for v :below q :do
+                  (setf (aref result (+ y u) (+ x v))
+                        (* Aij (aref B u v))))))))))))
+
 
 (defmacro psum-dotimes ((i range) &body body)
   "Compute the sum of BODY for I in ranging over 0 <= I < RANGE."
