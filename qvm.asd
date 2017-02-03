@@ -31,6 +31,8 @@
                (:cffi-grovel-file "system-constants")
                (:file "utilities")
                (:file "linear-algebra")
+               (:file "qam")
+               (:file "classical-memory")
                (:file "wavefunction")
                (:file "gates")
                (:file "quil")

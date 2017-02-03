@@ -52,94 +52,94 @@ Return two values:
                  bytes-alloc)
          (finish-output *trace-output*))))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:no-operation))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:no-operation))
   (declare (ignore instr))
   (values qvm (1+ (pc qvm))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:halt))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:halt))
   (declare (ignore instr))
   (values qvm nil))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:reset))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:reset))
   (declare (ignore instr))
   (values (reset qvm) (1+ (pc qvm))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:wait))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:wait))
   (declare (ignore instr))
   (warn "WAIT executed. Nothing to wait on.")
   (values qvm (1+ (pc qvm))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:pragma))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:pragma))
   (warn "Ignoring PRAGMA: ~A" instr)
   (values qvm (1+ (pc qvm))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-true))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:classical-true))
   (let ((address (quil:address-value (quil:classical-target instr))))
     (setf (classical-bit qvm address) 1)
     (values qvm (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-false))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:classical-false))
   (let ((address (quil:address-value (quil:classical-target instr))))
     (setf (classical-bit qvm address) 0)
     (values qvm (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-not))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:classical-not))
   (let* ((address (quil:address-value (quil:classical-target instr)))
          (b (classical-bit qvm address)))
     (setf (classical-bit qvm address) (- 1 b))
     (values qvm (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-and))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:classical-and))
   (let ((left   (quil:address-value (quil:classical-left-operand instr)))
         (target (quil:address-value (quil:classical-target instr))))
     (setf (classical-bit qvm target) (logand (classical-bit qvm left)
                                              (classical-bit qvm target)))
     (values qvm (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-or))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:classical-or))
   (let ((left   (quil:address-value (quil:classical-left-operand instr)))
         (target (quil:address-value (quil:classical-target instr))))
     (setf (classical-bit qvm target) (logior (classical-bit qvm left)
                                              (classical-bit qvm target)))
     (values qvm (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-move))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:classical-move))
   (let ((left   (quil:address-value (quil:classical-left-operand instr)))
         (target (quil:address-value (quil:classical-target instr))))
     (setf (classical-bit qvm target) (classical-bit qvm left))
     (values qvm (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:classical-exchange))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:classical-exchange))
   (let ((left  (quil:address-value (quil:classical-left-operand instr)))
         (right (quil:address-value (quil:classical-right-operand instr))))
     (rotatef (classical-bit qvm left) (classical-bit qvm right))
     (values qvm (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:unconditional-jump))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:unconditional-jump))
   (values qvm (quil:jump-label instr)))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:jump-when))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:jump-when))
   (values qvm
           (if (= 1 (classical-bit qvm (quil:address-value
                                        (quil:conditional-jump-address instr))))
               (quil:jump-label instr)
               (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:jump-unless))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:jump-unless))
   (values qvm
           (if (zerop (classical-bit qvm (quil:address-value
                                          (quil:conditional-jump-address instr))))
               (quil:jump-label instr)
               (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:measure))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
   (values
    (measure qvm
             (permuted-qubit qvm (quil:qubit-index (quil:measurement-qubit instr)))
             (quil:address-value (quil:measure-address instr)))
    (1+ (pc qvm))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:measure-discard))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
   (values
    (measure qvm
             (permuted-qubit qvm
@@ -147,7 +147,7 @@ Return two values:
             nil)
    (1+ (pc qvm))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:gate-application))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:gate-application))
   (let ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
         (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
         (qubits (mapcar (lambda (q)
@@ -171,7 +171,7 @@ Return two values:
      qvm
      (1+ (pc qvm)))))
 
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil:swap-application))
+(defmethod transition ((qvm pure-state-qvm) (instr quil:swap-application))
   (destructuring-bind (q0 q1) (quil:application-arguments instr)
     (swap-qubits qvm (quil:qubit-index q0) (quil:qubit-index q1))
     (values
@@ -180,7 +180,7 @@ Return two values:
 
 ;;; XXX: Temporary measure. Unresolved applications should error at
 ;;; parse time.
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil::unresolved-application))
+(defmethod transition ((qvm pure-state-qvm) (instr quil::unresolved-application))
   (let ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
         (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
         (qubits (mapcar (lambda (q)
@@ -206,7 +206,7 @@ Return two values:
 
 ;;; XXX: This method should not exist after Quil is properly
 ;;; processed.
-(defmethod transition ((qvm quantum-virtual-machine) (instr quil::circuit-application))
+(defmethod transition ((qvm pure-state-qvm) (instr quil::circuit-application))
   (cerror "Ignore circuit."
           "DEFCIRCUIT and circuit expansion is currently not supported.")
   (values

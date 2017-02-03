@@ -29,6 +29,27 @@
    #:octets-required-for-qubits         ; FUNCTION
    )
 
+  ;; qam.lisp
+  (:export
+   #:quantum-abstract-machine           ; CLASS
+   #:run                                ; GENERIC
+   )
+
+  ;; classical-memory.lisp
+  (:export
+   #:classical-memory                   ; TYPE
+   #:make-classical-memory              ; FUNCTION
+   #:peek-bit                           ; FUNCTION
+   #:poke-bit                           ; FUNCTION
+   #:bit-range                          ; TYPE
+   #:make-bit-range                     ; FUNCTION
+   #:bit-range-left                     ; FUNCTION
+   #:bit-range-right                    ; FUNCTION
+   #:bit-range-width                    ; FUNCTION
+   #:peek-bits                          ; FUNCTION
+   #:poke-bits                          ; FUNCTION
+   )
+
   ;; wavefunction.lisp
   (:export
    #:probability                        ; FUNCTION
@@ -39,7 +60,7 @@
 
   ;; qvm.lisp
   (:export
-   #:quantum-virtual-machine            ; CLASS
+   #:pure-state-qvm                     ; CLASS
    #:number-of-qubits                   ; ACCESSOR
    #:classical-memory-size              ; ACCESSOR
    #:make-qvm                           ; FUNCTION
@@ -64,7 +85,6 @@
 
   ;; execution.lisp
   (:export
-   #:run                                ; GENERIC, METHOD
    #:run-program                        ; FUNCTION
    )
 

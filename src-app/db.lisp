@@ -53,13 +53,13 @@ If PIPELINE is true, then pipeline the requests."
 
 (defvar *instruction-counter*)
 
-(defmethod qvm:run :around ((qvm qvm:quantum-virtual-machine))
+(defmethod qvm:run :around ((qvm qvm:pure-state-qvm))
   (let ((*instruction-counter* 0))
     (prog1 (call-next-method)
       (with-redis (nil)
         (red:INCRBY +instruction-counter-key+ *instruction-counter*)))))
 
-(defmethod qvm:transition :after ((qvm qvm:quantum-virtual-machine) instr)
+(defmethod qvm:transition :after ((qvm qvm:pure-state-qvm) instr)
   (incf *instruction-counter*))
 
 (defun instructions-served ()

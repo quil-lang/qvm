@@ -4,7 +4,7 @@
 
 (in-package #:qvm)
 
-(defclass quantum-virtual-machine ()
+(defclass pure-state-qvm (quantum-abstract-machine)
   (
    ;; --- Machine state
    (number-of-qubits :accessor number-of-qubits
@@ -42,34 +42,31 @@
                      :initform (copy-hash-table *default-gate-definitions*)
                      :documentation "A table mapping gate names to their GATE-instance definition."))
 
-  (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
-
+  (:documentation "An pure-state implementation of the Quantum Abstract Machine with SWAP optimization."))
 
 ;;; Creation and Initialization
 
-(defmethod initialize-instance :after ((qvm quantum-virtual-machine) &rest args)
+(defmethod initialize-instance :after ((qvm pure-state-qvm) &rest args)
   (declare (ignore args))
   (let ((num-qubits (number-of-qubits qvm))
         (num-bits (classical-memory-size qvm)))
-    (declare (ignore num-bits))
-    ;; Allocate the classical memory if needed. This is represented as
-    ;; an integer so we don't need to do an explicit allocation.
+    ;; Allocate the classical memory if needed.
     (unless (slot-boundp qvm 'classical-memory)
-      (setf (classical-memory qvm) 0))
+      (setf (classical-memory qvm) (make-classical-memory num-bits)))
 
     ;; Initialize the permutation to the identity.
     (unless (slot-boundp qvm 'qubit-permutation)
       (setf (qubit-permutation qvm) (make-identity-permutation num-qubits)))
     
-    ;; If the amplitudes weren't specified, initialize to |0...>.
+    ;; If the amplitudes weren't specified, initialize to |...000>.
     (unless (slot-boundp qvm 'amplitudes)
       (setf (amplitudes qvm)
-            (make-vector (expt 2 num-qubits) 1))))) ; Pr[|00..>] = 1
+            (make-vector (expt 2 num-qubits) 1)))))
 
 (defun make-qvm (num-qubits &key (classical-memory-size 64))
   "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits."
   (check-type classical-memory-size (integer 0))
-  (make-instance 'quantum-virtual-machine
+  (make-instance 'pure-state-qvm
                  :number-of-qubits num-qubits
                  :classical-memory-size classical-memory-size))
 
@@ -150,44 +147,21 @@ This will not clear previously installed gates from the QVM."
 (defun classical-bit (qvm n)
   "Extract the classical bit addressed by N from the quantum virtual machine QVM."
   (check-bit-in-bounds qvm n)
-  (ldb (byte 1 n) (classical-memory qvm)))
+  (peek-bit (classical-memory qvm) n))
 
 (defun (setf classical-bit) (new-value qvm n)
   "Set the classical bit addressed by N in the quantum virtual machine QVM to the value NEW-VALUE."
   (check-type new-value bit)
   (check-bit-in-bounds qvm n)
-  (setf (ldb (byte 1 n) (classical-memory qvm)) new-value))
-
-(deftype bit-range ()
-  "Representation of a range of bits."
-  `(cons (integer 0) (integer 1)))
-
-(defun make-bit-range (a b)
-  "Construct a new bit range whose endpoints are A and B."
-  (check-type a (integer 0))
-  (check-type b (integer 1))
-  (assert (< a b))
-  (cons a b))
-
-(defun bit-range-left (br)
-  "Get the left endpoint of the bit range BR."
-  (car br))
-
-(defun bit-range-right (br)
-  "Get the right endpoint of the bit range BR."
-  (cdr br))
-
-(defun bit-range-width (br)
-  "Compute the width of the bit range BR."
-  (1+ (- (bit-range-right br) (bit-range-left br))))
+  (setf (classical-memory qvm)
+        (poke-bit (classical-memory qvm) n new-value)))
 
 (defun classical-bit-range (qvm br)
   "Extract the value in the bit range BR from the classical memory of QVM."
   (check-type br bit-range)
   (check-bit-in-bounds qvm (bit-range-left br))
   (check-bit-in-bounds qvm (1- (bit-range-right br)))
-  (ldb (byte (bit-range-width br) (bit-range-left br))
-       (classical-memory qvm)))
+  (peek-bits (classical-memory qvm) br))
 
 (defun (setf classical-bit-range) (new-value qvm br)
   "Set the value contained within the bit range BR of the classical memory of QVM to NEW-VALUE."
@@ -195,15 +169,8 @@ This will not clear previously installed gates from the QVM."
   (check-type br bit-range)
   (check-bit-in-bounds qvm (bit-range-left br))
   (check-bit-in-bounds qvm (1- (bit-range-right br)))
-  (let ((range-width (bit-range-width br))
-        (len (integer-length new-value)))
-    (assert (<= len range-width) (new-value)
-            "The value being set in the bit range [~D-~D] exceeds the width of the range."
-            (bit-range-left br)
-            (bit-range-right br))
-    (setf (ldb (byte range-width (bit-range-left br))
-               (classical-memory qvm))
-          new-value)))
+  (setf (classical-memory qvm)
+        (poke-bits (classical-memory qvm) br new-value)))
 
 (defun classical-double-float (qvm br)
   "Get the double precision floating point number from the bits specified by the bit range BR from the classical memory of QVM."
@@ -280,4 +247,9 @@ If ERROR is T, then signal an error when the gate wasn't found."
                                  (number-of-qubits qvm)))
   qvm)
 
+(defun reset-classical-memory (qvm)
+  "Zero out the classical memory of the qvm QVM."
+  (setf (classical-memory qvm) (make-classical-memory
+                                (classical-memory-size qvm)))
+  qvm)
 

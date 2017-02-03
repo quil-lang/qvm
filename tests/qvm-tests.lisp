@@ -15,7 +15,7 @@
 (deftest test-wavefunction-ordering ()
   "Test that we can get a wavefunction out in the right order with MAP-REORDERED-AMPLITUDES when no swapping has been done."
   (let* ((perm (qvm::make-identity-permutation 2))
-         (q (make-instance 'qvm:quantum-virtual-machine
+         (q (make-instance 'qvm:pure-state-qvm
                            :number-of-qubits 2
                            :classical-memory-size 64
                            :amplitudes (qvm::make-vector 4 0 1 2 3)
@@ -29,7 +29,7 @@
 (deftest test-wavefunction-ordering-swapped ()
   "Test that we can get a wavefunction out in the right order with MAP-REORDERED-AMPLITUDES when some swapping has been done."
   (let* ((perm (qvm::make-identity-permutation 3))
-         (q (make-instance 'qvm:quantum-virtual-machine
+         (q (make-instance 'qvm:pure-state-qvm
                            :number-of-qubits 2
                            :classical-memory-size 64
                            ;; permutation (12) * (01) =  vvvvvvvvvvvvvvv

@@ -4,7 +4,7 @@
 
 (in-package #:qvm)
 
-(defclass noisy-qvm (quantum-virtual-machine)
+(defclass noisy-qvm (pure-state-qvm)
   ((probability-gate-x
     :initarg :x
     :accessor probability-gate-x
@@ -72,7 +72,6 @@ It should be that PX + PY + PZ <= 1.
 
 ;;; Noise gets added to only the qubits being changed.
 (defmethod transition :after ((qvm noisy-qvm) (instr cl-quil:application))
-  (declare (ignore instr))
   (dolist (arg (cl-quil:application-arguments instr))
     (when (typep arg 'cl-quil:qubit)
       (let ((q (cl-quil:qubit-index arg)))
