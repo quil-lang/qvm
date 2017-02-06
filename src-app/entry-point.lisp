@@ -582,10 +582,6 @@ starts with the string PREFIX."
                         num-qubits
                         qubits
                         num-trials)))
-         (map nil (lambda (x)
-                    (cl-quil::print-instruction x *standard-output*)
-                    (terpri))
-              (cl-quil::parsed-program-executable-code quil))
          (with-output-to-string (s)
            (yason:encode results s))))
 
