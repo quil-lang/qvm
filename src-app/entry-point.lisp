@@ -614,7 +614,7 @@ starts with the string PREFIX."
                       (process-quil (safely-parse-quil-string isns))))
               (num-qubits (cl-quil:qubits-needed quil)))
          ;; Sanity check the addresses, since we are unpacking them
-         ;; here, not in PERMFORM-WAVEFUNCTION.
+         ;; here, not in PERFORM-WAVEFUNCTION.
          (check-type addresses alexandria:proper-list)
          (assert (every (alexandria:conjoin #'integerp (complement #'minusp)) addresses))
 

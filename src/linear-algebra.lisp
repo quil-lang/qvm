@@ -173,15 +173,13 @@ The function will just return NIL, and modify the contents of RESULT."
   (loop :for i :below (array-dimension M 0) :sum (aref M i i)))
 
 (defun dagger (M)
-  "Compute the Hermitian transpose of M."
+  "Compute the Hermitian transpose of M in-place."
   (declare (type quantum-operator M))
-  (let* ((size (array-dimension M 0))
-         (result (make-matrix size)))
-    (loop :for i :below size :do
-      (loop :for j :below size :do
-        (setf (aref result i j)
-              (conjugate (aref M j i)))))
-    result))
+  (loop :for i :below (array-dimension M 0) :do
+    (loop :for j :to i :do
+      (psetf (aref M i j) (conjugate (aref M j i))
+             (aref M j i) (conjugate (aref M i j)))))
+  M)
 
 (defun compose-operators (A B)
   "Compute the product of the matrices A and B."
