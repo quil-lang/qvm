@@ -51,15 +51,28 @@ If PIPELINE is true, then pipeline the requests."
 
 ;;; Instruction Counting
 
+(defclass profiled-qvm-mixin ()
+  ((instructions-executed :initform 0
+                          :accessor instructions-executed)))
+
+(defclass profiled-pure-state-qvm (qvm:pure-state-qvm profiled-qvm-mixin)
+  ())
+
+(defclass profiled-noisy-qvm (qvm::noisy-qvm profiled-qvm-mixin)
+  ())
+
+(defun increment-instruction-counter (n)
+  (with-redis (nil)
+    (red:INCRBY +instruction-counter-key+ n)))
+
 (defvar *instruction-counter*)
 
-(defmethod qvm:run :around ((qvm qvm:pure-state-qvm))
+(defmethod qvm:run :around ((qvm profiled-qvm-mixin))
   (let ((*instruction-counter* 0))
     (prog1 (call-next-method)
-      (with-redis (nil)
-        (red:INCRBY +instruction-counter-key+ *instruction-counter*)))))
+      (incf (instructions-executed qvm) *instruction-counter*))))
 
-(defmethod qvm:transition :after ((qvm qvm:pure-state-qvm) instr)
+(defmethod qvm:transition :after ((qvm profiled-qvm-mixin) instr)
   (incf *instruction-counter*))
 
 (defun instructions-served ()

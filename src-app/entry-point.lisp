@@ -651,10 +651,12 @@ starts with the string PREFIX."
 (defun make-appropriate-qvm (num-qubits gate-noise measurement-noise)
   (format-log "Making qvm of ~D qubit~:P" num-qubits)
   (if (and (null gate-noise) (null measurement-noise))
-      (qvm:make-qvm num-qubits)
+      (make-instance 'profiled-pure-state-qvm
+                     :number-of-qubits num-qubits
+                     :classical-memory-size 64)
       (let ((gate-noise (or gate-noise '(0.0 0.0 0.0)))
             (measurement-noise (or measurement-noise '(0.0 0.0 0.0))))
-        (make-instance 'qvm::noisy-qvm
+        (make-instance 'profiled-noisy-qvm
                        :number-of-qubits num-qubits
                        :classical-memory-size 64
                        :x (elt gate-noise 0)
@@ -727,7 +729,9 @@ starts with the string PREFIX."
           (with-timeout
             (qvm:run qvm))
           ;; Collect bits.
-          (push (collect-bits qvm) trial-results)))
+          (push (collect-bits qvm) trial-results))
+        (increment-instruction-counter (instructions-executed qvm)))
+
       (format-log "Finished in ~D ms" timing)
       (nreverse trial-results))))
 
@@ -769,6 +773,7 @@ starts with the string PREFIX."
                     :collect (progn
                                (reload qvm)
                                (nth-value 1 (qvm::parallel-measure qvm qubits)))))
+          (increment-instruction-counter (instructions-executed qvm))
           (format-log "Done measuring in ~D ms." timing))))))
 
 (defun perform-expectation (state-prep operators num-qubits &key gate-noise measurement-noise)
@@ -823,21 +828,23 @@ starts with the string PREFIX."
                (qvm:load-program qvm program)
                (setf first-time nil)))
         ;; Compute the expectations of the operators.
-        (loop :for i :from 1
-              :for op :in operators
-              :collect (let (expectation)
-                         (format-log "Computing the expectation value of the ~:R operator." i)
-                         (with-timing (timing)
-                           (reload qvm op)
-                           (qvm:run qvm)
-                           (setf expectation (inner-product
-                                              prepared-wf
-                                              (qvm::amplitudes qvm))))
-                         (format-log "Computed ~:R expectation value in ~D ms." i timing)
-                         (assert (< (abs (imagpart expectation)) 1e-14))
-                         (unless (zerop (imagpart expectation))
-                           (warn "Non-zero but acceptable imaginary part of expectation value: ~A" expectation))
-                         (realpart expectation)))))))
+        (prog1
+            (loop :for i :from 1
+                  :for op :in operators
+                  :collect (let (expectation)
+                             (format-log "Computing the expectation value of the ~:R operator." i)
+                             (with-timing (timing)
+                               (reload qvm op)
+                               (qvm:run qvm)
+                               (setf expectation (inner-product
+                                                  prepared-wf
+                                                  (qvm::amplitudes qvm))))
+                             (format-log "Computed ~:R expectation value in ~D ms." i timing)
+                             (assert (< (abs (imagpart expectation)) 1e-14))
+                             (unless (zerop (imagpart expectation))
+                               (warn "Non-zero but acceptable imaginary part of expectation value: ~A" expectation))
+                             (realpart expectation)))
+          (increment-instruction-counter (instructions-executed qvm)))))))
 
 (defun perform-wavefunction (quil num-qubits &key gate-noise measurement-noise)
   (check-type quil quil:parsed-program)
@@ -858,6 +865,7 @@ starts with the string PREFIX."
     (with-timing (timing)
       (with-timeout
         (qvm:run qvm)))
+    (increment-instruction-counter (instructions-executed qvm))
     (format-log "Finished in ~D ms" timing)
     qvm))
 
