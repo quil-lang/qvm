@@ -56,6 +56,7 @@
 (defvar *program-name* "qvm")
 (defvar *num-workers* nil)
 (defvar *time-limit* nil)
+(defvar *qubit-limit* nil)
 (defvar *safe-include-directory* nil)
 
 (defmacro with-timeout (&body body)
@@ -102,6 +103,11 @@
      :type integer
      :initial-value 0
      :documentation "time limit for computations (0 => unlimited, ms)")
+    
+    (("qubit-limit")
+     :type integer
+     :initial-value 0
+     :documentation "maximum number of qubits allowed to be used (0 => unlimited)")
 
     (("benchmark")
      :type integer
@@ -260,7 +266,13 @@
         (let ((quil:*resolve-include-pathname* #'resolve-safely))
           (parse-it string)))))
 
-(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit safe-include-directory qubits benchmark)
+(defun throw-error-if-over-allocated (num-qubits)
+    "Throws an error if the number of qubits requested exceeds the max (defined from command line parameter --qubit-limit)."
+    (when (and (> num-qubits *qubit-limit*) 
+               (not (zerop *qubit-limit*)))
+        (error "~D qubits were requested, but the QVM is limited to ~D qubits." num-qubits *qubit-limit*)))
+
+(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark)
   (when help
     (show-help)
     (uiop:quit))
@@ -649,6 +661,7 @@ starts with the string PREFIX."
            (format-log "Response sent in ~D ms." send-response-time)))))))
 
 (defun make-appropriate-qvm (num-qubits gate-noise measurement-noise)
+  (throw-error-if-over-allocated num-qubits)
   (format-log "Making qvm of ~D qubit~:P" num-qubits)
   (if (and (null gate-noise) (null measurement-noise))
       (make-instance 'profiled-pure-state-qvm
