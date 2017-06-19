@@ -56,7 +56,7 @@
 (defvar *program-name* "qvm")
 (defvar *num-workers* nil)
 (defvar *time-limit* nil)
-(defvar *qubit-limit* nil)
+(defvar *qubit-limit* nil)              ; Maximum no. of qubits.
 (defvar *safe-include-directory* nil)
 
 (defmacro with-timeout (&body body)
@@ -103,11 +103,11 @@
      :type integer
      :initial-value 0
      :documentation "time limit for computations (0 => unlimited, ms)")
-    
+
     (("qubit-limit")
      :type integer
      :initial-value 0
-     :documentation "maximum number of qubits allowed to be used (0 => unlimited)")
+     :documentation "maximum number of qubits allowed to be used in the server (0 => unlimited)")
 
     (("benchmark")
      :type integer
@@ -183,7 +183,8 @@
 ******************************~%")
   (format t "(Configured with ~D MiB of workspace and ~D worker~:P.)~2%"
           (floor (sb-ext:dynamic-space-size) (expt 1024 2))
-          (or *num-workers* (max 1 (qvm:count-logical-cores)))))
+          (or *num-workers* (max 1 (qvm:count-logical-cores))))
+  nil)
 
 (defmacro with-timing ((var) &body body)
   (let ((start (gensym "START-")))
@@ -210,6 +211,8 @@
   (when (null port)
     (setf port *default-host-port*))
   (format-log "Starting server on port ~D." port)
+  (unless (null *qubit-limit*)
+    (format-log "Server is limited to ~D qubit~:P." *qubit-limit*))
   (start-server port)
   (loop (sleep 1)))
 
@@ -268,9 +271,9 @@
 
 (defun throw-error-if-over-allocated (num-qubits)
     "Throws an error if the number of qubits requested exceeds the max (defined from command line parameter --qubit-limit)."
-    (when (and (> num-qubits *qubit-limit*) 
-               (not (zerop *qubit-limit*)))
-        (error "~D qubits were requested, but the QVM is limited to ~D qubits." num-qubits *qubit-limit*)))
+  (when (and (integerp *qubit-limit*) (> num-qubits *qubit-limit*))
+    (error "~D qubits were requested, but the QVM ~
+            is limited to ~D qubits." num-qubits *qubit-limit*)))
 
 (defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark)
   (when help
@@ -286,6 +289,9 @@
 
   (when (plusp time-limit)
     (setf *time-limit* (/ time-limit 1000.0d0)))
+
+  (when (plusp qubit-limit)
+    (setf *qubit-limit* qubit-limit))
 
   (unless (or (null *safe-include-directory*)
               (uiop:directory-pathname-p *safe-include-directory*))
