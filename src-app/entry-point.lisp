@@ -347,8 +347,9 @@
      (when execute
        (format-log "Ignoring execute option: ~S" execute))
      (start-server-app port))
+
     ;; Batch mode.
-    (t
+    (execute
      (let (qvm program alloc-time exec-time qubits-needed)
        (format-log "Reading program.")
        (setf program (safely-read-quil execute))
@@ -367,7 +368,7 @@
        (with-timing (exec-time)
          (run qvm))
        (format-log "Execution completed in ~D ms." exec-time)
-       (when (or  verbose (<= qubits-needed 10))
+       (when (or verbose (<= qubits-needed 10))
          (format-log "Printing ~D-qubit state." qubits-needed)
          (format-log "Amplitudes:")
          (qvm:map-amplitudes
@@ -380,11 +381,14 @@
                           (format-complex z)
                           (* 100 (qvm:probability z)))
               (incf i)))))
-       (format-log "Classical memory (LSB -> MSB): ~v,'0B"
+       (format-log "Classical memory (LSB -> MSB): ~A"
                    (reverse
                     (format nil "~v,'0B"
                             (qvm::classical-memory-size qvm)
-                            (qvm::classical-memory qvm)))))))
+                            (qvm::classical-memory qvm))))))
+    (t
+     (format-log "You must benchmark, start a server, or execute a Quil file.")
+     (uiop:quit)))
 
   (uiop:quit))
 
