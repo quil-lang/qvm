@@ -768,6 +768,8 @@ starts with the string PREFIX."
   (when (or (null qubits) (zerop num-trials))
     (return-from perform-multishot-measure nil))
 
+  (setf num-qubits (max num-qubits (1+ (reduce #'max qubits))))
+  
   (let ((qvm (make-appropriate-qvm num-qubits nil nil))
         timing)
     ;; Make the initial state.
