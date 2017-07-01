@@ -13,7 +13,7 @@ of this software.
 * A Lambda Calculus for Quantum Computation with Classical Control. Selinger and Valiron. [URL](http://www.mathstat.dal.ca/~selinger/papers/papers/qlambda-mscs.pdf)
 
 ## Use of Lisp for quantum computation:
-* Simulation of Quantum Computations in Lisp. Desmet, D'Hondt, Costanza, D'Hondt. [URL](ftp://prog.vub.ac.be/tech_report/2006/vub-prog-tr-06-15.pdf)
+* Simulation of Quantum Computations in Lisp. Desmet, D'Hondt, Costanza, D'Hondt. [URL](ftp://prog.vub.ac.be/tech_report/2006/vub-prog-tr-06-15.pdf) [Slides](http://www.european-lisp-workshop.org/archives/06.desmet.slides.pdf)
 * Using Data Parallelism in Lisp for Implementing a Quantum Simulator. Uribe, Costanza, Herzel, D'Hondt. [URL](http://www.p-cos.net/documents/Using-Data-Parallelism-in-Lisp.pdf)
 * Q-Lisp Project. Schloer Consulting Group. [URL](http://www.schloerconsulting.com/quantum-computer-q-lisp-programming-language)
 * BLACK-STONE. Lupton. [URL](https://github.com/thephoeron/black-stone)
