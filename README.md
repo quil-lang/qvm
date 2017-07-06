@@ -211,6 +211,6 @@ docker pull rigetticomputing/qvm
 ```
 This will download the QVM server.  To start the QVM, run
 ```
-docker run rigetticomputing/qvm -p 5000:5000
+docker run -p 5000:5000 rigetticomputing/qvm
 ```
 This should start the QVM on the default port 5000.  You should see a welcome message!
