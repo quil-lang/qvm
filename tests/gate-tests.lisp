@@ -154,20 +154,27 @@
     2        |10>
     3        |11>
 "
-  (let ((quil:*recognize-swap-specially* nil))
-    (with-output-to-quil
+  (let ((X0 (make-instance 'quil:unresolved-application
+                           :operator "X"
+                           :arguments (list (quil:qubit 0))))
+        (X1 (make-instance 'quil:unresolved-application
+                           :operator "X"
+                           :arguments (list (quil:qubit 1))))
+        (qft (qvm-examples:qft-circuit '(0 1))))
+    (flet ((prepend (&rest apps)
+             (setf (quil:parsed-program-executable-code qft)
+                   (concatenate 'vector apps (quil:parsed-program-executable-code qft)))))
       (ecase type
         ((0)                                ; |00>
          nil)
         ((1)                                ; |01>
-         (format t "X 0~%"))
+         (prepend X0))
         ((2)                                ; |10>
-         (format t "X 1~%"))
+         (prepend X1))
         ((3)                                ; |11>
-         (format t "X 0~%X 1~%")))
-      ;; Write out
-      (flet ((f (x) (format t "~{~A~^ ~}~%" x)))
-        (mapc #'f (qvm-examples:qft-circuit '(0 1)))))))
+         (prepend X0 X1)))
+      ;; Return the circuit
+      qft)))
 
 ;; 1 0 0 0 => 0.5    0.5     0.5    0.5
 ;; 0 1 0 0 => 0.5    0.5i   -0.5   -0.5i

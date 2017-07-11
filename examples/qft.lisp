@@ -14,28 +14,45 @@
         (loop :for i :below (floor n 2)
               :for qs :in qubits
               :for qe :in (reverse qubits)
-              :collect `(SWAP ,qs ,qe)))))
+              :collect (make-instance 'quil:unresolved-application
+                                      :operator "SWAP"
+                                      :arguments (list (quil:qubit qs)
+                                                       (quil:qubit qe)))))))
 
 (defun qft-circuit (qubits)
   "Generate the QFT circuit on the given qubits."
   (labels ((qft (qubits)
              (destructuring-bind (q . qs) qubits
                (if (null qs)
-                   (list `(H ,q))
+                   (list (make-instance 'quil:unresolved-application
+                                        :operator "H"
+                                        :arguments (list (quil:qubit q))))
                    (let ((cR nil))
                      (loop :with n := (1+ (length qs))
                            :for i :from (1- n) :downto 1
                            :for qi :in qs
-                           ;; single-float hack to get tests to work.
-                           :for angle := (coerce (/ pi (expt 2 (- n i))) 'single-float)
-                           :do (push `(CPHASE (,angle) ,q ,qi) cR))
+                           :for angle := (qvm:flonum (/ pi (expt 2 (- n i))))
+                           :do (push (make-instance
+                                      'quil:unresolved-application
+                                      :operator "CPHASE"
+                                      :parameters (list (quil:constant angle))
+                                      :arguments (list (quil:qubit q)
+                                                       (quil:qubit qi)))
+                                     cR))
                      (append
                       (qft qs)
                       cR
-                      (list `(H ,q))))))))
-    (append
-     ;; Core QFT with normalization.
-     (qft qubits)
+                      (list (make-instance 'quil:unresolved-application
+                                           :operator "H"
+                                           :arguments (list (quil:qubit q))))))))))
+    (make-instance 'quil:parsed-program
+                   :gate-definitions nil
+                   :circuit-definitions nil
+                   :executable-code
+                   (concatenate
+                    'vector
+                    ;; Core QFT with normalization.
+                    (qft qubits)
 
-     ;; Re-ordering the output.
-     (bit-reversal-circuit qubits))))
+                    ;; Re-ordering the output.
+                    (bit-reversal-circuit qubits)))))
