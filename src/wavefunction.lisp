@@ -38,10 +38,11 @@
   (declare (type nat-tuple qubits)
            (type non-negative-fixnum flags)
            (type amplitude-address address))
-  (do-nat-tuple (i qubit qubits)
-    (if (logbitp i flags)
+  (do-nat-tuple (qubit qubits)
+    (if (logbitp 0 flags)
         (setf address (dpb 1 (byte 1 qubit) address))
-        (setf address (dpb 0 (byte 1 qubit) address))))
+        (setf address (dpb 0 (byte 1 qubit) address)))
+    (setf flags (ash flags -1)))
   address)
 
 
@@ -73,6 +74,51 @@ FUNCTION should be a binary function, and will receive (1) an index running from
   (if (<= *qubits-required-for-parallelization* (nat-tuple-cardinality qubits))
       (map-reordered-amplitudes-in-parallel-truly starting-address function qubits)
       (map-reordered-amplitudes starting-address function qubits)))
+
+
+(defun-inlinable map-complement (function n qubits)
+  "An optimized call to
+
+    (MAP-REORDERED-AMPLITUDES 0 FUNCTION (NAT-TUPLE-COMPLEMENT QUBITS))
+
+up to amplitude ordering."
+  (declare (type nat-tuple qubits)
+           (type (function (non-negative-fixnum amplitude-address) *) function)
+           (type (and (integer 1) nat-tuple-cardinality) n))
+  (let ((qubits-list (sort (copy-seq (nat-tuple-list qubits)) #'<)))
+    (declare (type list qubits-list))
+    (dotimes (i (expt 2 (- n (length qubits-list))))
+      (declare (type non-negative-fixnum i))
+      (let ((j i))
+        (declare (type non-negative-fixnum j))
+        (dolist (q qubits-list)
+          (declare (type nat-tuple-element q))
+          (setf j (inject-bit j q)))
+        (funcall function i j)))))
+
+(defun-inlinable map-complement-in-parallel-truly (function n qubits)
+  "A parallel version of #'MAP-COMPLEMENT."
+  (declare (type nat-tuple qubits)
+           (type (function (non-negative-fixnum amplitude-address) *) function)
+           (type (and (integer 1) nat-tuple-cardinality) n))
+  (let ((qubits-list (sort (copy-seq (nat-tuple-list qubits)) #'<)))
+    (lparallel:pdotimes (i (expt 2 (- n (length qubits-list))))
+      (declare (type non-negative-fixnum i))
+      (let ((j i))
+        (declare (type non-negative-fixnum j))
+        (dolist (q qubits-list)
+          (declare (type nat-tuple-element q))
+          (setf j (inject-bit j q)))
+        (funcall function i j)))))
+
+(defun-inlinable map-complement-in-parallel (function n qubits)
+  "A parallel version of #'MAP-COMPLEMENT, when the number of qubits is large enough."
+  (declare (type nat-tuple qubits)
+           (type (function (non-negative-fixnum amplitude-address) *) function)
+           (type (and (integer 1) nat-tuple-cardinality) n))
+  (if (<= *qubits-required-for-parallelization* n)
+      (map-complement-in-parallel-truly function n qubits)
+      (map-complement function n qubits)))
 
 (defun extract-amplitudes (wavefunction qubits starting-address)
   "Returns a column vector of amplitudes represented by the tuple of qubits QUBITS."
@@ -145,7 +191,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
   "Apply an operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS. OPERATOR shall be a unary function taking a QUANTUM-STATE as an argument and modifying it."
   (declare (type quantum-state wavefunction)
            (type (function (quantum-state) *) operator)
-           (inline map-reordered-amplitudes-in-parallel))
+           (inline map-reordered-amplitudes-in-parallel map-complement-in-parallel))
   (flet ((fast-multiply-in (combo address)
            (declare (ignore combo))
            (with-modified-amplitudes (col wavefunction qubits address)
@@ -162,6 +208,14 @@ FUNCTION should be a binary function, and will receive (1) an index running from
            nil))
     (declare (dynamic-extent #'fast-multiply-in)
              (inline fast-multiply-in))
+
+    (map-complement-in-parallel
+     #'fast-multiply-in
+     (wavefunction-qubits wavefunction)
+     qubits)
+
+    ;; Again, we show this variation for pedagogical reasons.
+    #+unused
     (map-reordered-amplitudes-in-parallel
      0
      #'fast-multiply-in

@@ -97,3 +97,19 @@
                       :collect (cons i (1+ i)) :into ranges
                       :finally (return (append ranges
                                                `((,(1- workers) . ,(+ 3 workers))))))))))
+
+(deftest test-inject-bit ()
+  (let ((source #b1111))
+    (is (= #b11110 (qvm::inject-bit source 0)))
+    (is (= #b11101 (qvm::inject-bit source 1)))
+    (is (= #b11011 (qvm::inject-bit source 2)))
+    (is (= #b10111 (qvm::inject-bit source 3)))
+    (is (= #b01111 (qvm::inject-bit source 4)))))
+
+(deftest test-eject-bit ()
+  (let ((target #b1111))
+    (is (= target (qvm::eject-bit #b11110 0)))
+    (is (= target (qvm::eject-bit #b11101 1)))
+    (is (= target (qvm::eject-bit #b11011 2)))
+    (is (= target (qvm::eject-bit #b10111 3)))
+    (is (= target (qvm::eject-bit #b01111 4)))))

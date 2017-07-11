@@ -21,13 +21,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
            (type amplitude-address index)
            (type bit state)
            #.*optimize-dangerously-fast*)
-  (let ((LLLLb (let ((LLLL (ash index (- qubit))))
-                 (declare (type amplitude-address LLLL))
-                 (logior state (the amplitude-address (ash LLLL 1)))))
-        (RRRR  (ldb (byte qubit 0) index)))
-    (declare (type amplitude-address LLLLb RRRR))
-    (logior (the amplitude-address (ash LLLLb qubit))
-            RRRR)))
+  (dpb state (byte 1 qubit) (inject-bit index qubit)))
 
 (defun qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."

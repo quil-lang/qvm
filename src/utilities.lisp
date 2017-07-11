@@ -63,19 +63,15 @@
     (%make-nat-tuple :list (reverse elements)
                      :membership membership)))
 
-(defmacro do-nat-tuple ((i elt nt) &body body)
+(defmacro do-nat-tuple ((elt nt) &body body)
   "Iterate over the elements of the nat tuple NT in increasing order. The return value is unspecified.
-
-I will be bound to the (zero-indexed) index of the element found.
 
 ELT will be bound to the element itself.
 
 NT should be the bit set."
-  (check-type i symbol)
   (check-type elt symbol)
   (let ((g-nt (gensym "NT-")))
     `(loop :with ,g-nt :of-type list := (nat-tuple-list ,nt)
-           :for ,i :of-type non-negative-fixnum :from 0
            :for ,elt :of-type nat-tuple-element :in ,g-nt
            :do (progn
                  ,@body))))
@@ -205,3 +201,53 @@ NOTE: This must be done before computations can be done.
           (setf prepared? t))))
 
     (values)))
+
+;;; Bit Injection/Ejection
+
+(declaim (inline inject-bit))
+(defun inject-bit (x n)
+  "Inject a 0 at the nth position. Example:
+
+    (INJECT-BIT #b1111 1) => #b11101
+"
+  (declare #.*optimize-dangerously-fast*
+           (type non-negative-fixnum x)
+           (type nat-tuple-element n))
+  (let ((left (ash (dpb 0 (byte n 0) x) 1))
+        (right (ldb (byte n 0) x)))
+    (declare (type non-negative-fixnum left right))
+    (the non-negative-fixnum (logior left right))))
+
+(defun inject-bit-code (n)
+  (check-type n nat-tuple-element)
+  `(lambda (x)
+     (declare #.*optimize-dangerously-fast*
+              (type non-negative-fixnum x))
+     (let ((left (ash (dpb 0 (byte ,n 0) x) 1))
+           (right (ldb (byte ,n 0) x)))
+       (declare (type non-negative-fixnum left right))
+       (the non-negative-fixnum (logior left right)))))
+
+(declaim (inline eject-bit))
+(defun eject-bit (x n)
+  "Remove the nth bit. Example:
+
+    (EJECT-BIT #b1101 1) => #b111
+"
+  (declare #.*optimize-dangerously-fast*
+           (type non-negative-fixnum x)
+           (type nat-tuple-element n))
+  (let ((left (ash (dpb 0 (byte n 0) x) -1))
+        (right (ldb (byte n 0) x)))
+    (declare (type non-negative-fixnum left right))
+    (the non-negative-fixnum (logior left right))))
+
+(defun eject-bit-code (n)
+  (check-type n nat-tuple-element)
+  `(lambda (x)
+     (declare #.*optimize-dangerously-fast*
+              (type non-negative-fixnum x))
+     (let ((left (ash (dpb 0 (byte ,n 0) x) -1))
+           (right (ldb (byte ,n 0) x)))
+       (declare (type non-negative-fixnum left right))
+       (the non-negative-fixnum (logior left right)))))

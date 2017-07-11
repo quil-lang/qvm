@@ -21,6 +21,7 @@
                (:file "utilities")
                (:file "utilities-tests")
                (:file "linear-algebra-tests")
+               (:file "wavefunction-tests")
                (:file "qvm-tests")
                (:file "measurement-tests")
                (:file "gate-tests")
