@@ -7,6 +7,8 @@
   :author "Robert Smith <robert@rigetti.com>"
   :version (:read-file-form "APP-VERSION.txt")
   :depends-on (
+               ;; QFT
+               #:qvm-examples
                ;; Quil parsing
                (:version #:cl-quil "0.5.1")
                ;; Command line argument parsing

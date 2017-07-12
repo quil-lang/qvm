@@ -68,8 +68,11 @@
            (sb-ext:with-timeout *time-limit*
              (,f))))))
 
+(defparameter *benchmark-types* '("bell" "qft" "hadamard")
+  "List of allowed benchmark names.")
+
 (defparameter *option-spec*
-  '((("execute" #\e)
+  `((("execute" #\e)
      :type string
      :optional t
      :documentation "execute a Quil file")
@@ -113,6 +116,11 @@
      :type integer
      :initial-value 0
      :documentation "run a benchmark entangling N qubits (default: 26)")
+
+    (("benchmark-type")
+     :type string
+     :initial-value "bell"
+     :documentation ,(format nil "the type of benchmark to run; includes {~{~A~^, ~}}" *benchmark-types*))
 
     (("help" #\h)
      :type boolean
@@ -275,7 +283,7 @@
     (error "~D qubits were requested, but the QVM ~
             is limited to ~D qubits." num-qubits *qubit-limit*)))
 
-(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark)
+(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark benchmark-type)
   (when help
     (show-help)
     (uiop:quit))
@@ -338,9 +346,12 @@
     ;; Benchmark mode.
     ((or (eq T benchmark)
          (plusp benchmark))
+     ;; Default number of qubits
      (when (eq T benchmark)
        (setf benchmark 26))
-     (perform-benchmark benchmark))
+     (unless (member benchmark-type *benchmark-types* :test #'string-equal)
+       (error "Invalid benchmark type: ~S" benchmark-type))
+     (perform-benchmark benchmark-type benchmark))
 
     ;; Server mode.
     ((or server port)
@@ -689,21 +700,47 @@ starts with the string PREFIX."
                        :measure-y (elt measurement-noise 1)
                        :measure-z (elt measurement-noise 2)))))
 
-(defun perform-benchmark (num-qubits)
+(defun bell-program (n)
+  (let ((quil:*allow-unresolved-applications* t))
+    (safely-parse-quil-string
+     (with-output-to-string (*standard-output*)
+       (format t "H 0~%")
+       (loop :for i :below (1- n)
+             :do (format t "CNOT ~D ~D~%" i (1+ i)))
+       (loop :for i :below n
+             :do (format t "MEASURE ~D [~D]~%" i i))))))
+
+(defun qft-program (n)
+  (qvm-examples:qft-circuit (loop :for i :below n :collect i)))
+
+(defun hadamard-program (n)
+  (make-instance
+   'quil:parsed-program
+   :executable-code (loop :with v := (make-array (* 2 n))
+                          :for i :below n
+                          :do (setf (aref v i)
+                                    (make-instance
+                                     'quil:unresolved-application
+                                     :operator "H"
+                                     :arguments (list (quil:qubit i))))
+                              (setf (aref v (+ n i))
+                                    (make-instance
+                                     'quil:measure
+                                     :qubit (quil:qubit i)
+                                     :address (quil:address i)))
+                          :finally (return v))))
+
+(defun perform-benchmark (type num-qubits)
   (check-type num-qubits (integer 1))
-  (let ((p (let ((quil:*allow-unresolved-applications* t))
-             (safely-parse-quil-string
-              (with-output-to-string (*standard-output*)
-                (format t "H 0~%")
-                (loop :for i :below (1- num-qubits)
-                      :do (format t "CNOT ~D ~D~%" i (1+ i)))
-                (loop :for i :below num-qubits
-                      :do (format t "MEASURE ~D [~D]~%" i i))))))
+  (let ((p (alexandria:eswitch (type :test #'string-equal)
+             ("bell" (bell-program num-qubits))
+             ("qft"  (qft-program num-qubits))
+             ("hadamard" (hadamard-program num-qubits))))
         (q (qvm:make-qvm num-qubits))
         timing)
     (qvm:load-program q p)
 
-    (format-log "Benchmarking ~D qubits...~%" num-qubits)
+    (format-log "Performing ~S benchmark with ~D qubits...~%" type num-qubits)
 
     (sb-ext:gc :full t)
 
@@ -769,7 +806,7 @@ starts with the string PREFIX."
     (return-from perform-multishot-measure nil))
 
   (setf num-qubits (max num-qubits (1+ (reduce #'max qubits))))
-  
+
   (let ((qvm (make-appropriate-qvm num-qubits nil nil))
         timing)
     ;; Make the initial state.
