@@ -335,6 +335,14 @@ Example: A NAND gate can be made with
                   1 0
                   0 (cis (/ pi 4))))
 
+(define-default-gate CZ 2 ()
+  "The controlled-Z gate."
+  '#.(make-matrix 4
+                  1 0 0  0
+                  0 1 0  0
+                  0 0 1  0
+                  0 0 0 -1))
+
 (define-default-gate CPHASE00 2 (alpha)
   "The controlled phase gate (00-variant)."
   (make-matrix 4

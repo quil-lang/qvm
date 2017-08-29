@@ -40,6 +40,16 @@
          (qvm (run-program 3 quil)))
     (is (double-float= 1 (probability (vector-last (qvm::amplitudes qvm))) 1/10000))))
 
+(deftest test-cnot-from-cz ()
+  "Test the construction of a CNOT gate from a CZ gate."
+  (let* ((quil (with-output-to-quil
+                  (format t "X 0~%")
+                  (format t "H 1~%")
+                  (format t "CZ 0 1~%")
+                  (format t "H 1~%")))
+          (qvm (run-program 2 quil)))
+    (is (double-float= 1 (probability (vector-last (qvm::amplitudes qvm))) 1/10000))))
+
 (deftest test-bell ()
   "Test the construction of a Bell pair."
   (labels ((bell-state (n)
