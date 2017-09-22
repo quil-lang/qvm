@@ -539,6 +539,7 @@ starts with the string PREFIX."
     (tbnl:start-session))
 
   (let* ((api-key (tbnl:header-in* ':X-API-KEY request))
+         (user-id (tbnl:header-in* ':X-USER-ID request))
          (data (hunchentoot:raw-post-data :request request
                                           :force-text t))
          (js (let* ((yason:*parse-object-key-fn* #'keywordify)
@@ -559,10 +560,16 @@ starts with the string PREFIX."
       (with-redis (nil nil)
         ;; Record the API key in the DB.
         (record-api-key api-key)
+
+        ;; Record the user ID if it's present.
+        (when (and (not (null user-id))
+                   (stringp user-id))
+          (record-user-id user-id))
+
         ;; Record the payload in most cases.
         (unless (member type '(:ping :version :instructions-served)
                         :test #'string-equal)
-          (record-request-payload api-key data))))
+          (record-request-payload api-key data user-id))))
 
     ;; Dispatch
     (ecase (keywordify type)
