@@ -7,4 +7,4 @@
   
   ;; suite.lisp
   (:export
-   #:run-tests))
+   #:run-qvm-tests))

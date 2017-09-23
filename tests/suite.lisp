@@ -4,7 +4,7 @@
 
 (in-package #:qvm-tests)
 
-(defun run-tests (&key (headless nil))
+(defun run-qvm-tests (&key (headless nil))
   "Run all QVM tests. If HEADLESS is T, disable interactive debugging and quit on completion."
   (qvm:prepare-for-parallelization)
   (cond
