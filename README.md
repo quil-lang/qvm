@@ -7,27 +7,18 @@ Abstract Machine, called a "Quantum Virtual Machine" or QVM.
 
 ## Dependencies
 
+The `qvm` has only been tested to run on Linux and macOS on AMD64 and ARM.
+
 The system `qvm` and associated tests depend on:
 
 - For UNIX systems, a C compiler accessible from the `cc` command.
-
 - Relatively up-to-date SBCL and ASDF. Follow the instructions in
   [`lisp-setup.md`](doc/lisp-setup.md) for details.
-
-- Up-to-date [`cl-quil`](https://github.com/rigetticomputing/cl-quil)
-  (which itself depends on up-to-date
-  [`alexa`](https://github.com/rigetticomputing/alexa)).
-
-Otherwise, system `qvm` is intended to be written portably across operating systems
-and processor architectures.
+- Up-to-date [`cl-quil`](https://github.com/rigetticomputing/cl-quil). This itself requires [`alexa`](https://github.com/rigetticomputing/alexa) and [`magicl`](https://github.com/rigetticomputing/magicl), the latter of which is slightly non-trivial to get going.
 
 ## How to Run Interactively
 
-The QVM is written in ANSI Common Lisp. An efficient, optimizing,
-machine-code compiler called SBCL is recommended for its
-execution. This is a free and open source implementation of Common
-Lisp. Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md)
-for details.
+The QVM is written in ANSI Common Lisp. An efficient, optimizing, machine-code compiler called SBCL is recommended for its execution. This is a free and open source implementation of Common Lisp. Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md) for details.
 
 Once setup, load the QVM by the following commands.
 
@@ -39,8 +30,7 @@ $ sbcl
 * (ql:quickload :qvm)
 ```
 
-The system will get compiled and loaded, and can now be interacted
-with.
+The system will get compiled and loaded, and can now be interacted with.
 
 If you ever find yourself in a debugger, like so:
 
@@ -58,16 +48,13 @@ restarts (invokable by number or by possibly-abbreviated name):
 (SB-INT:SIMPLE-EVAL-IN-LEXENV (CERROR "Continue running from this point" "oops!") #<NULL-LEXENV>)
 ```
 
-you can exit by choosing the appropriate option number (usually that
-which is labeled `ABORT`, in this case `1`), or pressing control-d.
+you can exit by choosing the appropriate option number (usually that which is labeled `ABORT`, in this case `1`), or pressing control-d.
 
 To quit, type control-d.
 
 ## How to Test
 
-There is what might be considered beta support for Semaphore CI. Every
-build will get built and tested. A failure can indicate failure to
-build or failure of the test suite. You should check below.
+There is what might be considered alpha support for Semaphore CI. Every build will get built and tested. A failure can indicate failure to build or failure of the test suite. You should check below.
 
 ### If you just want to run tests
 
@@ -81,18 +68,15 @@ Within Lisp, do this once to install all of the requisite packages:
 (ql:quickload :qvm-tests)
 ```
 
-If you get an error saying that the system `QVM-TESTS` cannot be
-found, try clearing the cache with `make cleanall` at the command line.
+If you get an error saying that the system `QVM-TESTS` cannot be found, try clearing the cache with `make cleanall` at the command line.
 
-Once installed, once you've loaded `qvm` using the normal means, you
-can test the system by doing
+Once installed, once you've loaded `qvm` using the normal means, you can test the system by doing
 
 ```
 (asdf:test-system :qvm)
 ```
 
-This will load all of the tests and run them. Here is example output
-for passing tests.
+This will load all of the tests and run them. Here is example output for passing tests.
 
 ```
 CL-USER> (asdf:test-system :qvm)
@@ -112,26 +96,21 @@ QVM-TESTS (Suite)
 T
 ```
 
-The `T` (Lisp true value) indicates there was no error in all of the
-tests.
+The `T` (Lisp true value) indicates there was no error in all of the tests.
 
 ## How to Build a Stand-Alone Executable
 
-Building an executable requires `buildapp`. See the Lisp instructions
-in [`lisp-setup.md`](doc/lisp-setup.md) for details.
+Building an executable requires `buildapp`. See the Lisp instructions in [`lisp-setup.md`](doc/lisp-setup.md) for details.
 
-Before building, you must ensure that all dependencies are downloaded
-from the internet. To do this, just type the command
+Before building, you must ensure that all dependencies are downloaded from the internet. To do this, just type the command
 
 ```
 make deps
 ```
 
-This only needs to be done once (any time new third-party dependencies
-are introduced). This also updates Quicklisp if needed.
+This only needs to be done once (any time new third-party dependencies are introduced). This also updates Quicklisp if needed.
 
-Building is otherwise easy, just call `make` in the `qvm`
-directory. This should produce output like the following:
+Building is otherwise easy, just call `make` in the `qvm` directory. This should produce output like the following:
 
 ```
 $ make
@@ -154,8 +133,7 @@ writing 56164352 bytes from the dynamic space at 0x1000000000
 done]
 ```
 
-If there were issues building it, then a full log of compilation
-output can be found in `build-output.log`.
+If there were issues building it, then a full log of compilation output can be found in `build-output.log`.
 
 By default, the QVM reserves 1 GB of workspace for computations. This is probably good enough for around 20 or so qubits. If you are doing large computations or you find that you get errors akin to "heap exhausted", you may opt to build the QVM with a larger workspace. To do this, run `make` with the variable `QVM_WORKSPACE` equal to the number of megabytes desired. For example,
 
@@ -163,8 +141,7 @@ By default, the QVM reserves 1 GB of workspace for computations. This is probabl
 $ make QVM_WORKSPACE=4096
 ```
 
-Now you should have an executable called `qvm`. A simple test is to
-run the `bell.quil` example to produce a Bell state, using the QVM's `-e` option.
+Now you should have an executable called `qvm`. A simple test is to run the `bell.quil` example to produce a Bell state, using the QVM's `-e` option.
 
 ```
 $ ./qvm -e examples/bell.quil
@@ -205,7 +182,7 @@ This will delete any built executables as well.
 Instructions can be found [here](https://github.com/rigetticomputing/qvm/wiki).
 
 ## Installing using Docker
-If you have docker installed and have been added to our private Dockerhub (ask Will, Robert, or Spike for this) then you can use docker to set up a local copy of the QVM with only a few commands and no other installation. First pull the docker image
+If you have docker installed and have been added to our private Dockerhub then you can use docker to set up a local copy of the QVM with only a few commands and no other installation. First pull the docker image
 ```
 docker pull rigetticomputing/qvm
 ```
