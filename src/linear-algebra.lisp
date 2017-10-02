@@ -129,8 +129,7 @@ The function will just return NIL, and modify the contents of RESULT."
   "Compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex vector (represented as a CFLONUM vector) in-place."
   (declare (type quantum-operator matrix)
            (type quantum-state column)
-           #.*optimize-dangerously-fast*
-           (inline matmul2 matmul4 matmul8))
+           #.*optimize-dangerously-fast*)
   (assert (= (array-dimension matrix 0)
              (array-dimension matrix 1))
           (matrix)
