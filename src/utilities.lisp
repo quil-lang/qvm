@@ -23,68 +23,68 @@
   "A representation of the set of cardinalities of a nat tuple."
   `(integer 0 #.+max-nat-tuple-cardinality+))
 
-(declaim (inline make-nat-tuple
-                 nat-tuple-add
+(declaim (inline %make-nat-tuple
                  nat-tuple-cardinality))
 
-(defstruct (nat-tuple (:constructor %make-nat-tuple))
+(deftype nat-tuple ()
   "The NAT-TUPLE type. A \"nat tuple\" represents an ordered list of non-negative integer indexes."
-  (list nil :read-only t :type list)
-  (membership 0 :read-only t :type non-negative-fixnum))
+  `(simple-array nat-tuple-element (*)))
 
-(defun make-nat-tuple ()
-  "Make a new, empty nat tuple."
-  (load-time-value
-   (%make-nat-tuple :list nil
-                    :membership 0)
-   t))
-
-(defun nat-tuple-add (nt elt)
-  "Add the element ELT (of type NAT-TUPLE-ELEMENT) to the nat tuple NT."
-  (declare (type nat-tuple nt)
-           (type nat-tuple-element elt))
-  (if (logbitp elt (nat-tuple-membership nt))
-      nt
-      (%make-nat-tuple :list (cons elt (nat-tuple-list nt))
-                       :membership (dpb 1 (byte 1 elt) (nat-tuple-membership nt)))))
+(declaim (ftype (function (nat-tuple-cardinality) nat-tuple) %make-nat-tuple))
+(defun %make-nat-tuple (n)
+  (declare (type nat-tuple-cardinality n))
+  (make-array n :element-type 'nat-tuple-element
+                :initial-element 0))
 
 (declaim (ftype (function (nat-tuple) nat-tuple-cardinality) nat-tuple-cardinality))
 (defun nat-tuple-cardinality (nt)
   "Compute the number of elements in the nat tuple NT."
   (declare (type nat-tuple nt))
-  (length (nat-tuple-list nt)))
+  (length nt))
 
 (defun nat-tuple (&rest elements)
   "Create a new nat tuple with the elements ELEMENTS (each of type NAT-TUPLE-ELEMENT)."
-  (let ((membership 0))
-    (declare (type non-negative-fixnum membership))
-    (dolist (elt elements)
-      (setf membership (dpb 1 (byte 1 elt) membership)))
-    (%make-nat-tuple :list (reverse elements)
-                     :membership membership)))
+  (declare (dynamic-extent elements))
+  (let* ((n (length elements))
+         (nt (%make-nat-tuple n)))
+    (loop :for x :in elements
+          :for i :from (1- n) :downto 0
+          :do (setf (aref nt i) x))
+    nt))
 
 (defmacro do-nat-tuple ((elt nt) &body body)
   "Iterate over the elements of the nat tuple NT in increasing order. The return value is unspecified.
 
-ELT will be bound to the element itself.
-
-NT should be the bit set."
+ELT will be bound to the element itself."
   (check-type elt symbol)
   (let ((g-nt (gensym "NT-")))
-    `(loop :with ,g-nt :of-type list := (nat-tuple-list ,nt)
-           :for ,elt :of-type nat-tuple-element :in ,g-nt
-           :do (progn
-                 ,@body))))
+    `(let ((,g-nt ,nt))
+       (declare (type nat-tuple ,g-nt))
+       (loop :for ,elt :of-type nat-tuple-element :across ,g-nt
+             :do (progn
+                   ,@body)))))
 
 (defun nat-tuple-complement (n nt)
   "Compute the complement of the nat tuple NT in a universe of (0 1 2 ... N-1)."
-  (let* ((comp-membership (logandc2 (1- (expt 2 n))
-                                    (nat-tuple-membership nt)))
-         (comp-list (loop :for i :below n
-                          :when (logbitp i comp-membership)
-                            :collect i)))
-    (%make-nat-tuple :list comp-list
-                     :membership comp-membership)))
+  (let* ((nt-len (nat-tuple-cardinality nt))
+         (sorted-nt (sort (copy-seq nt) #'<)))
+    (assert (< nt-len n))
+    (let* ((compl-len (- n nt-len))
+           (compl (%make-nat-tuple compl-len))
+           (nt-ptr 0)
+           (compl-ptr 0))
+      (declare (type nat-tuple-element nt-ptr compl-ptr)) ; indexes
+      (dotimes (i n compl)
+        (declare (type nat-tuple-element i))
+        (cond
+          ((= compl-ptr compl-len)
+           (return-from nat-tuple-complement compl))
+          ((and (< nt-ptr nt-len)
+                (= i (aref sorted-nt nt-ptr)))
+           (incf nt-ptr))
+          (t
+           (setf (aref compl compl-ptr) i)
+           (incf compl-ptr)))))))
 
 (deftype permutation ()
   "A qubit permutation."
@@ -99,6 +99,8 @@ NT should be the bit set."
             :finally (return perm)))
 
 (defun permutation-to-nat-tuple (perm)
+  (copy-seq perm)
+  #+ignore
   (apply #'nat-tuple (nreverse (coerce perm 'list))))
 
 (defun copy-hash-table (hash-table)
