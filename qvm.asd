@@ -23,6 +23,10 @@
                (:version #:cl-quil "0.5.2")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
+  :around-compile (lambda (compile)
+                    (let (#+sbcl(sb-ext:*derive-function-types* t))
+                      (funcall compile)))
+
   :pathname "src/"
   :serial t
   :components ((:file "package")
