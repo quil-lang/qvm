@@ -754,7 +754,7 @@ starts with the string PREFIX."
     (with-timing (timing)
       (time (qvm:run q)))
 
-    (room t)
+    (room)
     (terpri)
     (format-log "Total time for program run: ~D ms" timing)))
 
