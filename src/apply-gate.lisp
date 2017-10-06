@@ -36,6 +36,11 @@
         (generate-code (permutation-to-transpositions permutation))
       (compile nil (generate-lambda-form variable code)))))
 
+(defun permutation-gate-operator (gate)
+  (generate-permutation-gate-function
+   (quil:permutation-gate-permutation gate)))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; One might ask why we define a generic function to act on a
@@ -45,13 +50,26 @@
 ;;; compiler will be unable to inline any of the various chains of
 ;;; functions if we need to dispatch on every subspace application.
 
+;;; Here we cache any generated operators so that they are only
+;;; allocated/evaluated once.
+
+(global-vars:define-global-var **jit-cache** (tg:make-weak-hash-table :weakness :key
+                                                                      :test 'eq)
+  "A table mapping gate objects to their operators.")
+
+(defmacro %cache (obj form)
+  (alexandria:once-only ((obj-once obj))
+    `(or (gethash ,obj-once **jit-cache**)
+         (setf (gethash ,obj-once **jit-cache**)
+               ,form))))
+
 (defgeneric apply-gate (gate wavefunction qubits &rest parameters)
   (:documentation "Apply a gate GATE to the wavefunction WAVEFUNCTION on the sub-Hilbert space defined by the NAT-TUPLE of qubit indexes QUBITS. PARAMETERS is a list of numeric parameters passed to a dynamic gate.")
 
   (:method ((gate quil:simple-gate) wavefunction qubits &rest parameters)
     (assert (null parameters) (parameters) "Parameters don't make sense for simple gates.")
     (apply-matrix-operator
-     (magicl-matrix-to-quantum-operator (quil:gate-matrix gate))
+     (%cache gate (magicl-matrix-to-quantum-operator (quil:gate-matrix gate)))
      wavefunction
      qubits))
 
@@ -65,8 +83,7 @@
   (:method ((gate quil:permutation-gate) wavefunction qubits &rest parameters)
     (assert (null parameters) (parameters) "Parameters don't make sense for a permutation gate.")
     (apply-operator
-     (generate-permutation-gate-function
-      (quil:permutation-gate-permutation gate))
+     (%cache gate (permutation-gate-operator gate))
      wavefunction
      qubits)))
 

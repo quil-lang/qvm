@@ -18,6 +18,10 @@
                #:lparallel
                ;; Matrix algebra
                #:magicl
+               ;; weak hash tables
+               #:trivial-garbage
+               ;; static globals
+               #:global-vars
                ;; C foreign function interface
                #+unix
                #:cffi
