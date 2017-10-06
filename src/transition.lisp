@@ -155,13 +155,13 @@ Return two values:
                         (quil:application-arguments instr))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
-          (expected-qubits (1- (integer-length (gate-dimension gate)))))
+          (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
       (assert (= given-qubits expected-qubits)
               ()
               "Attempting to apply the ~D-qubit gate ~A to ~D qubit~:P ~
                in the instruction:~2%    ~A"
               expected-qubits
-              (gate-name gate)
+              (quil:gate-name gate)
               given-qubits
               (with-output-to-string (s)
                 (quil::print-instruction instr s))))
@@ -188,13 +188,13 @@ Return two values:
                         (quil:application-arguments instr))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
-          (expected-qubits (1- (integer-length (gate-dimension gate)))))
+          (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
       (assert (= given-qubits expected-qubits)
               ()
               "Attempting to apply the ~D-qubit gate ~A to ~D qubit~:P ~
                in the instruction:~2%    ~A"
               expected-qubits
-              (gate-name gate)
+              (quil:gate-name gate)
               given-qubits
               (with-output-to-string (s)
                 (quil::print-instruction instr s))))

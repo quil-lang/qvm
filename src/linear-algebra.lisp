@@ -80,6 +80,16 @@
           :do (setf (row-major-aref matrix i) element)
           :finally (return matrix))))
 
+(defun magicl-matrix-to-quantum-operator (m)
+  "Convert a MAGICL matrix M to a QUANTUM-OPERATOR."
+  (check-type m magicl:matrix)
+  (let* ((rows (magicl:matrix-rows m))
+         (cols (magicl:matrix-cols m))
+         (op   (make-matrix rows cols)))
+    (dotimes (r rows op)
+      (dotimes (c cols)
+        (setf (aref op r c) (magicl:ref m r c))))))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun matrix-multiply-code (n matrix column result)
     "Generate code to compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex column vector (represented as a CFLONUM vector)."

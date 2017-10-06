@@ -16,11 +16,13 @@
                #:ieee-floats
                ;; Parallelization utilities
                #:lparallel
+               ;; Matrix algebra
+               #:magicl
                ;; C foreign function interface
                #+unix
                #:cffi
                ;; Quil parsing and analysis
-               (:version #:cl-quil "0.5.2")
+               (:version #:cl-quil "0.6.0")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :around-compile (lambda (compile)
@@ -38,7 +40,7 @@
                (:file "qam")
                (:file "classical-memory")
                (:file "wavefunction")
-               (:file "gates")
+               (:file "apply-gate")
                (:file "quil")
                (:file "qvm")
                (:file "measurement")

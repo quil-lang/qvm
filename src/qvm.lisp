@@ -39,7 +39,9 @@
 
    (gate-definitions :accessor gate-definitions
                      :initarg :gate-definitions
-                     :initform (copy-hash-table *default-gate-definitions*)
+                     ;; XXX FIXME: To be superseded by some notion of
+                     ;; environments.
+                     :initform (copy-hash-table quil::**default-gate-definitions**)
                      :documentation "A table mapping gate names to their GATE-instance definition."))
 
   (:documentation "An pure-state implementation of the Quantum Abstract Machine with SWAP optimization."))
@@ -74,10 +76,12 @@
   "Install the gates specified by the program PROGRAM into the QVM.
 
 This will not clear previously installed gates from the QVM."
+  ;; XXX FIXME: This should be improved by some first class definition
+  ;; of environments.
   (loop :with gate-table := (gate-definitions qvm)
         :for gate-def :in (quil:parsed-program-gate-definitions program)
         :for gate := (gate-definition-to-gate gate-def)
-        :do (setf (gethash (gate-name gate) gate-table) gate)))
+        :do (setf (gethash (quil:gate-name gate) gate-table) gate)))
 
 (defun load-program (qvm program &key append)
   "Load the program PROGRAM into the quantum virtual machine QVM. If APPEND is T (default: NIL), then the program will be appended to the currently loaded program. Otherwise, whatever program is loaded will be superseded."
@@ -90,7 +94,6 @@ This will not clear previously installed gates from the QVM."
   (let ((code-vector (quil:parsed-program-executable-code program)))
     (cond
       ((null append)
-       ;; TODO: Install gates.
        (setf (program qvm) code-vector))
       (t
        (setf (program qvm)
