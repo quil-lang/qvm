@@ -41,7 +41,6 @@
                (:file "classical-memory")
                (:file "wavefunction")
                (:file "apply-gate")
-               (:file "quil")
                (:file "qvm")
                (:file "measurement")
                (:file "transition")

@@ -80,7 +80,7 @@ This will not clear previously installed gates from the QVM."
   ;; of environments.
   (loop :with gate-table := (gate-definitions qvm)
         :for gate-def :in (quil:parsed-program-gate-definitions program)
-        :for gate := (gate-definition-to-gate gate-def)
+        :for gate := (quil:gate-definition-to-gate gate-def)
         :do (setf (gethash (quil:gate-name gate) gate-table) gate)))
 
 (defun load-program (qvm program &key append)
