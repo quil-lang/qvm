@@ -123,7 +123,7 @@
                                      (let ((quil:*recognize-swap-specially* t))
                                        (instrs swap-instrs)))))))
     (loop :with amps := (let ((vec (qvm::make-vector (expt 2 8))))
-                          (map-into vec (lambda () (qvm::cflonum (random 1.0))))) 
+                          (map-into vec (lambda () (qvm::cflonum (random 1.0)))))
           :repeat 10
           :for qvm-no-opt := (make-qvm 8)
           :for qvm-opt    := (make-qvm 8)

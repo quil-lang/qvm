@@ -44,6 +44,7 @@
                (:file "qam")
                (:file "classical-memory")
                (:file "wavefunction")
+               (:file "compile-gate")
                (:file "apply-gate")
                (:file "qvm")
                (:file "measurement")

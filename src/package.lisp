@@ -12,6 +12,7 @@
    #:*qubits-required-for-parallelization*
                                         ; VARIABLE
    #:*transition-verbose*               ; VARIABLE
+   #:*compile-before-running*           ; VARIABLE
    )
 
   ;; utilities.lisp
@@ -56,6 +57,10 @@
    #:apply-operator                     ; FUNCTION
    #:apply-matrix-operator              ; FUNCTION
    #:normalize-wavefunction             ; FUNCTION
+   )
+
+  (:export
+   #:warm-apply-matrix-operator-cache   ; FUNCTION
    )
 
   ;; qvm.lisp

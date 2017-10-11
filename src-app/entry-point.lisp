@@ -342,6 +342,14 @@
    (swank:create-server :port swank-port
                         :dont-close t))
 
+  ;; Warm the matrix apply cache.
+  ;;
+  ;; NOTE: This is already done at compile-time in src/apply-gate.lisp
+  #+#:ignore
+  (progn
+    (format-log "Warming the operator cache. This may take a few seconds...")
+    (qvm:warm-matrix-apply-cache :max-qubits 30))
+
   (cond
     ;; Benchmark mode.
     ((or (eq T benchmark)

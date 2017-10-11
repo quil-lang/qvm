@@ -92,7 +92,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun matrix-multiply-code (n matrix column result)
-    "Generate code to compute the product of the complex matrix (represented as a square array of CFLONUMs) and a complex column vector (represented as a CFLONUM vector)."
+    "Generate code to compute the product of the N x N complex matrix (represented as a square array of CFLONUMs) and a length-N complex column vector (represented as a CFLONUM vector)."
     (check-type n unsigned-byte)
     (check-type matrix symbol)
     (check-type column symbol)

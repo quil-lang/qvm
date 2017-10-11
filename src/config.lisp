@@ -13,6 +13,9 @@
 (defvar *transition-verbose* nil
   "Controls whether each transition is printed with a timing.")
 
+(defvar *compile-before-running* nil
+  "Compile programs loaded into the QVM before running them.")
+
 (defvar *optimize-dangerously-fast*
   '(optimize speed (safety 0) (debug 0) (space 0) (compilation-speed 0))
   "Optimization qualities for when the code should go as fast as possible.")

@@ -37,6 +37,10 @@
             :initform #()
             :documentation "The program to be executed.")
 
+   (program-compiled-p :accessor program-compiled-p
+                       :initform nil
+                       :documentation "Has the loaded program been compiled?")
+
    (gate-definitions :accessor gate-definitions
                      :initarg :gate-definitions
                      ;; XXX FIXME: To be superseded by some notion of
@@ -90,6 +94,9 @@ This will not clear previously installed gates from the QVM."
   ;; Install the gates.
   (install-gates qvm program)
 
+  ;; Make sure we forget we compiled.
+  (setf (program-compiled-p qvm) nil)
+
   ;; Load the code vector.
   (let ((code-vector (quil:parsed-program-executable-code program)))
     (cond
@@ -99,6 +106,17 @@ This will not clear previously installed gates from the QVM."
        (setf (program qvm)
              (concatenate 'vector (program qvm) code-vector))))
     qvm))
+
+(defun compile-loaded-program (qvm)
+  "Compile the loaded program on the QVM QVM."
+  (when (and (not (program-compiled-p qvm))
+             (notany (lambda (isn)
+                       (typep isn 'quil:swap-application))
+                     (program qvm)))
+    (setf (program qvm)
+          (map 'vector (lambda (isn) (compile-instruction qvm isn)) (program qvm)))
+    (setf (program-compiled-p qvm) t))
+  qvm)
 
 (defun current-instruction (qvm)
   "What is the next instruction to be executed on the QVM?"
@@ -255,4 +273,3 @@ If ERROR is T, then signal an error when the gate wasn't found."
   (setf (classical-memory qvm) (make-classical-memory
                                 (classical-memory-size qvm)))
   qvm)
-

@@ -212,3 +212,11 @@ Return two values:
   (values
    qvm
    (1+ (pc qvm))))
+
+(defmethod transition ((qvm pure-state-qvm) (instr compiled-gate))
+  (assert (null quil:*recognize-swap-specially*))
+  ;; The instruction itself is a gate.
+  (apply-gate instr (amplitudes qvm) nil)
+  (values
+   qvm
+   (1+ (pc qvm))))
