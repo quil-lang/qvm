@@ -63,11 +63,16 @@
     ;; Initialize the permutation to the identity.
     (unless (slot-boundp qvm 'qubit-permutation)
       (setf (qubit-permutation qvm) (make-identity-permutation num-qubits)))
-    
+
     ;; If the amplitudes weren't specified, initialize to |...000>.
+    ;;
+    ;; We explicitly zero out the memory to make sure all pages get
+    ;; touched.
     (unless (slot-boundp qvm 'amplitudes)
       (setf (amplitudes qvm)
-            (make-vector (expt 2 num-qubits) 1)))))
+            (make-vector (expt 2 num-qubits)))
+      (fill (amplitudes qvm) (cflonum 0))
+      (setf (aref (amplitudes qvm) 0) (cflonum 1)))))
 
 (defun make-qvm (num-qubits &key (classical-memory-size 64))
   "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits."
