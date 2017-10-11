@@ -152,6 +152,11 @@
      :optional t
      :documentation "port of Redis DB")
 
+    (("compile" #\c)
+     :type boolean
+     :optional t
+     :documentation "Pre-compile Quil programs before execution.")
+
     (("safe-include-directory")
      :type string
      :optional t
@@ -283,7 +288,7 @@
     (error "~D qubits were requested, but the QVM ~
             is limited to ~D qubits." num-qubits *qubit-limit*)))
 
-(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark benchmark-type)
+(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark benchmark-type compile)
   (when help
     (show-help)
     (uiop:quit))
@@ -329,6 +334,9 @@
               c)
         (setf *qvm-db-host* nil
               *qvm-db-port* nil))))
+
+  (when compile
+    (setf qvm:*compile-before-running* t))
 
   ;; Show the welcome message.
   (show-welcome)
