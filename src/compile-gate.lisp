@@ -296,20 +296,3 @@ DOTIMES-ITERATOR specifies the DOTIMES-like macro that is used for iteration."
          it)
        isn))))
 
-(defmethod compile-instruction (qvm (isn quil:unresolved-application))
-  (cond
-    ;; Don't do anything for SWAPs.
-    (quil:*recognize-swap-specially* isn)
-
-    ;; Otherwise, we're free to compile.
-    (t
-     (alexandria:if-let (it (compile-operator
-                             (lookup-gate qvm (quil:application-operator isn))
-                             (apply #'nat-tuple
-                                    (mapcar #'quil:qubit-index
-                                            (quil:application-arguments isn)))
-                             (mapcar #'quil:constant-value (quil:application-parameters isn))))
-       (progn
-         (setf (source-instruction it) isn)
-         it)
-       isn))))

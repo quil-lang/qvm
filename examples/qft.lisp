@@ -14,7 +14,7 @@
         (loop :for i :below (floor n 2)
               :for qs :in qubits
               :for qe :in (reverse qubits)
-              :collect (make-instance 'quil:unresolved-application
+              :collect (make-instance 'quil:gate-application
                                       :operator "SWAP"
                                       :arguments (list (quil:qubit qs)
                                                        (quil:qubit qe)))))))
@@ -24,7 +24,7 @@
   (labels ((qft (qubits)
              (destructuring-bind (q . qs) qubits
                (if (null qs)
-                   (list (make-instance 'quil:unresolved-application
+                   (list (make-instance 'quil:gate-application
                                         :operator "H"
                                         :arguments (list (quil:qubit q))))
                    (let ((cR nil))
@@ -33,7 +33,7 @@
                            :for qi :in qs
                            :for angle := (qvm:flonum (/ pi (expt 2 (- n i))))
                            :do (push (make-instance
-                                      'quil:unresolved-application
+                                      'quil:gate-application
                                       :operator "CPHASE"
                                       :parameters (list (quil:constant angle))
                                       :arguments (list (quil:qubit q)
@@ -42,7 +42,7 @@
                      (append
                       (qft qs)
                       cR
-                      (list (make-instance 'quil:unresolved-application
+                      (list (make-instance 'quil:gate-application
                                            :operator "H"
                                            :arguments (list (quil:qubit q))))))))))
     (make-instance 'quil:parsed-program

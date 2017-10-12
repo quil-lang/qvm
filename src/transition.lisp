@@ -178,32 +178,6 @@ Return two values:
      qvm
      (1+ (pc qvm)))))
 
-;;; XXX: Temporary measure. Unresolved applications should error at
-;;; parse time.
-(defmethod transition ((qvm pure-state-qvm) (instr quil::unresolved-application))
-  (let ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
-        (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
-        (qubits (mapcar (lambda (q)
-                          (permuted-qubit qvm (quil:qubit-index q)))
-                        (quil:application-arguments instr))))
-    ;; Do some error checking.
-    (let ((given-qubits (length qubits))
-          (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
-      (assert (= given-qubits expected-qubits)
-              ()
-              "Attempting to apply the ~D-qubit gate ~A to ~D qubit~:P ~
-               in the instruction:~2%    ~A"
-              expected-qubits
-              (quil:gate-name gate)
-              given-qubits
-              (with-output-to-string (s)
-                (quil::print-instruction instr s))))
-
-    (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
-    (values
-     qvm
-     (1+ (pc qvm)))))
-
 ;;; XXX: This method should not exist after Quil is properly
 ;;; processed.
 (defmethod transition ((qvm pure-state-qvm) (instr quil::circuit-application))

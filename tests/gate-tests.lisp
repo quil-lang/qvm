@@ -164,10 +164,10 @@
     2        |10>
     3        |11>
 "
-  (let ((X0 (make-instance 'quil:unresolved-application
+  (let ((X0 (make-instance 'quil:gate-application
                            :operator "X"
                            :arguments (list (quil:qubit 0))))
-        (X1 (make-instance 'quil:unresolved-application
+        (X1 (make-instance 'quil:gate-application
                            :operator "X"
                            :arguments (list (quil:qubit 1))))
         (qft (qvm-examples:qft-circuit '(0 1))))
