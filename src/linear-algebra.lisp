@@ -63,6 +63,15 @@
                          :initial-element (cflonum 0))
       form))
 
+(defun-inlinable bring-to-zero-state (v)
+  "Modify the quantum state V to be |...000>."
+  (declare (type quantum-state v)
+           #.*optimize-dangerously-fast*)
+  (lparallel:pdotimes (i (length v))
+    (setf (aref v i) (cflonum 0)))
+  (setf (aref v 0) (cflonum 1))
+  v)
+
 (deftype quantum-operator (&optional (n '*))
   "A representation of an operator on a quantum state. This will be a unitary square matrix where each dimension is a power-of-two."
   `(simple-array cflonum (,n ,n)))

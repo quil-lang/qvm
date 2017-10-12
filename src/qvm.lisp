@@ -71,8 +71,7 @@
     (unless (slot-boundp qvm 'amplitudes)
       (setf (amplitudes qvm)
             (make-vector (expt 2 num-qubits)))
-      (fill (amplitudes qvm) (cflonum 0))
-      (setf (aref (amplitudes qvm) 0) (cflonum 1)))))
+      (bring-to-zero-state (amplitudes qvm)))))
 
 (defun make-qvm (num-qubits &key (classical-memory-size 64))
   "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits."
@@ -267,8 +266,7 @@ If ERROR is T, then signal an error when the gate wasn't found."
 
 (defun reset (qvm)
   "Perform a reset. Bring all qubits to |0>."
-  (fill (amplitudes qvm) (cflonum 0))
-  (setf (aref (amplitudes qvm) 0) (cflonum 1))
+  (bring-to-zero-state (amplitudes qvm))
   (setf (qubit-permutation qvm) (make-identity-permutation
                                  (number-of-qubits qvm)))
   qvm)
