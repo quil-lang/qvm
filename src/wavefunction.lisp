@@ -252,7 +252,6 @@ up to amplitude ordering."
            (inline norm))
   ;; Mutate the wavefunction.
   (let ((num-qubits (wavefunction-qubits wavefunction))
-        ;; Initially the square norm.
         (inv-norm (/ (norm wavefunction))))
     (declare (type (flonum 0) inv-norm))
 
