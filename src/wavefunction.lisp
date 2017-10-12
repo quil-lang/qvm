@@ -240,6 +240,11 @@ up to amplitude ordering."
              (inline multiply-by-operator))
     (apply-operator #'multiply-by-operator wavefunction qubits)))
 
+(defun-inlinable norm (wavefunction)
+  (declare (type quantum-state wavefunction))
+  (sqrt (the (flonum 0) (psum #'probability wavefunction))))
+
+
 (defun normalize-wavefunction (wavefunction)
   "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space."
   (declare (type quantum-state wavefunction)
@@ -247,11 +252,8 @@ up to amplitude ordering."
   ;; Mutate the wavefunction.
   (let ((num-qubits (wavefunction-qubits wavefunction))
         ;; Initially the square norm.
-        (inv-norm (psum #'probability wavefunction)))
+        (inv-norm (/ (norm wavefunction))))
     (declare (type flonum inv-norm))
-
-    ;; Compute the RECIPROCAL norm.
-    (setf inv-norm (/ (sqrt (the (flonum 0) inv-norm)) inv-norm))
 
     ;; Normalize the wavefunction
     (if (<= *qubits-required-for-parallelization* num-qubits)

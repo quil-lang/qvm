@@ -697,7 +697,7 @@ starts with the string PREFIX."
                      :classical-memory-size 64)
       (let ((gate-noise (or gate-noise '(0.0 0.0 0.0)))
             (measurement-noise (or measurement-noise '(0.0 0.0 0.0))))
-        (make-instance 'profiled-noisy-qvm
+        (make-instance 'profiled-depolarizing-qvm
                        :number-of-qubits num-qubits
                        :classical-memory-size 64
                        :x (elt gate-noise 0)

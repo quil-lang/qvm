@@ -98,6 +98,13 @@
 
   ;; depolarizing-noise.lisp
   (:export
+   #:depolarizing-qvm                   ; CLASS
+   )
+
+  ;; noisy-qvm.lisp
+  (:export
    #:noisy-qvm                          ; CLASS
+   #:make-pauli-noise-map               ; FUNCTION
+   #:set-noisy-gate                     ; FUNCTION
    )
   )

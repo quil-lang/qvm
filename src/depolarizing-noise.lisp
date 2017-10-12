@@ -4,7 +4,7 @@
 
 (in-package #:qvm)
 
-(defclass noisy-qvm (pure-state-qvm)
+(defclass depolarizing-qvm (pure-state-qvm)
   ((probability-gate-x
     :initarg :x
     :accessor probability-gate-x
@@ -71,7 +71,7 @@ It should be that PX + PY + PZ <= 1.
           (return-from add-depolarizing-noise))))))
 
 ;;; Noise gets added to only the qubits being changed.
-(defmethod transition :after ((qvm noisy-qvm) (instr cl-quil:application))
+(defmethod transition :after ((qvm depolarizing-qvm) (instr cl-quil:application))
   (dolist (arg (cl-quil:application-arguments instr))
     (when (typep arg 'cl-quil:qubit)
       (let ((q (cl-quil:qubit-index arg)))
@@ -81,7 +81,7 @@ It should be that PX + PY + PZ <= 1.
                                 (probability-gate-z qvm))))))
 
 ;;; Noise gets added to every qubit after a RESET.
-(defmethod transition :after ((qvm noisy-qvm) (instr cl-quil:reset))
+(defmethod transition :after ((qvm depolarizing-qvm) (instr cl-quil:reset))
   (declare (ignore instr))
   (dotimes (q (number-of-qubits qvm))
     (add-depolarizing-noise qvm q
@@ -91,7 +91,7 @@ It should be that PX + PY + PZ <= 1.
 
 ;;; Noise gets added to only the qubit being measured, before
 ;;; measurement occurs.
-(defmethod transition :before ((qvm noisy-qvm) (instr cl-quil:measurement))
+(defmethod transition :before ((qvm depolarizing-qvm) (instr cl-quil:measurement))
   (let ((q (cl-quil:qubit-index (cl-quil:measurement-qubit instr))))
     (add-depolarizing-noise qvm q
                             (probability-measure-x qvm)

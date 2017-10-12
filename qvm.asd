@@ -49,4 +49,5 @@
                (:file "measurement")
                (:file "transition")
                (:file "depolarizing-noise")
+               (:file "noisy-qvm")
                (:file "execution")))
