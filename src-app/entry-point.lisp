@@ -743,7 +743,7 @@ starts with the string PREFIX."
                           :for i :below n
                           :do (setf (aref v i)
                                     (make-instance
-                                     'quil:unresolved-application
+                                     'quil:gate-application
                                      :operator "H"
                                      :arguments (list (quil:qubit i))))
                               (setf (aref v (+ n i))
