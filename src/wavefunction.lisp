@@ -242,6 +242,7 @@ up to amplitude ordering."
 
 (declaim (ftype (function (quantum-state) (flonum 0)) norm))
 (defun-inlinable norm (wavefunction)
+  "Compute the length/L2 norm of the wavefunction WAVEFUNCTION."
   (declare (inline probability psum))
   (sqrt (the (flonum 0) (psum #'probability wavefunction))))
 
