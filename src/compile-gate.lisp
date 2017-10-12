@@ -11,30 +11,6 @@
   (handler-bind ((sb-ext:compiler-note #'muffle-warning))
     (compile nil form)))
 
-;; For reference only. The following code is from the qHipster
-;; paper. We don't follow it because the two loops are difficult to
-;; parallelize evenly.
-#+#:ignore
-(defun apply-1q-gate (matrix wf qubit)
-  (declare #.*optimize-dangerously-fast*
-           (type quantum-operator matrix)
-           (type quantum-state wf)
-           (type nat-tuple-element qubit))
-  (let ((stride (expt 2 qubit)))
-    (lparallel:pdotimes (g (floor (length wf) (expt 2 (1+ qubit))))
-      (declare (type amplitude-address g))
-      (let ((g (* g (expt 2 (1+ qubit)))))
-        (declare (type amplitude-address g))
-        (dotimes (i stride)
-          (declare (type amplitude-address i))
-          (let ((i (+ g i)))
-            (declare (type amplitude-address i))
-            (let ((a (aref wf i))
-                  (b (aref wf (+ i stride))))
-              (setf (aref wf i)            (+ (* a (aref matrix 0 0)) (* b (aref matrix 0 1)))
-                    (aref wf (+ i stride)) (+ (* a (aref matrix 1 0)) (* b (aref matrix 1 1)))))))))))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;; GATE APPLICATION CODE ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun generate-complement-iteration (qubits wavefunction body-gen &key (dotimes-iterator 'cl:dotimes))
