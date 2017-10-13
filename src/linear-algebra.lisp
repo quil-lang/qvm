@@ -67,8 +67,12 @@
   "Modify the quantum state V to be |...000>."
   (declare (type quantum-state v)
            #.*optimize-dangerously-fast*)
-  (lparallel:pdotimes (i (length v))
-    (setf (aref v i) (cflonum 0)))
+  (if (< (wavefunction-qubits v) *qubits-required-for-parallelization*)
+      (dotimes (i (length v))
+        (setf (aref v i) (cflonum 0)))
+      (lparallel:pdotimes (i (length v))
+        (setf (aref v i) (cflonum 0))))
+
   (setf (aref v 0) (cflonum 1))
   v)
 
