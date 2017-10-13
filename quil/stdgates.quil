@@ -99,6 +99,11 @@ DEFGATE CPHASE(%alpha):
     0, 0, 1, 0
     0, 0, 0, cis(%alpha)
 
+DEFGATE CZ:
+    1, 0, 0,  0
+    0, 1, 0,  0
+    0, 0, 1,  0
+    0, 0, 0, -1
 
 ## Swap Gates
 
