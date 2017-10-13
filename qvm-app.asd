@@ -10,7 +10,7 @@
                ;; QFT
                #:qvm-examples
                ;; Quil parsing
-               (:version #:cl-quil "0.5.1")
+               (:version #:cl-quil "0.7.0")
                ;; Command line argument parsing
                #:command-line-arguments
                ;; ASDF-companion utility library
@@ -18,7 +18,7 @@
                ;; JSON parsing
                #:yason
                ;; The QVM, of course.
-               #:qvm
+               (:version #:qvm "0.10.0")
                ;; Float encoding
                #:ieee-floats
                ;; HTTP web server
