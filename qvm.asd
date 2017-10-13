@@ -26,13 +26,12 @@
                #+unix
                #:cffi
                ;; Quil parsing and analysis
-               (:version #:cl-quil "0.6.0")
+               (:version #:cl-quil "0.7.0")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :around-compile (lambda (compile)
                     (let (#+sbcl(sb-ext:*derive-function-types* t))
                       (funcall compile)))
-
   :pathname "src/"
   :serial t
   :components ((:file "package")

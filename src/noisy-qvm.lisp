@@ -89,13 +89,10 @@ MAGICL matrices '(K1 K2 ... Kn)."
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm)) kraus-ops)
   nil)
 
-
 (defmethod transition ((qvm noisy-qvm) (instr quil:gate-application))
   (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
          (logical-qubits (quil:application-arguments instr))
-         (qubits (mapcar (lambda (q)
-                           (permuted-qubit qvm (quil:qubit-index q)))
-                         logical-qubits))
+         (qubits (mapcar #'quil:qubit-index logical-qubits))
          (kraus-ops (gethash (list (quil:gate-name gate) (mapcar #'quil:qubit-index logical-qubits)) (noisy-gate-definitions qvm))))
     (cond
       (kraus-ops

@@ -135,24 +135,21 @@ Return two values:
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
   (values
    (measure qvm
-            (permuted-qubit qvm (quil:qubit-index (quil:measurement-qubit instr)))
+            (quil:qubit-index (quil:measurement-qubit instr))
             (quil:address-value (quil:measure-address instr)))
    (1+ (pc qvm))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
   (values
    (measure qvm
-            (permuted-qubit qvm
-                            (quil:qubit-index (quil:measurement-qubit instr)))
+            (quil:qubit-index (quil:measurement-qubit instr))
             nil)
    (1+ (pc qvm))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:gate-application))
   (let ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
         (params (mapcar #'quil:constant-value (quil:application-parameters instr)))
-        (qubits (mapcar (lambda (q)
-                          (permuted-qubit qvm (quil:qubit-index q)))
-                        (quil:application-arguments instr))))
+        (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
           (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
@@ -171,13 +168,6 @@ Return two values:
      qvm
      (1+ (pc qvm)))))
 
-(defmethod transition ((qvm pure-state-qvm) (instr quil:swap-application))
-  (destructuring-bind (q0 q1) (quil:application-arguments instr)
-    (swap-qubits qvm (quil:qubit-index q0) (quil:qubit-index q1))
-    (values
-     qvm
-     (1+ (pc qvm)))))
-
 ;;; XXX: This method should not exist after Quil is properly
 ;;; processed.
 (defmethod transition ((qvm pure-state-qvm) (instr quil::circuit-application))
@@ -187,8 +177,7 @@ Return two values:
    qvm
    (1+ (pc qvm))))
 
-(defmethod transition ((qvm pure-state-qvm) (instr compiled-gate))
-  (assert (null quil:*recognize-swap-specially*))
+(defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.
   (apply-gate instr (amplitudes qvm) nil)
   (values

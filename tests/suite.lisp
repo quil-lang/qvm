@@ -12,10 +12,19 @@
   (qvm:prepare-for-parallelization)
   (cond
     ((null headless)
-     (run-package-tests :package ':qvm-tests
-                        :verbose nil
-                        :describe-failures t
-                        :interactive t))
+     (format t "~&* * * RUNNING TESTS IN INTERPRETED MODE * * *~%")
+     (let ((qvm:*compile-before-running* nil))
+       (run-package-tests :package ':qvm-tests
+                          :verbose nil
+                          :describe-failures t
+                          :interactive t))
+
+     (format t "~&~%* * * RUNNING TESTS IN COMPILED MODE * * *~%")
+     (let ((qvm:*compile-before-running* t))
+       (run-package-tests :package ':qvm-tests
+                          :verbose nil
+                          :describe-failures t
+                          :interactive t)))
     (t
      (let ((successp (run-package-tests :package ':qvm-tests
                                         :verbose t

@@ -36,14 +36,14 @@
      wavefunction
      qubits))
 
-  (:method ((gate compiled-matrix-gate) wavefunction qubits &rest parameters)
+  (:method ((gate compiled-matrix-gate-application) wavefunction qubits &rest parameters)
     (declare (ignore qubits))
-    (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-MATRIX-GATE.")
+    (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-MATRIX-GATE-APPLICATIONs.")
     (funcall (compiled-gate-apply-operator gate)
              (compiled-matrix gate)
              wavefunction))
 
-  (:method ((gate compiled-permutation-gate) wavefunction qubits &rest parameters)
+  (:method ((gate compiled-permutation-gate-application) wavefunction qubits &rest parameters)
     (declare (ignore qubits))
-    (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-MATRIX-GATE.")
+    (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-PERMUTATION-GATE-APPLICATIONs.")
     (funcall (compiled-gate-apply-operator gate) wavefunction)))

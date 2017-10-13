@@ -11,10 +11,6 @@
                      :initarg :number-of-qubits
                      :documentation "Number of qubits being simulated.")
 
-   (qubit-permutation :accessor qubit-permutation
-                      :initarg :qubit-permutation
-                      :documentation "The permutation on the qubits.")
-
    (amplitudes :accessor amplitudes
                :initarg :amplitudes
                :documentation "The unpermuted wavefunction.")
@@ -48,7 +44,7 @@
                      :initform (copy-hash-table quil::**default-gate-definitions**)
                      :documentation "A table mapping gate names to their GATE-instance definition."))
 
-  (:documentation "An pure-state implementation of the Quantum Abstract Machine with SWAP optimization."))
+  (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
 
 ;;; Creation and Initialization
 
@@ -59,10 +55,6 @@
     ;; Allocate the classical memory if needed.
     (unless (slot-boundp qvm 'classical-memory)
       (setf (classical-memory qvm) (make-classical-memory num-bits)))
-
-    ;; Initialize the permutation to the identity.
-    (unless (slot-boundp qvm 'qubit-permutation)
-      (setf (qubit-permutation qvm) (make-identity-permutation num-qubits)))
 
     ;; If the amplitudes weren't specified, initialize to |...000>.
     ;;
@@ -113,10 +105,7 @@ This will not clear previously installed gates from the QVM."
 
 (defun compile-loaded-program (qvm)
   "Compile the loaded program on the QVM QVM."
-  (when (and (not (program-compiled-p qvm))
-             (notany (lambda (isn)
-                       (typep isn 'quil:swap-application))
-                     (program qvm)))
+  (unless (program-compiled-p qvm)
     (setf (program qvm)
           (map 'vector (lambda (isn) (compile-instruction qvm isn)) (program qvm)))
     (setf (program-compiled-p qvm) t))
@@ -132,17 +121,6 @@ This will not clear previously installed gates from the QVM."
 
 ;;; Fundamental Manipulation of the QVM
 
-(declaim (inline permuted-qubit))
-(defun permuted-qubit (qvm logical-qubit)
-  "What physical qubit does the logical qubit QUBIT refer to in the quantum virtual machine QVM?"
-  (aref (qubit-permutation qvm) logical-qubit))
-
-(defun swap-qubits (qvm qubit1 qubit2)
-  "Swap the logical qubits QUBIT1 and QUBIT2 in the quantum virtual machine QVM."
-  (let ((perm (qubit-permutation qvm)))
-    (rotatef (aref perm qubit1)
-             (aref perm qubit2))))
-
 (defun nth-amplitude (qvm n)
   "Get the Nth amplitude of the quantum virtual machine QVM."
   (aref (amplitudes qvm) n))
@@ -153,13 +131,7 @@ This will not clear previously installed gates from the QVM."
 
 (defun map-amplitudes (qvm f)
   "Apply the function F to the amplitudes of the quantum virtual machine QVM in standard order."
-  (let ((amps (amplitudes qvm)))
-    (map-reordered-amplitudes
-     0
-     (lambda (i addr)
-       (declare (ignore i))
-       (funcall f (aref amps addr)))
-     (permutation-to-nat-tuple (qubit-permutation qvm))))
+  (map nil f (amplitudes qvm))
   (values))
 
 (defun check-bit-in-bounds (qvm n)
@@ -267,8 +239,6 @@ If ERROR is T, then signal an error when the gate wasn't found."
 (defun reset (qvm)
   "Perform a reset. Bring all qubits to |0>."
   (bring-to-zero-state (amplitudes qvm))
-  (setf (qubit-permutation qvm) (make-identity-permutation
-                                 (number-of-qubits qvm)))
   qvm)
 
 (defun reset-classical-memory (qvm)

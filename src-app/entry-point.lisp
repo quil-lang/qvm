@@ -336,7 +336,6 @@
               *qvm-db-port* nil))))
 
   (when compile
-    (setf quil:*recognize-swap-specially* nil)
     (setf qvm:*compile-before-running* t))
 
   ;; Show the welcome message.

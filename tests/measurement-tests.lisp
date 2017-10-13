@@ -57,9 +57,10 @@
 (defun test-range (program repetitions percent-zeros percent-ones &key (tolerance 0.05))
   (let ((q (qvm:make-qvm (cl-quil:qubits-needed program)))
         (counts (vector 0 0)))
+    (qvm:load-program q program)
     (loop :repeat repetitions
-          :do (setf (qvm::classical-memory q) 0)
-              (qvm:load-program q program)
+          :do (qvm::reset-classical-memory q)
+              (qvm::reset q)
               (qvm:run q)
               (incf (aref counts (classical-bit q 0))))
     (let ((got-percent-zeros (float (/ (aref counts 0) repetitions)))

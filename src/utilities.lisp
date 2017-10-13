@@ -86,23 +86,6 @@ ELT will be bound to the element itself."
            (setf (aref compl compl-ptr) i)
            (incf compl-ptr)))))))
 
-(deftype permutation ()
-  "A qubit permutation."
-  `(simple-array nat-tuple-elemnt (*)))
-
-(defun make-identity-permutation (n)
-  (check-type n nat-tuple-cardinality)
-  (loop :with perm := (make-array n :element-type 'nat-tuple-element
-                                    :initial-element 0)
-            :for i :below n
-            :do (setf (aref perm i) i)
-            :finally (return perm)))
-
-(defun permutation-to-nat-tuple (perm)
-  (copy-seq perm)
-  #+ignore
-  (apply #'nat-tuple (nreverse (coerce perm 'list))))
-
 (defun copy-hash-table (hash-table)
   "Copy the hash table HASH-TABLE.
 

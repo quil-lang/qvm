@@ -65,7 +65,7 @@
           :do (is (double-float= 1/2 (probability (vector-first amps)) 1/10000))
               (is (double-float= 1/2 (probability (vector-last amps)) 1/10000)))))
 
-(deftest test-swap-without-optimization ()
+(deftest test-swap ()
   "Test |01> -> |10> by direct computation."
   (let* ((qvm (make-qvm 2))
          (amps (qvm::amplitudes qvm)))
@@ -73,76 +73,10 @@
                         (format t "X 0~%")))
     (setf qvm (run qvm))
     (is (double-float= 1 (probability (aref amps #b01)) 1/10000))
-    (load-program qvm (let ((quil:*recognize-swap-specially* nil))
-                        (with-output-to-quil
-                          (format t "SWAP 0 1~%"))))
+    (load-program qvm (with-output-to-quil
+                        (format t "SWAP 0 1~%")))
     (setf qvm (run qvm))
     (is (double-float= 1 (probability (aref amps #b10)) 1/10000))))
-
-(deftest test-swap-with-optimization ()
-  "Test SWAP 1 2, SWAP 2 3, relying on SWAP optimization."
-  (let* ((qvm (make-qvm 4))
-         (amps (qvm::amplitudes qvm)))
-    (load-program qvm (with-output-to-quil
-                        (format t "X 1~%")))
-    (setf qvm (run qvm))
-    (is (double-float= 1 (probability (aref amps #b0010)) 1/10000))
-
-    (load-program qvm (let ((quil:*recognize-swap-specially* t))
-                        (with-output-to-quil
-                          (format t "SWAP 1 2~%")
-                          (format t "SWAP 2 3~%"))))
-    (setf qvm (run qvm))
-    ;; Physical location should be the same.
-    (is (double-float= 1 (probability (aref amps #b0010)) 1/10000))
-    ;; Permutation should be swapped.
-    (is (equalp '#(0 2 3 1) (qvm::qubit-permutation qvm)))
-    ;; Mapping from logical to physical should be good.
-    (is (= 0 (qvm::permuted-qubit qvm 0)))
-    (is (= 2 (qvm::permuted-qubit qvm 1)))
-    (is (= 3 (qvm::permuted-qubit qvm 2)))
-    (is (= 1 (qvm::permuted-qubit qvm 3)))))
-
-(deftest test-swap-randomly-with-and-without-optimization ()
-  "Test random SWAP sequences with and without optimization."
-  (labels ((instrs (instr-list)
-             (with-output-to-quil
-               (mapc #'write-line instr-list)))
-           (random-swaps (n)
-             (loop :while (plusp n)
-                   :for q1 := (random 8)
-                   :for q2 := (random 8)
-                   :unless (= q1 q2)
-                     :collect (progn
-                                (decf n)
-                                (format nil "SWAP ~D ~D" q1 q2))
-                       :into swap-instrs
-                   :finally (return (values
-                                     (let ((quil:*recognize-swap-specially* nil))
-                                       (instrs swap-instrs))
-                                     (let ((quil:*recognize-swap-specially* t))
-                                       (instrs swap-instrs)))))))
-    (loop :with amps := (let ((vec (qvm::make-vector (expt 2 8))))
-                          (map-into vec (lambda () (qvm::cflonum (random 1.0)))))
-          :repeat 10
-          :for qvm-no-opt := (make-qvm 8)
-          :for qvm-opt    := (make-qvm 8)
-          :do (multiple-value-bind (no-opt opt)
-                  (random-swaps 10)
-                (setf (qvm::amplitudes qvm-no-opt) (copy-seq amps))
-                (setf (qvm::amplitudes qvm-opt) (copy-seq amps))
-                (load-program qvm-no-opt no-opt)
-                (load-program qvm-opt opt)
-                (qvm:run qvm-no-opt)
-                (qvm:run qvm-opt)
-                (qvm:map-amplitudes
-                 qvm-opt
-                 (let ((i 0))
-                   (lambda (amp)
-                     (is (double-float=
-                          (realpart amp)
-                          (realpart (qvm::nth-amplitude qvm-no-opt i))))
-                     (incf i))))))))
 
 (deftest test-parametric-gate ()
   "Test a parametric gate."
