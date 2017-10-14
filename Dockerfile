@@ -26,10 +26,7 @@ RUN make deps
 # QVM setup
 ###############################################################################
 
-# install zmq
-RUN apt-get install -y libzmq3-dev
-
-# build QVM (needs zmq)
+# build QVM
 WORKDIR /src/qvm
 RUN sbcl --eval "(ql:quickload :qvm)" --quit
 RUN make
