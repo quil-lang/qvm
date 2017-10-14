@@ -17,7 +17,7 @@
                ;; Parallelization utilities
                #:lparallel
                ;; Matrix algebra
-               #:magicl
+               (:version #:magicl "0.0.1")
                ;; weak hash tables
                #:trivial-garbage
                ;; static globals
