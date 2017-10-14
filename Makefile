@@ -81,7 +81,7 @@ test:
 
 # Only works on Linux.
 docker: qvm
-	docker build -t qvm .
+	docker build -f Dockerfile.old -t qvm .
 
 aws-config: aws-config.zip
 
