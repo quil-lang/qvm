@@ -248,13 +248,19 @@ up to amplitude ordering."
   (sqrt (the (flonum 0) (psum #'probability wavefunction))))
 
 
-(defun normalize-wavefunction (wavefunction)
-  "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space."
+(defun normalize-wavefunction (wavefunction &key length)
+  "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space.
+
+If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH parameter.
+"
   (declare (type quantum-state wavefunction)
+           (type (or null real) length)
            (inline norm))
   ;; Mutate the wavefunction.
   (let ((num-qubits (wavefunction-qubits wavefunction))
-        (inv-norm (/ (norm wavefunction))))
+        (inv-norm (if (null length)
+                      (/ (norm wavefunction))
+                      (/ (flonum length)))))
     (declare (type (flonum 0) inv-norm))
 
     ;; Normalize the wavefunction

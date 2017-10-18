@@ -38,14 +38,23 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
   "Compute the probability that the qubits QUBITS will measure to 1 within the quantum virtual machine QVM."
   (first (last (state-probabilities qvm (apply #'nat-tuple qubits)))))
 
-(defun force-measurement (measured-value qubit qvm)
-  "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly."
+(defun force-measurement (measured-value qubit qvm &key probability)
+  "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly.
+
+PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
+"
   (declare #.*optimize-dangerously-fast*
-           (type bit measured-value))
-  (let ((wavefunction (amplitudes qvm))
-        (annihilated-state (- 1 measured-value)))
+           (type bit measured-value)
+           (type (or null flonum) probability))
+  (let* ((wavefunction (amplitudes qvm))
+         (annihilated-state (- 1 measured-value))
+         (new-length (and probability
+                          (if (zerop annihilated-state)
+                              (sqrt probability)
+                              (sqrt (- (flonum 1) probability))))))
     (declare (type quantum-state wavefunction)
-             (type bit annihilated-state))
+             (type bit annihilated-state)
+             (type (or null (flonum 0)) new-length))
     ;; Here we step through the wavefunction amplitudes
     ;;
     ;;     |...xyzaMbc...>
@@ -63,7 +72,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
             (declare (type amplitude-address address))
             (setf (aref wavefunction address) (cflonum 0)))))
 
-    (normalize-wavefunction wavefunction))
+    (normalize-wavefunction wavefunction :length new-length))
 
   ;; Return the QVM.
   qvm)
@@ -76,11 +85,12 @@ Return two values:
     1. The resulting QVM.
     2. The measured classical bit."
   (let* ((r (random 1.0d0))
-         (cbit (if (<= r (qubit-probability qvm q))
+         (excited-probability (qubit-probability qvm q))
+         (cbit (if (<= r excited-probability)
                    1
                    0)))
     ;; Force the non-deterministic measurement.
-    (force-measurement cbit q qvm)
+    (force-measurement cbit q qvm :probability excited-probability)
 
     ;; Store the classical bit if necessary.
     (unless (null c)
@@ -89,14 +99,3 @@ Return two values:
     ;; Return the qvm.
     (values qvm cbit)))
 
-(defun parallel-measure (qvm qubits)
-  "Perform a measurement on the list of qubits QUBITS within the QVM, returning two values:
-
-    1. The resulting QVM.
-    2. A list of the measurements in the same order as the provided qubits."
-  (loop :for q :in qubits
-        :collect (multiple-value-bind (new-qvm cbit)
-                     (measure qvm q nil)
-                   (setf qvm new-qvm)
-                   cbit) :into measurements
-        :finally (return (values qvm measurements))))
