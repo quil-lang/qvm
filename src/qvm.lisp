@@ -202,27 +202,6 @@ This will not clear previously installed gates from the QVM."
           (classical-double-float qvm (make-bit-range (+ 64 left) right)) im)
     new-value))
 
-(defun state-probabilities (qvm qubits)
-  "Returns a list of the probabilities for all combinations for the given qubits represented as a tuple. The output will be in binary order."
-  (let ((probabilities nil)
-        (other-qubits (nat-tuple-complement (number-of-qubits qvm) qubits)))
-    (map-reordered-amplitudes
-     qvm
-     (lambda (combo address)
-       (declare (ignore combo address))
-       (push (let ((probability 0.0d0))
-               (map-reordered-amplitudes
-                qvm
-                (lambda (combo address)
-                  (declare (ignore combo))
-                  (incf probability (probability (nth-amplitude qvm address))))
-                other-qubits)
-               probability)
-             probabilities))
-     qubits)
-    ;; Return the probabilities.
-    (nreverse probabilities)))
-
 (defun lookup-gate (qvm gate &key error)
   "Look up the definition of the gate named GATE (a symbol or string) within the QVM. Return NIL if not found.
 

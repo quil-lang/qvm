@@ -251,8 +251,7 @@ up to amplitude ordering."
 (defun normalize-wavefunction (wavefunction &key length)
   "Normalize the wavefunction WAVEFUNCTION, making it a unit vector in the constituent Hilbert space.
 
-If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH parameter.
-"
+If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH parameter."
   (declare (type quantum-state wavefunction)
            (type (or null real) length)
            (inline norm))

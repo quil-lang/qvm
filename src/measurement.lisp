@@ -34,45 +34,37 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
         (declare (type amplitude-address address))
         (probability (aref wavefunction address))))))
 
-(defun multi-qubit-probability (qvm &rest qubits)
-  "Compute the probability that the qubits QUBITS will measure to 1 within the quantum virtual machine QVM."
-  (first (last (state-probabilities qvm (apply #'nat-tuple qubits)))))
-
-(defun force-measurement (measured-value qubit qvm &key probability)
+(defun force-measurement (measured-value qubit qvm excited-probability)
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly.
 
-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
+EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
 "
   (declare #.*optimize-dangerously-fast*
            (type bit measured-value)
-           (type (or null flonum) probability))
+           (type (flonum 0) excited-probability)
+           (type nat-tuple-element qubit))
   (let* ((wavefunction (amplitudes qvm))
          (annihilated-state (- 1 measured-value))
-         (new-length (and probability
-                          (if (zerop annihilated-state)
-                              (sqrt probability)
-                              (sqrt (- (flonum 1) probability))))))
+         (inv-norm (if (zerop annihilated-state)
+                       (/ (sqrt excited-probability))
+                       (/ (sqrt (- (flonum 1) excited-probability))))))
     (declare (type quantum-state wavefunction)
              (type bit annihilated-state)
-             (type (or null (flonum 0)) new-length))
-    ;; Here we step through the wavefunction amplitudes
-    ;;
-    ;;     |...xyzaMbc...>
-    ;;             ^ M = 1 - MEASURED-VALUE
-    ;;
-    ;; and set them to zero. The old way to do this was to do it as a
-    ;; projective measurement.
+             (type (flonum 0) inv-norm))
+    ;; Here we step through all of the wavefunction amplitudes,
+    ;; simultaneously doing the projection ( psi[i] = 0 ) and the
+    ;; wavefunction renormalization ( psi[i] *= inv-norm ).
     (if (<= *qubits-required-for-parallelization* (number-of-qubits qvm))
-        (lparallel:pdotimes (i (half (length wavefunction)))
-          (let ((address (index-to-address i qubit annihilated-state)))
-            (declare (type amplitude-address address))
-            (setf (aref wavefunction address) (cflonum 0))))
-        (dotimes (i (half (length wavefunction)))
-          (let ((address (index-to-address i qubit annihilated-state)))
-            (declare (type amplitude-address address))
-            (setf (aref wavefunction address) (cflonum 0)))))
-
-    (normalize-wavefunction wavefunction :length new-length))
+        (lparallel:pdotimes (i (length wavefunction))
+          (declare (type amplitude-address i))
+          (if (= annihilated-state (ldb (byte 1 qubit) i))
+              (setf (aref wavefunction i) (cflonum 0))
+              (setf (aref wavefunction i) (* inv-norm (aref wavefunction i)))))
+        (dotimes (i (length wavefunction))
+          (declare (type amplitude-address i))
+          (if (= annihilated-state (ldb (byte 1 qubit) i))
+              (setf (aref wavefunction i) (cflonum 0))
+              (setf (aref wavefunction i) (* inv-norm (aref wavefunction i)))))))
 
   ;; Return the QVM.
   qvm)
@@ -90,7 +82,7 @@ Return two values:
                    1
                    0)))
     ;; Force the non-deterministic measurement.
-    (force-measurement cbit q qvm :probability excited-probability)
+    (force-measurement cbit q qvm excited-probability)
 
     ;; Store the classical bit if necessary.
     (unless (null c)
