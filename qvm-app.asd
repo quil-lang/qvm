@@ -18,7 +18,7 @@
                ;; JSON parsing
                #:yason
                ;; The QVM, of course.
-               (:version #:qvm "0.10.0")
+               (:version #:qvm "0.11.0")
                ;; Float encoding
                #:ieee-floats
                ;; HTTP web server
