@@ -142,16 +142,6 @@
      :optional t
      :documentation "port to start a Swank server on")
 
-    (("db-host")
-     :type string
-     :optional t
-     :documentation "hostname of Redis DB")
-
-    (("db-port")
-     :type integer
-     :optional t
-     :documentation "port of Redis DB")
-
     (("compile" #\c)
      :type boolean
      :optional t
@@ -288,7 +278,7 @@
     (error "~D qubits were requested, but the QVM ~
             is limited to ~D qubits." num-qubits *qubit-limit*)))
 
-(defun process-options (&key version verbose execute help memory server port swank-port db-host db-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark benchmark-type compile)
+(defun process-options (&key version verbose execute help memory server port swank-port num-workers time-limit qubit-limit safe-include-directory qubits benchmark benchmark-type compile)
   (when help
     (show-help)
     (uiop:quit))
@@ -320,20 +310,6 @@
     (t
      (qvm:prepare-for-parallelization num-workers)
      (setf *num-workers* num-workers)))
-
-  (when (and db-host db-port)
-    (check-type db-host string)
-    (check-type db-port (integer 0 65535))
-    (setf *qvm-db-host* db-host
-          *qvm-db-port* db-port)
-    (handler-case (ping-redis)
-      (error (c)
-        (warn "Could not connect to Redis at ~S on port ~D. Error was:~2%    ~A"
-              *qvm-db-host*
-              *qvm-db-port*
-              c)
-        (setf *qvm-db-host* nil
-              *qvm-db-port* nil))))
 
   (when compile
     (setf qvm:*compile-before-running* t))
@@ -569,32 +545,14 @@ starts with the string PREFIX."
          (measurement-noise (gethash ':MEASUREMENT-NOISE js))
          (*random-state* (get-random-state (gethash ':RNG-SEED js))))
 
-    ;; Basic analytics
-    (when (and (not (null api-key))
-               (stringp api-key))
-      (format-log "Got ~S request from API key: ~S" type api-key)
-      (with-redis (nil nil)
-        ;; Record the API key in the DB.
-        (record-api-key api-key)
-
-        ;; Record the user ID if it's present.
-        (when (and (not (null user-id))
-                   (stringp user-id))
-          (record-user-id user-id))
-
-        ;; Record the payload in most cases.
-        (unless (member type '(:ping :version :instructions-served)
-                        :test #'string-equal)
-          (record-request-payload api-key data user-id))))
+    ;; Basic logging
+    (format-log "Got ~S request from API key/User ID: ~S / ~S" type api-key user-id)
 
     ;; Dispatch
     (ecase (keywordify type)
       ;; For simple tests.
       ((:ping)
        (format nil "pong ~D" (get-universal-time)))
-
-      ((:instructions-served)
-       (format nil "~D" (instructions-served)))
 
       ;; Get the version of everything.
       ((:version)
@@ -812,11 +770,14 @@ starts with the string PREFIX."
           (with-timeout
             (qvm:run qvm))
           ;; Collect bits.
-          (push (collect-bits qvm) trial-results))
-        (increment-instruction-counter (instructions-executed qvm)))
+          (push (collect-bits qvm) trial-results)))
 
       (format-log "Finished in ~D ms" timing)
       (nreverse trial-results))))
+
+(defun parallel-measure (qvm qubits)
+  (loop :for q :in qubits
+        :collect (nth-value 1 (qvm:measure qvm q nil))))
 
 (defun perform-multishot-measure (quil num-qubits qubits num-trials)
   (check-type quil quil:parsed-program)
@@ -857,8 +818,7 @@ starts with the string PREFIX."
               (loop :repeat num-trials
                     :collect (progn
                                (reload qvm)
-                               (nth-value 1 (qvm::parallel-measure qvm qubits)))))
-          (increment-instruction-counter (instructions-executed qvm))
+                               (qvm::parallel-measure qvm qubits))))
           (format-log "Done measuring in ~D ms." timing))))))
 
 (defun perform-expectation (state-prep operators num-qubits &key gate-noise measurement-noise)
@@ -928,8 +888,7 @@ starts with the string PREFIX."
                              (assert (< (abs (imagpart expectation)) 1e-14))
                              (unless (zerop (imagpart expectation))
                                (warn "Non-zero but acceptable imaginary part of expectation value: ~A" expectation))
-                             (realpart expectation)))
-          (increment-instruction-counter (instructions-executed qvm)))))))
+                             (realpart expectation))))))))
 
 (defun perform-wavefunction (quil num-qubits &key gate-noise measurement-noise)
   (check-type quil quil:parsed-program)
@@ -950,7 +909,6 @@ starts with the string PREFIX."
     (with-timing (timing)
       (with-timeout
         (qvm:run qvm)))
-    (increment-instruction-counter (instructions-executed qvm))
     (format-log "Finished in ~D ms" timing)
     qvm))
 

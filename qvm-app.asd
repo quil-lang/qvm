@@ -27,15 +27,11 @@
                #:alexandria
                ;; CL-FAD
                #:cl-fad
-               ;; Redis integration
-               #:cl-redis
-               #:usocket
                ;; Remote Lisp connection
                #:swank
                )
   :pathname "src-app/"
   :serial t
   :components ((:file "package")
-               (:file "db")
-               (:file "analytics")
+               (:file "profiled-qvm")
                (:file "entry-point")))
