@@ -818,7 +818,7 @@ starts with the string PREFIX."
               (loop :repeat num-trials
                     :collect (progn
                                (reload qvm)
-                               (qvm::parallel-measure qvm qubits))))
+                               (parallel-measure qvm qubits))))
           (format-log "Done measuring in ~D ms." timing))))))
 
 (defun perform-expectation (state-prep operators num-qubits &key gate-noise measurement-noise)
