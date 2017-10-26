@@ -25,13 +25,13 @@ testsafe:
 		 --noinform --non-interactive \
 		 --eval "(sb-ext:restrict-compiler-policy 'safety 3)" \
 		 --eval "(sb-ext:restrict-compiler-policy 'debug 3)" \
-		 --eval '(ql:quickload :qvm)' \
+		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
 test:
 	sbcl --dynamic-space-size $(QVM_WORKSPACE) \
 		 --noinform --non-interactive \
-		 --eval '(ql:quickload :qvm)' \
+		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
 ### Cleanup.
