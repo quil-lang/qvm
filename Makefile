@@ -1,4 +1,5 @@
 # Heap space for QVM in MiB.
+QVM_WORKSPACE ?= 2048
 LISP_CACHE ?= `sbcl --noinform --non-interactive --eval '(princ asdf:*user-cache*)'`
 
 all: qvm
@@ -20,16 +21,18 @@ quicklisp:
 ### Testing
 
 testsafe:
-	sbcl --noinform --non-interactive \
-	     --eval "(sb-ext:restrict-compiler-policy 'safety 3)" \
-	     --eval "(sb-ext:restrict-compiler-policy 'debug 3)" \
-             --eval '(ql:quickload :qvm)' \
-             --eval '(asdf:test-system :qvm)'
+	sbcl --dynamic-space-size $(QVM_WORKSPACE) \
+		 --noinform --non-interactive \
+		 --eval "(sb-ext:restrict-compiler-policy 'safety 3)" \
+		 --eval "(sb-ext:restrict-compiler-policy 'debug 3)" \
+		 --eval '(ql:quickload :qvm)' \
+		 --eval '(asdf:test-system :qvm)'
 
 test:
-	sbcl --noinform --non-interactive \
-             --eval '(ql:quickload :qvm)' \
-             --eval '(asdf:test-system :qvm)'
+	sbcl --dynamic-space-size $(QVM_WORKSPACE) \
+		 --noinform --non-interactive \
+		 --eval '(ql:quickload :qvm)' \
+		 --eval '(asdf:test-system :qvm)'
 
 ### Cleanup.
 
