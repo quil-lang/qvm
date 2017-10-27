@@ -50,4 +50,5 @@
                (:file "transition")
                (:file "depolarizing-noise")
                (:file "noisy-qvm")
-               (:file "execution")))
+               (:file "execution")
+               (:file "path-simulate")))

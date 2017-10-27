@@ -84,6 +84,10 @@
 (define-float= single-float= single-float)
 (define-float= double-float= double-float)
 
+(defun cflonum= (x y &optional (epsilon *default-epsilon*))
+  (and (double-float= (realpart x) (realpart y) epsilon)
+       (double-float= (imagpart x) (imagpart y) epsilon)))
+
 (defun absolute-float= (a b eps)
   (cond
     ((zerop a) (< (abs b) eps))

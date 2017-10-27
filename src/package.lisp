@@ -59,6 +59,7 @@
    #:normalize-wavefunction             ; FUNCTION
    )
 
+  ;; compile-gate.lisp
   (:export
    #:warm-apply-matrix-operator-cache   ; FUNCTION
    )
@@ -111,5 +112,11 @@
    #:noisy-qvm                          ; CLASS
    #:make-pauli-noise-map               ; FUNCTION
    #:set-noisy-gate                     ; FUNCTION
+   )
+
+  ;; path-simulate.lisp
+  (:export
+   #:path-simulate                      ; FUNCTION
+   #:wavefunction-from-path-simulation  ; FUNCTION
    )
   )

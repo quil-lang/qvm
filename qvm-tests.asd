@@ -27,4 +27,5 @@
                (:file "gate-tests")
                (:file "instruction-tests")
                (:file "noisy-qvm-tests")
-               (:file "stress-tests")))
+               (:file "stress-tests")
+               (:file "path-simulate-tests")))
