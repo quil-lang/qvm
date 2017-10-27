@@ -1,5 +1,7 @@
 # Rigetti Quantum Virtual Machine
 
+[![Build Status](http://bamboo.lab.rigetti.com/plugins/servlet/wittified/build-status/QCS-QVM)](http://bamboo.lab.rigetti.com/browse/QCS-QVM)
+
 This directory contains a classical implementation of the Quantum
 Abstract Machine, called a "Quantum Virtual Machine" or QVM.
 
