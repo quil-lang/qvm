@@ -113,3 +113,32 @@
               "MEASURE 0 [0]"
               "RESET")))
     (test-range p n zero one)))
+
+(deftest test-sample-wavefunction ()
+  "Test that we can sample from a wavefunction correctly."
+  (flet ((test-vector (&rest args)
+           (apply #'qvm::make-vector
+                  (length args)
+                  (mapcar #'sqrt args))))
+    ;; Simple uniform test.
+    (let ((v (test-vector 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1)))
+      (loop :for i :below (length v)
+            :for p :from 0.0d0 :by 0.1d0
+            :do (is (= i (qvm::sample-wavefunction-as-distribution v p))))
+      (is (= 1 (qvm::sample-wavefunction-as-distribution v 0.11d0)))
+      (is (= 1 (qvm::sample-wavefunction-as-distribution v 0.15d0)))
+      (is (= 7 (qvm::sample-wavefunction-as-distribution v 1.0d0))))
+
+    ;; Slightly more complicated test.
+    (let ((v (test-vector 0.0 0.0 0.0 0.1 0.5 0.2 0.1 0.1)))
+      (is (= 3 (qvm::sample-wavefunction-as-distribution v 0.0d0)))
+      (is (= 3 (qvm::sample-wavefunction-as-distribution v 0.09999d0)))
+      (is (= 4 (qvm::sample-wavefunction-as-distribution v 0.1d0)))
+      (is (= 4 (qvm::sample-wavefunction-as-distribution v 0.10001d0))))
+
+    ;; A 1q case.
+    (let ((v (test-vector 0.2 0.8)))
+      (is (= 0 (qvm::sample-wavefunction-as-distribution v 0.0d0)))
+      (is (= 0 (qvm::sample-wavefunction-as-distribution v 0.1d0)))
+      (is (= 1 (qvm::sample-wavefunction-as-distribution v 0.2d0)))
+      (is (= 1 (qvm::sample-wavefunction-as-distribution v 0.8d0))))))

@@ -91,3 +91,64 @@ Return two values:
     ;; Return the qvm.
     (values qvm cbit)))
 
+(defun measure-all (qvm)
+  "Measure all of the qubits in the quantum virtual machine QVM. Return the (modified) QVM, and the measured bit values for qubits 0, ..., n in a list (B0 ... Bn) where Bk is the bit-value measurement of qubit k."
+  (flet ((index-to-bits (n)
+           (loop :for i :below (number-of-qubits qvm)
+                 :collect (ldb (byte 1 i) n))))
+    (let* ((wf (amplitudes qvm))
+           (basis-state (sample-wavefunction-as-distribution
+                         wf
+                         (flonum (random 1.0d0)))))
+      ;; Reset to |0>
+      (bring-to-zero-state wf)
+      ;; Rotate the amplitude to BASIS-STATE.
+      (rotatef (aref wf 0)
+               (aref wf basis-state))
+
+      ;; Return.
+      (values qvm (index-to-bits basis-state)))))
+
+(defun sample-wavefunction-as-distribution (wf p)
+  "Sample the wavefunction as if it was a probability distribution.
+
+Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such that C(b') > p."
+  (declare (optimize (speed 0) safety debug)
+           (type quantum-state wf)
+           (type flonum p))
+  (assert (and (<= 0 p 1)))
+  (labels ((middle (min max)
+             (assert (plusp (- max min 1)))
+             (floor (+ min max) 2))
+
+           (find-it (sum< min max)
+             (declare (type non-negative-fixnum min max)
+                      (type flonum sum<))
+             (assert (< min max))
+
+             (let ((sum (+ sum<
+                           (psum-dotimes (i (- max min))
+                             (let ((i (the non-negative-fixnum (+ i min))))
+                               (probability (aref wf i)))))))
+               (declare (type flonum sum))
+               (cond
+                 ;; We didn't find it here. We need to keep
+                 ;; searching rightward.
+                 ((<= sum p)
+                  (values nil sum))
+
+                 ;; We did find it, and the range is small.
+                 ((= min (1- max))
+                  (values min sum))
+
+                 ;; We did find it, but we need to refine.
+                 (t
+                  (let ((m (middle min max)))
+                    (multiple-value-bind (left-idx left-sum)
+                        (find-it sum< min m)
+                      (if left-idx
+                          (values left-idx left-sum)
+                          (find-it left-sum m max)))))))))
+    (or (find-it (flonum 0) 0 (length wf))
+        ;; We've reached the upper bound of the array.
+        (1- (length wf)))))

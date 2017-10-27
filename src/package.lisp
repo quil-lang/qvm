@@ -79,7 +79,7 @@
    #:qubit-probability                  ; FUNCTION
    #:force-measurement                  ; FUNCTION
    #:measure                            ; FUNCTION
-   #:parallel-measure                   ; FUNCTION
+   #:measure-all                        ; FUNCTION
    )
 
   ;; transition.lisp
