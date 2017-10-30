@@ -233,11 +233,11 @@ This function will compile new ones on-demand."
   "Warm up the **APPLY-MATRIX-OPERATOR-FUNCTIONS** cache for Hilbert spaces B_i and B_i (x) B_j for 0 <= i, j <= MAX-QUBITS."
   (check-type max-qubits nat-tuple-cardinality)
   ;; Warm the 1q cache.
-  (loop :for q :from 1 :to max-qubits :do
+  (loop :for q :to max-qubits :do
     (find-or-make-apply-matrix-operator-function (nat-tuple q)))
   ;; Warm the 2q cache.
-  (loop :for p :from 1 :to max-qubits :do
-    (loop :for q :from 1 :to max-qubits :do
+  (loop :for p :to max-qubits :do
+    (loop :for q :to max-qubits :do
       (unless (= p q)
         (find-or-make-apply-matrix-operator-function (nat-tuple p q)))))
   nil)
