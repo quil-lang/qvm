@@ -25,6 +25,11 @@
                ;; C foreign function interface
                #+unix
                #:cffi
+               #+unix
+               #:sb-posix
+               #+unix
+               (:version #:static-vectors "1.3.8")
+               #:trivial-garbage
                ;; Quil parsing and analysis
                (:version #:cl-quil "0.8.0")
                )
@@ -37,7 +42,11 @@
   :components ((:file "package")
                (:file "config")
                #+unix
-               (:cffi-grovel-file "system-constants")
+               (:cffi-grovel-file "grovel-system-constants")
+               #+unix
+               (:cffi-grovel-file "grovel-shared-memory")
+               #+unix
+               (:file "shm")
                (:file "utilities")
                (:file "linear-algebra")
                (:file "qam")

@@ -65,12 +65,34 @@
             (make-vector (expt 2 num-qubits)))
       (bring-to-zero-state (amplitudes qvm)))))
 
-(defun make-qvm (num-qubits &key (classical-memory-size 64))
-  "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits."
+(defun make-qvm (num-qubits &key (classical-memory-size 64)
+                                 (shared-memory nil))
+  "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits.
+
+If SHARED-MEMORY is a string, then the wavefunction will be allocated as a shared memory object, accessible by that name."
   (check-type classical-memory-size (integer 0))
-  (make-instance 'pure-state-qvm
-                 :number-of-qubits num-qubits
-                 :classical-memory-size classical-memory-size))
+  (check-type shared-memory (or null string))
+  (if (null shared-memory)
+      (make-instance 'pure-state-qvm
+                     :number-of-qubits num-qubits
+                     :classical-memory-size classical-memory-size)
+      (%make-shared-qvm shared-memory num-qubits classical-memory-size)))
+
+(defun %make-shared-qvm (name num-qubits classical-memory-size)
+  (multiple-value-bind (vec finalizer)
+      (make-shared-array name (expt 2 num-qubits) 'cflonum)
+    ;; Set it to |...000>
+    (setf (aref vec 0) (cflonum 1))
+    ;; Create the QVM object.
+    (let ((qvm (make-instance 'pure-state-qvm
+                              :number-of-qubits num-qubits
+                              :classical-memory-size classical-memory-size
+                              :amplitudes vec)))
+      ;; When the QVM disappears, make sure the shared memory gets
+      ;; deallocated too.
+      (tg:finalize qvm finalizer)
+      ;; Return the QVM.
+      qvm)))
 
 (defun install-gates (qvm program)
   "Install the gates specified by the program PROGRAM into the QVM.

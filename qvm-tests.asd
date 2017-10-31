@@ -10,7 +10,8 @@
                #:qvm-examples
                #:alexandria
                #:fiasco
-               #:trivial-garbage)
+               #:trivial-garbage
+               #:cffi)
   :perform (asdf:test-op (o s)
                          (uiop:symbol-call :qvm-tests
                                            '#:run-qvm-tests))
