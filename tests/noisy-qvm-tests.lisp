@@ -87,7 +87,7 @@
           (list
            (qvm::make-vector 4 0 0 0 1)
            (qvm::make-vector 4 0 0 1 0)
-           (qvm::make-vector 4 0 0 (complex 0 -1) 0)))
+           (qvm::make-vector 4 0 0 #C(0 -1) 0)))
         (qvm (make-instance 'qvm:noisy-qvm :classical-memory-subsystem nil
                                            :number-of-qubits 2)))
     (qvm:load-program qvm p :supersede-memory-subsystem t)
@@ -106,8 +106,8 @@
   "Test that noisy readout behaves as expected on the given QVM (having at least 2 qubits)."
   (let* ((p (with-output-to-quil
               "DECLARE ro BIT[2]"
-              (write-line "MEASURE 0 ro[0]")
-              (write-line "MEASURE 1 ro[1]")))
+              "MEASURE 0 ro[0]"
+              "MEASURE 1 ro[1]"))
          (tries 500)
          (results-desired '(1 0)))
     (qvm:load-program qvm p :supersede-memory-subsystem t)
@@ -121,9 +121,11 @@
                                   (qvm:run qvm)))
                     (a (qvm:memory-ref qvm-final "ro" 0))
                     (b (qvm:memory-ref qvm-final "ro" 1)))
-                (is (= a 0))
+                (is (zerop a))
                 (setf results-desired
-                      (remove b results-desired :test #'eq))))
+                      (remove b results-desired :test #'=))))
+    ;; For this POVM, we should not have exhausted all 500 tries in
+    ;; any realistic situation.
     (is (plusp tries))))
 
 (deftest test-noisy-qvm-noisy-readout ()

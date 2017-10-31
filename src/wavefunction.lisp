@@ -27,7 +27,8 @@
     (+ (* re re) (* im im))))
 
 
-(declaim (ftype (function (quantum-state) nat-tuple-cardinality) wavefunction-qubits))
+(declaim (ftype (function (quantum-state) nat-tuple-cardinality) wavefunction-qubits)
+         (inline wavefunction-qubits))
 (defun wavefunction-qubits (wavefunction)
   "The number of qubits represented by the wavefunction WAVEFUNCTION."
   (declare (type quantum-state wavefunction))

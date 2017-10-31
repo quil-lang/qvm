@@ -170,3 +170,20 @@ the specified QVM."
   (values
    qvm
    (1+ (pc qvm))))
+
+;; TODO FIXME: RX GATE ONLY!!!!!!!!!!!!!!!!
+(defmethod transition ((qvm pure-state-qvm) (instr compiled-parameterized-gate-application))
+  ;; The instruction itself is a gate.
+  (apply-gate instr (amplitudes qvm) nil (first (quil:application-parameters instr)))
+  (values
+   qvm
+   (1+ (pc qvm))))
+
+(defmethod transition ((qvm pure-state-qvm) (instr compiled-measurement))
+  (let ((bit (funcall (projector-operator instr) (amplitudes qvm)))
+        (src (source-instruction instr)))
+    (when (typep src 'quil:measure)
+      (setf (dereference-mref qvm (quil:measure-address src)) bit)))
+  (values
+   qvm
+   (1+ (pc qvm))))
