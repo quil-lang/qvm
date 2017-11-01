@@ -109,6 +109,7 @@ Return two values:
       ;; Return.
       (values qvm (index-to-bits basis-state)))))
 
+
 (defun sample-wavefunction-as-distribution (wf p)
   "Sample the wavefunction as if it was a probability distribution.
 
@@ -117,38 +118,40 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
            (type quantum-state wf)
            (type flonum p))
   (assert (and (<= 0 p 1)))
-  (labels ((middle (min max)
+  (let ((min 0)
+        (max (length wf))
+        (sum< (flonum 0)))
+    (declare (type non-negative-fixnum min max))
+    (assert (< min max))
+    ;; Starting with the full range of indices we find the correct
+    ;; index by iteratively sub dividing the interval [min, max) in
+    ;; two, then verifying which half b' is in.
+    ;;
+    ;; Given a WF of length L, the number of elements squared and
+    ;; summed is
+    ;;
+    ;; L/2 + L/4 + L/8 + ... = L/2 (1-(1/2)^(1+log2(L)))) / (1-1/2) ~= L
+    ;;
+    ;; TODO: Figure out recursive version that works for multiple
+    ;; samples p
+    (loop :until (= min (1- max))
+          :do
              (assert (plusp (- max min 1)))
-             (floor (+ min max) 2))
+             (let* ((mid (floor (+ min max) 2))
 
-           (find-it (sum< min max)
-             (declare (type non-negative-fixnum min max)
-                      (type flonum sum<))
-             (assert (< min max))
-
-             (let ((sum (+ sum<
-                           (psum-dotimes (i (- max min))
-                             (let ((i (the non-negative-fixnum (+ i min))))
-                               (probability (aref wf i)))))))
-               (declare (type flonum sum))
+                    ;; sum values in lower half of interval
+                    (sum (+ sum<
+                            (psum-dotimes (i (- mid min))
+                              (let ((i (the non-negative-fixnum (+ i min))))
+                                (probability (aref wf i)))))))
                (cond
-                 ;; We didn't find it here. We need to keep
-                 ;; searching rightward.
+                 ;; We didn't find it in the lower half
+                 ;; Update the interval to the upper half
                  ((<= sum p)
-                  (values nil sum))
+                  (setf min mid)
+                  (setf sum< sum))
 
-                 ;; We did find it, and the range is small.
-                 ((= min (1- max))
-                  (values min sum))
-
-                 ;; We did find it, but we need to refine.
+                 ;; We found it, update interval to lower half
                  (t
-                  (let ((m (middle min max)))
-                    (multiple-value-bind (left-idx left-sum)
-                        (find-it sum< min m)
-                      (if left-idx
-                          (values left-idx left-sum)
-                          (find-it left-sum m max)))))))))
-    (or (find-it (flonum 0) 0 (length wf))
-        ;; We've reached the upper bound of the array.
-        (1- (length wf)))))
+                  (setf max mid)))))
+    min))
