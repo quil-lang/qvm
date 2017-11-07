@@ -17,7 +17,7 @@
                ;; Parallelization utilities
                #:lparallel
                ;; Matrix algebra
-               (:version #:magicl "0.0.1")
+               (:version #:magicl "0.1.0")
                ;; weak hash tables
                #:trivial-garbage
                ;; static globals
@@ -26,7 +26,7 @@
                #+unix
                #:cffi
                ;; Quil parsing and analysis
-               (:version #:cl-quil "0.7.0")
+               (:version #:cl-quil "0.8.0")
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :around-compile (lambda (compile)
