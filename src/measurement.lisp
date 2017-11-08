@@ -114,14 +114,15 @@ Return two values:
   "Sample the wavefunction as if it was a probability distribution.
 
 Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such that C(b') > p."
-  (declare (optimize (speed 0) safety debug)
+  (declare #.*optimize-briskly*
            (type quantum-state wf)
            (type flonum p))
   (assert (and (<= 0 p 1)))
   (let ((min 0)
         (max (length wf))
         (sum< (flonum 0)))
-    (declare (type non-negative-fixnum min max))
+    (declare (type non-negative-fixnum min max)
+             (type flonum sum<))
     (assert (< min max))
     ;; Starting with the full range of indices we find the correct
     ;; index by iteratively sub dividing the interval [min, max) in
@@ -141,9 +142,11 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
 
                     ;; sum values in lower half of interval
                     (sum (+ sum<
-                            (psum-dotimes (i (- mid min))
+                            (psum-dotimes (i (the non-negative-fixnum (- mid min)))
                               (let ((i (the non-negative-fixnum (+ i min))))
                                 (probability (aref wf i)))))))
+               (declare (type non-negative-fixnum mid)
+                        (type flonum sum))
                (cond
                  ;; We didn't find it in the lower half
                  ;; Update the interval to the upper half
