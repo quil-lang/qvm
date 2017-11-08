@@ -142,3 +142,27 @@
       (is (= 0 (qvm::sample-wavefunction-as-distribution v 0.1d0)))
       (is (= 1 (qvm::sample-wavefunction-as-distribution v 0.2d0)))
       (is (= 1 (qvm::sample-wavefunction-as-distribution v 0.8d0))))))
+
+(deftest test-measure-all ()
+  "Test that we can measure all qubits successfully in a few cases."
+  (let ((px (list
+             (with-output-to-quil "I 0" "I 1" "I 2")
+             (with-output-to-quil "X 0" "I 1" "I 2")
+             (with-output-to-quil "I 0" "X 1" "I 2")
+             (with-output-to-quil "X 0" "X 1" "I 2")
+             (with-output-to-quil "I 0" "I 1" "X 2")
+             (with-output-to-quil "X 0" "I 1" "X 2")
+             (with-output-to-quil "I 0" "X 1" "X 2")
+             (with-output-to-quil "X 0" "X 1" "X 2"))))
+    (loop :for i :from 0
+          :for p :in px
+          :for bits := (list (ldb (byte 1 0) i)
+                             (ldb (byte 1 1) i)
+                             (ldb (byte 1 2) i))
+          :do (let ((qvm (make-qvm 3)))
+                (qvm:load-program qvm p)
+                (qvm:run qvm)
+                (multiple-value-bind (qvm measured-bits)
+                    (qvm:measure-all qvm)
+                  (is (every #'= bits measured-bits))
+                  (is (= 1 (qvm::nth-amplitude qvm i))))))))
