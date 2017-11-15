@@ -59,14 +59,15 @@
 (deftest test-noisy-x-gate ()
   "Test that the noisy gates behave as expected."
   (let ((p (with-output-to-quil
-             (write-line "X 0")))
+             (write-line "X 0")
+             (write-line "X 1")))
         (tries 500)
         (results-desired
           (list
-           (qvm::make-vector 2 0 1)
-           (qvm::make-vector 2 1 0)
-           (qvm::make-vector 2 (complex 0 -1) 0)))
-        (qvm (make-instance 'qvm:noisy-qvm :number-of-qubits 1
+           (qvm::make-vector 4 0 0 0 1)
+           (qvm::make-vector 4 0 0 1 0)
+           (qvm::make-vector 4 0 0 (complex 0 -1) 0)))
+        (qvm (make-instance 'qvm:noisy-qvm :number-of-qubits 2
                                            :classical-memory-size 64)))
     (qvm:load-program qvm p)
     (loop :while (and (plusp (length results-desired))
@@ -78,4 +79,29 @@
                                             (qvm:run qvm)))))
                 (setf results-desired
                       (remove psi results-desired :test #'equalp))))
+    (is (plusp tries))))
+
+(deftest test-noisy-readout ()
+  "Test that the noisy gates behave as expected."
+  (let ((p (with-output-to-quil
+             (write-line "MEASURE 0 [0]")
+             (write-line "MEASURE 1 [1]")))
+        (tries 500)
+        (results-desired '(1 0))
+        (qvm (make-instance 'qvm:noisy-qvm :number-of-qubits 2
+                                           :classical-memory-size 64)))
+    (qvm:load-program qvm p)
+    (loop :while (and (plusp (length results-desired))
+                      (plusp tries))
+          :do (decf tries)
+              (let* ((qvm-final (progn
+                                  (qvm::reset qvm)
+                                  (qvm::set-readout-povm qvm 1 '(0.8d0 0.1d0
+                                                                0.2d0 0.9d0))
+                                  (qvm:run qvm)))
+                    (a (qvm::classical-bit qvm-final 0))
+                    (b (qvm::classical-bit qvm-final 1)))
+                (is (= a 0))
+                (setf results-desired
+                      (remove b results-desired :test #'eq))))
     (is (plusp tries))))

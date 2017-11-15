@@ -9,8 +9,22 @@
     :initarg :noisy-gate-definitions
     :accessor noisy-gate-definitions
     :initform (make-hash-table :test 'equalp)
-    :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS."))
-  (:documentation "A quantum virtual machine with noisy gates."))
+    :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS.")
+   (readout-povms
+    :initarg :readout-povms
+    :accessor readout-povms
+    :initform (make-hash-table)
+    :documentation "Noisy readout encoded as diagonal single qubit
+    POVM given as a 4-element list
+
+          (p(0|0) p(0|1)
+           p(1|0) p(1|1))
+
+which for each qubit gives the probability p(j|k) of measuring outcome
+j given actual state k. Note that we model purely classical readout
+error, i.e., the post measurement qubit state is always k, but the
+recorded outcome j may be different."))
+  (:documentation "A quantum virtual machine with noisy gates and readout."))
 
 
 (defun make-pauli-noise-map (px py pz)
@@ -32,6 +46,26 @@ The arguments PX, PY and PZ can be interpreted as probabilities of a X, Y or Z e
     (when (< psum 1)
       (push (magicl:scale (sqrt (- 1.0 psum)) (magicl:make-identity-matrix 2)) scaled-paulis))
     scaled-paulis))
+
+;; TODO declare inlinable, turn on optimization
+(defun perturb-measurement (actual-outcome p00 p01 p10 p11)
+  "Given the readout error encoded in the POVM (see documentation of NOISY-QVM)
+randomly sample the observed (potentially corrupted) measurement outcome."
+  (check-type actual-outcome (integer 0 1))
+  (check-type p00 (double-float 0.0d0 1.0d0))
+  (check-type p01 (double-float 0.0d0 1.0d0))
+  (check-type p10 (double-float 0.0d0 1.0d0))
+  (check-type p11 (double-float 0.0d0 1.0d0))
+  (let ((r (random 1.0d0)))
+    (case actual-outcome
+      ((0)
+       (if (<= r p00)
+           0
+           1))
+      ((1)
+       (if (<= r p01)
+           0
+           1)))))
 
 (defun make-pauli-perturbed-1q-gate (gate-name px py pz)
   "Generate a Kraus map that represents a noisy version of the standard gate U identified
@@ -75,6 +109,15 @@ where I is the identity matrix of equal dimensions."
        "The Kraus map must preserve trace or equivalently this matrix ~
         ~S must be equal to the identity" kraus-sum))) t)
 
+(defun check-povm (povm)
+  (destructuring-bind (p00 p01 p10 p11) povm
+    (check-type p00 (double-float 0.0d0 1.0d0))
+    (check-type p01 (double-float 0.0d0 1.0d0))
+    (check-type p10 (double-float 0.0d0 1.0d0))
+    (check-type p11 (double-float 0.0d0 1.0d0))
+    (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
+    (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
+
 
 (defun set-noisy-gate (qvm gate-name qubits kraus-ops)
   "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
@@ -88,6 +131,18 @@ MAGICL matrices '(K1 K2 ... Kn)."
   (check-kraus-ops kraus-ops)
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm)) kraus-ops)
   nil)
+
+
+(defun set-readout-povm (qvm qubit povm)
+  "For a QUBIT belonging to a noisy QVM specify a POVM to encode
+possible readout errors.
+POVM must be a 4-element list of double-floats.
+"
+  (check-type qvm noisy-qvm)
+  (check-povm povm)
+  (setf (gethash qubit (readout-povms qvm)) povm)
+  nil)
+
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:gate-application))
   (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
@@ -145,3 +200,21 @@ MAGICL matrices '(K1 K2 ... Kn)."
        ;; the original (transition ...) call defined for
        ;; the parent class
        (call-next-method qvm instr)))))
+
+(defmethod transition ((qvm noisy-qvm) (instr quil:measure))
+  (multiple-value-bind (ret-qvm counter)
+      ;; perform actual measurement
+      (call-next-method qvm instr)
+
+    ;; randomly corrupt outcome
+    (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
+           (a (quil:address-value (quil:measure-address instr)))
+           (c (classical-bit ret-qvm a))
+           (povm (gethash q (readout-povms ret-qvm))))
+      (when povm
+        (destructuring-bind (p00 p01 p10 p11) povm
+          (setf (classical-bit ret-qvm a)
+                (perturb-measurement c p00 p01 p10 p11)))))
+    (values
+     ret-qvm
+     counter)))
