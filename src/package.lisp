@@ -34,6 +34,8 @@
   (:export
    #:quantum-abstract-machine           ; CLASS
    #:run                                ; GENERIC
+   #:measure                            ; GENERIC
+   #:measure-all                        ; GENERIC
    )
 
   ;; classical-memory.lisp
@@ -79,8 +81,6 @@
   (:export
    #:qubit-probability                  ; FUNCTION
    #:force-measurement                  ; FUNCTION
-   #:measure                            ; FUNCTION
-   #:measure-all                        ; FUNCTION
    )
 
   ;; transition.lisp

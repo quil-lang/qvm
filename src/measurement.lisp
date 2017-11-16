@@ -69,13 +69,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   ;; Return the QVM.
   qvm)
 
-(defun measure (qvm q c)
-  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum virtual machine QVM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store.
-
-Return two values:
-
-    1. The resulting QVM.
-    2. The measured classical bit."
+(defmethod measure ((qvm pure-state-qvm) q c)
   (let* ((r (random 1.0d0))
          (excited-probability (qubit-probability qvm q))
          (cbit (if (<= r excited-probability)
@@ -91,8 +85,7 @@ Return two values:
     ;; Return the qvm.
     (values qvm cbit)))
 
-(defun measure-all (qvm)
-  "Measure all of the qubits in the quantum virtual machine QVM. Return the (modified) QVM, and the measured bit values for qubits 0, ..., n in a list (B0 ... Bn) where Bk is the bit-value measurement of qubit k."
+(defmethod measure-all ((qvm pure-state-qvm))
   (flet ((index-to-bits (n)
            (loop :for i :below (number-of-qubits qvm)
                  :collect (ldb (byte 1 i) n))))

@@ -58,14 +58,8 @@ randomly sample the observed (potentially corrupted) measurement outcome."
   (check-type p11 (double-float 0.0d0 1.0d0))
   (let ((r (random 1.0d0)))
     (case actual-outcome
-      ((0)
-       (if (<= r p00)
-           0
-           1))
-      ((1)
-       (if (<= r p01)
-           0
-           1)))))
+      ((0) (if (<= r p00) 0 1))
+      ((1) (if (<= r p01) 0 1)))))
 
 (defun make-pauli-perturbed-1q-gate (gate-name px py pz)
   "Generate a Kraus map that represents a noisy version of the standard gate U identified
@@ -201,6 +195,7 @@ POVM must be a 4-element list of double-floats.
        ;; the parent class
        (call-next-method qvm instr)))))
 
+
 (defmethod transition ((qvm noisy-qvm) (instr quil:measure))
   (multiple-value-bind (ret-qvm counter)
       ;; perform actual measurement
@@ -218,3 +213,18 @@ POVM must be a 4-element list of double-floats.
     (values
      ret-qvm
      counter)))
+
+
+(defmethod measure-all ((qvm noisy-qvm))
+  (multiple-value-bind (qvm-ret measured-bits)
+      (call-next-method qvm)
+    (values
+     qvm-ret
+     ;; perturb measured-bits
+     (loop :for i :below (number-of-qubits qvm)
+           :for c :in measured-bits
+           :collect (let ((povm (gethash i (readout-povms qvm))))
+                      (if povm
+                          (destructuring-bind (p00 p01 p10 p11) povm
+                            (perturb-measurement c p00 p01 p10 p11))
+                          c))))))
