@@ -265,9 +265,9 @@ This function will compile new ones on-demand."
   ()
   (:documentation "A compiled GATE-APPLICATION where the gate happens to be a permutation gate."))
 
-(defmethod quil::print-instruction ((instr compiled-gate-application) stream)
+(defmethod quil:print-instruction ((instr compiled-gate-application) &optional (stream *standard-output*))
   (format stream "compiled{ ")
-  (quil::print-instruction (source-instruction instr) stream)
+  (quil:print-instruction (source-instruction instr) stream)
   (format stream " }")
   nil)
 
