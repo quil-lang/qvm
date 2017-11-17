@@ -60,7 +60,8 @@
     ;;
     ;; We explicitly zero out the memory to make sure all pages get
     ;; touched.
-    (unless (slot-boundp qvm 'amplitudes)
+    (unless (and (slot-boundp qvm 'amplitudes)
+                 (not (null (slot-value qvm 'amplitudes))))
       (setf (amplitudes qvm)
             (make-vector (expt 2 num-qubits)))
       (bring-to-zero-state (amplitudes qvm)))))
