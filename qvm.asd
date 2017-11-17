@@ -28,7 +28,7 @@
                #+unix
                #:sb-posix
                #+unix
-               (:version #:static-vectors "1.3.8")
+               (:version #:static-vectors "1.8.3")
                #:trivial-garbage
                ;; Quil parsing and analysis
                (:version #:cl-quil "0.8.0")
