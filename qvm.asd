@@ -60,4 +60,5 @@
                (:file "depolarizing-noise")
                (:file "noisy-qvm")
                (:file "execution")
-               (:file "path-simulate")))
+               (:file "path-simulate")
+               (:file "misc")))

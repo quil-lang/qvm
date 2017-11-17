@@ -119,4 +119,9 @@
    #:path-simulate                      ; FUNCTION
    #:wavefunction-from-path-simulation  ; FUNCTION
    )
+
+  ;; misc.lisp
+  (:export
+   #:program-matrix                     ; FUNCTION
+   )
   )
