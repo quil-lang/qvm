@@ -12,5 +12,5 @@ set -ex
 
 docker login -u bamboo -p Bamboo1@ docker.lab.rigetti.com
 make -C ../docker qvm-tests
-docker run --name qvm-tests docker.lab.rigetti.com/qcs/qvm-tests
+docker run --ipc=host --name qvm-tests docker.lab.rigetti.com/qcs/qvm-tests
 docker push docker.lab.rigetti.com/qcs/qvm-tests
