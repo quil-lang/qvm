@@ -36,6 +36,7 @@
    #:run                                ; GENERIC
    #:measure                            ; GENERIC
    #:measure-all                        ; GENERIC
+   #:number-of-qubits                   ; GENERIC
    )
 
   ;; classical-memory.lisp

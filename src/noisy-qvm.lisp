@@ -51,13 +51,13 @@ The arguments PX, PY and PZ can be interpreted as probabilities of a X, Y or Z e
 (defun perturb-measurement (actual-outcome p00 p01 p10 p11)
   "Given the readout error encoded in the POVM (see documentation of NOISY-QVM)
 randomly sample the observed (potentially corrupted) measurement outcome."
-  (check-type actual-outcome (integer 0 1))
+  (check-type actual-outcome bit)
   (check-type p00 (double-float 0.0d0 1.0d0))
   (check-type p01 (double-float 0.0d0 1.0d0))
   (check-type p10 (double-float 0.0d0 1.0d0))
   (check-type p11 (double-float 0.0d0 1.0d0))
   (let ((r (random 1.0d0)))
-    (case actual-outcome
+    (ecase actual-outcome
       ((0) (if (<= r p00) 0 1))
       ((1) (if (<= r p01) 0 1)))))
 
@@ -104,6 +104,8 @@ where I is the identity matrix of equal dimensions."
         ~S must be equal to the identity" kraus-sum))) t)
 
 (defun check-povm (povm)
+  "Verify that the list POVM contains a valid single qubit diagonal POVM.
+Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
   (destructuring-bind (p00 p01 p10 p11) povm
     (check-type p00 (double-float 0.0d0 1.0d0))
     (check-type p01 (double-float 0.0d0 1.0d0))
@@ -130,6 +132,7 @@ MAGICL matrices '(K1 K2 ... Kn)."
 (defun set-readout-povm (qvm qubit povm)
   "For a QUBIT belonging to a noisy QVM specify a POVM to encode
 possible readout errors.
+
 POVM must be a 4-element list of double-floats.
 "
   (check-type qvm noisy-qvm)
@@ -220,7 +223,12 @@ POVM must be a 4-element list of double-floats.
       (call-next-method qvm)
     (values
      qvm-ret
-     ;; perturb measured-bits
+     ;; Perturb measured-bits: This models purely classical bit flips
+     ;; of the measurement record which captures the reality of noisy
+     ;; low power dispersive measurements of superconducting qubits
+     ;; very well. Here the dominant source of error is misclassifying
+     ;; a readout signal due to thermal noise that corrupts the signal
+     ;; on its return path out of the cryostat.
      (loop :for i :below (number-of-qubits qvm)
            :for c :in measured-bits
            :collect (let ((povm (gethash i (readout-povms qvm))))

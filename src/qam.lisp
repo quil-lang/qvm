@@ -17,13 +17,20 @@
 
 Return two values:
 
-    1. The resulting QVM.
+    1. The resulting QAM.
     2. The measured classical bit."))
 
 (defgeneric measure-all (qam)
-  (:documentation "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum abstract machine QAM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store.
-
+  (:documentation "Non-deterministically perform a measurement on all qubits in the quantum abstract machine QAM.
 Return two values:
 
-    1. The resulting QVM.
-    2. The measured classical bit."))
+    1. The resulting QAM.
+    2. A list of measured bits."))
+
+(defmethod measure-all (qam)
+  (loop :for q :upto (number-of-qubits qam)
+        :collect (measure qam q nil)))
+
+(defgeneric number-of-qubits (qam)
+  (:documentation "Return the number of qubits configured on the quantum abstract machine QAM."))
+
