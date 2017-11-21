@@ -1,12 +1,11 @@
 #!/bin/bash
+set -ex
 ###############################################################################
 # Bamboo script for cleaning up Docker resources after a build
 #
 # Steps:
-# 1) Stop and remove any existing qvm-tests container
+# 1) Remove Docker containers and images as defined in the docker Makefile
 # 2) Remove all dangling Docker images and volumes from the worker
 ###############################################################################
-set -ex
-
-docker rm -f qvm-tests || true
+make -C ../docker clean
 docker system prune -af || true
