@@ -56,6 +56,7 @@
 
   ;; wavefunction.lisp
   (:export
+   #:copy-wavefunction                  ; FUNCTION
    #:probability                        ; FUNCTION
    #:apply-operator                     ; FUNCTION
    #:apply-matrix-operator              ; FUNCTION

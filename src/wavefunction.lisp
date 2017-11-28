@@ -34,6 +34,25 @@
   (1- (integer-length (length wavefunction))))
 
 
+(defun copy-wavefunction (wf &optional destination)
+  "Create a copy of the wavefunction WF. If DESTINATION is provided, copy the wavefunction WF into the DESTINATION vector. Only copy as many elements as can be copied, namely min(|wf|, |destination|)."
+  (declare (type quantum-state wf)
+           (type (or null quantum-state) destination))
+  (let ((length (if (null destination)
+                    (length wf)
+                    (min (length wf) (length destination)))))
+    (if (<= *qubits-required-for-parallelization* (1- (integer-length length)))
+        (let ((copy (if (null destination)
+                        (make-vector length) ; Allocate fresh vector.
+                        destination)))
+          (declare (type quantum-state copy))
+          (lparallel:pdotimes (i length copy)
+            (setf (aref copy i) (aref wf i))))
+        (if (null destination)
+            (copy-seq wf)
+            (replace destination wf)))))
+
+
 (defun-inlinable set-qubit-components-of-amplitude-address (address flags qubits)
   "Set the amplitude address to the bits within the non-negative integer FLAGS for the corresponding tuple of qubit indices QUBITS. (Ordered LSB to MSB.)"
   (declare (type nat-tuple qubits)
