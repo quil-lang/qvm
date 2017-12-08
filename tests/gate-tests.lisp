@@ -24,9 +24,27 @@
     (dotimes (i 7)
       (is (test-size i)))))
 
+(deftest test-qubit-ordering-in-compiled-mode ()
+  "Check that the ordering of the qubits is correctly interpreted in compiled mode."
+  (let* ((quil (with-output-to-quil
+                 "H 0"
+                 "H 1"
+                 "H 2"
+                 "H 3"
+                 "CNOT 2 0"
+                 "CSWAP 1 3 2"))
+         (qvm-interpreted (run-program 4 quil))
+         (qvm-compiled    (let ((qvm:*compile-before-running* t))
+                            (run-program 4 quil))))
+    (is (every (lambda (a b)
+                 (and (double-float= (realpart a) (realpart b) 1/10000)
+                      (double-float= (imagpart a) (imagpart b) 1/10000)))
+               (qvm::amplitudes qvm-interpreted)
+               (qvm::amplitudes qvm-compiled)))))
+
 (deftest test-full-rotation ()
   "Test four RX(pi/2) gates."
-    (let* ((quil (with-output-to-quil
+  (let* ((quil (with-output-to-quil
                    (loop :repeat 4 :do
                      (format t "RX(pi/2) 0~%"))))
          (qvm (run-program 1 quil)))
