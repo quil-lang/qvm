@@ -36,9 +36,11 @@ DOTIMES-ITERATOR specifies the DOTIMES-like macro that is used for iteration."
        (declare (type non-negative-fixnum i))
        (let ((,addr i))
          (declare (type amplitude-address ,addr))
-         ;; Prepare the complement address.
+         ;; Prepare the complement address. Make sure to inject bits
+         ;; from LSB to MSB! So we iterate from highest to lowest,
+         ;; pushing so that the lowest will be at the top of the list.
          ,@(let ((code nil))
-            (do-nat-tuple (q qubits)
+             (do-nat-tuple (q (sort (copy-seq qubits) '>))
               (push `(setf ,addr (inject-bit ,addr ,q)) code))
              code)
          ;; Execute the body with ADDR bound.
