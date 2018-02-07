@@ -90,7 +90,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
            (loop :for i :below (number-of-qubits qvm)
                  :collect (ldb (byte 1 i) n))))
     (let* ((wf (amplitudes qvm))
-           (basis-state (sample-wavefunction-as-distribution
+           (basis-state (sample-wavefunction-as-distribution-in-parallel-truly
                          wf
                          (flonum (random 1.0d0)))))
       ;; Reset to |0>
@@ -102,8 +102,10 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
       ;; Return.
       (values qvm (index-to-bits basis-state)))))
 
+(defun sample-wavefunction-as-distribution-in-parallel (wf p)
+  (sample-wavefunction-as-distribution wf (list p)))
 
-(defun sample-wavefunction-as-distribution (wf p)
+(defun sample-wavefunction-as-distribution-in-parallel-truly (wf p)
   "Sample the wavefunction as if it was a probability distribution.
 
 Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such that C(b') > p."
@@ -151,3 +153,22 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
                  (t
                   (setf max mid)))))
     min))
+
+(defun sample-wavefunction-as-distribution (wf ps)
+  "Implementation of SAMPLE-WAVEFUNCTION-AS-DISTRIBUTION-IN-PARALLEL-TRULY, unparallelized,
+ but for every probability in PS."
+  (declare #.*optimize-briskly*
+           (type quantum-state wf)
+           (type (vector flonum) ps))
+  (let ((cumsum 0.0)
+        (len (length ps))
+        (sampled-indices (make-array (length ps) :initial-element 0
+                                     :element-type 'fixnum
+                                     :fill-pointer 0)))
+    (declare (type flonum cumsum)
+             (type (vector fixnum) sampled-indices))
+    (dotimes (idx (length wf) sampled-indices)
+      (incf cumsum (probability (aref wf idx)))
+      (loop :while (and (< (length sampled-indices) len)
+                        (< (aref ps (length sampled-indices)) cumsum))
+            :do (vector-push idx sampled-indices)))))
