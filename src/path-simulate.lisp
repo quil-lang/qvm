@@ -6,7 +6,7 @@
 
 ;;; In this file, we implement simulation of a straight-line Quil
 ;;; program without measurement. The technique used is (maybe
-;;; informally) called the Multi-Aplitude Discrete Path Simulation
+;;; informally) called the Multi-Amplitude Discrete Path Simulation
 ;;; (MADPI).
 ;;;
 ;;; Classical states are represented as objects of the Lisp type
