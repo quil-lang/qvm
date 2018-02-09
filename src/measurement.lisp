@@ -154,19 +154,22 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
                   (setf max mid)))))
     min))
 
+;; XXX: Note that this doesn't follow the API of the above exactly,
+;; since PS is a vector and not a single number.
 (defun sample-wavefunction-as-distribution (wf ps)
   "Implementation of SAMPLE-WAVEFUNCTION-AS-DISTRIBUTION-IN-PARALLEL-TRULY, unparallelized,
- but for every probability in PS."
+ but for every probability in the PS (type: (VECTOR FLONUM)). Return a
+ vector of sampled amplitude addresses."
   (declare #.*optimize-briskly*
            (type quantum-state wf)
            (type (vector flonum) ps))
-  (let ((cumsum 0.0)
-        (len (length ps))
-        (sampled-indices (make-array (length ps) :initial-element 0
-                                     :element-type 'fixnum
-                                     :fill-pointer 0)))
+  (let* ((cumsum (flonum 0))
+         (len (length ps))
+         (sampled-indices (make-array len :initial-element 0
+                                          :element-type 'amplitude-address
+                                          :fill-pointer 0)))
     (declare (type flonum cumsum)
-             (type (vector fixnum) sampled-indices))
+             (type (vector amplitude-address) sampled-indices))
     (dotimes (idx (length wf) sampled-indices)
       (incf cumsum (probability (aref wf idx)))
       (loop :while (and (< (length sampled-indices) len)
