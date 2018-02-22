@@ -153,8 +153,8 @@ POVM must be a 4-element list of double-floats.
        ;; transition
        (check-type gate quil:static-gate)
        (let ((amps (make-vector (expt 2 (number-of-qubits qvm))))
-             (r (random 1.0))
-             (summed-p 0.0))
+             (r (random 1.0d0))
+             (summed-p 0.0d0))
          ;; Randomly select one of the Kraus operators by inverse
          ;; transform sampling (cf [1]): We divide the unit interval
          ;; [0,1] into n bins where the j-th bin size equals the
@@ -171,8 +171,7 @@ POVM must be a 4-element list of double-floats.
          ;; pick this j as the choice of Kraus operator to apply.
          ;;
          ;; [1]: https://en.wikipedia.org/wiki/Inverse_transform_sampling
-         (loop :until (>= summed-p r)
-               :for kj :in kraus-ops
+         (loop :for kj :in kraus-ops
                :do
                   ;; initialize amps total the current wavefunction
                   (replace amps (amplitudes qvm))
@@ -185,7 +184,8 @@ POVM must be a 4-element list of double-floats.
                   ;; compute <AMPS|KJ^H KJ|AMPS> = p_j and increase
                   ;; SUMMED-PY by this value to facilitate randomly
                   ;; selecting one transition
-                  (incf summed-p (psum #'probability amps)))
+                  (incf summed-p (psum #'probability amps))
+               :until (>= summed-p r))
          (replace (amplitudes qvm) amps)
          (setf amps nil)
          (normalize-wavefunction (amplitudes qvm))
