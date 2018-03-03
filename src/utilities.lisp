@@ -222,7 +222,7 @@ NOTE: This must be done before computations can be done.
   (declare #.*optimize-dangerously-fast*
            (type non-negative-fixnum x)
            (type nat-tuple-element n))
-  (let ((left (ash (dpb 0 (byte n 0) x) -1))
+  (let ((left (dpb 0 (byte n 0) (ash x -1)))
         (right (ldb (byte n 0) x)))
     (declare (type non-negative-fixnum left right))
     (the non-negative-fixnum (logior left right))))
@@ -232,7 +232,7 @@ NOTE: This must be done before computations can be done.
   `(lambda (x)
      (declare #.*optimize-dangerously-fast*
               (type non-negative-fixnum x))
-     (let ((left (ash (dpb 0 (byte ,n 0) x) -1))
+     (let ((left (dpb 0 (byte ,n 0) (ash x -1)))
            (right (ldb (byte ,n 0) x)))
        (declare (type non-negative-fixnum left right))
        (the non-negative-fixnum (logior left right)))))
