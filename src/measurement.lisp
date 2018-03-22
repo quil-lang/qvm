@@ -103,7 +103,10 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
       (values qvm (index-to-bits basis-state)))))
 
 (defun sample-wavefunction-as-distribution-in-parallel (wf p)
-  (sample-wavefunction-as-distribution wf (list p)))
+  (sample-wavefunction-as-distribution wf
+                                       (make-array 1
+                                                   :initial-element p
+                                                   :element-type 'flonum)))
 
 (defun sample-wavefunction-as-distribution-in-parallel-truly (wf p)
   "Sample the wavefunction as if it was a probability distribution.
