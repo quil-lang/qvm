@@ -274,6 +274,11 @@ The function will just return NIL, and modify the contents of RESULT."
                (loop :repeat (length ,ranges)
                      :sum (lparallel:receive-result ,ch))))))))
 
+(declaim (ftype (function ( (function (cflonum) flonum)
+                            quantum-state
+                          )
+                          flonum)
+                psum))
 (defun-inlinable psum (f state)
   "Compute the sum of F(X) for X in STATE, in parallel. F should be a unary function mapping CFLONUMs to FLONUMs."
   (declare (type (function (cflonum) flonum) f)
