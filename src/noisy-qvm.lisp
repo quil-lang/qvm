@@ -23,8 +23,29 @@
 which for each qubit gives the probability p(j|k) of measuring outcome
 j given actual state k. Note that we model purely classical readout
 error, i.e., the post measurement qubit state is always k, but the
-recorded outcome j may be different."))
+recorded outcome j may be different.")
+   ;; This is initialized in the INITIALIZE-INSTANCE after method.
+   (trial-amplitudes
+    :accessor %trial-amplitudes
+    :documentation "A second wavefunction used when applying a noisy
+quantum channel. Applying a Kraus map generally requires evaluating
+psi_j = K_j * psi for several different j, making it necessary to keep
+the original wavefunction around.
+
+This value should be a QUANTUM-STATE whose size is compatible with the
+number of qubits of the NOISY-QVM. The actual values can be
+initialized in any way, however, because it will be overwritten. As
+such, it merely is scratch space for intermediate computations, and
+hence should not be otherwise directly accessed.
+"))
   (:documentation "A quantum virtual machine with noisy gates and readout."))
+
+(defmethod initialize-instance :after ((qvm noisy-qvm) &rest args)
+  (declare (ignore args))
+  ;; initialize the trial-amplitudes to an empty array of the
+  ;; correct size
+  (setf (%trial-amplitudes qvm)
+        (make-vector (expt 2 (number-of-qubits qvm)))))
 
 
 (defun make-pauli-noise-map (px py pz)
@@ -152,9 +173,10 @@ POVM must be a 4-element list of double-floats.
        ;; select one of several Kraus operators to apply for the
        ;; transition
        (check-type gate quil:static-gate)
-       (let ((amps (make-vector (expt 2 (number-of-qubits qvm))))
+       (let ((amps (%trial-amplitudes qvm))
              (r (random 1.0d0))
              (summed-p 0.0d0))
+         (check-type amps quantum-state)
          ;; Randomly select one of the Kraus operators by inverse
          ;; transform sampling (cf [1]): We divide the unit interval
          ;; [0,1] into n bins where the j-th bin size equals the
@@ -186,9 +208,13 @@ POVM must be a 4-element list of double-floats.
                   ;; selecting one transition
                   (incf summed-p (psum #'probability amps))
                :until (>= summed-p r))
-         (replace (amplitudes qvm) amps)
-         (setf amps nil)
+
+         ;; avoid unnecessary copying by swapping pointers to
+         ;; amplitudes and trial-amplitudes
+         (rotatef (amplitudes qvm) (%trial-amplitudes qvm))
+
          (normalize-wavefunction (amplitudes qvm))
+
          (values
           qvm
           (1+ (pc qvm)))))
