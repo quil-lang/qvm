@@ -33,4 +33,3 @@ Return two values:
 
 (defgeneric number-of-qubits (qam)
   (:documentation "Return the number of qubits configured on the quantum abstract machine QAM."))
-

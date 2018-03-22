@@ -108,6 +108,15 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
                                                    :initial-element p
                                                    :element-type 'flonum)))
 
+(declaim (ftype (function (non-negative-fixnum non-negative-fixnum) non-negative-fixnum) midpoint)
+         (inline midpoint))
+(defun midpoint (a b)
+  "Find the midpoint of two non-negative fixnums A and B where A <= B."
+  (declare (type non-negative-fixnum a b)
+           #.*optimize-dangerously-fast*)
+  ;; avoid overflow by not doing (A+B)/2.
+  (+ a (floor (the non-negative-fixnum (- b a)) 2)))
+
 (defun sample-wavefunction-as-distribution-in-parallel-truly (wf p)
   "Sample the wavefunction as if it was a probability distribution.
 
@@ -136,8 +145,7 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
     (loop :until (= min (1- max))
           :do
              (assert (plusp (- max min 1)))
-             (let* ((mid (floor (+ min max) 2))
-
+             (let* ((mid (midpoint min max))
                     ;; sum values in lower half of interval
                     (sum (+ sum<
                             (psum-dotimes (i (the non-negative-fixnum (- mid min)))

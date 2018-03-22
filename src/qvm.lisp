@@ -7,21 +7,25 @@
 (defclass pure-state-qvm (quantum-abstract-machine)
   (
    ;; --- Machine state
-   (number-of-qubits :accessor number-of-qubits
+   (number-of-qubits :reader number-of-qubits
                      :initarg :number-of-qubits
+                     :type non-negative-fixnum
                      :documentation "Number of qubits being simulated.")
 
    (amplitudes :accessor amplitudes
                :initarg :amplitudes
+               :type quantum-state
                :documentation "The unpermuted wavefunction.")
 
    (classical-memory-size :accessor classical-memory-size
                           :initarg :classical-memory-size
+                          :type non-negative-fixnum
                           :documentation "The number of bits of classical memory.")
 
    ;; Currently this is just represented as an integer.
    (classical-memory :accessor classical-memory
                      :initarg :classical-memory
+                     :type integer
                      :documentation "An integer representing bits of classical memory.")
 
    ;; --- Program and Definitions

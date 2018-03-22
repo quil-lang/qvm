@@ -127,6 +127,7 @@
                                   (qvm:run qvm))))
                 (multiple-value-bind (qvm-final measured-bits)
                     (measure-all qvm-final)
+                  (declare (ignore qvm-final))
                   (setf results-desired
                         (remove measured-bits results-desired :test #'equalp)))))
     (is (plusp tries))))

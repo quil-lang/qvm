@@ -33,6 +33,19 @@
   (declare (type quantum-state wavefunction))
   (1- (integer-length (length wavefunction))))
 
+(declaim (ftype (function (quantum-state) quantum-state) bring-to-zero-state))
+(defun-inlinable bring-to-zero-state (v)
+  "Modify the quantum state V to be |...000>."
+  (declare (type quantum-state v)
+           #.*optimize-dangerously-fast*)
+  (if (< (wavefunction-qubits v) *qubits-required-for-parallelization*)
+      (dotimes (i (length v))
+        (setf (aref v i) (cflonum 0)))
+      (lparallel:pdotimes (i (length v))
+        (setf (aref v i) (cflonum 0))))
+
+  (setf (aref v 0) (cflonum 1))
+  v)
 
 (defun copy-wavefunction (wf &optional destination)
   "Create a copy of the wavefunction WF. If DESTINATION is provided, copy the wavefunction WF into the DESTINATION vector. Only copy as many elements as can be copied, namely min(|wf|, |destination|)."

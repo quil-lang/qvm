@@ -63,19 +63,6 @@
                          :initial-element (cflonum 0))
       form))
 
-(defun-inlinable bring-to-zero-state (v)
-  "Modify the quantum state V to be |...000>."
-  (declare (type quantum-state v)
-           #.*optimize-dangerously-fast*)
-  (if (< (wavefunction-qubits v) *qubits-required-for-parallelization*)
-      (dotimes (i (length v))
-        (setf (aref v i) (cflonum 0)))
-      (lparallel:pdotimes (i (length v))
-        (setf (aref v i) (cflonum 0))))
-
-  (setf (aref v 0) (cflonum 1))
-  v)
-
 (deftype quantum-operator (&optional (n '*))
   "A representation of an operator on a quantum state. This will be a unitary square matrix where each dimension is a power-of-two."
   `(simple-array cflonum (,n ,n)))
@@ -248,13 +235,13 @@ The function will just return NIL, and modify the contents of RESULT."
 
 
 (defmacro psum-dotimes ((i range) &body body)
-  "Compute the sum of BODY for I in ranging over 0 <= I < RANGE."
+  "Compute the sum of BODY for I in ranging over 0 <= I < RANGE. RANGE must be a non-negative fixnum."
   (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function ranges)
     (alexandria:once-only (range)
       `(if (< ,range (expt 2 *qubits-required-for-parallelization*))
            (locally (declare #.*optimize-dangerously-fast*)
              (loop :with ,sum :of-type flonum := (flonum 0)
-                   :for ,i :below ,range
+                   :for ,i :of-type non-negative-fixnum :below ,range
                    :do (incf ,sum (the flonum (progn ,@body)))
                    :finally (return ,sum)))
            (flet ((,worker-function (,start ,end)
@@ -265,14 +252,15 @@ The function will just return NIL, and modify the contents of RESULT."
                             :for ,i :of-type non-negative-fixnum :from ,start :below ,end
                             :do (incf ,partial-sum (the flonum (progn ,@body)))
                             :finally (return ,partial-sum)))))
-             (declare (dynamic-extent #',worker-function))
+             (declare (dynamic-extent #',worker-function)
+                      (ftype (function (non-negative-fixnum non-negative-fixnum) flonum) ,worker-function))
              (let* ((,ch (lparallel:make-channel))
                     (,num-tasks (lparallel:kernel-worker-count))
                     (,ranges (subdivide ,range ,num-tasks)))
                (loop :for (,start . ,end) :in ,ranges
                      :do (lparallel:submit-task ,ch #',worker-function ,start ,end))
                (loop :repeat (length ,ranges)
-                     :sum (lparallel:receive-result ,ch))))))))
+                     :sum (lparallel:receive-result ,ch) :of-type flonum)))))))
 
 (declaim (ftype (function ( (function (cflonum) flonum)
                             quantum-state
