@@ -171,8 +171,8 @@ Return two values:
 ;;; XXX: This method should not exist after Quil is properly
 ;;; processed.
 (defmethod transition ((qvm pure-state-qvm) (instr quil::circuit-application))
-  (cerror "Ignore circuit."
-          "DEFCIRCUIT and circuit expansion is currently not supported.")
+  (cerror "Ignore it."
+          "Circuit applications should not appear in a program being executed.")
   (values
    qvm
    (1+ (pc qvm))))
