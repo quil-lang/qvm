@@ -14,8 +14,10 @@ RUN rm -rf /src/qvm/cl-quil
 RUN cp -R /src/qvm/magicl /src/magicl
 RUN rm -rf /src/qvm/magicl
 
-# update quicklisp
-RUN sbcl --eval "(ql:update-all-dists :prompt nil)" --quit
+# Set quicklisp dist version
+ENV QUICKLISP_DIST_URL http://beta.quicklisp.org/dist/quicklisp/2018-01-31/distinfo.txt
+RUN sbcl --noinform --non-interactive \
+    --eval "ql-dist::(when (string/= (canonical-distinfo-url (dist \"quicklisp\")) \"$QUICKLISP_DIST_URL\") (install-dist \"$QUICKLISP_DIST_URL\" :prompt nil :replace t))"
 
 # quickload the qvm-tests system
 WORKDIR /src/qvm
