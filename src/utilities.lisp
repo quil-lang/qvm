@@ -134,6 +134,11 @@ The result will be a list of cons cells representing half-open intervals (on the
 
 (defmacro measuring-gc ((time-var bytes-var) &body body)
   "Execute BODY setting TIME-VAR to the number of milliseconds spent garbage collecting, and BYTES-VAR to roughly the number of bytes allocated."
+  #-sbcl
+  `(multiple-value-prog1 (progn ,@body)
+     (setf ,bytes-var -1)
+     (setf ,time-var -1))
+  #+sbcl
   (alexandria:with-gensyms (bytes-start)
     `(let ((sb-ext:*gc-run-time* 0)
            (,bytes-start (sb-ext:get-bytes-consed)))

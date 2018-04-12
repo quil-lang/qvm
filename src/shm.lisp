@@ -7,11 +7,6 @@
 ;;; This file contains routines for dealing with shared memory on a
 ;;; POSIX system.
 ;;;
-;;; N.B. This file is almost hopelessly SBCL specific. But it wouldn't
-;;; be too hard to port to other platforms like CCL.
-;;;
-
-#-sbcl (error "Shared memory routines only work for SBCL right now.")
 
 ;;;
 ;;; Dear Reader:
@@ -117,24 +112,33 @@
 
 ;;; SBCL Specific Routines
 
-(sb-ext:defglobal **shared-memories** (tg:make-weak-hash-table
-                                       :weakness :value
-                                       :test 'equal)
-  "A table mapping shared memory names to the shared memory objects, weakly on value.")
-
 (defun allocation-size (num-elements element-type)
   ;; Total amount of allocation required in memory to store a Lisp SIMPLE-ARRAY.
+  #-sbcl
+  (locally (declare (ignore num-elements element-type))
+    (error "ALLOCATION-SIZE unsupported on ~A" (lisp-implementation-type)))
+  #+sbcl
   (multiple-value-bind (widetag n-bits)
       (static-vectors::vector-widetag-and-n-bits element-type)
     (static-vectors::%allocation-size num-elements widetag n-bits)))
 
 (defun make-vector-from-pointer (pointer num-elements element-type)
+  #-sbcl
+  (locally (declare (ignore num-elements element-type))
+    (error "MAKE-VECTOR-FROM-POINTER unsupported on ~A"
+           (lisp-implementation-type)))
+  #+sbcl
   (multiple-value-bind (widetag n-bits)
       (static-vectors::vector-widetag-and-n-bits element-type)
     (declare (ignore n-bits))
     (static-vectors::vector-from-pointer pointer widetag num-elements)))
 
 ;;; General POSIX routines.
+
+(global-vars:define-global-var **shared-memories** (tg:make-weak-hash-table
+                                                    :weakness :value
+                                                    :test 'equal)
+  "A table mapping shared memory names to the shared memory objects, weakly on value.")
 
 (defstruct (posix-shared-memory (:constructor %make-shared-memory))
   "Representation of some POSIX shared memory."
@@ -150,9 +154,30 @@
 (cffi:defcfun (shm-unlink "shm_unlink") :int
   (name :string))
 
+(cffi:defcfun getpagesize :int)
+
+(cffi:defcfun (%ftruncate "ftruncate") :int
+  (fd :int)
+  (offset off_t))
+
+(cffi:defcfun (%mmap "mmap") :pointer
+  (addr :pointer)
+  (len size_t)
+  (prot :int)
+  (flags :int)
+  (fd :int)
+  (offset off_t))
+
+(cffi:defcfun (%munmap "munmap") :int
+  (addr :pointer)
+  (len size_t))
+
+(cffi:defcfun (%close "close") :int
+  (fd :int))
+
 (defun round-to-next-page (size)
   (check-type size (and fixnum unsigned-byte))
-  (let ((page-size (sb-posix:getpagesize)))
+  (let ((page-size (getpagesize)))
     (* page-size (ceiling size page-size))))
 
 (defun make-posix-shared-memory (name size)
@@ -166,37 +191,35 @@ Return a POSIX-SHARED-MEMORY object."
          (fd (cffi:with-foreign-string (c-name name)
                (shm-open c-name (logior
                                  ;; Make the memory.
-                                 sb-posix:o-creat
+                                 $o-creat
                                  ;; But only if the name is unique.
-                                 sb-posix:o-excl
+                                 $o-excl
                                  ;; And allow for reading/writing.
-                                 sb-posix:o-rdwr)
+                                 $o-rdwr)
                          ;; rw-rw-rw-
                          mode_t #o666))))
     (when (minusp fd)
       (error "Error in shm_open. Got return code ~D: ~A"
              fd
-             (%strerror (sb-alien:get-errno))))
+             (%strerror %errno)))
 
     ;; Extend the mapped memory to a particular length.
-    (let ((status (sb-posix:ftruncate fd num-bytes)))
+    (let ((status (%ftruncate fd num-bytes)))
       (unless (zerop status)
         (error "Error in ftruncate. Got return code ~D" status)))
 
     ;; Map the memory.
-    ;;
-    ;; SBCL checks the return value for error. But if we wanted to
-    ;; ourselves, we would have to check that (SB-SYS:SAP-INT return)
-    ;; equals $MAP-FAILED.
-    (let ((ptr (sb-posix:mmap (cffi:null-pointer)
-                              num-bytes
-                              (logior sb-posix:prot-read
-                                      sb-posix:prot-write)
-                              sb-posix:map-shared
-                              fd
-                              0)))
+    (let ((ptr (%mmap (cffi:null-pointer)
+                      num-bytes
+                      (logior $prot-read
+                              $prot-write)
+                      $map-shared
+                      fd
+                      0)))
+      (when (eql (cffi:pointer-address ptr) $map-failed)
+        (error "Error in mmap. Got MAP_FAILED return code"))
       ;; Close the fd, we don't need it after we've mmapped.
-      (sb-posix:close fd)
+      (%close fd)
 
       ;; Package everything up.
       (let ((shm (%make-shared-memory
@@ -212,8 +235,8 @@ Return a POSIX-SHARED-MEMORY object."
 (defun free-posix-shared-memory (shm)
   "Free the memory associated with the POSIX shared memory object SHM."
   ;; Unmap the memory.
-  (let ((status (sb-posix:munmap (posix-shared-memory-pointer shm)
-                                 (posix-shared-memory-size shm))))
+  (let ((status (%munmap (posix-shared-memory-pointer shm)
+                         (posix-shared-memory-size shm))))
     (unless (zerop status)
       (error "Error in munmap for shared memory ~A" shm))
     (setf (posix-shared-memory-pointer shm) (cffi:null-pointer)
@@ -226,7 +249,7 @@ Return a POSIX-SHARED-MEMORY object."
       (error "Error in shm_unlink for shared memory ~A. Error code ~D: ~A"
              shm
              status
-             (%strerror (sb-alien:get-errno)))))
+             (%strerror %errno))))
   nil)
 
 (defun deallocate-all-shared-memories ()
@@ -246,7 +269,11 @@ Return a POSIX-SHARED-MEMORY object."
 ;; kernel persistence, which means if we allocate and never free, the
 ;; user has to pay the price.
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (pushnew 'deallocate-all-shared-memories sb-ext:*exit-hooks* :test 'eq))
+  #+sbcl
+  (pushnew 'deallocate-all-shared-memories sb-ext:*exit-hooks* :test 'eq)
+  #+lispworks
+  (lw:define-action "When quitting image" "Deallocate shared memories"
+    'deallocate-all-shared-memories))
 
 (declaim (notinline posix-shared-memory-finalizer))
 (defun posix-shared-memory-finalizer (shm)

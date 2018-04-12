@@ -26,8 +26,6 @@
                #+unix
                #:cffi
                #+unix
-               #:sb-posix
-               #+unix
                (:version #:static-vectors "1.8.3")
                #:trivial-garbage
                ;; Quil parsing and analysis
