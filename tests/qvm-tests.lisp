@@ -4,6 +4,16 @@
 
 (in-package #:qvm-tests)
 
+(deftest test-complex-double-float-replace ()
+  "Test for bug #23 (github) in Clozure CL where REPLACE does not
+  faithfully copy from arrays of complex double-floats."
+  (let ((a (make-array 4 :element-type '(complex double-float)))
+        (b (make-array 4 :element-type '(complex double-float))))
+    (dotimes (i 4)
+      (setf (aref b i) (complex (* 1.0d0 i) (* 2.0d0 i))))
+    (replace a b)
+    (is (equalp a b))))
+
 (deftest test-bit-out-of-range ()
   "Test that we detect an error when a bit is out of range."
   (let ((q (make-qvm 1 :classical-memory-size 8)))
