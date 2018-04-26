@@ -166,11 +166,6 @@ The function will just return NIL, and modify the contents of RESULT."
            (setf (aref result i) element)))))
 
     ;; Put RESULT back into the column vector.
-    #+ccl                    ; CCL bug.
-    (loop :for i :below (length column)
-          :do (setf (aref column i) (aref result i)))
-
-    #-ccl
     (replace column result)
 
     ;; Return the modified column.
