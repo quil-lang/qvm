@@ -110,28 +110,25 @@
 (cffi:defcfun (%strerror "strerror") :string
   (errnum :int))
 
-;;; SBCL Specific Routines
+;;; Bashing an array into shared memory.
 
 (defun allocation-size (num-elements element-type)
   ;; Total amount of allocation required in memory to store a Lisp SIMPLE-ARRAY.
-  #-sbcl
+  #-(or sbcl ccl)
   (locally (declare (ignore num-elements element-type))
-    (error "ALLOCATION-SIZE unsupported on ~A" (lisp-implementation-type)))
-  #+sbcl
-  (multiple-value-bind (widetag n-bits)
-      (static-vectors::vector-widetag-and-n-bits element-type)
-    (static-vectors::%allocation-size num-elements widetag n-bits)))
+    (error "ALLOCATION-SIZE (of ~A ~A~:P) unsupported on ~A"
+           num-elements element-type
+           (lisp-implementation-type)))
+
+  (shm-vector-allocation-size num-elements element-type))
 
 (defun make-vector-from-pointer (pointer num-elements element-type)
-  #-sbcl
+  #-(or sbcl ccl)
   (locally (declare (ignore num-elements element-type))
     (error "MAKE-VECTOR-FROM-POINTER unsupported on ~A"
            (lisp-implementation-type)))
-  #+sbcl
-  (multiple-value-bind (widetag n-bits)
-      (static-vectors::vector-widetag-and-n-bits element-type)
-    (declare (ignore n-bits))
-    (static-vectors::vector-from-pointer pointer widetag num-elements)))
+
+  (shm-vector-from-pointer pointer num-elements element-type))
 
 ;;; General POSIX routines.
 
@@ -188,16 +185,15 @@ Return a POSIX-SHARED-MEMORY object."
   (check-type size (and fixnum unsigned-byte))
   ;; mmap(2) allocates in multiples of pages.
   (let* ((num-bytes (round-to-next-page size))
-         (fd (cffi:with-foreign-string (c-name name)
-               (shm-open c-name (logior
-                                 ;; Make the memory.
-                                 $o-creat
-                                 ;; But only if the name is unique.
-                                 $o-excl
-                                 ;; And allow for reading/writing.
-                                 $o-rdwr)
-                         ;; rw-rw-rw-
-                         mode_t #o666))))
+         (fd (shm-open name (logior
+                             ;; Make the memory.
+                             $o-creat
+                             ;; But only if the name is unique.
+                             $o-excl
+                             ;; And allow for reading/writing.
+                             $o-rdwr)
+                       ;; rw-rw-rw-
+                       mode_t #o666)))
     (when (minusp fd)
       (error "Error in shm_open. Got return code ~D: ~A"
              fd
@@ -243,8 +239,7 @@ Return a POSIX-SHARED-MEMORY object."
           (posix-shared-memory-size shm) 0))
 
   ;; Unlink the shared memory.
-  (let ((status (cffi:with-foreign-string (c-name (posix-shared-memory-name shm))
-                  (shm-unlink c-name))))
+  (let ((status (shm-unlink (posix-shared-memory-name shm))))
     (unless (zerop status)
       (error "Error in shm_unlink for shared memory ~A. Error code ~D: ~A"
              shm
@@ -269,11 +264,7 @@ Return a POSIX-SHARED-MEMORY object."
 ;; kernel persistence, which means if we allocate and never free, the
 ;; user has to pay the price.
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  #+sbcl
-  (pushnew 'deallocate-all-shared-memories sb-ext:*exit-hooks* :test 'eq)
-  #+lispworks
-  (lw:define-action "When quitting image" "Deallocate shared memories"
-    'deallocate-all-shared-memories))
+  (call-at-exit 'deallocate-all-shared-memories))
 
 (declaim (notinline posix-shared-memory-finalizer))
 (defun posix-shared-memory-finalizer (shm)
@@ -286,7 +277,15 @@ Return a POSIX-SHARED-MEMORY object."
   "Return an array allocated to shared memory, along with a thunk which releases this memory."
   (let* ((size (allocation-size length element-type))
          (shm (make-posix-shared-memory name size))
-         (vec (make-vector-from-pointer (posix-shared-memory-pointer shm)
-                                        length
-                                        element-type)))
-    (values vec (posix-shared-memory-finalizer shm))))
+         (shm-finalizer (posix-shared-memory-finalizer shm)))
+    (multiple-value-bind (vec vec-finalizer)
+        (make-vector-from-pointer (posix-shared-memory-pointer shm)
+                                  length
+                                  element-type)
+      (values vec 
+              (lambda ()
+                ;; Order matters!
+                (funcall vec-finalizer)
+                (funcall shm-finalizer))))))
+
+

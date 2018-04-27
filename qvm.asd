@@ -38,11 +38,17 @@
   :pathname "src/"
   :serial t
   :components ((:file "package")
-               (:file "config")
                #+unix
                (:cffi-grovel-file "grovel-system-constants")
                #+unix
                (:cffi-grovel-file "grovel-shared-memory")
+               (:file "config")
+               #+clozure
+               (:file "impl/clozure")
+               #+sbcl
+               (:file "impl/sbcl")
+               #+lispworks
+               (:file "impl/lispworks")
                #+unix
                (:file "shm")
                (:file "utilities")
