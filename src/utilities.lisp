@@ -241,3 +241,22 @@ NOTE: This must be done before computations can be done.
            (right (ldb (byte ,n 0) x)))
        (declare (type non-negative-fixnum left right))
        (the non-negative-fixnum (logior left right)))))
+
+(defun seeded-random-state (seed)
+  "Return an MT19937 random state that has been initialized from SEED,
+which should be either NIL (meaning use a fresh and irreproducible
+random state), or an integer or a specialized vector of (unsigned-byte
+32), which will result in a reproducible random state."
+  (check-type seed
+              (or null
+                  integer
+                  (array (unsigned-byte 32) (*))))
+  (if seed
+      ;; MAKE-RANDOM-OBJECT is not exported, but it the recommended
+      ;; function to use for seeding in the MT19937 sources.
+      (mt19937::make-random-object :state (mt19937:init-random-state seed))
+      (mt19937:make-random-state t)))
+
+(defmacro with-random-state ((state) &body body)
+  `(let ((mt19937:*random-state* ,state))
+     ,@body))

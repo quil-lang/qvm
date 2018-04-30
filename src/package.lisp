@@ -7,6 +7,9 @@
   (:use #:cl
         #:abstract-classes)
 
+  (:shadowing-import-from #:mt19937
+                          #:random)
+
   ;; config.lisp
   (:export
    #:*qubits-required-for-parallelization*
@@ -19,6 +22,8 @@
   (:export
    #:count-logical-cores                ; FUNCTION
    #:prepare-for-parallelization        ; FUNCTION
+   #:seeded-random-state                ; FUNCTION
+   #:with-random-state                  ; MACRO
    )
 
   ;; linear-algebra.lisp

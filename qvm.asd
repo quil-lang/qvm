@@ -30,6 +30,8 @@
                #:trivial-garbage
                ;; Quil parsing and analysis
                (:version #:cl-quil "0.14.0")
+               ;; Portable random number generator
+               #:mt19937
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :around-compile (lambda (compile)
