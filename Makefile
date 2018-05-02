@@ -34,6 +34,10 @@ test:
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
+coverage:
+	sbcl --noinform --non-interactive --load coverage-report/coverage-report.lisp
+
+
 ### Cleanup.
 
 # Clean the Lisp cache, reindex local projects.

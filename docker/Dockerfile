@@ -23,5 +23,7 @@ RUN sbcl --noinform --non-interactive \
 WORKDIR /src/qvm
 RUN sbcl --eval "(ql:quickload :qvm-tests)" --quit
 
+ENV LANG C.UTF-8
+
 # executed on docker run
-ENTRYPOINT ["make", "test"]
+ENTRYPOINT ["make", "test", "coverage"]
