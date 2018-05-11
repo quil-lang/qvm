@@ -1,7 +1,7 @@
 ###############################################################################
 # QVM tests docker image (docker.lab.rigetti.com/qcs/qvm-tests)
 ###############################################################################
-FROM docker.lab.rigetti.com/qcs/lisp-base
+FROM rigetticomputing/lisp-base
 
 # organize the source
 # NOTE: this only works if the current directory is the top-level directory of qvm and
@@ -26,4 +26,4 @@ RUN sbcl --eval "(ql:quickload :qvm-tests)" --quit
 ENV LANG C.UTF-8
 
 # executed on docker run
-ENTRYPOINT ["make", "test", "coverage"]
+ENTRYPOINT ["make", "test", "test-ccl", "coverage"]
