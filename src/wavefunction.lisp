@@ -273,11 +273,21 @@ up to amplitude ordering."
              (inline multiply-by-operator))
     (apply-operator #'multiply-by-operator wavefunction qubits)))
 
+(declaim (ftype (function (quantum-state) (flonum 0)) %serial-norm))
+(defun-inlinable %serial-norm (wavefunction)
+  (loop :with s :of-type flonum := (flonum 0)
+        :for i :below (length wavefunction)
+        :do (incf s (probability (aref wavefunction i)))
+        :finally (return (sqrt (the (flonum 0) s)))))
+
 (declaim (ftype (function (quantum-state) (flonum 0)) norm))
 (defun-inlinable norm (wavefunction)
   "Compute the length/L2 norm of the wavefunction WAVEFUNCTION."
   (declare (inline probability psum))
-  (sqrt (the (flonum 0) (psum #'probability wavefunction))))
+  (if (<= *qubits-required-for-parallelization*
+          (wavefunction-qubits wavefunction))
+      (sqrt (the (flonum 0) (psum #'probability wavefunction)))
+      (%serial-norm wavefunction)))
 
 
 (defun normalize-wavefunction (wavefunction &key length)
