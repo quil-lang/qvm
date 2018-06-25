@@ -251,11 +251,18 @@ random state), or an integer or a specialized vector of (unsigned-byte
               (or null
                   integer
                   (array (unsigned-byte 32) (*))))
-  (if seed
-      ;; MAKE-RANDOM-OBJECT is not exported, but it the recommended
-      ;; function to use for seeding in the MT19937 sources.
-      (mt19937::make-random-object :state (mt19937:init-random-state seed))
-      (mt19937:make-random-state t)))
+  ;; MAKE-RANDOM-OBJECT is not exported, but it the recommended
+  ;; function to use for seeding in the MT19937 sources.
+  (etypecase seed
+    (null
+     (mt19937:make-random-state t))
+    (array
+     (mt19937::make-random-object :state (mt19937:init-random-state seed)))
+    (integer
+     ;; Integer seeds must be non-zero for MT19937
+     (when (zerop seed)
+       (setf seed 1))
+     (mt19937::make-random-object :state (mt19937:init-random-state seed)))))
 
 (defmacro with-random-state ((state) &body body)
   `(let ((mt19937:*random-state* ,state))
