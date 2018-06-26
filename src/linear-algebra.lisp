@@ -4,6 +4,11 @@
 
 (in-package #:qvm)
 
+;;; Numeric Types
+;;;
+;;; These are agreed upon *everywhere* in the QVM. These are allowed
+;;; to change, but only here.
+
 (defconstant +octets-per-flonum+ 8)
 
 (deftype flonum (&optional min)
@@ -37,6 +42,9 @@
            (numberp x))
       (coerce x 'cflonum)
       whole))
+
+
+;;; Quantum State & Operator Representation
 
 (deftype quantum-state (&optional (n '*))
   "A representation of a quantum state. This will have a power-of-2 length."
@@ -89,6 +97,9 @@
     (dotimes (r rows op)
       (dotimes (c cols)
         (setf (aref op r c) (magicl:ref m r c))))))
+
+
+;;; Quantum Operator Operations/Manipulations
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun matrix-multiply-code (n matrix column result)

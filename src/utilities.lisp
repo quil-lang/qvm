@@ -106,6 +106,12 @@ NOTE: This will not copy any multiprocessing aspects."
   "Compute the floor of half of the real number X."
   (floor x 2))
 
+(declaim (inline boolean-bit))
+(defun boolean-bit (boolean)
+  "Convert a generalized boolean BOOLEAN into a good ol' BIT."
+  (if boolean 1 0))
+
+
 (defmacro probabilistically (p &body body)
   "Execute BODY with probability 0 <= P <= 1."
   `(when (< (random 1.0) ,p)
@@ -267,3 +273,9 @@ random state), or an integer or a specialized vector of (unsigned-byte
 (defmacro with-random-state ((state) &body body)
   `(let ((mt19937:*random-state* ,state))
      ,@body))
+
+(defun round-up-to-next-multiple (x multiple)
+  "Round X up to the next multiple of MULTIPLE."
+  (check-type x (integer 0))
+  (check-type multiple (integer 1))
+  (* multiple (ceiling x multiple)))

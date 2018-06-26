@@ -27,3 +27,9 @@
 (defvar *optimize-safely*
   '(optimize (speed 0) (safety 3) (debug 3) (space 3))
   "Optimization qualities for when the code should emphasize safety and debugability.")
+
+;;;
+;;; ""64K ought to be enough for anybody." -Bill Gates" -Michael Scott
+;;;
+(global-vars:define-global-parameter **classical-memory-size-limit** (* 64 1024)
+  "The limit of the number of octets that can be allocated for classical memory. Default is 64KiB.")

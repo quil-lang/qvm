@@ -267,7 +267,7 @@ This function will compile new ones on-demand."
   ()
   (:documentation "A compiled GATE-APPLICATION where the gate happens to be a permutation gate."))
 
-(defmethod quil:print-instruction ((instr compiled-gate-application) &optional (stream *standard-output*))
+(defmethod quil::print-instruction-generic ((instr compiled-gate-application) stream)
   (format stream "compiled{ ")
   (quil:print-instruction (source-instruction instr) stream)
   (format stream " }")
@@ -321,10 +321,28 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
   (declare (ignore qvm))
   isn)
 
+;;; XXX: This is a function that will probably be removed after
+;;; there's more compilation sophistication. Here, we are just doing
+;;; *anything* to get a gate out of a GATE-APPLICATION. We are
+;;; forgoing opportunities to generate advanced or optimized
+;;; representations from the definition itself.
+(defun pull-teeth-to-get-a-gate (gate-app)
+  "Produce a valid, applicable gate from the application GATE-APPLICATION."
+  (check-type gate-app quil:gate-application)
+  (if (quil::anonymous-gate-application-p gate-app)
+      (quil::gate-application-gate gate-app)
+      (if (slot-boundp gate-app 'quil::gate)
+          (quil::gate-application-gate gate-app)
+          (funcall
+           (quil::operator-description-gate-lifter
+            (quil:application-operator gate-app))
+           (quil:gate-definition-to-gate
+            (quil::gate-application-resolution gate-app))))))
+
 (defmethod compile-instruction (qvm (isn quil:gate-application))
   (multiple-value-bind (class-name initargs)
       (compile-operator
-       (lookup-gate qvm (quil:application-operator isn))
+       (pull-teeth-to-get-a-gate isn)
        (apply #'nat-tuple
               (mapcar #'quil:qubit-index
                       (quil:application-arguments isn)))
@@ -333,13 +351,20 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
       ((null class-name)
        isn)
       (t
-       (apply #'make-instance
-              class-name
-              ;; COMPILED-GATE initargs
-              :source-instruction isn
-              ;; QUIL:GATE-APPLICATION initargs
-              :operator (quil:application-operator isn)
-              :parameters (quil:application-parameters isn)
-              :arguments (quil:application-arguments isn)
-              ;; The rest of the inirargs
-              initargs)))))
+       (let ((all-initargs
+               `(
+                 ;; COMPILED-GATE initargs
+                 :source-instruction ,isn
+                  ;; QUIL:GATE-APPLICATION initargs
+                 :operator ,(quil:application-operator isn)
+                 :parameters ,(quil:application-parameters isn)
+                 :arguments ,(quil:application-arguments isn)
+                 ,@(if (quil::anonymous-gate-application-p isn)
+                       nil
+                       `(:name-resolution ,(quil::gate-application-resolution isn)))
+                 ,@(if (not (slot-boundp isn 'quil::gate))
+                       nil
+                       `(:gate ,(quil::gate-application-gate isn)))
+                 ;; The rest of the inirargs
+                 ,@initargs)))
+         (apply #'make-instance class-name all-initargs))))))

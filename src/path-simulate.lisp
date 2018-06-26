@@ -34,7 +34,7 @@ Return two values:
     2. A list of complex amplitude factors associated with those states."
   (check-type instruction quil:gate-application)
   (let* ((m (apply #'quil:gate-matrix
-                   (quil:lookup-standard-gate (quil:application-operator instruction))
+                   (pull-teeth-to-get-a-gate instruction)
                    (mapcar #'quil:constant-value (quil:application-parameters instruction))))
          (qubits (apply #'nat-tuple
                         (mapcar #'quil:qubit-index

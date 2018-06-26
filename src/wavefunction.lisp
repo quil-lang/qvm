@@ -31,7 +31,7 @@
 (defun wavefunction-qubits (wavefunction)
   "The number of qubits represented by the wavefunction WAVEFUNCTION."
   (declare (type quantum-state wavefunction))
-  (1- (integer-length (length wavefunction))))
+  (max 0 (1- (integer-length (length wavefunction)))))
 
 (declaim (ftype (function (quantum-state) quantum-state) bring-to-zero-state))
 (defun-inlinable bring-to-zero-state (v)

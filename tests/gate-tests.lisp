@@ -117,10 +117,12 @@
     3        |11>
 "
   (let ((X0 (make-instance 'quil:gate-application
-                           :operator "X"
+                           :operator #.(quil:named-operator "X")
+                           :gate (quil:lookup-standard-gate "X")
                            :arguments (list (quil:qubit 0))))
         (X1 (make-instance 'quil:gate-application
-                           :operator "X"
+                           :operator #.(quil:named-operator "X")
+                           :gate (quil:lookup-standard-gate "X")
                            :arguments (list (quil:qubit 1))))
         (qft (qvm-examples:qft-circuit '(0 1))))
     (flet ((prepend (&rest apps)

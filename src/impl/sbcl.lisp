@@ -12,10 +12,8 @@
 (defun shm-vector-allocation-size (num-elements element-type)
   "Return the size, in octets, needed to store a simple-array of
 NUM-ELEMENTS ELEMENT-TYPE objects."
-  (declare (ignore num-elements))
   (multiple-value-bind (widetag n-bits)
       (static-vectors::vector-widetag-and-n-bits element-type)
-    (declare (ignore n-bits))
     (static-vectors::%allocation-size num-elements widetag n-bits)))
 
 (defun shm-vector-from-pointer (pointer num-elements element-type)

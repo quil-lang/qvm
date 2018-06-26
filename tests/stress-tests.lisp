@@ -21,7 +21,7 @@
                 #+sbcl (1+ (ceiling (/ (sb-ext:dynamic-space-size) 1024 1024) 128))
         :with qvm := nil
         :do (setf qvm (qvm:make-qvm big-qubit-amount))
-            (qvm::reset qvm)
+            (qvm::reset-quantum-state qvm)
             (setf qvm nil)
             (write-char #\a) (finish-output)
             (tg:gc :full t))
@@ -94,7 +94,8 @@
         :for name := (format nil "TEST_C__~D" (mod seq 8)) ; make sure we repeat names
         :do (setf qvm (qvm:make-qvm big-qubit-amount :shared-memory name))
             (write-char #\a) (finish-output)
-            (qvm::reset qvm)            ; Do something with the memory.
+            (qvm::reset-quantum-state qvm) ; Do something with the
+                                           ; memory.
             (setf qvm nil)
             ;; We actually have to explicitly garbage collect to make
             ;; sure the memory gets freed.

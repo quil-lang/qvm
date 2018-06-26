@@ -70,6 +70,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   qvm)
 
 (defmethod measure ((qvm pure-state-qvm) q c)
+  (check-type c (or null quil:memory-ref))
   (let* ((r (random 1.0d0))
          (excited-probability (qubit-probability qvm q))
          (cbit (if (<= r excited-probability)
@@ -80,7 +81,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
 
     ;; Store the classical bit if necessary.
     (unless (null c)
-      (setf (classical-bit qvm c) cbit))
+      (setf (dereference-mref qvm c) cbit))
 
     ;; Return the qvm.
     (values qvm cbit)))

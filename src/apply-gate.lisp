@@ -36,6 +36,22 @@
      wavefunction
      qubits))
 
+  (:method ((gate quil:controlled-gate) wavefunction qubits &rest parameters)
+    ;; TODO: We can be Even More Smart here and not resort to
+    ;; expanding this big ol' matrix. (DAE not like big matrices?)
+    (apply-matrix-operator
+     (magicl-matrix-to-quantum-operator
+      (apply #'quil:gate-matrix gate parameters))
+     wavefunction
+     qubits))
+
+  (:method ((gate quil:dagger-gate) wavefunction qubits &rest parameters)
+    (apply-matrix-operator
+     (magicl-matrix-to-quantum-operator
+      (apply #'quil:gate-matrix gate parameters))
+     wavefunction
+     qubits))
+
   (:method ((gate compiled-matrix-gate-application) wavefunction qubits &rest parameters)
     (declare (ignore qubits))
     (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-MATRIX-GATE-APPLICATIONs.")

@@ -23,7 +23,6 @@
                ;; static globals
                #:global-vars
                ;; C foreign function interface
-               #+unix
                #:cffi
                #+unix
                (:version #:static-vectors "1.8.3")
@@ -40,19 +39,13 @@
   :pathname "src/"
   :serial t
   :components ((:file "package")
-               #+unix
-               (:cffi-grovel-file "grovel-system-constants")
-               #+unix
-               (:cffi-grovel-file "grovel-shared-memory")
+               (:cffi-grovel-file "grovel-system-constants" :if-feature :unix)
+               (:cffi-grovel-file "grovel-shared-memory" :if-feature :unix)
                (:file "config")
-               #+clozure
-               (:file "impl/clozure")
-               #+sbcl
-               (:file "impl/sbcl")
-               #+lispworks
-               (:file "impl/lispworks")
-               #+unix
-               (:file "shm")
+               (:file "impl/clozure" :if-feature :clozure)
+               (:file "impl/sbcl" :if-feature :sbcl)
+               (:file "impl/lispworks" :if-feature :lispworks)
+               (:file "shm" :if-feature :unix)
                (:file "utilities")
                (:file "linear-algebra")
                (:file "qam")
@@ -63,6 +56,7 @@
                (:file "qvm")
                (:file "measurement")
                (:file "transition")
+               (:file "transition-classical-instructions")
                (:file "depolarizing-noise")
                (:file "noisy-qvm")
                (:file "execution")

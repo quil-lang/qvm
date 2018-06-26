@@ -46,17 +46,21 @@
 
   ;; classical-memory.lisp
   (:export
+   #:quil-bit                           ; TYPE
+   #:quil-octet                         ; TYPE
+   #:qvm-integer                        ; TYPE
+   #:qvm-real                           ; TYPE
    #:classical-memory                   ; TYPE
    #:make-classical-memory              ; FUNCTION
-   #:peek-bit                           ; FUNCTION
-   #:poke-bit                           ; FUNCTION
-   #:bit-range                          ; TYPE
-   #:make-bit-range                     ; FUNCTION
-   #:bit-range-left                     ; FUNCTION
-   #:bit-range-right                    ; FUNCTION
-   #:bit-range-width                    ; FUNCTION
-   #:peek-bits                          ; FUNCTION
-   #:poke-bits                          ; FUNCTION
+   #:classical-memory-size              ; FUNCTION
+   #:memory-bit-ref                     ; ACCESSOR
+   #:memory-octet-ref                   ; ACCESSOR
+   #:memory-integer-ref                 ; ACCESSOR
+   #:memory-real-ref                    ; ACCESSOR
+   #:zero-out-classical-memory          ; FUNCTION
+   #:memory-descriptors-to-qvm-memory-model
+                                        ; FUNCTION
+   #:classical-memory-subsystem         ; CLASS
    )
 
   ;; wavefunction.lisp
@@ -77,10 +81,10 @@
   (:export
    #:pure-state-qvm                     ; CLASS
    #:number-of-qubits                   ; ACCESSOR
-   #:classical-memory-size              ; ACCESSOR
    #:make-qvm                           ; FUNCTION
    #:load-program                       ; FUNCTION
-   #:classical-bit                      ; ACCESSOR
+   #:memory-ref                         ; FUNCTION
+   #:nth-amplitude                      ; FUNCTION
    #:map-amplitudes                     ; FUNCTION
    )
 
@@ -92,7 +96,9 @@
 
   ;; transition.lisp
   (:export
-   #:invalid-gate-invocation            ; CONDITION
+   #:invalid-instruction-encountered    ; CONDITION
+   #:invalid-instruction                ; READER
+   #:invalid-reason                     ; READER
    #:transition                         ; GENERIC, METHOD
    )
 

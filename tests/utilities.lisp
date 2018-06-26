@@ -55,9 +55,9 @@
            (declare (type ,float-type delta))
            (cond
              ((eql x y) t)
-             ((or (zerop x)
-                  (zerop y)
-                  (< delta ,least-normalized))
+             ((or (zerop x) (zerop y))
+              (< delta epsilon))
+             ((< delta ,least-normalized)
               (< delta (* epsilon ,least-normalized)))
              (t
               (let* ((abs-x (abs x))
@@ -69,7 +69,7 @@
        (defun ,name (x y &optional (epsilon *default-epsilon*))
          ;; Doc string
          ,(format nil "Are the ~A numbers X and Y approximately equal ~
-                     within the relative epsilon EPSILON?"
+                       within the relative epsilon EPSILON?"
                   type-name)
          (check-type x real)
          (check-type y real)

@@ -27,8 +27,11 @@
             (transition qvm (current-instruction qvm)))
         :finally (return qvm)))
 
-(defun run-program (num-qubits program &key (classical-memory-size 8))
-  "Run the program PROGRAM on a QVM of NUM-QUBITS qubits, with a classical memory size of CLASSICAL-MEMORY-SIZE."
-  (let ((qvm (make-qvm num-qubits :classical-memory-size classical-memory-size)))
+(defun run-program (num-qubits program)
+  "Run the program PROGRAM on a QVM of NUM-QUBITS qubits."
+  (let ((qvm (make-qvm num-qubits
+                       :classical-memory-model
+                       (memory-descriptors-to-qvm-memory-model
+                        (quil:parsed-program-memory-definitions program)))))
     (load-program qvm program)
     (run qvm)))

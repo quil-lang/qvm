@@ -15,7 +15,8 @@
               :for qs :in qubits
               :for qe :in (reverse qubits)
               :collect (make-instance 'quil:gate-application
-                                      :operator "SWAP"
+                                      :operator #.(quil:named-operator "SWAP")
+                                      :gate (quil:lookup-standard-gate "SWAP")
                                       :arguments (list (quil:qubit qs)
                                                        (quil:qubit qe)))))))
 
@@ -25,7 +26,8 @@
              (destructuring-bind (q . qs) qubits
                (if (null qs)
                    (list (make-instance 'quil:gate-application
-                                        :operator "H"
+                                        :operator #. (quil:named-operator "H")
+                                        :gate (quil:lookup-standard-gate "H")
                                         :arguments (list (quil:qubit q))))
                    (let ((cR nil))
                      (loop :with n := (1+ (length qs))
@@ -34,7 +36,8 @@
                            :for angle := (qvm:flonum (/ pi (expt 2 (- n i))))
                            :do (push (make-instance
                                       'quil:gate-application
-                                      :operator "CPHASE"
+                                      :operator #.(quil:named-operator "CPHASE")
+                                      :gate (quil:lookup-standard-gate "CPHASE")
                                       :parameters (list (quil:constant angle))
                                       :arguments (list (quil:qubit q)
                                                        (quil:qubit qi)))
@@ -43,7 +46,8 @@
                       (qft qs)
                       cR
                       (list (make-instance 'quil:gate-application
-                                           :operator "H"
+                                           :operator #. (quil:named-operator "H")
+                                           :gate (quil:lookup-standard-gate "H")
                                            :arguments (list (quil:qubit q))))))))))
     (make-instance 'quil:parsed-program
                    :gate-definitions nil

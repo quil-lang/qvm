@@ -163,10 +163,14 @@ POVM must be a 4-element list of double-floats.
 
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:gate-application))
-  (let* ((gate (lookup-gate qvm (quil:application-operator instr) :error t))
+  (assert (typep (quil:application-operator instr) 'quil:named-operator)
+          (instr)
+          "The noisy QVM doesn't support gate modifiers.")
+  (let* ((gate-name (quil::operator-description-name (quil:application-operator instr)))
+         (gate (pull-teeth-to-get-a-gate instr))
          (logical-qubits (quil:application-arguments instr))
          (qubits (mapcar #'quil:qubit-index logical-qubits))
-         (kraus-ops (gethash (list (quil:gate-name gate) (mapcar #'quil:qubit-index logical-qubits)) (noisy-gate-definitions qvm))))
+         (kraus-ops (gethash (list gate-name (mapcar #'quil:qubit-index logical-qubits)) (noisy-gate-definitions qvm))))
     (cond
       (kraus-ops
        ;; Found noisy realization of current gate, need to randomly
@@ -232,12 +236,12 @@ POVM must be a 4-element list of double-floats.
 
     ;; randomly corrupt outcome
     (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
-           (a (quil:address-value (quil:measure-address instr)))
-           (c (classical-bit ret-qvm a))
+           (a (quil:measure-address instr))
+           (c (dereference-mref qvm a))
            (povm (gethash q (readout-povms ret-qvm))))
       (when povm
         (destructuring-bind (p00 p01 p10 p11) povm
-          (setf (classical-bit ret-qvm a)
+          (setf (dereference-mref ret-qvm a)
                 (perturb-measurement c p00 p01 p10 p11)))))
     (values
      ret-qvm

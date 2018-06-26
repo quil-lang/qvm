@@ -174,8 +174,7 @@
 
 (defun round-to-next-page (size)
   (check-type size (and fixnum unsigned-byte))
-  (let ((page-size (getpagesize)))
-    (* page-size (ceiling size page-size))))
+  (round-up-to-next-multiple size (getpagesize)))
 
 (defun make-posix-shared-memory (name size)
   "Allocate POSIX shared memory, named by NAME whose size is at least SIZE octets. (It will be rounded to the next multiple of a page.)

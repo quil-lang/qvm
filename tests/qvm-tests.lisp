@@ -14,14 +14,6 @@
     (replace a b)
     (is (equalp a b))))
 
-(deftest test-bit-out-of-range ()
-  "Test that we detect an error when a bit is out of range."
-  (let ((q (make-qvm 1 :classical-memory-size 8)))
-    (signals simple-error
-      (classical-bit q 9))
-    (signals simple-error
-      (classical-bit q -1))))
-
 (deftest test-defgate-persistence ()
   (let ((q1 (qvm:make-qvm 1))
         (q2 (qvm:make-qvm 1)))

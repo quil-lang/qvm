@@ -19,30 +19,32 @@
 (deftest test-simple-measurements ()
   "Test that some simple measurements work."
   (let ((p (with-output-to-quil
+             "DECLARE ro BIT[3]"
              "X 0"
              "X 2"
-             "MEASURE 0 [0]"
-             "MEASURE 1 [1]"
-             "MEASURE 2 [2]")))
+             "MEASURE 0 ro[0]"
+             "MEASURE 1 ro[1]"
+             "MEASURE 2 ro[2]")))
     (let ((qvm (qvm:run-program (cl-quil:qubits-needed p) p)))
-      (is (= 1 (qvm::classical-bit qvm 0)))
-      (is (= 0 (qvm::classical-bit qvm 1)))
-      (is (= 1 (qvm::classical-bit qvm 2))))))
+      (is (= 1 (qvm:memory-ref qvm "ro" 0)))
+      (is (= 0 (qvm:memory-ref qvm "ro" 1)))
+      (is (= 1 (qvm:memory-ref qvm "ro" 2))))))
 
 (deftest test-simple-measurements-with-swap ()
   "Test that some simple measurements work with SWAP."
   (let ((p (with-output-to-quil
+             "DECLARE ro BIT[3]"
              "X 0"
              "X 2"
              "SWAP 0 1"
              "SWAP 0 2"
-             "MEASURE 0 [0]"
-             "MEASURE 1 [1]"
-             "MEASURE 2 [2]")))
+             "MEASURE 0 ro[0]"
+             "MEASURE 1 ro[1]"
+             "MEASURE 2 ro[2]")))
     (let ((qvm (qvm:run-program (cl-quil:qubits-needed p) p)))
-      (is (= 1 (qvm::classical-bit qvm 0)))
-      (is (= 1 (qvm::classical-bit qvm 1)))
-      (is (= 0 (qvm::classical-bit qvm 2))))))
+      (is (= 1 (qvm:memory-ref qvm "ro" 0)))
+      (is (= 1 (qvm:memory-ref qvm "ro" 1)))
+      (is (= 0 (qvm:memory-ref qvm "ro" 2))))))
 
 (deftest test-unit-wavefunction-after-measurements ()
   "Test that the wavefunction is of length nearly 1 after measurements."
@@ -55,14 +57,17 @@
           :do (is (double-float= 1 (sqrt (reduce #'+ (qvm::amplitudes q) :key #'probability)))))))
 
 (defun test-range (program repetitions percent-zeros percent-ones &key (tolerance 0.05))
-  (let ((q (qvm:make-qvm (cl-quil:qubits-needed program)))
+  (let ((q (qvm:make-qvm (cl-quil:qubits-needed program)
+                         :classical-memory-model
+                         (qvm::memory-descriptors-to-qvm-memory-model
+                          (quil:parsed-program-memory-definitions program))))
         (counts (vector 0 0)))
     (qvm:load-program q program)
     (loop :repeat repetitions
           :do (qvm::reset-classical-memory q)
-              (qvm::reset q)
+              (qvm::reset-quantum-state q)
               (qvm:run q)
-              (incf (aref counts (classical-bit q 0))))
+              (incf (aref counts (qvm:memory-ref q "ro" 0))))
     (let ((got-percent-zeros (float (/ (aref counts 0) repetitions)))
           (got-percent-ones  (float (/ (aref counts 1) repetitions))))
       (is (<= (max 0.0 (- percent-zeros tolerance))
@@ -75,9 +80,10 @@
 (deftest test-hadamard-measurements ()
   (let ((n 100000)
         (p (with-output-to-quil
+             "DECLARE ro BIT"
              "I 1"
              "H 0"
-             "MEASURE 0 [0]"
+             "MEASURE 0 ro[0]"
              "RESET")))
     (test-range p n 0.5 0.5)))
 
@@ -86,9 +92,10 @@
          (one (expt (sin (/ pi 4 2)) 2))
          (zero (- 1 one))
          (p (with-output-to-quil
+              "DECLARE ro BIT"
               "I 1"
               "RX(pi/4) 0"
-              "MEASURE 0 [0]"
+              "MEASURE 0 ro[0]"
               "RESET")))
     (test-range p n zero one)))
 
@@ -97,9 +104,10 @@
          (zero (expt (sin (/ pi 4 2)) 2))
          (one (- 1 zero))
          (p (with-output-to-quil
+              "DECLARE ro BIT"
               "I 1"
               "RX(3*pi/4) 0"
-              "MEASURE 0 [0]"
+              "MEASURE 0 ro[0]"
               "RESET")))
     (test-range p n zero one)))
 
@@ -108,9 +116,10 @@
          (one (expt (sin (/ pi 8 2)) 2))
          (zero (- 1 one))
          (p (with-output-to-quil
+              "DECLARE ro BIT"
               "I 1"
               "RX(pi/8) 0"
-              "MEASURE 0 [0]"
+              "MEASURE 0 ro[0]"
               "RESET")))
     (test-range p n zero one)))
 
