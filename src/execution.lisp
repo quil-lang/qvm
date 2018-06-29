@@ -15,8 +15,8 @@
       (compile-loaded-program qvm)
       (when *transition-verbose*
         (format *trace-output* "~&; Compiled in ~D ms.~%"
-                (* (/ 1000 internal-time-units-per-second)
-                   (- (get-internal-real-time) start)))
+                (round (* (/ 1000 internal-time-units-per-second)
+                          (- (get-internal-real-time) start))))
         (finish-output *trace-output*))))
 
   ;; Actually start the execution.
