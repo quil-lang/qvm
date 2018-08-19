@@ -5,7 +5,7 @@ all: qvm-tests
 
 .PHONY: qvm-tests
 qvm-tests: Dockerfile
-	docker build -t qvm-tests -f Dockerfile ../
+	docker build -t qvm-tests -f Dockerfile ../../
 
 .PHONY: test
 test: test.sh
