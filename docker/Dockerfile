@@ -18,4 +18,5 @@ RUN sbcl --eval "(ql:quickload :qvm-tests)" --quit
 ENV LANG C.UTF-8
 
 # executed on docker run
-ENTRYPOINT ["make", "test", "test-ccl", "coverage"]
+# ENTRYPOINT ["make", "test", "test-ccl", "coverage"]
+ENTRYPOINT ["make", "test"]
