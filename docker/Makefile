@@ -11,6 +11,10 @@ qvm-tests: Dockerfile
 test: test.sh
 	./test.sh
 
+.PHONY: push
+push: push.sh
+	./push.sh
+
 .PHONY: clean
 clean: clean.sh
 	./clean.sh
