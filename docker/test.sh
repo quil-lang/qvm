@@ -13,4 +13,4 @@ IMAGE=qvm-tests
 
 mkdir -p "$OUTPUT"
 docker run --ipc=host --name "$CONTAINER" "$IMAGE"
-docker cp "$CONTAINER":"$INPUT" "$OUTPUT"
+# docker cp "$CONTAINER":"$INPUT" "$OUTPUT"
