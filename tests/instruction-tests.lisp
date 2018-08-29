@@ -4,6 +4,11 @@
 
 (in-package #:qvm-tests)
 
+(deftest test-empty-program-regular-qvm ()
+  (let* ((p (with-output-to-quil))
+         (q (run-program 1 p)))
+    (is (double-float= 0 (qubit-probability q 0)))))
+
 (deftest test-defgate ()
   (let* ((p (with-output-to-quil
               "DECLARE ro BIT"

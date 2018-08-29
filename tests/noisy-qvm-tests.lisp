@@ -5,6 +5,18 @@
 
 (in-package #:qvm-tests)
 
+(deftest test-empty-program-depolarizing-qvm ()
+  (let ((p (with-output-to-quil))
+        (q (make-instance 'qvm:depolarizing-qvm
+                          :classical-memory-subsystem nil
+                          :number-of-qubits 1
+                          :x 1/3
+                          :y 1/3
+                          :z 1/3)))
+    (qvm:load-program q p)
+    (qvm:run q)
+    (is (double-float= 0 (qubit-probability q 0)))))
+
 (deftest test-simple-gate-noise ()
   "Test that the noisy gates behave as expected."
   (let ((p (with-output-to-quil
@@ -56,6 +68,14 @@
                       (remove result results-desired :test #'=))))
     (is (plusp tries))))
 
+(deftest test-empty-program-noisy-qvm ()
+  (let ((p (with-output-to-quil))
+        (q (make-instance 'qvm:noisy-qvm
+                          :classical-memory-subsystem nil
+                          :number-of-qubits 1)))
+    (qvm:load-program q p)
+    (qvm:run q)
+    (is (double-float= 0 (qubit-probability q 0)))))
 
 (deftest test-noisy-x-gate ()
   "Test that the noisy gates behave as expected."
