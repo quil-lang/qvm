@@ -48,7 +48,8 @@ Return two values:
 (defmethod transition (qvm (instr quil:unresolved-application))
   (error 'invalid-instruction-encountered
          :instruction instr
-         :because (format nil "the operator ~A is not known" (quil:application-operator instr))))
+         :because (format nil "the operator ~A is not known" (quil::operator-description-root-name
+                                                              (quil:application-operator instr)))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:no-operation))
   (declare (ignore instr))
