@@ -56,7 +56,9 @@ Return two values:
   (values qvm (1+ (pc qvm))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:pragma))
-  (warn "Ignoring PRAGMA: ~A" instr)
+  ;; Ignore the pragma. Warn only when we want verbose output.
+  (when *transition-verbose*
+    (warn "Ignoring PRAGMA: ~A" instr))
   (values qvm (1+ (pc qvm))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:halt))
@@ -87,7 +89,8 @@ Return two values:
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:wait))
   (declare (ignore instr))
-  (warn "WAIT executed. Nothing to wait on.")
+  (when *transition-verbose*
+    (warn "WAIT executed. Nothing to wait on."))
   (values qvm (1+ (pc qvm))))
 
 ;;;;;;;;;;;;;;;;;;;; JUMP, JUMP-WHEN, JUMP-UNLESS ;;;;;;;;;;;;;;;;;;;;
