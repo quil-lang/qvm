@@ -103,7 +103,7 @@
 #+(and unix (not darwin))
 (progn
   (cffi:define-foreign-library libposix
-    (:unix (:or "libposix.so" "librt.so")))
+    (:unix (:or "libposix.so" "librt.so.1")))
 
   (cffi:use-foreign-library libposix))
 
