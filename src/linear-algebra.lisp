@@ -255,3 +255,4 @@ The function will just return NIL, and modify the contents of RESULT."
            (type quantum-state state))
   (psum-dotimes (i (length state))
     (funcall f (aref state i))))
+

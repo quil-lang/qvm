@@ -62,3 +62,14 @@
     (let ((v (random-wavefunction (expt 2 i))))
       (normalize-wavefunction v)
       (is (double-float= 1 (naive-norm v))))))
+
+(deftest test-cdf ()
+  "Test that CUMULATIVE-DISTRIBUTION-FUNCTION seems to work."
+  (is (every #'double-float= #() (qvm::cumulative-distribution-function (qvm::make-vector 0))))
+  (is (every #'double-float= #(1.0d0 2.0d0 3.0d0) (qvm::cumulative-distribution-function
+                                                   (qvm::make-vector 3 1 1 1))))
+  (is (every #'double-float= #(0.5d0 1.0d0 1.5d0) (qvm::cumulative-distribution-function
+                                                   (qvm::make-vector 3
+                                                                     (sqrt 1/2)
+                                                                     (sqrt 1/2)
+                                                                     (sqrt 1/2))))))

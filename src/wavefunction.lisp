@@ -313,3 +313,20 @@ If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH para
 
     ;; Return the wavefunction.
     wavefunction))
+
+(declaim (ftype (function (t) (simple-array flonum (*)))
+                cumulative-distribution-function))
+(defun cumulative-distribution-function (state)
+  "Compute the CDF of a quantum state STATE. This is a vector C such that C_i = sum_{0 <= j <= i} Pr(j)."
+  (check-type state quantum-state)
+  (let* ((n (length state))
+         (cdf (make-array (length state) :element-type 'flonum
+                                         :initial-element (flonum 0))))
+    (declare #.*optimize-dangerously-fast*
+             (type non-negative-fixnum n)
+             (type (simple-array flonum (*)) cdf))
+    (loop :with s :of-type flonum := (flonum 0)
+          :for i :of-type amplitude-address :below n
+          :do (incf s (probability (aref state i)))
+              (setf (aref cdf i) s)
+          :finally (return cdf))))

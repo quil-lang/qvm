@@ -166,6 +166,50 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
                   (setf max mid)))))
     min))
 
+(defun sample-wavefunction-multiple-times (wf num-samples)
+  "Produce NUM-SAMPLES bitstring samples of the wavefunction WF according to its interpretation as a probability distribution."
+  (declare #.*optimize-briskly*
+           (type quantum-state wf)
+           (type non-negative-fixnum num-samples))
+  (loop :with cdf := (cumulative-distribution-function wf)
+        :with samples := (make-array num-samples :element-type 'amplitude-address
+                                                 :initial-element 0)
+        :for trial :below num-samples
+        :for p := (random 1.0d0)
+        :do (setf (aref samples trial)
+                  (loop :with min := 0
+                        :with max := (1- (length wf))
+                        :for mid := (midpoint min max)
+                        ;; We write the binary search in the following
+                        ;; way for the following reasons:
+                        ;;
+                        ;;     * We do not rely on the implementation
+                        ;;       of MIDPOINT, except that
+                        ;;
+                        ;;         A < (MIDPOINT A B) < B
+                        ;;
+                        ;;       provided B - A > 1.
+                        ;;
+                        ;;     * We ensure that every iteration of the
+                        ;;       loop will either reduce the size of
+                        ;;       the interval (i.e., B - A diminishes
+                        ;;       in size), or we terminate.
+                        ;;
+                        ;;     * We don't depend on (AREF CDF MIN)
+                        ;;       being the same as (AREF CDF MID) in
+                        ;;       the case that our interval reduced to
+                        ;;       one of length 1.
+                        ;;
+                        ;;     * We only do lookups in CDF as needed.
+                        :do (cond
+                              ((= min max)       (return min))
+                              ((= 1 (- max min)) (return (if (< (aref cdf min) p)
+                                                             max
+                                                             min)))
+                              ((< (aref cdf mid) p) (setf min mid))
+                              (t                    (setf max mid)))))
+        :finally (return samples)))
+
 ;; XXX: Note that this doesn't follow the API of the above exactly,
 ;; since PS is a vector and not a single number.
 (defun sample-wavefunction-as-distribution (wf ps)
