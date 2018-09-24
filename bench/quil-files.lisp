@@ -15,7 +15,7 @@
                      (merge-pathnames file *bench-files-directory*)))
            (qvm (qvm:make-qvm (cl-quil:qubits-needed program))))
       (benchmark:with-benchmark-sampling
-        (qvm:load-program qvm program)
+        (qvm:load-program qvm program :supersede-memory-subsystem t)
         (qvm:run qvm)))))
 
 (benchmark:define-benchmark bench-25-hadamards ()

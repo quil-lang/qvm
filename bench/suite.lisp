@@ -34,7 +34,7 @@
   (cond
     ((null headless)
      (run-package-benchmarks :package ':qvm-benchmarks
-                             :verbose nil))
+                             :verbose t))
     (t
      (let ((successp (run-package-benchmarks :package ':qvm-benchmarks
                                              :verbose t)))
