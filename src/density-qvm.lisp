@@ -4,32 +4,43 @@
 
 (in-package #:qvm)
 
-;;; This file implements efficient density matrix evolution.
+;;; This file implements inefficient density matrix evolution.
 
 
 (defclass density-qvm (pure-state-qvm)
-  ((temporary-state :accessor temporary-state
+  ((matrix-view :accessor density-matrix-view
+                :initform nil
+                :documentation "This is a 2D array displaced to the underlying QVM amplitudes.")
+   (temporary-state :accessor temporary-state
                     :initform nil
                     :documentation "Sometimes the simulation needs to use some temporary state. We save it so we don't have to alloc/dealloc frequently."))
   (:documentation "A density matrix simulator."))
 
 ;;; Creation and Initialization
 
-
-;;; TODO XXX: the density matrix should have only real entries
-;;; (except in intermediate computations)
-(defun make-density-qvm (num-qubits)
-  ;; The amplitudes actually represent the entries of the density
-  ;; matrix in row-major order. For a system of N qubits, the
-  ;; density matrix is 2^N x 2^N, hence a total of 2^(2N) entries.
-  (let ((density-matrix (make-vector (expt 2 (* 2 num-qubits)))))
+(defmethod initialize-instance :after ((qvm density-qvm) &rest args)
+  (declare (ignore args))
+  ;; Note: This currently throws away whatever the PURE-STATE-QVM :AFTER
+  ;; method allocated (e.g. amplitudes vector of the wrong size).
+  (let* ((num-qubits (number-of-qubits qvm))
+         (dim        (expt 2 num-qubits))
+         ;; The amplitudes actually represent the entries of the density
+         ;; matrix in row-major order. For a system of N qubits, the
+         ;; density matrix is 2^N x 2^N, hence a total of 2^(2N) entries.
+         (vec-density (make-vector (expt dim 2)))
+         (density-matrix (make-array (list dim dim)
+                                     :element-type (array-element-type vec-density)
+                                     :displaced-to vec-density)))
     ;; It just so happens that the pure, zero state is the same in
     ;; this formalism, i.e., a 1 in the first entry.
-    (bring-to-zero-state density-matrix)
-    (make-instance 'density-qvm
-                   :number-of-qubits num-qubits
-                   :amplitudes density-matrix)))
+    (bring-to-zero-state vec-density)
+    (setf (amplitudes qvm) vec-density)
+    (setf (density-matrix-view qvm) density-matrix)))
 
+
+(defun make-density-qvm (num-qubits)
+  (make-instance 'density-qvm
+                 :number-of-qubits num-qubits))
 
 
 (adt:defdata superoperator
@@ -140,46 +151,36 @@
   "The probability that the physical qubit addressed by QUBIT is 1."
   
   ;; TODO XXX optimize
-  (let ((sum (flonum 0)))
+  (let ((sum (flonum 0))
+        (density-matrix (density-matrix-view qvm)))
     ;; This is a sum along the diagonal of the density-matrix
     (dotimes (i (half (expt 2 (number-of-qubits qvm))) sum)
       (let ((address (index-to-address i qubit 1)))
-        (incf sum (realpart (density-matrix-entry qvm address address)))))))
+        (incf sum (realpart (aref density-matrix address address)))))))
 
-(defun density-matrix-entry (qvm i j)
-  "Returns the i,j entry of the density matrix encoded by the density matrix qvm."
-  
-  ;;  TODO XXX type checks here
 
-  ;; wf is vec(ρ), ρ[i,j] has index i*2^n + j where n is the number of qubits  
-  (let* ((n (number-of-qubits qvm))
-         (index (+ (* i (expt 2 n)) j)))
-    (aref (amplitudes qvm) index)))
-
-(defun (setf density-matrix-entry) (value qvm i j)
-  (let* ((n (number-of-qubits qvm))
-         (index (+ (* i (expt 2 n)) j)))
-    (setf (aref (amplitudes qvm) index) value)))
 
 (defun density-qvm-force-measurement (measured-value qubit qvm excited-probability)
-  "Forse the quantum system VM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.
+  "Force the quantum system VM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.
 
 EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
 "
   ;; measurement of qubit i corresponds to roughly this:
   ;; if outcome = 0, set rows/columns corresponding to i = 1 to zero
   ;; if outcome = 1, set rows/columns corresponding to i = 0 to zero
-  (let* ((annihilated-state (- 1 measured-value))
+  (let* ((density-matrix (density-matrix-view qvm))
+         (annihilated-state (- 1 measured-value))
          (inv-norm (if (zerop annihilated-state)
                        (/ excited-probability)
                        (/ (- (flonum 1) excited-probability)))))
-    (dotimes (i (number-of-qubits qvm) qvm)
-      (dotimes (j (number-of-qubits qvm))
-        (if (or (= annihilated-state (ldb (byte 1 qubit) i))
+    (destructuring-bind (rows cols) (array-dimensions density-matrix)
+      (dotimes (i rows qvm)
+        (dotimes (j cols)
+          (if (or (= annihilated-state (ldb (byte 1 qubit) i))
                 (= annihilated-state (ldb (byte 1 qubit) j)))
-            (setf (density-matrix-entry qvm i j) (cflonum 0))
-            (setf (density-matrix-entry qvm i j) (* inv-norm (density-matrix-entry qvm i j)))))))
-  )
+              (setf (aref density-matrix i j) (cflonum 0))
+              (setf (aref density-matrix i j)
+                    (* inv-norm (aref density-matrix i j)))))))))
 
 (defmethod measure ((qvm density-qvm) q c)
   (check-type c (or null quil:memory-ref))
@@ -202,11 +203,3 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
 (defmethod measure-all ((qvm density-qvm))
   (loop :for q :upto (number-of-qubits qvm)
         :collect (measure qvm q nil)))
-
-
-(defun density-matrix-trace (qvm)
-  "Compute the trace of the density matrix associated with density qvm."
-  (let ((sum (flonum 0)))
-    ;; This is a sum along the diagonal of the density-matrix
-    (dotimes (i (expt 2 (number-of-qubits qvm)) sum)
-      (incf sum (realpart (density-matrix-entry qvm i i))))))
