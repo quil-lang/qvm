@@ -221,6 +221,8 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
                  arefs))))
            :dotimes-iterator +dotimes-iterator+)))))
 
+(defvar *unrolling-size* 0 "Maximum number of loop body duplications in loop unrolling. Zero disables unrolling.")
+
 (defun generate-single-qubit-measurement-code (qubit)
   (declare (type nat-tuple-element qubit))
   (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero inv-norm delete-address mask keep-address)
@@ -259,26 +261,41 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
            ;; DELETE-ADDRESS = to be projected out
            ,(cond
               ((zerop qubit)
-               `(loop :for ,address :of-type non-negative-fixnum :from (if ,keep-zero 0 1) :below ,size :by 2
-                      :for ,delete-address :of-type non-negative-fixnum := (logxor ,address 1)
-                      :do
-
-                         (setf (aref ,wavefunction ,address) (* ,inv-norm (aref ,wavefunction ,address))
-                               (aref ,wavefunction ,delete-address) (cflonum 0))))
+               `(loop :for ,keep-address :of-type non-negative-fixnum :from (if ,keep-zero 0 1) :below ,size :by 2
+                      :for ,delete-address :of-type non-negative-fixnum := (logxor ,keep-address 1)
+                      :do (setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
+                                (aref ,wavefunction ,delete-address) (cflonum 0))))
               (t
                (let ((jump (ash 1 qubit)))
                  `(loop :with ,address :of-type non-negative-fixnum := 0
                         :with ,mask := (if ,keep-zero 0 ,jump)
                         :while (< ,address ,size)
                         :do (progn
-                              (loop :repeat ,jump
-                                    :for ,keep-address :of-type non-negative-fixnum := (logior ,address ,mask)
-                                    :for ,delete-address :of-type non-negative-fixnum := (logxor ,keep-address ,jump)
-                                    :do
-                                       (setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
-                                             (aref ,wavefunction ,delete-address) (cflonum 0))
-                                (incf ,address))
-                              (incf ,address ,jump))))))
+                              ;; decide on unrolling
+                              ,(if (<= jump *unrolling-size*)
+                                   ;; yes unroll
+                                   `(let* ((,keep-address   (logior ,address ,mask))
+                                           (,delete-address (logxor ,keep-address ,jump)))
+                                      (declare (type non-negative-fixnum ,keep-address ,delete-address))
+                                      ,@(loop
+                                          :repeat jump
+                                          :append `((setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
+                                                          (aref ,wavefunction ,delete-address) (cflonum 0))
+                                                    ;; increment lower half of address
+                                                    (incf ,keep-address)
+                                                    (incf ,delete-address))))
+                                   ;; no don't unroll
+                                   `(loop :with ,keep-address :of-type non-negative-fixnum := (logior ,address ,mask)
+                                          :with ,delete-address :of-type non-negative-fixnum := (logxor ,keep-address ,jump)
+                                          :repeat ,jump
+                                          :do
+                                             (setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
+                                                   (aref ,wavefunction ,delete-address) (cflonum 0))
+                                             ;; increment lower half of address
+                                             (incf ,keep-address)
+                                             (incf ,delete-address)))
+                              ;; increment upper half of address
+                              (incf ,address ,(* 2 jump)))))))
            ;; Return what we kept (aka measured).
            (if ,keep-zero 0 1))))))
 
