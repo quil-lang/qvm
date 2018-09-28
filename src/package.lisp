@@ -127,6 +127,12 @@
    #:set-noisy-gate                     ; FUNCTION
    )
 
+  ;; density-qvm
+  (:export
+   #:density-qvm                        ; CLASS
+   #:make-density-qvm                   ; FUNCTION
+   )
+
   ;; path-simulate.lisp
   (:export
    #:path-simulate                      ; FUNCTION

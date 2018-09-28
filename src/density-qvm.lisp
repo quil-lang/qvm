@@ -1,6 +1,7 @@
 ;;;; src/density-qvm.lisp
 ;;;;
-;;;; Author: Robert Smith
+;;;; Authors: Robert Smith
+;;;;          Erik Davis
 
 (in-package #:qvm)
 
@@ -115,8 +116,6 @@
           ;; allocated.
           (values vec-density sum)))))))
 
-
-
 (defmethod transition ((qvm density-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator)
           (instr)
@@ -144,7 +143,6 @@
     (values
      qvm
      (1+ (pc qvm)))))
-
 
 
 (defun density-qvm-qubit-probability (qvm qubit)

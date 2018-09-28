@@ -59,6 +59,7 @@
                (:file "transition-classical-instructions")
                (:file "depolarizing-noise")
                (:file "noisy-qvm")
+               (:file "density-qvm")
                (:file "execution")
                (:file "path-simulate")
                (:file "misc")))
