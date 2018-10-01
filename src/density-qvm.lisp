@@ -14,7 +14,11 @@
                 :documentation "This is a 2D array displaced to the underlying QVM amplitudes.")
    (temporary-state :accessor temporary-state
                     :initform nil
-                    :documentation "Sometimes the simulation needs to use some temporary state. We save it so we don't have to alloc/dealloc frequently."))
+                    :documentation "Sometimes the simulation needs to use some temporary state. We save it so we don't have to alloc/dealloc frequently.")
+   (noisy-gate-definitions :initarg :noisy-gate-definitions
+                           :accessor noisy-gate-definitions
+                           :initform (make-hash-table :test 'equalp)
+                           :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS."))
   (:documentation "A density matrix simulator."))
 
 ;;; Creation and Initialization
@@ -49,11 +53,10 @@
   ;; Let ' mean † aka conjugate transpose.
   ;;
   ;; ρ ↦ U ρ U'
-  (plain-unitary quil:gate)
-  ;; ρ ↦ A ρ B
-  (left-right quil:gate quil:gate)
-  ;; ρ ↦ ∑ᵢ Aᵢ ρ Bᵢ
-  (linear-combo list))
+  (single-kraus quil:gate)
+  ;; ρ ↦ ∑ᵢ Aᵢ ρ Aᵢ'
+  (kraus-list list))
+
 
 (defmethod apply-superoperator (sop vec-density qubits ghost-qubits &key temporary-storage)
   "Apply a superoperator to a vectorized density matrix."
@@ -65,7 +68,7 @@
   ;; where vec(·) is row-major vectorization. The quantity vec(ρ) is
   ;; the VEC-DENSITY argument.
   (adt:match superoperator sop
-    ((plain-unitary U)
+    ((single-kraus U)
      ;; (U ⊗ U'ᵀ) = (U ⊗ U*), where * is entrywise conjugate.
      (let ((U* (make-instance 'quil:simple-gate
                               :name (concatenate 'string (quil:gate-name U) "*")
@@ -74,17 +77,7 @@
        (apply-gate U* vec-density qubits)
        (apply-gate U  vec-density ghost-qubits)
        (values vec-density temporary-storage)))
-
-    ((left-right A B)
-     (let ((BT (make-instance 'quil:simple-gate
-                              :name (concatenate 'string (quil:gate-name B) "T")
-                              :dimension (quil:gate-dimension B)
-                              :matrix (magicl:transpose (quil:gate-matrix B)))))
-       (apply-gate BT vec-density qubits)
-       (apply-gate A  vec-density ghost-qubits)
-       (values vec-density temporary-storage)))
-
-    ((linear-combo list)
+    ((kraus-list list)
      (cond
        ;; Empty. Just treat as identity.
        ((endp list)
@@ -116,29 +109,42 @@
           ;; allocated.
           (values vec-density sum)))))))
 
+
+(defmethod set-noisy-gate ((qvm density-qvm) gate-name qubits kraus-ops)
+  (check-kraus-ops kraus-ops)
+  ;; Wrap a matrix in a gate in a superoperator...
+  (labels ((make-temp-sop  (mat)
+             (single-kraus
+              (make-instance 'quil:simple-gate
+                             :name (string (gensym "KRAUS-TEMP"))
+                             :dimension (quil:gate-dimension mat)
+                             :matrix mat))))
+    (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm))
+          (kraus-list (mapcar #'make-temp-sop kraus-ops)))))
+
+
 (defmethod transition ((qvm density-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator)
           (instr)
           "The noisy QVM doesn't support gate modifiers.")
-  (let*  ((gate (pull-teeth-to-get-a-gate instr))
+  (let*  ((gate-name (quil::operator-description-name (quil:application-operator instr)))
+          (gate (pull-teeth-to-get-a-gate instr))
           (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
-          (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits)))
+          (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits))
+          (kraus-ops (gethash (list gate-name qubits) (noisy-gate-definitions qvm))))
 
     ;; TODO XXX handle parametric gates or at least error out
 
-    ;; Normalize the gate to a superoperator.
-    (unless (typep gate 'superoperator)
-      (setf gate (plain-unitary gate)))
-
-    ;; Do the superoperator application.
-    (multiple-value-bind (new-density temp-storage)
-        (apply-superoperator gate
-                             (amplitudes qvm)
-                             (apply #'nat-tuple qubits)
-                             (apply #'nat-tuple ghosts)
-                             :temporary-storage (temporary-state qvm))
-      (declare (ignore new-density))
-      (setf (temporary-state qvm) temp-storage)) ; stash this away for future use
+    (let ((sop (or kraus-ops (single-kraus gate))))
+      ;; Do the superoperator application.
+      (multiple-value-bind (new-density temp-storage)
+          (apply-superoperator sop
+                               (amplitudes qvm)
+                               (apply #'nat-tuple qubits)
+                               (apply #'nat-tuple ghosts)
+                               :temporary-storage (temporary-state qvm))
+        (declare (ignore new-density))
+        (setf (temporary-state qvm) temp-storage))) ; stash this away for future use
 
     (values
      qvm

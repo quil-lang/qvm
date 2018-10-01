@@ -50,7 +50,42 @@
       (qvm::density-qvm-force-measurement 1 3 qvm p)
       (is (qvm-tests::double-float= 1 (density-matrix-trace qvm))))))
 
+
+(deftest test-density-qvm-1q-with-kraus ()
+  (let ((qvm (qvm::make-density-qvm 1)))
+    ;; an equal mix of I and X
+    (set-noisy-gate qvm "I" '(0) (qvm::make-pauli-perturbed-1q-gate "I" 0.5 0.0 0.0))
+    (load-program qvm (with-output-to-quil "I 0"))
+    (run qvm)
+
+    (let ((expected-density #(0.5 0.0
+                              0.0 0.5)))
+      (is (every (lambda (a b)
+                 (and (double-float= (realpart a) (realpart b) 1/10000)
+                      (double-float= (imagpart a) (imagpart b) 1/10000)))
+               (qvm::amplitudes qvm)
+               expected-density)))))
+
+(deftest test-density-qvm-2q-with-kraus ()
+  (let ((qvm-classic (qvm::make-density-qvm 2))
+        (qvm-kraus (qvm::make-density-qvm 2)))
+    (load-program qvm-classic (with-output-to-quil "X 1"))
+    (run qvm-classic)
+
+    ;; set up a noisy version of I 1 that should be equivalent to X 1
+    (set-noisy-gate qvm-kraus "I" '(1) (qvm::make-pauli-perturbed-1q-gate "I" 1.0 0.0 0.0))
+    (load-program qvm-kraus (with-output-to-quil "I 1"))
+    (run qvm-kraus)
+
+    (is (every (lambda (a b)
+                 (and (double-float= (realpart a) (realpart b) 1/10000)
+                      (double-float= (imagpart a) (imagpart b) 1/10000)))
+               (qvm::amplitudes qvm-classic)
+               (qvm::amplitudes qvm-kraus)))))
+
+
 (defun load-density-from-matrix! (qvm mat)
+  "Overwrites the density matrix of the density-qvm QVM with values from the magicl matrix MAT."
   (check-type mat magicl:matrix)
   (assert (equal (array-dimensions (qvm::density-matrix-view qvm))
                  (list (magicl:matrix-rows mat) (magicl:matrix-cols mat)))

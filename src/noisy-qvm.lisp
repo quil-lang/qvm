@@ -135,16 +135,17 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
 
-
-(defun set-noisy-gate (qvm gate-name qubits kraus-ops)
-  "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
+(defgeneric set-noisy-gate (qvm gate-name qubits kraus-ops)
+  (:documentation   "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
 GATE-NAME in terms of the Kraus operator representation
 
    rho -> sum_{j=1}^n K_j rho K_j^H.
 
 The argument KRAUS-OPS should hold the Kraus operators as list of
-MAGICL matrices '(K1 K2 ... Kn)."
-  (check-type qvm noisy-qvm)
+MAGICL matrices '(K1 K2 ... Kn)."))
+
+
+(defmethod set-noisy-gate ((qvm noisy-qvm) gate-name qubits kraus-ops)
   (check-kraus-ops kraus-ops)
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm)) kraus-ops)
   nil)
