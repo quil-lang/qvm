@@ -23,24 +23,29 @@
 
 ;;; Creation and Initialization
 
+
 (defmethod initialize-instance :after ((qvm density-qvm) &rest args)
   (declare (ignore args))
-  ;; Note: This currently throws away whatever the PURE-STATE-QVM :AFTER
-  ;; method allocated (e.g. amplitudes vector of the wrong size).
   (let* ((num-qubits (number-of-qubits qvm))
-         (dim        (expt 2 num-qubits))
-         ;; The amplitudes actually represent the entries of the density
-         ;; matrix in row-major order. For a system of N qubits, the
-         ;; density matrix is 2^N x 2^N, hence a total of 2^(2N) entries.
-         (vec-density (make-vector (expt dim 2)))
-         (density-matrix (make-array (list dim dim)
-                                     :element-type (array-element-type vec-density)
-                                     :displaced-to vec-density)))
+         (dim        (expt 2 num-qubits)))
+
+    ;; The amplitudes actually represent the entries of the density
+    ;; matrix in row-major order. For a system of N qubits, the
+    ;; density matrix is 2^N x 2^N, hence a total of 2^(2N) entries.
+
+    ;; It's possible that some other INITIALIZE-INSTANCE made something with the wrong size.
+    ;; If so, we just make a new vector.
+    ;; TODO XXX think of a better way of dealing with this
+    (unless (= (length (amplitudes qvm)) (expt dim 2))
+      (setf (amplitudes qvm) (make-vector (expt dim 2))))
+    
     ;; It just so happens that the pure, zero state is the same in
     ;; this formalism, i.e., a 1 in the first entry.
-    (bring-to-zero-state vec-density)
-    (setf (amplitudes qvm) vec-density)
-    (setf (density-matrix-view qvm) density-matrix)))
+    (bring-to-zero-state (amplitudes qvm))
+    (setf (density-matrix-view qvm)
+          (make-array (list dim dim)
+                      :element-type (array-element-type (amplitudes qvm))
+                      :displaced-to (amplitudes qvm)))))
 
 
 (defun make-density-qvm (num-qubits)
