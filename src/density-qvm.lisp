@@ -21,6 +21,10 @@
                            :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS."))
   (:documentation "A density matrix simulator."))
 
+(defmethod reset-quantum-state ((qvm density-qvm))
+  (bring-to-zero-state (amplitudes qvm))
+  qvm)
+
 ;;; Creation and Initialization
 
 
@@ -37,11 +41,11 @@
     ;; If so, we just make a new vector.
     ;; TODO XXX think of a better way of dealing with this
     (unless (= (length (amplitudes qvm)) (expt dim 2))
-      (setf (amplitudes qvm) (make-vector (expt dim 2))))
+      (setf (amplitudes qvm) (make-vector (expt dim 2)))
+      (reset-quantum-state qvm))
     
     ;; It just so happens that the pure, zero state is the same in
     ;; this formalism, i.e., a 1 in the first entry.
-    (bring-to-zero-state (amplitudes qvm))
     (setf (density-matrix-view qvm)
           (make-array (list dim dim)
                       :element-type (array-element-type (amplitudes qvm))
@@ -52,6 +56,11 @@
   (make-instance 'density-qvm
                  :number-of-qubits num-qubits))
 
+(defun full-density-number-of-qubits (vec-density)
+  "Computes the number of qubits encoded by a vectorized density matrix."
+  (values
+   (floor (log (sqrt (length vec-density)) 2))))
+
 
 (adt:defdata superoperator
   "Representation of a linear operator on density operators."
@@ -61,6 +70,14 @@
   (single-kraus quil:gate)
   ;; ρ ↦ ∑ᵢ Aᵢ ρ Aᵢ'
   (kraus-list list))
+
+(defun lift-matrix-to-superoperator (mat)
+  "Converts a magicl matrix MAT into a superoperator."
+  (single-kraus
+   (make-instance 'quil:simple-gate
+                  :name (string (gensym "KRAUS-TEMP"))
+                  :dimension (quil:gate-dimension mat)
+                  :matrix mat)))
 
 
 (defmethod apply-superoperator (sop vec-density qubits ghost-qubits &key temporary-storage)
@@ -118,14 +135,8 @@
 (defmethod set-noisy-gate ((qvm density-qvm) gate-name qubits kraus-ops)
   (check-kraus-ops kraus-ops)
   ;; Wrap a matrix in a gate in a superoperator...
-  (labels ((make-temp-sop  (mat)
-             (single-kraus
-              (make-instance 'quil:simple-gate
-                             :name (string (gensym "KRAUS-TEMP"))
-                             :dimension (quil:gate-dimension mat)
-                             :matrix mat))))
-    (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm))
-          (kraus-list (mapcar #'make-temp-sop kraus-ops)))))
+  (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm))
+        (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))
 
 
 (defmethod transition ((qvm density-qvm) (instr quil:gate-application))
