@@ -1,6 +1,6 @@
 ;;;; bench/suite.lisp
 ;;;;
-;;;; Author: Robert Smith
+;;;; Author: Robert Smith, Mark Skilbeck
 
 (in-package #:qvm-benchmarks)
 
@@ -28,15 +28,15 @@
                                    (serialize-alist statistics)))))))
                results))))
 
-(defun run-benchmarks (&key (headless nil))
+(defun run-benchmarks (&key (headless nil) (verbose nil))
   "Run all QVM benchmarks. If HEADLESS is T, quit on completion."
   (qvm:prepare-for-parallelization)
-  (cond
-    ((null headless)
-     (run-package-benchmarks :package ':qvm-benchmarks
-                             :verbose t))
-    (t
-     (let ((successp (run-package-benchmarks :package ':qvm-benchmarks
-                                             :verbose t)))
-       (uiop:quit (if successp 0 1))))))
+  (let ((results (run-package-benchmarks :package ':qvm-benchmarks
+                                         :verbose nil)))
+    (cond
+      ((null headless)
+       (when verbose (benchmark:report results))
+       results)
+      (t
+       (uiop:quit (if results 0 1))))))
 

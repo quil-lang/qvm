@@ -1,6 +1,6 @@
 ;;;; bench/quil-files.lisp
 ;;;;
-;;;; Author: Robert Smith
+;;;; Author: Robert Smith, Mark Skilbeck
 
 (in-package #:qvm-benchmarks)
 
@@ -37,3 +37,8 @@
 (benchmark:define-benchmark bench-supremacy ()
   "Benchmark sample code from supremacy studies."
   (timed-run "5x4x25.quil"))
+
+(benchmark:define-benchmark bench-entangle-25 ()
+  "Benchmark an entanglement of 25 qubits"
+  (timed-run "entangle-25.quil"))
+
