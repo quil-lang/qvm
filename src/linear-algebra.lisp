@@ -54,6 +54,11 @@
   "The number of octets required to represent a state of N qubits."
   (* (expt 2 n) +octets-per-cflonum+))
 
+(defun octets-required-for-quantum-state (state)
+  "The number of octets reqquired to represent a given quantum state."
+  (check-type state quantum-state)
+  (* +octets-per-cflonum+ (length state)))
+
 (declaim (ftype (function (non-negative-fixnum &rest number) quantum-state) make-vector))
 (defun make-vector (size &rest elements)
   "Make a SIZE-length complex vector whose elements are ELEMENTS."

@@ -86,6 +86,7 @@
    #:memory-ref                         ; FUNCTION
    #:nth-amplitude                      ; FUNCTION
    #:map-amplitudes                     ; FUNCTION
+   #:octets-required-for-quantum-state  ; FUNCTION
    )
 
   ;; measurement.lisp
