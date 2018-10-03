@@ -22,6 +22,14 @@
          (squared     (magicl:multiply-complex-matrices density-mat density-mat)))
     (realpart (reduce #'+ (magicl:matrix-diagonal squared)))))
 
+(deftest test-density-qvm-parametric-gate ()
+  "Density qvm can apply parametric gates."
+    (let* ((qvm (qvm::make-density-qvm 1)))
+      (load-program qvm (with-output-to-quil
+                            (format t "DEFGATE G(%a):~%    cos(%a), sin(%a)~%    -sin(%a), cos(%a)~%G(0.0) 0")))
+      (run qvm)
+      (is (double-float= 1 (realpart (aref (qvm::density-matrix-view qvm) 0 0)) 1/10000))))
+
 
 (deftest test-density-qvm-force-measurement-1q ()
   "Measurement on 1q density matrix qvm behaves as expected."
