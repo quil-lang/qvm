@@ -244,35 +244,6 @@ The function will just return NIL, and modify the contents of RESULT."
                   (setf (aref result (+ y u) (+ x v))
                         (* Aij (aref B u v))))))))))))
 
-
-(defmacro psum-dotimes ((i range) &body body)
-  "Compute the sum of BODY for I in ranging over 0 <= I < RANGE. RANGE must be a non-negative fixnum."
-  (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function ranges)
-    (alexandria:once-only (range)
-      `(if (< ,range (expt 2 *qubits-required-for-parallelization*))
-           (locally (declare #.*optimize-dangerously-fast*)
-             (loop :with ,sum :of-type flonum := (flonum 0)
-                   :for ,i :of-type non-negative-fixnum :below ,range
-                   :do (incf ,sum (the flonum (progn ,@body)))
-                   :finally (return ,sum)))
-           (flet ((,worker-function (,start ,end)
-                    (declare (type non-negative-fixnum ,start)
-                             (type non-negative-fixnum ,end))
-                    (locally (declare #.*optimize-dangerously-fast*)
-                      (loop :with ,partial-sum :of-type flonum := (flonum 0)
-                            :for ,i :of-type non-negative-fixnum :from ,start :below ,end
-                            :do (incf ,partial-sum (the flonum (progn ,@body)))
-                            :finally (return ,partial-sum)))))
-             (declare (dynamic-extent #',worker-function)
-                      (ftype (function (non-negative-fixnum non-negative-fixnum) flonum) ,worker-function))
-             (let* ((,ch (lparallel:make-channel))
-                    (,num-tasks (lparallel:kernel-worker-count))
-                    (,ranges (subdivide ,range ,num-tasks)))
-               (loop :for (,start . ,end) :in ,ranges
-                     :do (lparallel:submit-task ,ch #',worker-function ,start ,end))
-               (loop :repeat (length ,ranges)
-                     :sum (lparallel:receive-result ,ch) :of-type flonum)))))))
-
 (declaim (ftype (function ( (function (cflonum) flonum)
                             quantum-state
                           )

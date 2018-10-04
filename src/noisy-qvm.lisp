@@ -136,7 +136,7 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
 
 (defgeneric set-noisy-gate (qvm gate-name qubits kraus-ops)
-  (:documentation   "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
+  (:documentation "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
 GATE-NAME in terms of the Kraus operator representation
 
    rho -> sum_{j=1}^n K_j rho K_j^H.

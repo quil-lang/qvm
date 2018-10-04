@@ -5,10 +5,23 @@
 
 (in-package #:qvm)
 
-;;; This file implements inefficient density matrix evolution.
+;;; This file implements density matrix evolution.
+
+
+;;; General Overview
+
+;;; The general approach taken here is that the DENSITY-QVM inherits
+;;; most of its behavior from the PURE-STATE-QVM, but provides more
+;;; specific methods for a few operations (namely TRANSITION, MEASURE,
+;;; and MEASURE-ALL). A density matrix ρ of n qubits is represented in
+;;; a PURE-STATE-QVM as a 2n qubit vector of amplitudes, vec(ρ). On
+;;; the other hand, the DENSITY-QVM also maintains a 2^n x 2^n array
+;;; displaced to vec(ρ), for convenience. See below for the definition
+;;; of vec(ρ).
+
 
 (defclass density-qvm (pure-state-qvm)
-  ((matrix-view :accessor density-matrix-view
+  ((matrix-view :reader density-matrix-view
                 :initform nil
                 :documentation "This is a 2D array displaced to the underlying QVM amplitudes.")
    (temporary-state :accessor temporary-state
@@ -20,35 +33,41 @@
                            :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS."))
   (:documentation "A density matrix simulator."))
 
-(defmethod reset-quantum-state ((qvm density-qvm))
-  (bring-to-zero-state (amplitudes qvm))
-  qvm)
 
 ;;; Creation and Initialization
-
 
 (defmethod initialize-instance :after ((qvm density-qvm) &rest args)
   (declare (ignore args))
   (let* ((num-qubits (number-of-qubits qvm))
          (dim        (expt 2 num-qubits)))
 
-    ;; The amplitudes actually represent the entries of the density
-    ;; matrix in row-major order. For a system of N qubits, the
-    ;; density matrix is 2^N x 2^N, hence a total of 2^(2N) entries.
+    ;; The amplitudes store vec(ρ), i.e. the entries of the density
+    ;; matrix ρ in row-major order. For a system of N qubits, ρ has
+    ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
 
-    ;; It's possible that some other INITIALIZE-INSTANCE made something with the wrong size.
-    ;; If so, we just make a new vector.
-    ;; TODO XXX think of a better way of dealing with this
-    (unless (= (length (amplitudes qvm)) (expt dim 2))
-      (setf (amplitudes qvm) (make-vector (expt dim 2)))
-      (reset-quantum-state qvm))
+    ;; It's possible that the PURE-STATE-QVM's INITIALIZE-INSTANCE
+    ;; made something with the wrong size.  If so, we just make a new
+    ;; vector.
+    (unless (and (slot-boundp qvm 'amplitudes)
+                 (not (null (slot-value qvm 'amplitudes)))
+                 (= (length (amplitudes qvm)) (expt dim 2)))
+      ;; The initial state is the pure zero state, which is
+      ;; represented by all zero entries except for a 1 in the first
+      ;; position. See also RESET-QUANTUM-STATE, which we avoid
+      ;; calling here because it performs an additional full traversal
+      ;; of the vector.
+      (setf (slot-value qvm 'amplitudes) (make-vector (expt dim 2) 1)))
     
-    ;; It just so happens that the pure, zero state is the same in
-    ;; this formalism, i.e., a 1 in the first entry.
-    (setf (density-matrix-view qvm)
+    (setf (slot-value qvm 'matrix-view)
           (make-array (list dim dim)
                       :element-type (array-element-type (amplitudes qvm))
                       :displaced-to (amplitudes qvm)))))
+
+(defmethod reset-quantum-state ((qvm density-qvm))
+  ;; It just so happens that the pure, zero state is the same in
+  ;; this formalism, i.e., a 1 in the first entry.
+  (bring-to-zero-state (amplitudes qvm))
+  qvm)
 
 
 (defun make-density-qvm (num-qubits)
@@ -57,8 +76,22 @@
 
 (defun full-density-number-of-qubits (vec-density)
   "Computes the number of qubits encoded by a vectorized density matrix."
-  (values
-   (floor (log (sqrt (length vec-density)) 2))))
+  (1- (integer-length (isqrt (length vec-density)))))
+
+
+;;; Superoperators
+
+;;; Ordinary gates, as well as user-specified "Kraus operators", are
+;;; represented by a SUPEROPERATOR type. The quil syntax for
+;;; specifying Kraus operators is the same here as in the NOISY-QVM --
+;;; namely, through pragmas a user may specify a "noisy gate" on a
+;;; specific set of qubits, and during DENSITY-QVM evaluation such a
+;;; noisy gate definition will replace the usual unitary one. The
+;;; primary difference between the DENSITY-QVM and the NOISY-QVM in
+;;; this regard is that application of a noisy gate in the DENSITY-QVM
+;;; is completely deterministic and "folds all of the noisy" into the
+;;; density matrix, whereas the NOISY-QVM is nondeterministic and
+;;; tracks only a specific realization of the gate noise.
 
 
 (adt:defdata superoperator
@@ -70,6 +103,12 @@
   ;; ρ ↦ ∑ᵢ Aᵢ ρ Aᵢ'
   (kraus-list list))
 
+(defmethod set-noisy-gate ((qvm density-qvm) gate-name qubits kraus-ops)
+  (check-kraus-ops kraus-ops)
+  ;; Wrap a matrix in a gate in a superoperator...
+  (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm))
+        (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))
+
 (defun lift-matrix-to-superoperator (mat)
   "Converts a magicl matrix MAT into a superoperator."
   (single-kraus
@@ -78,9 +117,35 @@
                   :dimension (quil:gate-dimension mat)
                   :matrix mat)))
 
+(defgeneric conjugate-entrywise (gate)
+  (:documentation "Construct a new gate from GATE with corresponding matrix entries conjugated.")
+  (:method ((gate quil:simple-gate))
+    (make-instance 'quil:simple-gate
+                   :name (concatenate 'string (quil:gate-name gate) "*")
+                   :dimension (quil:gate-dimension gate)
+                   :matrix (magicl:conjugate-entrywise (quil:gate-matrix gate))))
+  (:method ((gate quil:permutation-gate))
+    (make-instance 'quil:permutation-gate
+                   :name (concatenate 'string (quil:gate-name gate) "*")
+                   :dimension (quil:gate-dimension gate)
+                   :permutation (quil:permutation-gate-permutation gate)))
+  (:method ((gate quil:parameterized-gate))
+    (make-instance 'quil:parameterized-gate
+                   :name (concatenate 'string (quil:gate-name gate) "*")
+                   :dimension (quil:gate-dimension gate)
+                   :matrix-function #'(lambda (&rest parameters)
+                                        (magicl:conjugate-entrywise
+                                         (apply #'quil:gate-matrix gate parameters))))))
+
 
 (defmethod apply-superoperator (sop vec-density qubits ghost-qubits &key temporary-storage params)
-  "Apply a superoperator to a vectorized density matrix."
+  "Apply a superoperator SOP to a vectorized density matrix
+VEC-DENSITY, where QUBITS and GHOST-QUBITS are tuples of qubit indices
+which the superoperator acts on (from the left and right
+respectively). The computation may require TEMPORARY-STORAGE, a vector
+of the same length as VEC-DENSITY. If no TEMPORARY-STORAGE is
+provided, it will be allocated as needed. Returns the pair of updated
+VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
   (check-type sop superoperator)
   ;; We use the following law to help our calculation:
   ;;
@@ -130,38 +195,10 @@
           (values vec-density sum)))))))
 
 
-(defmethod set-noisy-gate ((qvm density-qvm) gate-name qubits kraus-ops)
-  (check-kraus-ops kraus-ops)
-  ;; Wrap a matrix in a gate in a superoperator...
-  (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm))
-        (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))
-
-
-(defgeneric conjugate-entrywise (gate)
-  (:documentation "Construct a new gate from GATE with corresponding matrix entries conjugated.")
-  (:method ((gate quil:simple-gate))
-    (make-instance 'quil:simple-gate
-                   :name (concatenate 'string (quil:gate-name gate) "*")
-                   :dimension (quil:gate-dimension gate)
-                   :matrix (magicl:conjugate-entrywise (quil:gate-matrix gate))))
-  (:method ((gate quil:permutation-gate))
-    (make-instance 'quil:permutation-gate
-                   :name (concatenate 'string (quil:gate-name gate) "*")
-                   :dimension (quil:gate-dimension gate)
-                   :permutation (quil:permutation-gate-permutation gate)))
-  (:method ((gate quil:parameterized-gate))
-    (make-instance 'quil:parameterized-gate
-                   :name (concatenate 'string (quil:gate-name gate) "*")
-                   :dimension (quil:gate-dimension gate)
-                   :matrix-function #'(lambda (&rest parameters)
-                                        (magicl:conjugate-entrywise
-                                         (apply #'quil:gate-matrix gate parameters))))))
-
-
 (defmethod transition ((qvm density-qvm) (instr quil:gate-application))
-  (assert (typep (quil:application-operator instr) 'quil:named-operator)
+  (assert (typep (quil:application-operator instr) 'quil:named-operator) ; TODO XXX support gate modifiers
           (instr)
-          "The noisy QVM doesn't support gate modifiers.")
+          "The density QVM doesn't support gate modifiers.")
   (labels ((unpack-param (param)
              (etypecase param
                (quil:constant
@@ -196,16 +233,21 @@
        (1+ (pc qvm))))))
 
 
-(defmacro pdotimes ((i count-form &optional ret) &body body)
-  "Selectively perform DOTIMES or LPARALLEL:DOTIMES, depending on whether the number of iterations 
-exceeds the threshold set by *QUBITS-REQUIRED-FOR-PARALLELIZATION*."
-  (let* ((n (gensym)))
-    `(let ((,n ,count-form))
-       (if (> ,n (expt 2  *qubits-required-for-parallelization*))
-           (lparallel:pdotimes (,i ,n ,ret)
-             ,@body)
-           (dotimes (,i ,n ,ret)
-             ,@body)))))
+;;; Measurement
+
+;;; In the PURE-STATE-QVM there is only one sensible meaning for a
+;;; measurement: outcomes are sampled according to their respective
+;;; probabilities, and then wavefunction collapse occurs. In the
+;;; DENSITY-QVM, this could in principle be augmented by a second
+;;; notion of measurement: namely, the outcome probabilities allow us
+;;; to compute an "expected" outcome, which is generically a mixed
+;;; state. The situation here is analogous to the question of gate
+;;; noise, where one must choose between working with a specific
+;;; realization of the noise process or its entire
+;;; distribution. Whereas for noise we prefer the latter, for
+;;; measurement we prefer the former, because i) it is necessary to
+;;; force collapse when measurements are needed for classical control,
+;;; and ii) it is what most people expect anyways. 
 
 
 (defun density-qvm-qubit-probability (qvm qubit)
@@ -222,19 +264,24 @@ exceeds the threshold set by *QUBITS-REQUIRED-FOR-PARALLELIZATION*."
 
 
 (defun density-qvm-force-measurement (measured-value qubit qvm excited-probability)
-  "Force the quantum system VM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.
+  "Force the QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.
 
 EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
 "
-  ;; measurement of qubit i corresponds to roughly this:
-  ;; if outcome = 0, set rows/columns corresponding to i = 1 to zero
-  ;; if outcome = 1, set rows/columns corresponding to i = 0 to zero
+  ;; A measurement of qubit i corresponds to roughly this:
+  ;; If outcome = 0, set rows/columns corresponding to i = 1 to zero
+  ;; If outcome = 1, set rows/columns corresponding to i = 0 to zero
+  
+  ;; The normalization condition on the density matrix is that the
+  ;; diagonal entries sum to 1, so we have to rescale the remaining
+  ;; nonzero entries. This is easier than the wavefunction case, where
+  ;; the normalization condition is that the sum of squares is 1.
   (let* ((annihilated-state (- 1 measured-value))
          (inv-norm (if (zerop annihilated-state)
                        (/ excited-probability)
                        (/ (- (flonum 1) excited-probability))))
          (num-qubits (number-of-qubits qvm))
-         (vec-density       (amplitudes qvm)))
+         (vec-density (amplitudes qvm)))
     (pdotimes (k (length vec-density))
       ;; Check whether the row or column index refers to an annihilated state
       (if (or (= annihilated-state (ldb (byte 1 qubit) k)) 
@@ -243,6 +290,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
           (setf (aref vec-density k) (cflonum 0))
           (setf (aref vec-density k)
                 (* inv-norm (aref vec-density k)))))))
+
 
 (defmethod measure ((qvm density-qvm) q c)
   (check-type c (or null quil:memory-ref))
@@ -261,7 +309,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     ;; Return the qvm.
     (values qvm cbit)))
 
-;;; TODO XXX can we do this in parallel?
+
 (defmethod measure-all ((qvm density-qvm))
-  (loop :for q :upto (number-of-qubits qvm)
+  (loop :for q :below (number-of-qubits qvm)
         :collect (measure qvm q nil)))

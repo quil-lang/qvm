@@ -220,13 +220,11 @@ If ERROR is T, then signal an error when the gate wasn't found."
         (error "Failed to find the gate named ~S" name))
       found-gate)))
 
-(defgeneric reset-quantum-state (qvm)
-  (:documentation   "Perform a reset. Bring all qubits to |0>.")
-  (:method ((qvm pure-state-qvm))
+(defmethod reset-quantum-state ((qvm pure-state-qvm))
     ;; We don't reset the classical state because that memory could be
     ;; shared.
     (bring-to-zero-state (amplitudes qvm))
-    qvm))
+    qvm)
 
 (defun reset-classical-memory (qvm)
   "Zero out all of the classical memory of the qvm QVM."
