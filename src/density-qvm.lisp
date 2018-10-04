@@ -7,7 +7,6 @@
 
 ;;; This file implements inefficient density matrix evolution.
 
-
 (defclass density-qvm (pure-state-qvm)
   ((matrix-view :accessor density-matrix-view
                 :initform nil
@@ -197,17 +196,29 @@
        (1+ (pc qvm))))))
 
 
+(defmacro pdotimes ((i count-form &optional ret) &body body)
+  "Selectively perform DOTIMES or LPARALLEL:DOTIMES, depending on whether the number of iterations 
+exceeds the threshold set by *QUBITS-REQUIRED-FOR-PARALLELIZATION*."
+  (let* ((n (gensym)))
+    `(let ((,n ,count-form))
+       (if (> ,n (expt 2  *qubits-required-for-parallelization*))
+           (lparallel:pdotimes (,i ,n ,ret)
+             ,@body)
+           (dotimes (,i ,n ,ret)
+             ,@body)))))
+
+
 (defun density-qvm-qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
-  
-  ;; TODO XXX optimize
-  (let ((sum (flonum 0))
-        (density-matrix (density-matrix-view qvm)))
-    ;; This is a sum along the diagonal of the density-matrix
-    (dotimes (i (half (expt 2 (number-of-qubits qvm))) sum)
-      (let ((address (index-to-address i qubit 1)))
-        (incf sum (realpart (aref density-matrix address address)))))))
-
+  (let ((vec-density (amplitudes qvm))
+        (dim (expt 2 (number-of-qubits qvm))))
+    ;; This is a sum along the diagonal of the DIM x DIM density matrix
+    ;; Only indices with qubit in excited state contribute
+    (psum-dotimes (k (half dim))
+      (let ((i (index-to-address k qubit 1)))
+        (realpart
+         (aref vec-density (+ (* i dim) i)) ; this is rho[i,i]
+         )))))
 
 
 (defun density-qvm-force-measurement (measured-value qubit qvm excited-probability)
@@ -218,19 +229,20 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   ;; measurement of qubit i corresponds to roughly this:
   ;; if outcome = 0, set rows/columns corresponding to i = 1 to zero
   ;; if outcome = 1, set rows/columns corresponding to i = 0 to zero
-  (let* ((density-matrix (density-matrix-view qvm))
-         (annihilated-state (- 1 measured-value))
+  (let* ((annihilated-state (- 1 measured-value))
          (inv-norm (if (zerop annihilated-state)
                        (/ excited-probability)
-                       (/ (- (flonum 1) excited-probability)))))
-    (destructuring-bind (rows cols) (array-dimensions density-matrix)
-      (dotimes (i rows qvm)
-        (dotimes (j cols)
-          (if (or (= annihilated-state (ldb (byte 1 qubit) i))
-                (= annihilated-state (ldb (byte 1 qubit) j)))
-              (setf (aref density-matrix i j) (cflonum 0))
-              (setf (aref density-matrix i j)
-                    (* inv-norm (aref density-matrix i j)))))))))
+                       (/ (- (flonum 1) excited-probability))))
+         (num-qubits (number-of-qubits qvm))
+         (vec-density       (amplitudes qvm)))
+    (pdotimes (k (length vec-density))
+      ;; Check whether the row or column index refers to an annihilated state
+      (if (or (= annihilated-state (ldb (byte 1 qubit) k)) 
+              (= annihilated-state (ldb (byte 1 (+ qubit num-qubits)) ; in the above parlance, a "ghost" qubit
+                                        k)))
+          (setf (aref vec-density k) (cflonum 0))
+          (setf (aref vec-density k)
+                (* inv-norm (aref vec-density k)))))))
 
 (defmethod measure ((qvm density-qvm) q c)
   (check-type c (or null quil:memory-ref))
