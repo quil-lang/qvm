@@ -154,7 +154,7 @@ your `.emacs` file. This will make everything good.
 
 Oh dear, all the parentheses! The path to Lisp enlightenment requires
 an understanding that the parentheses are there because Lisp code is
-actually one giant (semi-)serialized data structure, and paretheses
+actually one giant (semi-)serialized data structure, and parentheses
 provide literal syntax for that data structure.
 
 Structural editing of this data structure makes life easier, and this
