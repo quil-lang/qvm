@@ -38,26 +38,21 @@
 
 (defmethod initialize-instance :after ((qvm density-qvm) &rest args)
   (declare (ignore args))
+  ;; PURE-STATE-QVM does its own allocation, which we don't want, so
+  ;; here we make sure that the AMPLITUDES slot has a vector of the
+  ;; right size (e.g. it was constructed by MAKE-DENSITY-QVM).
+  (assert (and (slot-boundp qvm 'amplitudes)
+               (not (null (amplitudes qvm))))
+          ()
+          "Density QVM cannot be initialized with AMPLITUDES null or unbound.")
   (let* ((num-qubits (number-of-qubits qvm))
-         (dim        (expt 2 num-qubits)))
+         (dim (expt 2 num-qubits)))
+    (assert (= (length (amplitudes qvm)) (expt dim 2))
+            ()
+            "Density QVM has AMPLITUDES slot initially bound to a vector of length ~a, but expected length ~A."
+            (length (amplitudes qvm))
+            (expt dim 2))
 
-    ;; The amplitudes store vec(ρ), i.e. the entries of the density
-    ;; matrix ρ in row-major order. For a system of N qubits, ρ has
-    ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
-
-    ;; It's possible that the PURE-STATE-QVM's INITIALIZE-INSTANCE
-    ;; made something with the wrong size.  If so, we just make a new
-    ;; vector.
-    (unless (and (slot-boundp qvm 'amplitudes)
-                 (not (null (slot-value qvm 'amplitudes)))
-                 (= (length (amplitudes qvm)) (expt dim 2)))
-      ;; The initial state is the pure zero state, which is
-      ;; represented by all zero entries except for a 1 in the first
-      ;; position. See also RESET-QUANTUM-STATE, which we avoid
-      ;; calling here because it performs an additional full traversal
-      ;; of the vector.
-      (setf (slot-value qvm 'amplitudes) (make-vector (expt dim 2) 1)))
-    
     (setf (slot-value qvm 'matrix-view)
           (make-array (list dim dim)
                       :element-type (array-element-type (amplitudes qvm))
@@ -70,9 +65,21 @@
   qvm)
 
 
-(defun make-density-qvm (num-qubits)
-  (make-instance 'density-qvm
-                 :number-of-qubits num-qubits))
+(defun make-density-qvm (num-qubits &rest args)
+  ;; The amplitudes store vec(ρ), i.e. the entries of the density
+  ;; matrix ρ in row-major order. For a system of N qubits, ρ has
+  ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
+
+  ;; The initial state is the pure zero state, which is
+  ;; represented by all zero entries except for a 1 in the first
+  ;; position. See also RESET-QUANTUM-STATE, which we avoid
+  ;; calling here because it performs an additional full traversal
+  ;; of the vector.                
+  (let ((amplitudes (make-vector (expt 2 (* 2 num-qubits)) 1)))
+    (apply #'make-instance 'density-qvm
+           :number-of-qubits num-qubits
+           :amplitudes amplitudes
+           args)))
 
 (defun full-density-number-of-qubits (vec-density)
   "Computes the number of qubits encoded by a vectorized density matrix."
