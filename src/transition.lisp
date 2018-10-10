@@ -128,6 +128,9 @@ Return two values:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; The word "force" here is borrowed from the functional programming
+;;; world, where a promise or delayed expression may be "forced"
+;;; (evaluated as if by applicative order evaluation) into a value.
 (defun force-parameter (param qvm)
   "Force evaluation of an application parameter PARAM, with respect to
 the specified QVM."

@@ -42,14 +42,14 @@
   ;; here we make sure that the AMPLITUDES slot has a vector of the
   ;; right size (e.g. it was constructed by MAKE-DENSITY-QVM).
   (assert (and (slot-boundp qvm 'amplitudes)
-               (not (null (amplitudes qvm))))
+               (typep (slot-value qvm 'amplitudes) 'quantum-state))
           ()
-          "Density QVM cannot be initialized with AMPLITUDES null or unbound.")
+          "Density QVM cannot be initialized with AMPLITUDES unbound. Consider using MAKE-DENSITY-QVM, or explicitly providing the :AMPLITUDES initarg..")
   (let* ((num-qubits (number-of-qubits qvm))
          (dim (expt 2 num-qubits)))
     (assert (= (length (amplitudes qvm)) (expt dim 2))
             ()
-            "Density QVM has AMPLITUDES slot initially bound to a vector of length ~a, but expected length ~A."
+            "Density QVM has AMPLITUDES slot initially bound to a vector of length ~D, but expected length ~D."
             (length (amplitudes qvm))
             (expt dim 2))
     (setf (slot-value qvm 'matrix-view)
@@ -208,7 +208,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
           "The density QVM doesn't support gate modifiers.")
   (let*  ((gate-name (quil::operator-description-name (quil:application-operator instr)))
           (gate (pull-teeth-to-get-a-gate instr))
-          (params (mapcar #'(lambda (p) (force-parameter p qvm))
+          (params (mapcar (lambda (p) (force-parameter p qvm))
                           (quil:application-parameters instr)))
           (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
           (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits))
