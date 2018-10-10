@@ -128,34 +128,38 @@ Return two values:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun force-parameter (param qvm)
+  "Force evaluation of an application parameter PARAM, with respect to
+the specified QVM."
+  (etypecase param
+    (quil:constant
+     (quil:constant-value param))
+    (quil::delayed-expression
+     (quil:constant-value
+      (quil::evaluate-delayed-expression
+       param
+       (lambda (mref)
+         (memory-ref qvm (quil:memory-ref-name mref) (quil:memory-ref-position mref))))))))
+
 (defmethod transition ((qvm pure-state-qvm) (instr quil:gate-application))
-  (labels ((unpack-param (param)
-             (etypecase param
-               (quil:constant
-                (quil:constant-value param))
-               (quil::delayed-expression
-                (quil:constant-value
-                 (quil::evaluate-delayed-expression
-                  param
-                  (lambda (mref)
-                    (memory-ref qvm (quil:memory-ref-name mref) (quil:memory-ref-position mref)))))))))
-    (let ((gate   (pull-teeth-to-get-a-gate instr))
-          (params (mapcar #'unpack-param (quil:application-parameters instr)))
-          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
-      ;; Do some error checking.
-      (let ((given-qubits (length qubits))
-            (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
-        (unless (= given-qubits expected-qubits)
-          (error 'invalid-instruction-encountered
+  (let ((gate   (pull-teeth-to-get-a-gate instr))
+        (params (mapcar #'(lambda (p) (force-parameter p qvm))
+                        (quil:application-parameters instr)))
+        (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
+    ;; Do some error checking.
+    (let ((given-qubits (length qubits))
+          (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
+      (unless (= given-qubits expected-qubits)
+        (error 'invalid-instruction-encountered
                  :instruction instr
                  :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
                                   expected-qubits
                                   given-qubits))))
-
-      (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
-      (values
+    
+    (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
+    (values
        qvm
-       (1+ (pc qvm))))))
+       (1+ (pc qvm)))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.

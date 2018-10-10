@@ -52,11 +52,11 @@
             "Density QVM has AMPLITUDES slot initially bound to a vector of length ~a, but expected length ~A."
             (length (amplitudes qvm))
             (expt dim 2))
-
     (setf (slot-value qvm 'matrix-view)
           (make-array (list dim dim)
                       :element-type (array-element-type (amplitudes qvm))
                       :displaced-to (amplitudes qvm)))))
+
 
 (defmethod reset-quantum-state ((qvm density-qvm))
   ;; It just so happens that the pure, zero state is the same in
@@ -206,22 +206,13 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
   (assert (typep (quil:application-operator instr) 'quil:named-operator) ; TODO XXX support gate modifiers
           (instr)
           "The density QVM doesn't support gate modifiers.")
-  (labels ((unpack-param (param)
-             (etypecase param
-               (quil:constant
-                (quil:constant-value param))
-               (quil::delayed-expression
-                (quil:constant-value
-                 (quil::evaluate-delayed-expression
-                  param
-                  (lambda (mref)
-                    (memory-ref qvm (quil:memory-ref-name mref) (quil:memory-ref-position mref)))))))))
-    (let*  ((gate-name (quil::operator-description-name (quil:application-operator instr)))
-            (gate (pull-teeth-to-get-a-gate instr))
-            (params (mapcar #'unpack-param (quil:application-parameters instr)))
-            (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
-            (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits))
-            (sop    (or (gethash (list gate-name qubits)
+  (let*  ((gate-name (quil::operator-description-name (quil:application-operator instr)))
+          (gate (pull-teeth-to-get-a-gate instr))
+          (params (mapcar #'(lambda (p) (force-parameter p qvm))
+                          (quil:application-parameters instr)))
+          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
+          (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits))
+          (sop    (or (gethash (list gate-name qubits)
                                  (noisy-gate-definitions qvm))
                         (single-kraus gate))))
 
@@ -237,7 +228,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
       
       (values
        qvm
-       (1+ (pc qvm))))))
+       (1+ (pc qvm)))))
 
 
 ;;; Measurement
