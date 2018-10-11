@@ -19,6 +19,13 @@
 ;;; displaced to vec(ρ), for convenience. See below for the definition
 ;;; of vec(ρ).
 
+;;; Another feature of our implementation is that support for noisy
+;;; operations and measurements mirrors the interface presented by
+;;; NOISY-QVM. In particular, the DENSITY-QVM presents
+;;; NOISY-GATE-DEFINITIONS and READOUT-POVMS slots, and has a similar
+;;; interface for updating these slots (through the SET-NOISY-GATE and
+;;; SET-READOUT-POVM methods, respectively).
+
 
 (defclass density-qvm (pure-state-qvm)
   ((matrix-view :reader density-matrix-view
@@ -30,7 +37,21 @@
    (noisy-gate-definitions :initarg :noisy-gate-definitions
                            :accessor noisy-gate-definitions
                            :initform (make-hash-table :test 'equalp)
-                           :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS."))
+                           :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS.")
+   (readout-povms
+    :initarg :readout-povms
+    :accessor readout-povms
+    :initform (make-hash-table)
+    :documentation "Noisy readout encoded as diagonal single qubit
+    POVM given as a 4-element list
+
+          (p(0|0) p(0|1)
+           p(1|0) p(1|1))
+
+which for each qubit gives the probability p(j|k) of measuring outcome
+j given actual state k. Note that we model purely classical readout
+error, i.e., the post measurement qubit state is always k, but the
+recorded outcome j may be different."))
   (:documentation "A density matrix simulator."))
 
 
@@ -115,6 +136,11 @@
   ;; Wrap a matrix in a gate in a superoperator...
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm))
         (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))
+
+(defmethod set-readout-povm ((qvm density-qvm) qubit povm)
+  (check-povm povm)
+  (setf (gethash qubit (readout-povms qvm)) povm)
+  nil)
 
 (defun lift-matrix-to-superoperator (mat)
   "Converts a magicl matrix MAT into a superoperator."
@@ -307,7 +333,30 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     ;; Return the qvm.
     (values qvm cbit)))
 
+(defmethod transition ((qvm density-qvm) (instr quil:measure))
+  (multiple-value-bind (ret-qvm counter)
+      ;; perform actual measurement
+      (call-next-method qvm instr)
+    (corrupt-measurement-outcome qvm instr)
+    (values
+     ret-qvm
+     counter)))
+
+;;; This is what the QAM does.
+(defun naive-measure-all (qam)
+  (let ((measured-bits nil))
+    (loop :for q :from (1- (number-of-qubits qam)) :downto 0
+          :do (multiple-value-bind (ret-qam bit)
+                  (measure qam q nil)
+                (push bit measured-bits)
+                (setf qam ret-qam)))
+    (values
+     qam
+     measured-bits)))
 
 (defmethod measure-all ((qvm density-qvm))
-  (loop :for q :below (number-of-qubits qvm)
-        :collect (measure qvm q nil)))
+  (multiple-value-bind (qvm-ret measured-bits)
+      (naive-measure-all qvm)
+    (values
+     qvm-ret
+     (perturb-measured-bits qvm-ret measured-bits))))
