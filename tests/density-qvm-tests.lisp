@@ -142,31 +142,9 @@
       (run qvm)
       (is (double-float= (density-matrix-purity qvm) expected-purity)))))
 
-;;; Shamelessly stolen from noisy-qvm-tests.lisp
 (deftest test-density-qvm-noisy-readout ()
   "Test that the noisy readout behaves as expected."
-  (let* ((p (with-output-to-quil
-              "DECLARE ro BIT[2]"
-              (write-line "MEASURE 0 ro[0]")
-              (write-line "MEASURE 1 ro[1]")))
-         (tries 500)
-         (results-desired '(1 0))
-         (qvm (make-density-qvm 2 :classical-memory-subsystem nil)))
-    (qvm:load-program qvm p :supersede-memory-subsystem t)
-    (loop :while (and (plusp (length results-desired))
-                      (plusp tries))
-          :do (decf tries)
-              (let* ((qvm-final (progn
-                                  (qvm::reset-quantum-state qvm)
-                                  (qvm::set-readout-povm qvm 1 '(0.8d0 0.1d0
-                                                                0.2d0 0.9d0))
-                                  (qvm:run qvm)))
-                    (a (qvm:memory-ref qvm-final "ro" 0))
-                    (b (qvm:memory-ref qvm-final "ro" 1)))
-                (is (= a 0))
-                (setf results-desired
-                      (remove b results-desired :test #'eq))))
-    (is (plusp tries))))
+  (test-noisy-readout-2q-qvm (make-density-qvm 2 :classical-memory-subsystem nil)))
 
 ;;; Shamelessly stolen from noisy-qvm-tests.lisp
 (deftest test-density-qvm-noisy-measure-all ()

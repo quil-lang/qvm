@@ -229,7 +229,9 @@ POVM must be a 4-element list of double-floats."))
        (call-next-method qvm instr)))))
 
 (defun corrupt-measurement-outcome (qvm measure-instr)
-  "Randomly corrupt the outcome of the measurement indicated by MEASURE-INSTR after it has been executed on a QVM supporting readout POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
+  "Randomly corrupt the outcome of the measurement indicated by
+MEASURE-INSTR after it has been executed on a QVM supporting readout
+POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
   (let* ((q (quil:qubit-index (quil:measurement-qubit measure-instr)))
          (a (quil:measure-address measure-instr))
          (c (dereference-mref qvm a))
@@ -250,7 +252,9 @@ POVM must be a 4-element list of double-floats."))
 
 
 (defun perturb-measured-bits (qvm measured-bits)
-  "Randomly perturb the values of the bits in MEASURED-BITS in accordance with any available readout POVMs on the QVM. Returns an updated list of measured bits."
+  "Randomly perturb the values of the bits in MEASURED-BITS in
+accordance with any available readout POVMs on the QVM. Returns an
+updated list of measured bits."
   ;; This models purely classical bit flips of the measurement record
   ;; which captures the reality of noisy low power dispersive
   ;; measurements of superconducting qubits very well. Here the
@@ -260,10 +264,10 @@ POVM must be a 4-element list of double-floats."))
   (loop :for i :below (number-of-qubits qvm)
         :for c :in measured-bits
         :collect (let ((povm (gethash i (readout-povms qvm))))
-                      (if povm
-                          (destructuring-bind (p00 p01 p10 p11) povm
-                            (perturb-measurement c p00 p01 p10 p11))
-                          c))))
+                   (if povm
+                       (destructuring-bind (p00 p01 p10 p11) povm
+                         (perturb-measurement c p00 p01 p10 p11))
+                       c))))
 
 (defmethod measure-all ((qvm noisy-qvm))
   (multiple-value-bind (qvm-ret measured-bits)

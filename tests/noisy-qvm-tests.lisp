@@ -102,16 +102,14 @@
                       (remove psi results-desired :test #'equalp))))
     (is (plusp tries))))
 
-(deftest test-noisy-readout ()
-  "Test that the noisy readout behaves as expected."
+(defun test-noisy-readout-2q-qvm (qvm)
+  "Test that noisy readout behaves as expected on the given QVM (having at least 2 qubits)."
   (let* ((p (with-output-to-quil
               "DECLARE ro BIT[2]"
               (write-line "MEASURE 0 ro[0]")
               (write-line "MEASURE 1 ro[1]")))
          (tries 500)
-         (results-desired '(1 0))
-         (qvm (make-instance 'qvm:noisy-qvm :number-of-qubits 2
-                                            :classical-memory-subsystem nil)))
+         (results-desired '(1 0)))
     (qvm:load-program qvm p :supersede-memory-subsystem t)
     (loop :while (and (plusp (length results-desired))
                       (plusp tries))
@@ -119,7 +117,7 @@
               (let* ((qvm-final (progn
                                   (qvm::reset-quantum-state qvm)
                                   (qvm::set-readout-povm qvm 1 '(0.8d0 0.1d0
-                                                                0.2d0 0.9d0))
+                                                                 0.2d0 0.9d0))
                                   (qvm:run qvm)))
                     (a (qvm:memory-ref qvm-final "ro" 0))
                     (b (qvm:memory-ref qvm-final "ro" 1)))
@@ -127,6 +125,12 @@
                 (setf results-desired
                       (remove b results-desired :test #'eq))))
     (is (plusp tries))))
+
+(deftest test-noisy-qvm-noisy-readout ()
+  "Test that the noisy readout behaves as expected."
+  (test-noisy-readout-2q-qvm
+   (make-instance 'qvm:noisy-qvm :number-of-qubits 2
+                                 :classical-memory-subsystem nil)))
 
 (deftest test-noisy-measure-all ()
   "Test that MEASURE-ALL works correctly for noisy readout"
