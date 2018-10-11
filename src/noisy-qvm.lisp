@@ -150,14 +150,13 @@ MAGICL matrices '(K1 K2 ... Kn)."))
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm)) kraus-ops)
   nil)
 
-
-(defun set-readout-povm (qvm qubit povm)
-  "For a QUBIT belonging to a noisy QVM specify a POVM to encode
+(defgeneric set-readout-povm (qvm qubit povm)
+  (:documentation "For a QUBIT belonging to a QVM specify a POVM to encode
 possible readout errors.
 
-POVM must be a 4-element list of double-floats.
-"
-  (check-type qvm noisy-qvm)
+POVM must be a 4-element list of double-floats."))
+
+(defmethod set-readout-povm ((qvm noisy-qvm) qubit povm)
   (check-povm povm)
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
@@ -229,41 +228,46 @@ POVM must be a 4-element list of double-floats.
        ;; the parent class
        (call-next-method qvm instr)))))
 
+(defun corrupt-measurement-outcome (qvm measure-instr)
+  "Randomly corrupt the outcome of the measurement indicated by MEASURE-INSTR after it has been executed on a QVM supporting readout POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
+  (let* ((q (quil:qubit-index (quil:measurement-qubit measure-instr)))
+         (a (quil:measure-address measure-instr))
+         (c (dereference-mref qvm a))
+         (povm (gethash q (readout-povms qvm))))
+    (when povm
+      (destructuring-bind (p00 p01 p10 p11) povm
+        (setf (dereference-mref qvm a)
+              (perturb-measurement c p00 p01 p10 p11))))))
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:measure))
   (multiple-value-bind (ret-qvm counter)
       ;; perform actual measurement
       (call-next-method qvm instr)
-
-    ;; randomly corrupt outcome
-    (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
-           (a (quil:measure-address instr))
-           (c (dereference-mref qvm a))
-           (povm (gethash q (readout-povms ret-qvm))))
-      (when povm
-        (destructuring-bind (p00 p01 p10 p11) povm
-          (setf (dereference-mref ret-qvm a)
-                (perturb-measurement c p00 p01 p10 p11)))))
+    (corrupt-measurement-outcome ret-qvm instr)
     (values
      ret-qvm
      counter)))
 
+
+(defun perturb-measured-bits (qvm measured-bits)
+  "Randomly perturb the values of the bits in MEASURED-BITS in accordance with any available readout POVMs on the QVM. Returns an updated list of measured bits."
+  ;; This models purely classical bit flips of the measurement record
+  ;; which captures the reality of noisy low power dispersive
+  ;; measurements of superconducting qubits very well. Here the
+  ;; dominant source of error is misclassifying a readout signal due
+  ;; to thermal noise that corrupts the signal on its return path out
+  ;; of the cryostat.
+  (loop :for i :below (number-of-qubits qvm)
+        :for c :in measured-bits
+        :collect (let ((povm (gethash i (readout-povms qvm))))
+                      (if povm
+                          (destructuring-bind (p00 p01 p10 p11) povm
+                            (perturb-measurement c p00 p01 p10 p11))
+                          c))))
 
 (defmethod measure-all ((qvm noisy-qvm))
   (multiple-value-bind (qvm-ret measured-bits)
       (call-next-method qvm)
     (values
      qvm-ret
-     ;; Perturb measured-bits: This models purely classical bit flips
-     ;; of the measurement record which captures the reality of noisy
-     ;; low power dispersive measurements of superconducting qubits
-     ;; very well. Here the dominant source of error is misclassifying
-     ;; a readout signal due to thermal noise that corrupts the signal
-     ;; on its return path out of the cryostat.
-     (loop :for i :below (number-of-qubits qvm)
-           :for c :in measured-bits
-           :collect (let ((povm (gethash i (readout-povms qvm))))
-                      (if povm
-                          (destructuring-bind (p00 p01 p10 p11) povm
-                            (perturb-measurement c p00 p01 p10 p11))
-                          c))))))
+     (perturb-measured-bits qvm-ret measured-bits))))
