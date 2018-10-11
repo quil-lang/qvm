@@ -31,8 +31,15 @@ Return two values:
     2. A list of measured bits."))
 
 (defmethod measure-all (qam)
-  (loop :for q :upto (number-of-qubits qam)
-        :collect (measure qam q nil)))
+  (let ((measured-bits nil))
+    (loop :for q :from (1- (number-of-qubits qam)) :downto 0
+          :do (multiple-value-bind (ret-qam bit)
+                  (measure qam q nil)
+                (push bit measured-bits)
+                (setf qam ret-qam)))
+    (values
+     qam
+     measured-bits)))
 
 (defgeneric number-of-qubits (qam)
   (:documentation "Return the number of qubits configured on the quantum abstract machine QAM."))
