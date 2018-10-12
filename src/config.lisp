@@ -6,7 +6,7 @@
 
 ;;; Configuration for QVM compile-time and run-time behavior.
 
-(declaim (type (integer 0 (128)) *qubits-required-for-parallelization*))
+(declaim (type (integer 0 50) *qubits-required-for-parallelization*))
 (defparameter *qubits-required-for-parallelization* 19
   "The number of qubits required of a quantum state before it gets operated on in parallel.")
 

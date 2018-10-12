@@ -124,6 +124,7 @@ NOTE: This will not copy any multiprocessing aspects."
      (defun ,name ,lambda-list ,@body)
      (declaim (notinline ,name))))
 
+(declaim (ftype (function (non-negative-fixnum non-negative-fixnum) list) subdivide))
 (defun subdivide (total num-ranges)
   "Subdivide TOTAL (probably representing a vector length) into NUM-RANGES as-equal-as-possible ranges.
 
@@ -297,12 +298,13 @@ whether the number of iterations N exceeds the threshold set by
 
 (defmacro psum-dotimes ((i range) &body body)
   "Compute the sum of BODY for I in ranging over 0 <= I < RANGE. RANGE must be a non-negative fixnum."
-  (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function ranges)
-    (alexandria:once-only (range)
-      `(if (< ,range (expt 2 *qubits-required-for-parallelization*))
+  (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function range-once ranges)
+    `(let ((,range-once ,range))
+       (declare (type non-negative-fixnum ,range-once))
+       (if (< ,range-once (expt 2 *qubits-required-for-parallelization*))
            (locally (declare #.*optimize-dangerously-fast*)
              (loop :with ,sum :of-type flonum := (flonum 0)
-                   :for ,i :of-type non-negative-fixnum :below ,range
+                   :for ,i :of-type non-negative-fixnum :below ,range-once
                    :do (incf ,sum (the flonum (progn ,@body)))
                    :finally (return ,sum)))
            (flet ((,worker-function (,start ,end)
@@ -317,8 +319,11 @@ whether the number of iterations N exceeds the threshold set by
                       (ftype (function (non-negative-fixnum non-negative-fixnum) flonum) ,worker-function))
              (let* ((,ch (lparallel:make-channel))
                     (,num-tasks (lparallel:kernel-worker-count))
-                    (,ranges (subdivide ,range ,num-tasks)))
+                    (,ranges (subdivide ,range-once ,num-tasks)))
+               (declare (type lparallel:channel ,ch)
+                        (type non-negative-fixnum ,num-tasks)
+                        (type list ,ranges))
                (loop :for (,start . ,end) :in ,ranges
                      :do (lparallel:submit-task ,ch #',worker-function ,start ,end))
                (loop :repeat (length ,ranges)
-                     :sum (lparallel:receive-result ,ch) :of-type flonum)))))))
+                     :sum (the flonum (lparallel:receive-result ,ch)) :of-type flonum)))))))

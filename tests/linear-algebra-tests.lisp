@@ -17,7 +17,7 @@
 (deftest test-psum-dotimes ()
   "Test that PSUM-DOTIMES works."
   (let* ((iterations 10000)
-         (serial   (let ((*qubits-required-for-parallelization* 100))
+         (serial   (let ((*qubits-required-for-parallelization* 50))
                      (qvm::psum-dotimes (i iterations)
                        (flonum 1))))
          (parallel (let ((*qubits-required-for-parallelization* 1))
@@ -36,7 +36,7 @@
         serial-b)
     (dolist (v vectors)
       ;; Serial case.
-      (let* ((*qubits-required-for-parallelization* 100)
+      (let* ((*qubits-required-for-parallelization* 50)
              (a (qvm::psum #'probability v))
              (b (naive-sum #'probability v)))
         (setf serial-a a
