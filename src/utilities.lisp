@@ -251,9 +251,10 @@ NOTE: This must be done before computations can be done.
 
 (defun seeded-random-state (seed)
   "Return an MT19937 random state that has been initialized from SEED,
-which should be either NIL (meaning use a fresh and irreproducible
-random state), or an integer or a specialized vector of (unsigned-byte
-32), which will result in a reproducible random state."
+which should be either NIL (meaning to use the current value of
+MT19937:*RANDOM-STATE*), or an integer or a specialized vector
+of (unsigned-byte 32), which will result in a reproducible random
+state."
   (check-type seed
               (or null
                   integer
@@ -262,7 +263,7 @@ random state), or an integer or a specialized vector of (unsigned-byte
   ;; function to use for seeding in the MT19937 sources.
   (etypecase seed
     (null
-     (mt19937:make-random-state t))
+     mt19937:*random-state*)
     (array
      (mt19937::make-random-object :state (mt19937:init-random-state seed)))
     (integer
@@ -270,6 +271,10 @@ random state), or an integer or a specialized vector of (unsigned-byte
      (when (zerop seed)
        (setf seed 1))
      (mt19937::make-random-object :state (mt19937:init-random-state seed)))))
+
+(defun initialize-random-state ()
+  "Initialize the active MT19937 random state using the current time."
+  (setf mt19937:*random-state* (mt19937:make-random-state t)))
 
 (defmacro with-random-state ((state) &body body)
   `(let ((mt19937:*random-state* ,state))
