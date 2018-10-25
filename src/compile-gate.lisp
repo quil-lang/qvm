@@ -340,31 +340,36 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
             (quil::gate-application-resolution gate-app))))))
 
 (defmethod compile-instruction (qvm (isn quil:gate-application))
-  (multiple-value-bind (class-name initargs)
-      (compile-operator
-       (pull-teeth-to-get-a-gate isn)
-       (apply #'nat-tuple
-              (mapcar #'quil:qubit-index
-                      (quil:application-arguments isn)))
-       (mapcar #'quil:constant-value (quil:application-parameters isn)))
-    (cond
-      ((null class-name)
-       isn)
-      (t
-       (let ((all-initargs
-               `(
-                 ;; COMPILED-GATE initargs
-                 :source-instruction ,isn
-                  ;; QUIL:GATE-APPLICATION initargs
-                 :operator ,(quil:application-operator isn)
-                 :parameters ,(quil:application-parameters isn)
-                 :arguments ,(quil:application-arguments isn)
-                 ,@(if (quil::anonymous-gate-application-p isn)
-                       nil
-                       `(:name-resolution ,(quil::gate-application-resolution isn)))
-                 ,@(if (not (slot-boundp isn 'quil::gate))
-                       nil
-                       `(:gate ,(quil::gate-application-gate isn)))
-                 ;; The rest of the inirargs
-                 ,@initargs)))
-         (apply #'make-instance class-name all-initargs))))))
+  ;; Reject compiling an operator with unknown parameters.
+  ;;
+  ;; TODO: Add this feature.
+  (if (not (every #'quil::is-constant (quil:application-parameters isn)))
+      isn
+      (multiple-value-bind (class-name initargs)
+          (compile-operator
+           (pull-teeth-to-get-a-gate isn)
+           (apply #'nat-tuple
+                  (mapcar #'quil:qubit-index
+                          (quil:application-arguments isn)))
+           (mapcar #'quil:constant-value (quil:application-parameters isn)))
+        (cond
+          ((null class-name)
+           isn)
+          (t
+           (let ((all-initargs
+                   `(
+                     ;; COMPILED-GATE initargs
+                     :source-instruction ,isn
+                                         ;; QUIL:GATE-APPLICATION initargs
+                     :operator ,(quil:application-operator isn)
+                     :parameters ,(quil:application-parameters isn)
+                     :arguments ,(quil:application-arguments isn)
+                     ,@(if (quil::anonymous-gate-application-p isn)
+                           nil
+                           `(:name-resolution ,(quil::gate-application-resolution isn)))
+                     ,@(if (not (slot-boundp isn 'quil::gate))
+                           nil
+                           `(:gate ,(quil::gate-application-gate isn)))
+                     ;; The rest of the inirargs
+                     ,@initargs)))
+             (apply #'make-instance class-name all-initargs)))))))
