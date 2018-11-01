@@ -28,7 +28,7 @@
                (:version #:static-vectors "1.8.3")
                #:trivial-garbage
                ;; Quil parsing and analysis
-               (:version #:cl-quil "1.0.2")
+               (:version #:cl-quil "1.0.3")
                ;; Portable random number generator
                #:mt19937
                )
