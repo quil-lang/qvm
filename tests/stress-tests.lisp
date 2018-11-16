@@ -28,6 +28,7 @@
   (write-char #\]) (finish-output)
   nil)
 
+#+unix
 (deftest test-posix-shared-memory-allocation/deallocation ()
   "Test allocation and deallocation of large blocks of POSIX shared memory. This test may result in total system failure."
   (format t "[Test output: ") (finish-output)
@@ -53,6 +54,7 @@
   (write-char #\]) (finish-output)
   (tg:gc :full t))
 
+#+unix
 (deftest test-shared-array-allocation/deallocation ()
   "Make sure allocation and deallocation of shared arrays works."
   (format t "[Test output: ") (finish-output)
@@ -79,6 +81,7 @@
     (write-char #\]) (finish-output))
   nil)
 
+#+unix
 (deftest test-shared-qvm-garbage-collection ()
   "Test that large shared QVMs get garbage collected and do so without erroring."
   (format t "[Test output: ") (finish-output)
@@ -103,7 +106,7 @@
   (write-char #\]) (finish-output)
   nil)
 
-#+sbcl
+#+(and sbcl unix)
 (deftest test-shared-memory-exit-hook-presence ()
   "Ensure that that the shared memory deallocation hook is present."
   (is (member 'qvm::deallocate-all-shared-memories sb-ext:*exit-hooks*)))

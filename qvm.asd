@@ -6,7 +6,7 @@
   :description "An implementation of the Quantum Abstract Machine."
   :author "Robert Smith <robert@rigetti.com>"
   :version (:read-file-form "VERSION.txt")
-  :defsystem-depends-on (#+unix #:cffi-grovel)
+  :defsystem-depends-on (#:cffi-grovel)
   :depends-on (
                ;; General utilities
                #:alexandria
@@ -24,7 +24,6 @@
                #:global-vars
                ;; C foreign function interface
                #:cffi
-               #+unix
                (:version #:static-vectors "1.8.3")
                #:trivial-garbage
                ;; Quil parsing and analysis
