@@ -16,7 +16,13 @@
   (handler-bind (#+sbcl (sb-ext:compiler-note #'muffle-warning))
     (compile nil form)))
 
-(defconstant +dotimes-iterator+ 'dotimes)
+(defmacro dotimes-parallel ((var num) &body body)
+  (alexandria:once-only (num)
+    `(if (< ,num (expt 2 *qubits-required-for-parallelization*))
+         (dotimes (,var ,num) ,@body)
+         (lparallel:pdotimes (,var ,num) ,@body))))
+
+(defconstant +dotimes-iterator+ 'dotimes-parallel)
 
 ;;;;;;;;;;;;;;;;;;;;;;; GATE APPLICATION CODE ;;;;;;;;;;;;;;;;;;;;;;;;
 
