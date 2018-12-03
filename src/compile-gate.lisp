@@ -475,6 +475,7 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
   (declare (ignore qvm))
   isn)
 
+;;; Don't do anything with an existing compiled instruction.
 (defmethod compile-instruction (qvm (isn compiled-instruction))
   (declare (ignore qvm))
   isn)
@@ -498,7 +499,7 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
            (quil:gate-definition-to-gate
             (quil::gate-application-resolution gate-app))))))
 
-(defmethod compile-instruction (qvm (isn quil:measurement))
+(defmethod compile-instruction ((qvm pure-state-qvm) (isn quil:measurement))
   (let ((qubit (quil:measurement-qubit isn)))
     (make-instance 'compiled-measurement
                    :source-instruction isn
@@ -507,41 +508,46 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
                    (compile-lambda
                     (generate-single-qubit-measurement-code (quil:qubit-index qubit))))))
 
-(defmethod compile-instruction (qvm (isn quil:gate-application))
-  (multiple-value-bind (class-name initargs)
-      (compile-operator
-       (pull-teeth-to-get-a-gate isn)
-       (apply #'nat-tuple
-              (mapcar #'quil:qubit-index
-                      (quil:application-arguments isn)))
-       (mapcar #'quil:constant-value (quil:application-parameters isn)))
-    (cond
-      ((null class-name)
-       isn)
-      (t
-       (let ((all-initargs
-               `(
-                 ;; COMPILED-GATE initargs
-                 :source-instruction ,isn
-                  ;; QUIL:GATE-APPLICATION initargs
-                 :operator ,(quil:application-operator isn)
-                 :parameters ,(quil:application-parameters isn)
-                 :arguments ,(quil:application-arguments isn)
-                 ,@(if (quil::anonymous-gate-application-p isn)
-                       nil
-                       `(:name-resolution ,(quil::gate-application-resolution isn)))
-                 ,@(if (not (slot-boundp isn 'quil::gate))
-                       nil
-                       `(:gate ,(quil::gate-application-gate isn)))
-                 ;; The rest of the inirargs
-                 ,@initargs)))
-         (apply #'make-instance class-name all-initargs))))))
+(defmethod compile-instruction ((qvm pure-state-qvm) (isn quil:gate-application))
+  (cond
+    ;; We don't handle non-constant arguments yet.
+    ((not (every #'quil::is-constant (quil:application-parameters isn)))
+     isn)
+    (t
+     (multiple-value-bind (class-name initargs)
+         (compile-operator
+          (pull-teeth-to-get-a-gate isn)
+          (apply #'nat-tuple
+                 (mapcar #'quil:qubit-index
+                         (quil:application-arguments isn)))
+          (mapcar #'quil:constant-value (quil:application-parameters isn)))
+       (cond
+         ((null class-name)
+          isn)
+         (t
+          (let ((all-initargs
+                  `(
+                    ;; COMPILED-GATE initargs
+                    :source-instruction ,isn
+                    ;; QUIL:GATE-APPLICATION initargs
+                    :operator ,(quil:application-operator isn)
+                    :parameters ,(quil:application-parameters isn)
+                    :arguments ,(quil:application-arguments isn)
+                    ,@(if (quil::anonymous-gate-application-p isn)
+                          nil
+                          `(:name-resolution ,(quil::gate-application-resolution isn)))
+                    ,@(if (not (slot-boundp isn 'quil::gate))
+                          nil
+                          `(:gate ,(quil::gate-application-gate isn)))
+                    ;; The rest of the inirargs
+                    ,@initargs)))
+            (apply #'make-instance class-name all-initargs))))))))
 
 (defun compiled-RX-gate (isn)
   (let ((all-initargs
           (let ((qubit (qvm::nat-tuple (quil::qubit-index (first (quil:application-arguments isn))))))
             `(:source-instruction ,isn
-                                  ;; QUIL:GATE-APPLICATION initargs
+              ;; QUIL:GATE-APPLICATION initargs
               :operator ,(quil:application-operator isn)
               :parameters ,(quil:application-parameters isn)
               :arguments ,(quil:application-arguments isn)

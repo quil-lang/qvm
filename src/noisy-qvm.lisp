@@ -241,6 +241,24 @@ POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
         (setf (dereference-mref qvm a)
               (perturb-measurement c p00 p01 p10 p11))))))
 
+(defun perturb-measured-bits (qvm measured-bits)
+  "Randomly perturb the values of the bits in MEASURED-BITS in
+accordance with any available readout POVMs on the QVM. Returns an
+updated list of measured bits."
+  ;; This models purely classical bit flips of the measurement record
+  ;; which captures the reality of noisy low power dispersive
+  ;; measurements of superconducting qubits very well. Here the
+  ;; dominant source of error is misclassifying a readout signal due
+  ;; to thermal noise that corrupts the signal on its return path out
+  ;; of the cryostat.
+  (loop :for i :below (number-of-qubits qvm)
+        :for c :in measured-bits
+        :collect (let ((povm (gethash i (readout-povms qvm))))
+                   (if povm
+                       (destructuring-bind (p00 p01 p10 p11) povm
+                         (perturb-measurement c p00 p01 p10 p11))
+                       c))))
+
 (defgeneric apply-classical-readout-noise (qvm instr)
   (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
   ;; Pure state QVM has no readout noise.
@@ -277,10 +295,14 @@ POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
 
     (values ret-qvm counter)))
 
-
 (defmethod measure-all :around ((qvm noisy-qvm))
   (multiple-value-bind (qvm-ret measured-bits)
       (call-next-method)
     (values
      qvm-ret
      (perturb-measured-bits qvm-ret measured-bits))))
+
+;;; Don't compile anything on this QVM.
+
+(defmethod compile-instruction ((qvm noisy-qvm) isn)
+  isn)
