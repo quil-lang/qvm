@@ -1,107 +1,140 @@
 # Rigetti Quantum Virtual Machine
 
-[![Build Status](http://bamboo.lab.rigetti.com/plugins/servlet/wittified/build-status/QCS-QVM)](http://bamboo.lab.rigetti.com/browse/QCS-QVM)
+This directory contains two projects. The first, `qvm`, a classical
+implementation of the Quantum Abstract Machine, called a "Quantum
+Virtual Machine". The second, `qvm-app`, is the application interface to
+interacting with the QVM, either directly through the `qvm` binary or
+via its server interface.
 
-This directory contains a classical implementation of the Quantum
-Abstract Machine, called a "Quantum Virtual Machine" or QVM.
+## QVM, the library
 
-This directory only contains the library code. For executables, see `qvm-app` and `quilbasic`.
+The QVM library is contained within `./src/`, and provides the
+implementation of the Quantum Abstract Machine. It evaluates Quil
+programs (parsed by `cl-quil`) on a virtual machine that can model
+various characteristics of (though without needing access to) a true
+quantum computer.
 
-## Dependencies
+### Usage
 
-The `qvm` has only been tested to run on Linux and macOS on AMD64 and ARM.
-
-The system `qvm` and associated tests depend on:
-
-- For UNIX systems, a C compiler accessible from the `cc` command.
-- Relatively up-to-date SBCL and ASDF. Follow the instructions in
-  [`lisp-setup.md`](doc/lisp-setup.md) for details.
-- Up-to-date [`cl-quil`](https://github.com/rigetticomputing/cl-quil). This itself requires [`alexa`](https://github.com/rigetticomputing/alexa) and [`magicl`](https://github.com/rigetticomputing/magicl), the latter of which is slightly non-trivial to get going.
-
-## How to Run Interactively
-
-The QVM is written in ANSI Common Lisp. An efficient, optimizing, machine-code compiler called SBCL is recommended for its execution. This is a free and open source implementation of Common Lisp. Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md) for details.
-
-Once setup, load the QVM by the following commands.
+Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to
+satisfy the dependencies required to load the QVM library. Afterwhich,
+the `qvm` library can be loaded
 
 ```
-$ cd path/to/qvm
 $ sbcl
-<output elided>
-* (load "qvm.asd")
+
 * (ql:quickload :qvm)
+;;; <snip>compilation output</snip>
+(:QVM)
+* (qvm:make-qvm 10)
+#<QVM:PURE-STATE-QVM {10090A7C23}>
 ```
 
-The system will get compiled and loaded, and can now be interacted with.
+## QVM, the application
 
-If you ever find yourself in a debugger, like so:
+The QVM application is contained with `./app/src/`, and provides a
+stand-alone interface to the QVM library. It can be invoked directly
+with the binary executable, or alternatively it can provide a server
+that can be used over the network. Each has their benefits: the former
+permits a simplified interface using the command-line switches (see
+output of `qvm --help`), while the latter allows many remote
+connections to a single in-memory QVM.
+
+### Usage
+
+To build the QVM application follow instructions in
+[`lisp-setup.md`](doc/lisp-setup.md). In the top-level directory, run
+the `Makefile` with
 
 ```
-debugger invoked on a SIMPLE-ERROR in thread
-#<THREAD "main thread" RUNNING {1002FDE873}>:
-  oops!
-
-Type HELP for debugger help, or (SB-EXT:EXIT) to exit from SBCL.
-
-restarts (invokable by number or by possibly-abbreviated name):
-  0: [CONTINUE] Continue running from this point
-  1: [ABORT   ] Exit debugger, returning to top level.
-
-(SB-INT:SIMPLE-EVAL-IN-LEXENV (CERROR "Continue running from this point" "oops!") #<NULL-LEXENV>)
+$ make qvm-app
 ```
 
-you can exit by choosing the appropriate option number (usually that which is labeled `ABORT`, in this case `1`), or pressing control-d.
+The "workspace" size can be configured at compile-time with
 
-To quit, type control-d.
+```
+$ make QVM_WORKSPACE=4096
+```
 
-## How to Test
+This will produce a binary executable `qvm` in the same directory. The
+QVM application has a few command-line switches used to configure the
+QVM. To explore those options, see the output of 
 
-There is what might be considered alpha support for Semaphore CI. Every build will get built and tested. A failure can indicate failure to build or failure of the test suite. You should check below.
+```
+$ ./qvm --help
+```
 
-### If you just want to run tests
+To provide a Quil program directly to the QVM, provide the program on
+stdin and use the `-e` switch
 
-Just call `make test` at the command line.
+```
+$ echo "H 0" | ./qvm -e
+******************************
+* Welcome to the Rigetti QVM *
+******************************
+Copyright (c) 2018 Rigetti Computing.
 
-### If you want to run tests *and* debug them
+(Configured with 2048 MiB of workspace and 8 workers.)
 
-Within Lisp, do this once to install all of the requisite packages:
+[2018-12-13 14:07:06] Selected simulation method: pure-state
+[2018-12-13 14:07:06] Reading program.
+[2018-12-13 14:07:06] Allocating memory for QVM of 1 qubits.
+[2018-12-13 14:07:06] Allocation completed in 4 ms.
+[2018-12-13 14:07:06] Loading quantum program.
+[2018-12-13 14:07:06] Executing quantum program.
+[2018-12-13 14:07:06] Execution completed in 4 ms.
+[2018-12-13 14:07:06] Printing 1-qubit state.
+[2018-12-13 14:07:06] Amplitudes:
+[2018-12-13 14:07:06]   |0>: 0.7071067811865475, P= 50.0%
+[2018-12-13 14:07:06]   |1>: 0.7071067811865475, P= 50.0%
+[2018-12-13 14:07:06] No classical memory present.
+```
+
+Alternatively the QVM can be started as a server that will accept
+instructions over a network connection
+
+```
+$ ./qvm -S
+******************************
+* Welcome to the Rigetti QVM *
+******************************
+Copyright (c) 2018 Rigetti Computing.
+
+(Configured with 2048 MiB of workspace and 8 workers.)
+
+[2018-12-13 14:36:20] Selected simulation method: pure-state
+[2018-12-13 14:36:20] Starting server on port 5000.
+```
+
+This is how the [pyQuil](https://github.com/rigetti/pyquil) Python
+library communicates with a QVM.
+
+## Testing
+
+Tests can be run from the `Makefile` 
+
+```
+make test
+```
+
+or from within SBCL
 
 ```
 (ql:quickload :qvm-tests)
-```
-
-If you get an error saying that the system `QVM-TESTS` cannot be found, try clearing the cache with `make cleanall` at the command line.
-
-Once installed, once you've loaded `qvm` using the normal means, you can test the system by doing
-
-```
 (asdf:test-system :qvm)
 ```
 
-This will load all of the tests and run them. Here is example output for passing tests.
+Any contribution to this project should foremost not break any current
+tests (run tests before making a pull request), and should be
+accompanied by relevant *new* tests.
 
-```
-CL-USER> (asdf:test-system :qvm)
-<...elided compilation output...>
-QVM-TESTS (Suite)
-  TEST-NAT-TUPLE-OPERATIONS                                               [ OK ]
-  TEST-INDEX-TO-ADDRESS                                                   [ OK ]
-  TEST-HADAMARD                                                           [ OK ]
-  TEST-INVERSION                                                          [ OK ]
-  TEST-BELL                                                               [ OK ]
-  TEST-SWAP                                                               [ OK ]
-  TEST-FOURIER                                                            [ OK ]
+## Clearing the Cache
 
-; 
-; compilation unit finished
-;   printed 40 notes
-T
-```
-
-The `T` (Lisp true value) indicates there was no error in all of the tests.
-
-### Clearing the Cache
-Lisp caches a lot of builds so that not every single file needs to be recompiled. In rare instances, there's confusion and the cache doesn't get properly invalidated. (This can happen when moving files across machines, for example.) Lisp's cache and Quicklisp's system index can be cleaned by doing the following command:
+Lisp caches a lot of builds so that not every single file needs to be
+recompiled. In rare instances, there's confusion and the cache doesn't
+get properly invalidated. (This can happen when moving files across
+machines, for example.) Lisp's cache and Quicklisp's system index can
+be cleaned by doing the following command:
 
 ```
 make cleanall

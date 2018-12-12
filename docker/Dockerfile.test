@@ -1,0 +1,8 @@
+###############################################################################
+# qvm-app-tests docker image
+###############################################################################
+FROM qvm-app-base
+
+# executed on docker run
+WORKDIR /src/qvm
+ENTRYPOINT ["make", "test"]
