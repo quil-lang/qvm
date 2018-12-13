@@ -4,8 +4,7 @@
 FROM rigetticomputing/lisp-base
 
 # organize the source
-# NOTE: only works if alexa, and magicl, cl-quil, and qvm are in the same directory
-ADD alexa /src/alexa
+# NOTE: only works if magicl, cl-quil, and qvm are in the same directory
 ADD magicl /src/magicl
 ADD cl-quil /src/cl-quil
 ADD qvm /src/qvm
