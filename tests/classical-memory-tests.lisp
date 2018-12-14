@@ -33,7 +33,22 @@ LOAD target z idx   # NOT OK!
          (q (make-qvm 1 :classical-memory-model (qvm:memory-descriptors-to-qvm-memory-model
                                                  (quil:parsed-program-memory-definitions p)))))
     (qvm:load-program q p)
-    (signals simple-error
+    (signals qvm:memory-index-out-of-bounds
+      (qvm:run q))))
+
+(deftest test-measure-out-of-range ()
+  "Test that we detect an error when a bit is out of range with a MEASURE."
+  (let* ((p (quil:parse-quil-string "
+DECLARE ro BIT[1]
+X 0
+X 1
+MEASURE 0 ro[0]
+MEASURE 1 ro[1]
+"))
+         (q (make-qvm 2 :classical-memory-model (qvm:memory-descriptors-to-qvm-memory-model
+                                                 (quil:parsed-program-memory-definitions p)))))
+    (qvm:load-program q p)
+    (signals qvm:memory-index-out-of-bounds
       (qvm:run q))))
 
 (deftest test-bit-offsetting-bit ()

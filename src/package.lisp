@@ -50,6 +50,7 @@
    #:quil-octet                         ; TYPE
    #:qvm-integer                        ; TYPE
    #:qvm-real                           ; TYPE
+   #:memory-index-out-of-bounds         ; CONDITION
    #:classical-memory                   ; TYPE
    #:make-classical-memory              ; FUNCTION
    #:classical-memory-size              ; FUNCTION

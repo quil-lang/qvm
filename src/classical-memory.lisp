@@ -47,19 +47,34 @@
                              (:conc-name memory-)
                              (:copier nil))
   "A representation of a chunk of allocated classical memory."
+  ;; SIZE here is measured in OCTETS!
   (size    0                   :read-only t :type non-negative-fixnum)
   (pointer (cffi:null-pointer) :read-only t :type cffi:foreign-pointer))
 
+(define-condition memory-index-out-of-bounds (error)
+  ((index :initarg :index
+          :reader oob-index)
+   (from :initarg :from
+         :reader oob-from)
+   (to :initarg :to
+       :reader oob-to)
+   (name :initarg :name
+         :initform nil
+         :reader oob-name))
+  (:report (lambda (condition stream)
+             (format stream "The index ~A ~@[of memory ~S ~]is supposed to be within the interval [~A, ~A)."
+                     (oob-index condition)
+                     (oob-name condition)
+                     (oob-from condition)
+                     (oob-to condition)))))
+
+(defun assert-in-bounds (i a b &optional name)
+  (unless (and (<= a i) (< i b))
+    (error 'memory-index-out-of-bounds :index i :from a :to b :name name)))
+
 (defun check-classical-memory-bounds (i type-name mem)
   (let ((actual-index (* i (size-of type-name))))
-    (assert (and (<= 0 actual-index)
-                 (< actual-index (memory-size mem)))
-            ()
-            "The ~A index ~D into the classical memory ~A is ~
-           out of bounds."
-            (quil-name type-name)
-            i
-            mem)))
+    (assert-in-bounds actual-index 0 (memory-size mem) (quil-name type-name))))
 
 (defmethod print-object ((obj classical-memory) stream)
   (print-unreadable-object (obj stream :type t :identity t)
@@ -259,10 +274,11 @@ If BYPASS-SIZE-LIMIT is T (default: NIL), then the size limit dictated by **CLAS
     (loop :with size-left := **classical-memory-size-limit**
           :for root :in (quil:memory-model-roots model)
           :for name := (quil:memory-descriptor-name root)
+          :for length := (quil:memory-descriptor-length root)
           :for size := (/
                         ;; This bit is measured in bits.
                         (round-up-to-next-multiple
-                           (* (quil:memory-descriptor-length root)
+                           (* length
                               (funcall (quil:memory-model-sizeof model)
                                        (quil:memory-descriptor-type root)))
                            (quil:memory-model-alignment model))
@@ -287,9 +303,13 @@ If BYPASS-SIZE-LIMIT is T (default: NIL), then the size limit dictated by **CLAS
                  (typed-reader/writer (quil:memory-descriptor-type root))
                (setf (gethash name memories)
                      (memory-view (make-classical-memory size)
-                                  :length (quil:memory-descriptor-length root)
-                                  :reader reader
-                                  :writer writer))))
+                                  :length length
+                                  :reader  (lambda (mem i)
+                                             (assert-in-bounds i 0 length name)
+                                             (funcall reader mem i))
+                                  :writer  (lambda (new-value mem i)
+                                             (assert-in-bounds i 0 length name)
+                                             (funcall writer new-value mem i))))))
     ;; All of the roots are allocated, and thus we have no additional
     ;; memory to allocate. We do need to make views onto the aliased
     ;; data though, which means the construction of a bunch of
@@ -305,7 +325,7 @@ If BYPASS-SIZE-LIMIT is T (default: NIL), then the size limit dictated by **CLAS
              (offset-octets (floor start 8))
              (addl-offset-bits (mod start 8)) ; This can *only* be non-zero for bits!
              (size  (quil:memory-alias-size-in-bits alias))
-             (upper-index-bound (1- (quil:memory-alias-length alias)))
+             (length (quil:memory-alias-length alias))
              ;; Computation of a new CLASSICAL-MEMORY which aliases
              ;; ROOT-CLASSICAL-MEMORY.
              (aliasing-memory (%make-classical-memory
@@ -330,15 +350,15 @@ If BYPASS-SIZE-LIMIT is T (default: NIL), then the size limit dictated by **CLAS
           ;; XXX FIXME: This is where we would deal with bit offsets
           ;; and the like.
           (flet ((reader (mem i)
-                   (assert (<= 0 i upper-index-bound)) ; Special sub-bounds check.
+                   (assert-in-bounds i 0 length name) ; Special sub-bounds check.
                    (funcall base-reader mem (+ i addl-offset-bits)))
                  (writer (new-value mem i)
-                   (assert (<= 0 i upper-index-bound)) ; Special sub-bounds check.
+                   (assert-in-bounds i 0 length name) ; Special sub-bounds check.
                    (funcall base-writer new-value mem (+ i addl-offset-bits))))
             (setf (gethash name memories)
                   (memory-view root-classical-memory
                                :aliasing-memory aliasing-memory
-                               :length (1+ upper-index-bound)
+                               :length length
                                :reader #'reader
                                :writer #'writer))))))))
 
