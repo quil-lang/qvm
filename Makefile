@@ -69,7 +69,7 @@ qvm: system-index.txt
 
 qvm-sdk: FOREST_SDK_FEATURE=--eval '(pushnew :forest-sdk *features*)'
 qvm-sdk: QVM_WORKSPACE=10240
-qvm-sdk: FOREST_SDK_LOAD=--load src/mangle-shared-objects.lisp
+qvm-sdk: FOREST_SDK_LOAD=--load app/src/mangle-shared-objects.lisp
 qvm-sdk: clean clean-cache qvm
 
 ### Testing
