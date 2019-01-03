@@ -67,10 +67,16 @@ qvm: system-index.txt
                  --logfile build-output.log \
                  --entry qvm-app::%main
 
-qvm-sdk: FOREST_SDK_FEATURE=--eval '(pushnew :forest-sdk *features*)'
-qvm-sdk: QVM_WORKSPACE=10240
+qvm-sdk-base: FOREST_SDK_FEATURE=--eval '(pushnew :forest-sdk *features*)'
+qvm-sdk-base: QVM_WORKSPACE=10240
+qvm-sdk-base: clean clean-cache qvm
+
+# By default, relocate shared libraries on SDK builds
 qvm-sdk: FOREST_SDK_LOAD=--load app/src/mangle-shared-objects.lisp
-qvm-sdk: clean clean-cache qvm
+qvm-sdk: qvm-sdk-base
+
+# Don't relocate shared libraries on barebones SDK builds
+qvm-sdk-barebones: qvm-sdk-base
 
 ### Testing
 
