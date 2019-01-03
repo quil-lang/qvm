@@ -1,21 +1,7 @@
 ###############################################################################
-# QVM tests docker image
+# qvm docker image
 ###############################################################################
-FROM rigetticomputing/lisp-base
-
-# organize the source
-# NOTE: only works if magicl, cl-quil, and qvm are in the same directory
-ADD magicl /src/magicl
-ADD cl-quil /src/cl-quil
-ADD qvm /src/qvm
-
-# quickload the qvm-tests system
-WORKDIR /src/qvm
-RUN sbcl --eval "(ql:quickload :qvm-tests)" --quit
-RUN sbcl --eval "(ql:quickload :qvm-app-tests)" --quit
-
-ENV LANG C.UTF-8
+FROM qvm-base
 
 # executed on docker run
-# ENTRYPOINT ["make", "test", "test-ccl", "coverage"]
-ENTRYPOINT ["make", "test"]
+ENTRYPOINT ["./qvm"]

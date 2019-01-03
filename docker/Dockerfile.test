@@ -1,7 +1,7 @@
 ###############################################################################
-# qvm-app-tests docker image
+# qvm-tests docker image
 ###############################################################################
-FROM qvm-app-base
+FROM qvm-base
 
 # executed on docker run
 WORKDIR /src/qvm

@@ -1,11 +1,9 @@
 ###############################################################################
-# qvm-app-base docker image
+# qvm-base docker image
 ###############################################################################
-FROM rigetticomputing/lisp-base
+FROM rigetticomputing/lisp-base:qcs-1.2.0
 
 # organize the source
-# NOTE: only works if magicl, cl-quil, and qvm are in the same directory
-ADD magicl /src/magicl
 ADD cl-quil /src/cl-quil
 ADD qvm /src/qvm
 
