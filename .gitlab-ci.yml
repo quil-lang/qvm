@@ -10,7 +10,7 @@ test-qvm-lib:
     - branches
   image:
     name: rigetti/quilc
-    entrypoint: bash -lc
+    entrypoint: ["bash", "-lc"]
   script:
     - make dump-version-info
     - make test-lib
@@ -23,7 +23,7 @@ test-qvm-app:
     - branches
   image:
     name: rigetti/quilc
-    entrypoint: bash -lc
+    entrypoint: ["bash", "-lc"]
   script:
     - make dump-version-info
     - make test-app
