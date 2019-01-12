@@ -8,7 +8,9 @@ test-qvm-lib:
     - github
   only:
     - branches
-  image: rigetti/quilc
+  image:
+    name: rigetti/quilc
+    entrypoint: bash -lc
   script:
     - make dump-version-info
     - make test-lib
@@ -19,7 +21,9 @@ test-qvm-app:
     - github
   only:
     - branches
-  image: rigetti/quilc
+  image:
+    name: rigetti/quilc
+    entrypoint: bash -lc
   script:
     - make dump-version-info
     - make test-app
