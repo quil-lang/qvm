@@ -12,6 +12,8 @@ test-qvm-lib:
     name: rigetti/quilc
     entrypoint: [""]
   script:
+    - ls /builds/rigetti
+    - pwd
     - make dump-version-info
     - make test-lib
 
@@ -25,6 +27,8 @@ test-qvm-app:
     name: rigetti/quilc
     entrypoint: [""]
   script:
+    - ls /builds/rigetti
+    - pwd
     - make dump-version-info
     - make test-app
 
