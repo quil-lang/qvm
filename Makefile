@@ -2,6 +2,7 @@
 QVM_WORKSPACE ?= 2048
 LISP_CACHE ?= `sbcl --noinform --non-interactive --eval '(princ asdf:*user-cache*)'`
 
+COMMIT_HASH=$(shell git rev-parse --short HEAD)
 RIGETTI_LISP_LIBRARY_HOME=../
 
 SBCL_BIN=sbcl
@@ -18,7 +19,9 @@ QUICKLISP_BOOTSTRAP_URL=https://beta.quicklisp.org/quicklisp.lisp
 
 all: qvm
 
-### Some basic one-time or rare commands.
+###############################################################################
+# SETUP
+###############################################################################
 
 # Download and install Quicklisp.
 quicklisp:
@@ -52,6 +55,23 @@ deps: $(QUICKLISP_SETUP)
 	$(QUICKLISP) --eval '(ql:update-client :prompt nil)'
 	$(QUICKLISP) --eval '(ql:update-dist "quicklisp" :prompt nil)'
 
+###############################################################################
+# DEPENDENCIES
+###############################################################################
+
+dump-version-info:
+	sbcl --noinform --non-interactive \
+		--eval '(format t "~A ~A" (lisp-implementation-type) (lisp-implementation-version))' \
+		--eval '(print (ql-dist:find-system "alexa"))' \
+		--eval '(print (ql-dist:find-system "magicl"))' \
+		--eval '(print (ql-dist:find-system "rpcq"))' \
+		--eval '(print (ql-dist:find-system "quilc"))' \
+		--eval '(terpri)' --quit
+
+###############################################################################
+# BUILD
+###############################################################################
+
 qvm: system-index.txt
 	buildapp --output qvm \
                  --dynamic-space-size $(QVM_WORKSPACE) \
@@ -78,7 +98,13 @@ qvm-sdk: qvm-sdk-base
 # Don't relocate shared libraries on barebones SDK builds
 qvm-sdk-barebones: qvm-sdk-base
 
-### Testing
+.PHONY: docker
+docker: Dockerfile
+	docker build -t rigetti/qvm:$(COMMIT_HASH) .
+
+###############################################################################
+# TEST
+###############################################################################
 
 testsafe:
 	sbcl --dynamic-space-size $(QVM_WORKSPACE) \
@@ -107,8 +133,9 @@ test-ccl:
 coverage:
 	sbcl --noinform --non-interactive --load coverage-report/coverage-report.lisp
 
-
-### Cleanup.
+###############################################################################
+# CLEAN
+###############################################################################
 
 # Clean the executables
 clean:
