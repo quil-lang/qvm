@@ -12,11 +12,6 @@ test-qvm-lib:
     name: rigetti/quilc
     entrypoint: [""]
   script:
-    - ls /builds/rigetti
-    - pwd
-    - ls /src
-    - cat ~/.sbclrc
-    - cat system-index.txt
     - make dump-version-info
     - make test-lib RIGETTI_LISP_LIBRARY_HOME=/src
 
@@ -30,10 +25,6 @@ test-qvm-app:
     name: rigetti/quilc
     entrypoint: [""]
   script:
-    - ls /builds/rigetti
-    - ls /
-    - ls /src
-    - pwd
     - make dump-version-info
     - make test-app RIGETTI_LISP_LIBRARY_HOME=/src
 
