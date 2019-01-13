@@ -6,14 +6,19 @@ test-qvm-lib:
   stage: test
   tags:
     - github
+    - dockerd
   only:
     - branches
   image:
     name: rigetti/quilc
     entrypoint: [""]
   script:
-    - make dump-version-info
-    - make test-lib RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker build --tag rigetti/qvm:${CI_COMMIT_REF_SLUG} .
+    - docker run --rm --ipc=host --entrypoint="make dump-version-info"
+      rigetti/qvm:${CI_COMMIT_REF_SLUG}
+    - docker run --rm --ipc=host --entrypoint="make test-lib RIGETTI_LISP_LIBRARY_HOME=/src"
+      rigetti/qvm:${CI_COMMIT_REF_SLUG}
+    - docker rmi rigetti/qvm:${CI_COMMIT_REF_SLUG}
 
 test-qvm-app:
   stage: test
