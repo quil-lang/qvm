@@ -117,7 +117,7 @@ testsafe:
 test: test-lib test-app
 
 test-lib:
-	sbcl --dynamic-space-size $(QVM_WORKSPACE) \
+	$(QUICKLISP) \
 		 --noinform --non-interactive \
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
