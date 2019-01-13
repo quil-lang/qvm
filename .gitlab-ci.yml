@@ -14,6 +14,8 @@ test-qvm-lib:
   script:
     - ls /builds/rigetti
     - pwd
+    - ls /src
+    - cat ~/.sbclrc
     - make dump-version-info
     - make test-lib
 
