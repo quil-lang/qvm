@@ -28,6 +28,8 @@ test-qvm-app:
     entrypoint: [""]
   script:
     - ls /builds/rigetti
+    - ls /
+    - ls /src
     - pwd
     - make dump-version-info
     - make test-app
