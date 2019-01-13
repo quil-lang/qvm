@@ -12,10 +12,10 @@ test-qvm-lib:
   image: docker:stable
   script:
     - docker build --tag rigetti/qvm:${CI_COMMIT_REF_SLUG} .
-    - docker run --rm --ipc=host --entrypoint="make dump-version-info"
-      rigetti/qvm:${CI_COMMIT_REF_SLUG}
-    - docker run --rm --ipc=host --entrypoint="make test-lib RIGETTI_LISP_LIBRARY_HOME=/src"
-      rigetti/qvm:${CI_COMMIT_REF_SLUG}
+    - docker run --rm --ipc=host --entrypoint="make"
+      rigetti/qvm:${CI_COMMIT_REF_SLUG} dump-version-info
+    - docker run --rm --ipc=host --entrypoint="make"
+      rigetti/qvm:${CI_COMMIT_REF_SLUG} test-lib RIGETTI_LISP_LIBRARY_HOME=/src
     - docker rmi rigetti/qvm:${CI_COMMIT_REF_SLUG}
 
 test-qvm-app:
