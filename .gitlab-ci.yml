@@ -9,9 +9,7 @@ test-qvm-lib:
     - dockerd
   only:
     - branches
-  image:
-    name: rigetti/quilc
-    entrypoint: [""]
+  image: docker:stable
   script:
     - docker build --tag rigetti/qvm:${CI_COMMIT_REF_SLUG} .
     - docker run --rm --ipc=host --entrypoint="make dump-version-info"
