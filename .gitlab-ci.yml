@@ -16,8 +16,9 @@ test-qvm-lib:
     - pwd
     - ls /src
     - cat ~/.sbclrc
+    - cat system-index.txt
     - make dump-version-info
-    - make test-lib
+    - make test-lib RIGETTI_LISP_LIBRARY_HOME=/src
 
 test-qvm-app:
   stage: test
@@ -34,7 +35,7 @@ test-qvm-app:
     - ls /src
     - pwd
     - make dump-version-info
-    - make test-app
+    - make test-app RIGETTI_LISP_LIBRARY_HOME=/src
 
 docker-master:
   stage: package
