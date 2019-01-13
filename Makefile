@@ -118,7 +118,6 @@ test: test-lib test-app
 
 test-lib:
 	$(QUICKLISP) \
-		 --noinform --non-interactive \
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
