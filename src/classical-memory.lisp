@@ -301,15 +301,17 @@ If BYPASS-SIZE-LIMIT is T (default: NIL), then the size limit dictated by **CLAS
              ;; Allocate the memory, and create readers and writers.
              (multiple-value-bind (reader writer)
                  (typed-reader/writer (quil:memory-descriptor-type root))
-               (setf (gethash name memories)
-                     (memory-view (make-classical-memory size)
-                                  :length length
-                                  :reader  (lambda (mem i)
-                                             (assert-in-bounds i 0 length name)
-                                             (funcall reader mem i))
-                                  :writer  (lambda (new-value mem i)
-                                             (assert-in-bounds i 0 length name)
-                                             (funcall writer new-value mem i))))))
+               (let ((name name)        ; Re-bind these for closure
+                     (length length))   ; capture below.
+                 (setf (gethash name memories)
+                       (memory-view (make-classical-memory size)
+                                    :length length
+                                    :reader  (lambda (mem i)
+                                               (assert-in-bounds i 0 length name)
+                                               (funcall reader mem i))
+                                    :writer  (lambda (new-value mem i)
+                                               (assert-in-bounds i 0 length name)
+                                               (funcall writer new-value mem i)))))))
     ;; All of the roots are allocated, and thus we have no additional
     ;; memory to allocate. We do need to make views onto the aliased
     ;; data though, which means the construction of a bunch of

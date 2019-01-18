@@ -287,3 +287,47 @@ EXCHANGE ox[0] ox[1]
     (is (= 55.0d0 (qvm:memory-ref q "rx" 0)))
     (is (= 123    (qvm:memory-ref q "ix" 0)))
     (is (= 255    (qvm:memory-ref q "ox" 0)))))
+
+(deftest test-memory-name-closure-bug ()
+  "This was a bug where the reader and writer closures had their NAME and LENGTH bindings mutated in a loop."
+  (let ((valid-quil (quil:parse-quil-string "
+DECLARE ro BIT[4]
+DECLARE theta REAL[1]
+MOVE theta[0] 0.0
+PRAGMA EXPECTED_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
+RX(-pi/2) 0
+CZ 1 0
+RX(pi) 5
+RZ(pi) 0
+RZ(-pi/2) 1
+RX(-pi/2) 1
+CZ 2 1
+RZ(-pi/2) 2
+RX(-pi/2) 2
+CZ 5 2
+RZ(pi/2) 2
+RZ(-pi/2) 5
+RX(-pi/2) 5
+RZ(pi/2 + theta[0] + -pi/2) 5
+RX(pi/2) 5
+CZ 5 2
+RZ(pi/2) 2
+RX(pi/2) 2
+CZ 2 1
+RX(pi/2) 1
+CZ 0 1
+RX(-1.5707963267948968) 0
+RZ(1.5707963267948974) 1
+RZ(pi/2) 2
+RX(pi) 2
+RZ(pi/2) 5
+RX(pi) 5
+PRAGMA CURRENT_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
+PRAGMA EXPECTED_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
+MEASURE 5 ro[3]
+MEASURE 2 ro[2]
+MEASURE 1 ro[1]
+MEASURE 0 ro[0]
+PRAGMA CURRENT_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
+")))
+    (not-signals error (qvm:run-program 6 valid-quil))))
