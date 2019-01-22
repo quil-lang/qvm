@@ -93,12 +93,6 @@
               (tbnl:session-id tbnl:*session*))))
 
 (defun format-log (fmt-string &rest args)
-  (cond
-    ((boundp 'tbnl:*acceptor*)
-     (apply #'tbnl:log-message* ':INFO
-            (concatenate 'string (session-info) fmt-string)
-            args))
-    (t
-     (format t "[~A] ~?" (tbnl::iso-time) fmt-string args)
-     (terpri))))
+  (apply #'cl-syslog:format-log *logger* ':info (concatenate 'string "~A" fmt-string) (session-info) args))
+
 
