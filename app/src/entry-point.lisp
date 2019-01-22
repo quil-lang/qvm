@@ -8,6 +8,10 @@
 
 (defvar *entered-from-main* nil)
 (defvar *program-name* "qvm")
+(defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
+                                :app-name "qvm"
+                                :facility ':local0
+                                :log-writer (cl-syslog:null-log-writer)))
 
 (defparameter *benchmark-types* '("bell" "qft" "hadamard" #-forest-sdk "suite")
   "List of allowed benchmark names.")
@@ -452,6 +456,12 @@ Copyright (c) 2018 Rigetti Computing.~2%")
 (defun %main (argv)
   (setup-debugger)
   (setf *entered-from-main* t)
+
+  (setf *logger* (make-instance 'cl-syslog:rfc5424-logger
+                                :app-name "qvm"
+                                :facility ':local0
+                                :log-writer (cl-syslog:tee-to-stream
+                                             (cl-syslog:syslog-log-writer "qvm" :local0))))
 
   ;; This finalizer can _always_ be called even if there is no
   ;; persistent wavefunction. Also, we note that the library

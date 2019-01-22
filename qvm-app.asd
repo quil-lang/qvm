@@ -35,7 +35,9 @@
                ;; Portable gc
                #:trivial-garbage
                ;; Portable globals
-               #:global-vars)
+               #:global-vars
+               ;; Logging
+               #:cl-syslog)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-app-tests)))
   :pathname "app/src/"
   :serial t
