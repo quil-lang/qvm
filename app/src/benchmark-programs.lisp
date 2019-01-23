@@ -46,13 +46,15 @@
             timing)
         (qvm:load-program q p :supersede-memory-subsystem t)
 
-        (format-log "Performing ~S benchmark with ~D qubits...~%" type num-qubits)
+        (format-log "Computing baseline serial norm timing...")
+        (finish-output)
+
+        (tg:gc :full t)
+        (format-log "Baseline serial norm timing: ~D ms" (norm-baseline-timing (qvm::amplitudes q)))
 
         (tg:gc :full t)
 
-        (format-log "Baseline norm timing: ~D ms" (norm-baseline-timing (qvm::amplitudes q)))
-
-        (tg:gc :full t)
+        (format-log "Starting ~S benchmark with ~D qubits...~%" type num-qubits)
 
         (with-timing (timing)
           (time (qvm:run q)))
