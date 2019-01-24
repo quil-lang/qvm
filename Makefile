@@ -6,7 +6,7 @@ COMMIT_HASH=$(shell git rev-parse --short HEAD)
 RIGETTI_LISP_LIBRARY_HOME=../
 
 SBCL_BIN=sbcl
-SBCL=$(SBCL_BIN) --noinform --non-interactive --no-userinit --no-sysinit
+SBCL=$(SBCL_BIN) --dynamic-space-size $(QVM_WORKSPACE) --noinform --non-interactive --no-userinit --no-sysinit
 
 QUICKLISP_HOME=$(HOME)/quicklisp
 QUICKLISP_SETUP=$(QUICKLISP_HOME)/setup.lisp
