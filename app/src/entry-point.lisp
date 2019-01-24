@@ -460,8 +460,12 @@ Copyright (c) 2018 Rigetti Computing.~2%")
   (setf *logger* (make-instance 'cl-syslog:rfc5424-logger
                                 :app-name "qvm"
                                 :facility ':local0
-                                :log-writer (cl-syslog:tee-to-stream
-                                             (cl-syslog:syslog-log-writer "qvm" :local0))))
+                                :log-writer
+                                #+windows
+                                (cl-syslog:stream-log-writer)
+                                #-windows
+                                (cl-syslog:tee-to-stream
+                                 (cl-syslog:syslog-log-writer "qvm" :local0))))
 
   ;; This finalizer can _always_ be called even if there is no
   ;; persistent wavefunction. Also, we note that the library
