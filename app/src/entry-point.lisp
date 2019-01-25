@@ -150,7 +150,7 @@
 ******************************
 * Welcome to the Rigetti QVM *~%~
 ******************************~%~
-Copyright (c) 2018 Rigetti Computing.~2%")
+Copyright (c) 2019 Rigetti Computing.~2%")
   #+forest-sdk
   (format t "This is a part of the Forest SDK. By using this program~%~
              you agree to the End User License Agreement (EULA) supplied~%~

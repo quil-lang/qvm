@@ -72,7 +72,7 @@ $ echo "H 0" | ./qvm -e
 ******************************
 * Welcome to the Rigetti QVM *
 ******************************
-Copyright (c) 2018 Rigetti Computing.
+Copyright (c) 2019 Rigetti Computing.
 
 (Configured with 2048 MiB of workspace and 8 workers.)
 
@@ -98,7 +98,7 @@ $ ./qvm -S
 ******************************
 * Welcome to the Rigetti QVM *
 ******************************
-Copyright (c) 2018 Rigetti Computing.
+Copyright (c) 2019 Rigetti Computing.
 
 (Configured with 2048 MiB of workspace and 8 workers.)
 
