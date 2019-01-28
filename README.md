@@ -60,7 +60,7 @@ The qubit amplitudes can be inspected
   #C(0.0d0 0.0d0) #C(0.0d0 0.0d0))
 ```
 
-which shows, as is expected, that `H 0` has put qubit-0 (the first two
+which shows, as expected, that `H 0` has put qubit-0 (the first two
 complex numbers above) into an equal superposition of states `|0>` and
 `|1>`.
 
@@ -68,7 +68,7 @@ Measurement of a quantum state causes it to collapse into one of its
 basis states (`|0>` or `|1>`). This can be simulated with
 
 ``` common-lisp
-(qvm:measure-all *qvm*)
+* (qvm:measure-all *qvm*)
 #<PURE-STATE-QVM {1004039753}>
 (0 0)
 ```
