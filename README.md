@@ -13,9 +13,9 @@ Practical Quantum Instruction Set Architecture](https://arxiv.org/pdf/1608.03355
 
 The QVM library is contained within `./src/`, and provides the
 implementation of the Quantum Abstract Machine. It evaluates Quil
-programs (parsed by `cl-quil`) on a virtual machine that can model
-various characteristics of (though without needing access to) a true
-quantum computer.
+programs (parsed and compiled by [QUILC](http://github.com/rigetti/quilc)) on a virtual machine that can
+model various characteristics of (though without needing access to) a
+true quantum computer.
 
 ### Usage
 
@@ -30,16 +30,61 @@ library can be loaded with
 
 ```shell
 $ sbcl
-
 ```
 
 ```common-lisp
-(ql:quickload :qvm)
-;;; <snip>compilation output</snip>
+* (ql:quickload :qvm)
 (:QVM)
-(qvm:make-qvm 10)
-#<QVM:PURE-STATE-QVM {10090A7C23}>
 ```
+
+QVM objects are created with `(qvm:make-qvm n)` where `n` is the number of
+qubits the QVM should support; a program can then be loaded into the
+QVM object with `(qvm:load-program *qvm* *program*)` where `*qvm*` is a
+QVM object and `*program*` is a `cl-quil:parsed-program`
+object.
+
+Alternatively, the `qvm:run-program` function will handle QVM object
+creation. For example,
+
+``` common-lisp
+* (setq *qvm* (qvm:run-program 2 (cl-quil:parse-quil-string "H 0")))
+```
+
+creates a 2-qubit QVM object and on it runs the Quil program `H 0`.
+
+The qubit amplitudes can be inspected
+
+``` common-lisp
+* (qvm::amplitudes *qvm*)
+#(#C(0.7071067811865475d0 0.0d0) #C(0.7071067811865475d0 0.0d0)
+  #C(0.0d0 0.0d0) #C(0.0d0 0.0d0))
+```
+
+which shows, as is expected, that `H 0` has put qubit-0 (the first two
+complex numbers above) into an equal superposition of states `|0>` and
+`|1>`.
+
+Measurement of a quantum state causes it to collapse into one of its
+basis states (`|0>` or `|1>`). This can be simulated with
+
+``` common-lisp
+(qvm:measure-all *qvm*)
+#<PURE-STATE-QVM {1004039753}>
+(0 0)
+```
+
+Inspecting the QVM object's state shows that this effect mutates the
+information stored on the QVM; i.e. the previous state information is lost
+
+``` common-lisp
+* (qvm::amplitudes *qvm*)
+#(#C(1.0d0 0.0d0) #C(0.0d0 0.0d0)
+  #C(0.0d0 0.0d0) #C(0.0d0 0.0d0))
+```
+
+Qubit zero's state has collapsed into the state `|0>`. Repeating this
+process (from creating the QVM object to measuring qubits) would show
+that both states would each come up with probability 0.5.
 
 ### Examples
 
