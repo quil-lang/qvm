@@ -24,6 +24,9 @@ the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to get Quicklisp instal
 particular attention to the section "Telling Quicklisp Where Your Code
 Is".
 
+>**Note**: `qvm` is not yet available through Quicklisp's distribution
+>mechanism, and must be installed manually.
+
 Download both this repository *and* [quilc](http://github.com/rigetti/quilc) into the
 `ql:*local-project-directories*` location. If all is correct, the `qvm`
 library can be loaded with
