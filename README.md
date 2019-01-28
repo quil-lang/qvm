@@ -13,18 +13,18 @@ Practical Quantum Instruction Set Architecture](https://arxiv.org/pdf/1608.03355
 
 The QVM library is contained within `./src/`, and provides the
 implementation of the Quantum Abstract Machine. It evaluates Quil
-programs (parsed and compiled by [QUILC](http://github.com/rigetti/quilc)) on a virtual machine that can
+programs (parsed and compiled by [quilc](http://github.com/rigetti/quilc)) on a virtual machine that can
 model various characteristics of (though without needing access to) a
 true quantum computer.
 
 ### Usage
 
-The QVM library is best loaded using `quicklisp`. Please read and follow
-the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to get `quicklisp` installed. Pay
+The QVM library is best loaded using Quicklisp. Please read and follow
+the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to get Quicklisp installed. Pay
 particular attention to the section "Telling Quicklisp Where Your Code
 Is".
 
-Download both this repository *and* [QUILC](http://github.com/rigetti/quilc) into the
+Download both this repository *and* [quilc](http://github.com/rigetti/quilc) into the
 `ql:*local-project-directories*` location. If all is correct, the `qvm`
 library can be loaded with
 
@@ -98,7 +98,10 @@ example code, first load `qvm-examples`
 ```
 
 The function `bit-reversal-circuit` takes a list of qubit indices and
-returns a list of instructions that will reverse the qubit amplitudes:
+returns a list of instructions that will reverse the qubit amplitudes
+in "bit-reversal order" (e.g., the coefficient of `|1110>` gets
+mapped to `|0111>`):
+that the amplitudes get reversed
 
 ``` common-lisp
 (qvm-examples:bit-reversal-circuit '(1 2 3 4))
@@ -106,7 +109,7 @@ returns a list of instructions that will reverse the qubit amplitudes:
 ```
 
 For a given list of qubit indices, the function `qft-circuit` returns a
-[Quantum Fourier transform](https://en.wikipedia.org/wiki/Quantum_Fourier_transform) Quil program ready to be passed to QUILC for
+[Quantum Fourier transform](https://en.wikipedia.org/wiki/Quantum_Fourier_transform) Quil program ready to be passed to quilc for
 compilation.
 
 ``` common-lisp
@@ -130,7 +133,6 @@ CPHASE(pi/2) 1 2
 H 1
 SWAP 1 4
 SWAP 2 3
-NIL
 ```
 
 ## QVM, the application
@@ -164,7 +166,7 @@ $ make QVM_WORKSPACE=4096 qvm
 ```
 
 The QVM application has a few command-line switches used to configure
-the QVM. To explore those options, see the output of
+the QVM. To explore those options, see the output of the following command:
 
 ```
 $ ./qvm --help
@@ -226,7 +228,6 @@ make test
 or from within SBCL
 
 ```
-* (ql:quickload :qvm-tests)
 * (asdf:test-system :qvm)
 ```
 
