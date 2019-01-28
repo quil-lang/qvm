@@ -58,15 +58,18 @@ the `Makefile` with
 $ make qvm
 ```
 
-The "workspace" size can be configured at compile-time with
+This will produce a binary executable `qvm` in the same directory.
+
+In some situtations, using a large number of qubits may caus heap
+exhaustion. To increase the memory available for the QVM, recompile
+and specify the workspace size (in MB)
 
 ```
 $ make QVM_WORKSPACE=4096 qvm
 ```
 
-This will produce a binary executable `qvm` in the same directory. The
-QVM application has a few command-line switches used to configure the
-QVM. To explore those options, see the output of 
+The QVM application has a few command-line switches used to configure
+the QVM. To explore those options, see the output of
 
 ```
 $ ./qvm --help
