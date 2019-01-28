@@ -38,6 +38,53 @@ $ sbcl
 #<QVM:PURE-STATE-QVM {10090A7C23}>
 ```
 
+### Examples
+
+The QVM comes with some example code to illustrate usage of the
+QVM. The example code can be found under `./examples/`. To run the
+example code, first load `qvm-examples` 
+
+``` common-lisp
+(ql:quickload :qvm-examples)
+
+```
+
+The function `bit-reversal-circuit` takes a list of qubit indices and
+returns a list of instructions that will reverse the qubit amplitudes:
+
+``` common-lisp
+(qvm-examples:bit-reversal-circuit '(1 2 3 4))
+(#<SWAP 1 4> #<SWAP 2 3>)
+```
+
+For a given list of qubit indices, the function `qft-circuit` returns a
+[Quantum Fourier transform](https://en.wikipedia.org/wiki/Quantum_Fourier_transform) Quil program ready to passed to QUILC for
+compilation.
+
+``` common-lisp
+(qvm-examples:qft-circuit '(1 2 3 4))
+#<CL-QUIL:PARSED-PROGRAM {10040ABEE3}>
+```
+
+To inspect the object, we can use the `cl-quil::print-parsed-program` function
+
+``` common-lisp
+(cl-quil::print-parsed-program (qvm-examples:qft-circuit '(1 2 3 4)))
+H 4
+CPHASE(pi/2) 3 4
+H 3
+CPHASE(pi/4) 2 4
+CPHASE(pi/2) 2 3
+H 2
+CPHASE(pi/8) 1 4
+CPHASE(pi/4) 1 3
+CPHASE(pi/2) 1 2
+H 1
+SWAP 1 4
+SWAP 2 3
+NIL
+```
+
 ## QVM, the application
 
 The QVM application is contained with `./app/src/`, and provides a
@@ -45,8 +92,8 @@ stand-alone interface to the QVM library. It can be invoked directly
 with the binary executable, or alternatively it can provide a server
 that can be used over the network. Each has their benefits: the former
 permits a simplified interface using the command-line switches (see
-output of `qvm --help`), while the latter allows many remote
-connections to a single in-memory QVM.
+output of `qvm --help`), while the latter allows many remote connections
+to a single in-memory QVM.
 
 ### Usage
 
