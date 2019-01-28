@@ -1,10 +1,13 @@
 # Rigetti Quantum Virtual Machine
 
-This directory contains two projects. The first, `qvm`, a classical
-implementation of the Quantum Abstract Machine, called a "Quantum
-Virtual Machine". The second, `qvm-app`, is the application interface to
-interacting with the QVM, either directly through the `qvm` binary or
-via its server interface.
+This directory contains two projects. The first, `qvm`, is a classical
+implementation of the Quantum Abstract Machine (QAM), called a
+"Quantum Virtual Machine" (QVM). The second, `qvm-app`, is the
+application interface to interacting with the QVM, either directly
+through the `qvm` binary or via its server interface.
+
+The definition of the QAM was developed at Rigetti in a paper titled [A
+Practical Quantum Instruction Set Architecture](https://arxiv.org/pdf/1608.03355.pdf).
 
 ## QVM, the library
 
