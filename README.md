@@ -89,6 +89,16 @@ Qubit zero's state has collapsed into the state `|0>`. Repeating this
 process (from creating the QVM object to measuring qubits) would show
 that both states would each come up with probability 0.5.
 
+``` common-lisp
+* (loop :for i :below 100
+        :for (qvm . qubits) := (multiple-value-list (qvm:measure-all (qvm:run-program 1 (cl-quil:parse-quil-string "H 0"))))
+        :append (alexandria:flatten qubits) :into states
+        :finally
+           (return (list (/ (count 0 states) i)
+                         (/ (count 1 states) i))))
+(51/100 49/100)
+```
+
 ### Examples
 
 The QVM comes with some example code to illustrate usage of the
