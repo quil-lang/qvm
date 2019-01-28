@@ -50,13 +50,13 @@ To build the QVM application follow instructions in
 the `Makefile` with
 
 ```
-$ make qvm-app
+$ make qvm
 ```
 
 The "workspace" size can be configured at compile-time with
 
 ```
-$ make QVM_WORKSPACE=4096
+$ make QVM_WORKSPACE=4096 qvm
 ```
 
 This will produce a binary executable `qvm` in the same directory. The
