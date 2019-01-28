@@ -84,18 +84,18 @@ Copyright (c) 2018 Rigetti Computing.
 
 (Configured with 2048 MiB of workspace and 8 workers.)
 
-[2018-12-13 14:07:06] Selected simulation method: pure-state
-[2018-12-13 14:07:06] Reading program.
-[2018-12-13 14:07:06] Allocating memory for QVM of 1 qubits.
-[2018-12-13 14:07:06] Allocation completed in 4 ms.
-[2018-12-13 14:07:06] Loading quantum program.
-[2018-12-13 14:07:06] Executing quantum program.
-[2018-12-13 14:07:06] Execution completed in 4 ms.
-[2018-12-13 14:07:06] Printing 1-qubit state.
-[2018-12-13 14:07:06] Amplitudes:
-[2018-12-13 14:07:06]   |0>: 0.7071067811865475, P= 50.0%
-[2018-12-13 14:07:06]   |1>: 0.7071067811865475, P= 50.0%
-[2018-12-13 14:07:06] No classical memory present.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Selected simulation method: pure-state
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Reading program.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Allocating memory for QVM of 1 qubits.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Allocation completed in 3 ms.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Loading quantum program.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Executing quantum program.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Execution completed in 3 ms.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Printing 1-qubit state.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Amplitudes:
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - -   |0>: 0.7071067811865475, P= 50.0%
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - -   |1>: 0.7071067811865475, P= 50.0%
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - No classical memory present.
 ```
 
 Alternatively the QVM can be started as a server that will accept
