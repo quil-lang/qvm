@@ -28,13 +28,16 @@ Download both this repository *and* [QUILC](http://github.com/rigetti/quilc) int
 `ql:*local-project-directories*` location. If all is correct, the `qvm`
 library can be loaded with
 
-```
+```shell
 $ sbcl
 
-* (ql:quickload :qvm)
+```
+
+```common-lisp
+(ql:quickload :qvm)
 ;;; <snip>compilation output</snip>
 (:QVM)
-* (qvm:make-qvm 10)
+(qvm:make-qvm 10)
 #<QVM:PURE-STATE-QVM {10090A7C23}>
 ```
 
@@ -42,7 +45,7 @@ $ sbcl
 
 The QVM comes with some example code to illustrate usage of the
 QVM. The example code can be found under `./examples/`. To run the
-example code, first load `qvm-examples` 
+example code, first load `qvm-examples`
 
 ``` common-lisp
 (ql:quickload :qvm-examples)
@@ -58,7 +61,7 @@ returns a list of instructions that will reverse the qubit amplitudes:
 ```
 
 For a given list of qubit indices, the function `qft-circuit` returns a
-[Quantum Fourier transform](https://en.wikipedia.org/wiki/Quantum_Fourier_transform) Quil program ready to passed to QUILC for
+[Quantum Fourier transform](https://en.wikipedia.org/wiki/Quantum_Fourier_transform) Quil program ready to be passed to QUILC for
 compilation.
 
 ``` common-lisp
@@ -169,7 +172,7 @@ library communicates with a QVM.
 
 ## Testing
 
-Tests can be run from the `Makefile` 
+Tests can be run from the `Makefile`
 
 ```
 make test
