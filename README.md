@@ -20,9 +20,9 @@ true quantum computer.
 ### Usage
 
 The QVM library is best loaded using Quicklisp. Please read and follow
-the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to get Quicklisp installed. Pay
-particular attention to the section "Telling Quicklisp Where Your Code
-Is".
+the instructions in [`lisp-setup.md#install-quicklisp`](doc/lisp-setup.md) to get Quicklisp
+installed. Pay particular attention to the section "Telling Quicklisp
+Where Your Code Is".
 
 >**Note**: `qvm` is not yet available through Quicklisp's distribution
 >mechanism, and must be installed manually.
