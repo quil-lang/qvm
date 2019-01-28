@@ -93,8 +93,8 @@ QVM. The example code can be found under `./examples/`. To run the
 example code, first load `qvm-examples`
 
 ``` common-lisp
-(ql:quickload :qvm-examples)
-
+* (ql:quickload :qvm-examples)
+(:QVM-EXAMPLES)
 ```
 
 The function `bit-reversal-circuit` takes a list of qubit indices and
@@ -110,14 +110,14 @@ For a given list of qubit indices, the function `qft-circuit` returns a
 compilation.
 
 ``` common-lisp
-(qvm-examples:qft-circuit '(1 2 3 4))
+* (qvm-examples:qft-circuit '(1 2 3 4))
 #<CL-QUIL:PARSED-PROGRAM {10040ABEE3}>
 ```
 
 To inspect the object, we can use the `cl-quil::print-parsed-program` function
 
 ``` common-lisp
-(cl-quil::print-parsed-program (qvm-examples:qft-circuit '(1 2 3 4)))
+* (cl-quil::print-parsed-program (qvm-examples:qft-circuit '(1 2 3 4)))
 H 4
 CPHASE(pi/2) 3 4
 H 3
@@ -226,8 +226,8 @@ make test
 or from within SBCL
 
 ```
-(ql:quickload :qvm-tests)
-(asdf:test-system :qvm)
+* (ql:quickload :qvm-tests)
+* (asdf:test-system :qvm)
 ```
 
 Any contribution to this project should foremost not break any current
