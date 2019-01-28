@@ -163,8 +163,8 @@ Copyright (c) 2018 Rigetti Computing.
 
 (Configured with 2048 MiB of workspace and 8 workers.)
 
-[2018-12-13 14:36:20] Selected simulation method: pure-state
-[2018-12-13 14:36:20] Starting server on port 5000.
+<134>1 2019-01-28T19:06:07Z workstation.local qvm 3118 - - Selected simulation method: pure-state
+<134>1 2019-01-28T19:06:07Z workstation.local qvm 3118 - - Starting server on port 5000.
 ```
 
 This is how the [pyQuil](https://github.com/rigetti/pyquil) Python
