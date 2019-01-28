@@ -19,9 +19,14 @@ quantum computer.
 
 ### Usage
 
-Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to
-satisfy the dependencies required to load the QVM library. Afterwhich,
-the `qvm` library can be loaded
+The QVM library is best loaded using `quicklisp`. Please read and follow
+the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to get `quicklisp` installed. Pay
+particular attention to the section "Telling Quicklisp Where Your Code
+Is".
+
+Download both this repository *and* [QUILC](http://github.com/rigetti/quilc) into the
+`ql:*local-project-directories*` location. If all is correct, the `qvm`
+library can be loaded with
 
 ```
 $ sbcl
