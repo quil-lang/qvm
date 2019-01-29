@@ -1,33 +1,151 @@
 # Rigetti Quantum Virtual Machine
 
-This directory contains two projects. The first, `qvm`, a classical
-implementation of the Quantum Abstract Machine, called a "Quantum
-Virtual Machine". The second, `qvm-app`, is the application interface to
-interacting with the QVM, either directly through the `qvm` binary or
-via its server interface.
+This directory contains two projects. The first, `qvm`, is a classical
+implementation of the Quantum Abstract Machine (QAM), called a
+"Quantum Virtual Machine" (QVM). The second, `qvm-app`, is the
+application interface to interacting with the QVM, either directly
+through the `qvm` binary or via its server interface.
+
+The definition of the QAM was developed at Rigetti in a paper titled [A
+Practical Quantum Instruction Set Architecture](https://arxiv.org/pdf/1608.03355.pdf).
 
 ## QVM, the library
 
 The QVM library is contained within `./src/`, and provides the
 implementation of the Quantum Abstract Machine. It evaluates Quil
-programs (parsed by `cl-quil`) on a virtual machine that can model
-various characteristics of (though without needing access to) a true
-quantum computer.
+programs (parsed and compiled by [quilc](http://github.com/rigetti/quilc)) on a virtual machine that can
+model various characteristics of (though without needing access to) a
+true quantum computer.
 
 ### Usage
 
-Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to
-satisfy the dependencies required to load the QVM library. Afterwhich,
-the `qvm` library can be loaded
+The QVM library is best loaded using Quicklisp. Please read and follow
+the instructions in [`lisp-setup.md#install-quicklisp`](doc/lisp-setup.md) to get Quicklisp
+installed. Pay particular attention to the section "Telling Quicklisp
+Where Your Code Is".
 
-```
+>**Note**: `qvm` is not yet available through Quicklisp's distribution
+>mechanism, and must be installed manually.
+
+Download both this repository *and* [quilc](http://github.com/rigetti/quilc) into the
+`ql:*local-project-directories*` location. If all is correct, the `qvm`
+library can be loaded with
+
+```shell
 $ sbcl
+```
 
+```common-lisp
 * (ql:quickload :qvm)
-;;; <snip>compilation output</snip>
 (:QVM)
-* (qvm:make-qvm 10)
-#<QVM:PURE-STATE-QVM {10090A7C23}>
+```
+
+QVM objects are created with `(qvm:make-qvm n)` where `n` is the number of
+qubits the QVM should support; a program can then be loaded into the
+QVM object with `(qvm:load-program *qvm* *program*)` where `*qvm*` is a
+QVM object and `*program*` is a `cl-quil:parsed-program`
+object.
+
+Alternatively, the `qvm:run-program` function will handle QVM object
+creation. For example,
+
+``` common-lisp
+* (setq *qvm* (qvm:run-program 2 (cl-quil:parse-quil-string "H 0")))
+```
+
+creates a 2-qubit QVM object and on it runs the Quil program `H 0`.
+
+The qubit amplitudes can be inspected
+
+``` common-lisp
+* (qvm::amplitudes *qvm*)
+#(#C(0.7071067811865475d0 0.0d0) #C(0.7071067811865475d0 0.0d0)
+  #C(0.0d0 0.0d0) #C(0.0d0 0.0d0))
+```
+
+which shows, as expected, that `H 0` has put qubit-0 (the first two
+complex numbers above) into an equal superposition of states `|0>` and
+`|1>`.
+
+Measurement of a quantum state causes it to collapse into one of its
+basis states (`|0>` or `|1>`). This can be simulated with
+
+``` common-lisp
+* (qvm:measure-all *qvm*)
+#<PURE-STATE-QVM {1004039753}>
+(0 0)
+```
+
+Inspecting the QVM object's state shows that this effect mutates the
+information stored on the QVM; i.e. the previous state information is lost
+
+``` common-lisp
+* (qvm::amplitudes *qvm*)
+#(#C(1.0d0 0.0d0) #C(0.0d0 0.0d0)
+  #C(0.0d0 0.0d0) #C(0.0d0 0.0d0))
+```
+
+Qubit zero's state has collapsed into the state `|0>`. Repeating this
+process (from creating the QVM object to measuring qubits) would show
+that both states would each come up with probability 0.5.
+
+``` common-lisp
+* (loop :for i :below 100
+        :for (qvm . qubits) := (multiple-value-list (qvm:measure-all (qvm:run-program 1 (cl-quil:parse-quil-string "H 0"))))
+        :append (alexandria:flatten qubits) :into states
+        :finally
+           (return (list (/ (count 0 states) i)
+                         (/ (count 1 states) i))))
+(51/100 49/100)
+```
+
+### Examples
+
+The QVM comes with some example code to illustrate usage of the
+QVM. The example code can be found under `./examples/`. To run the
+example code, first load `qvm-examples`
+
+``` common-lisp
+* (ql:quickload :qvm-examples)
+(:QVM-EXAMPLES)
+```
+
+The function `bit-reversal-circuit` takes a list of qubit indices and
+returns a list of instructions that will reverse the qubit amplitudes
+in "bit-reversal order" (e.g., the coefficient of `|1110>` gets
+mapped to `|0111>`):
+that the amplitudes get reversed
+
+``` common-lisp
+(qvm-examples:bit-reversal-circuit '(1 2 3 4))
+(#<SWAP 1 4> #<SWAP 2 3>)
+```
+
+For a given list of qubit indices, the function `qft-circuit` returns a
+[Quantum Fourier transform](https://en.wikipedia.org/wiki/Quantum_Fourier_transform) Quil program ready to be passed to quilc for
+compilation.
+
+``` common-lisp
+* (qvm-examples:qft-circuit '(1 2 3 4))
+#<CL-QUIL:PARSED-PROGRAM {10040ABEE3}>
+```
+
+To inspect the object, we can use the `cl-quil::print-parsed-program` function
+
+``` common-lisp
+* (cl-quil::print-parsed-program (qvm-examples:qft-circuit '(1 2 3 4)))
+H 4
+CPHASE(pi/2) 3 4
+H 3
+CPHASE(pi/4) 2 4
+CPHASE(pi/2) 2 3
+H 2
+CPHASE(pi/8) 1 4
+CPHASE(pi/4) 1 3
+CPHASE(pi/2) 1 2
+H 1
+SWAP 1 4
+SWAP 2 3
 ```
 
 ## QVM, the application
@@ -37,8 +155,8 @@ stand-alone interface to the QVM library. It can be invoked directly
 with the binary executable, or alternatively it can provide a server
 that can be used over the network. Each has their benefits: the former
 permits a simplified interface using the command-line switches (see
-output of `qvm --help`), while the latter allows many remote
-connections to a single in-memory QVM.
+output of `qvm --help`), while the latter allows many remote connections
+to a single in-memory QVM.
 
 ### Usage
 
@@ -47,18 +165,21 @@ To build the QVM application follow instructions in
 the `Makefile` with
 
 ```
-$ make qvm-app
+$ make qvm
 ```
 
-The "workspace" size can be configured at compile-time with
+This will produce a binary executable `qvm` in the same directory.
+
+In some situtations, using a large number of qubits may caus heap
+exhaustion. To increase the memory available for the QVM, recompile
+and specify the workspace size (in MB)
 
 ```
-$ make QVM_WORKSPACE=4096
+$ make QVM_WORKSPACE=4096 qvm
 ```
 
-This will produce a binary executable `qvm` in the same directory. The
-QVM application has a few command-line switches used to configure the
-QVM. To explore those options, see the output of 
+The QVM application has a few command-line switches used to configure
+the QVM. To explore those options, see the output of the following command:
 
 ```
 $ ./qvm --help
@@ -76,18 +197,18 @@ Copyright (c) 2016-2019 Rigetti Computing.
 
 (Configured with 2048 MiB of workspace and 8 workers.)
 
-[2018-12-13 14:07:06] Selected simulation method: pure-state
-[2018-12-13 14:07:06] Reading program.
-[2018-12-13 14:07:06] Allocating memory for QVM of 1 qubits.
-[2018-12-13 14:07:06] Allocation completed in 4 ms.
-[2018-12-13 14:07:06] Loading quantum program.
-[2018-12-13 14:07:06] Executing quantum program.
-[2018-12-13 14:07:06] Execution completed in 4 ms.
-[2018-12-13 14:07:06] Printing 1-qubit state.
-[2018-12-13 14:07:06] Amplitudes:
-[2018-12-13 14:07:06]   |0>: 0.7071067811865475, P= 50.0%
-[2018-12-13 14:07:06]   |1>: 0.7071067811865475, P= 50.0%
-[2018-12-13 14:07:06] No classical memory present.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Selected simulation method: pure-state
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Reading program.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Allocating memory for QVM of 1 qubits.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Allocation completed in 3 ms.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Loading quantum program.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Executing quantum program.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Execution completed in 3 ms.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Printing 1-qubit state.
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Amplitudes:
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - -   |0>: 0.7071067811865475, P= 50.0%
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - -   |1>: 0.7071067811865475, P= 50.0%
+<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - No classical memory present.
 ```
 
 Alternatively the QVM can be started as a server that will accept
@@ -102,8 +223,8 @@ Copyright (c) 2016-2019 Rigetti Computing.
 
 (Configured with 2048 MiB of workspace and 8 workers.)
 
-[2018-12-13 14:36:20] Selected simulation method: pure-state
-[2018-12-13 14:36:20] Starting server on port 5000.
+<134>1 2019-01-28T19:06:07Z workstation.local qvm 3118 - - Selected simulation method: pure-state
+<134>1 2019-01-28T19:06:07Z workstation.local qvm 3118 - - Starting server on port 5000.
 ```
 
 This is how the [pyQuil](https://github.com/rigetti/pyquil) Python
@@ -111,7 +232,7 @@ library communicates with a QVM.
 
 ## Testing
 
-Tests can be run from the `Makefile` 
+Tests can be run from the `Makefile`
 
 ```
 make test
@@ -120,8 +241,7 @@ make test
 or from within SBCL
 
 ```
-(ql:quickload :qvm-tests)
-(asdf:test-system :qvm)
+* (asdf:test-system :qvm)
 ```
 
 Any contribution to this project should foremost not break any current
