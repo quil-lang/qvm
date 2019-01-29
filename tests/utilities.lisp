@@ -4,6 +4,16 @@
 
 (in-package #:qvm-tests)
 
+(defmacro run-unless-environment-has (env-var &body body)
+  (alexandria:once-only (env-var)
+    `(cond
+       ((uiop:getenvp ,env-var)
+        (format t "~&[The environment variable ~A is set, ~
+                      so this test is being skipped.]~%"
+                ,env-var))
+       (t
+        ,@body))))
+
 (defmacro with-output-to-quil (&body body)
   `(let ((quil:*allow-unresolved-applications* t))
      (quil:parse-quil-string

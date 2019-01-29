@@ -12,5 +12,5 @@ CONTAINER=qvm-tests
 IMAGE=qvm-tests
 
 mkdir -p "$OUTPUT"
-docker run --ipc=host --name "$CONTAINER" "$IMAGE"
+docker run --ipc=host --name "$CONTAINER" -e "DISABLE_SHARED_MEMORY_QVM_TESTS=1" "$IMAGE"
 # docker cp "$CONTAINER":"$INPUT" "$OUTPUT"
