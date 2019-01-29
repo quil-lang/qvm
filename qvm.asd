@@ -5,6 +5,7 @@
 (asdf:defsystem #:qvm
   :description "An implementation of the Quantum Abstract Machine."
   :author "Robert Smith <robert@rigetti.com>"
+  :license "Apache License 2.0 (See LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
   :defsystem-depends-on (#:cffi-grovel)
   :depends-on (

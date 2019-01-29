@@ -5,6 +5,7 @@
 (asdf:defsystem #:qvm-app
   :description "Application server for the QVM."
   :author "Robert Smith <robert@rigetti.com>"
+  :license "GNU Affero General Public License v3.0 (See app/LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
   :depends-on (
                ;; QFT
