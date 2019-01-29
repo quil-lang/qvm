@@ -14,6 +14,8 @@ programs (parsed by `cl-quil`) on a virtual machine that can model
 various characteristics of (though without needing access to) a true
 quantum computer.
 
+The library is released under the [Apache license 2.0](LICENSE.txt).
+
 ### Usage
 
 Follow the instructions in [`lisp-setup.md`](doc/lisp-setup.md) to
@@ -39,6 +41,9 @@ that can be used over the network. Each has their benefits: the former
 permits a simplified interface using the command-line switches (see
 output of `qvm --help`), while the latter allows many remote
 connections to a single in-memory QVM.
+
+The application is released under the [GNU Affero General Public
+License v3.0](app/LICENSE.txt).
 
 ### Usage
 
