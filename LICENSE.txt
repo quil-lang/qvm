@@ -20,7 +20,7 @@ N.B. All of the ASDF systems are documented with their license:
     QVM-EXAMPLES is licensed under Apache License 2.0 (See LICENSE.txt)
     QVM-BENCHMARKS is licensed under Apache License 2.0 (See LICENSE.txt)
     QVM-TESTS is licensed under Apache License 2.0 (See LICENSE.txt)
-    QVM-APP is licensed under GNU Affero General Public License v3.0 (See app/LI    CENSE.txt)
+    QVM-APP is licensed under GNU Affero General Public License v3.0 (See app/LICENSE.txt)
     QVM-APP-TESTS is licensed under GNU Affero General Public License v3.0 (See app/LICENSE.txt)
 
 
