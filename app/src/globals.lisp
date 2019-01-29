@@ -26,3 +26,9 @@ This is set once upon initialization of the QVM and is controlled by the --simil
 
 (defvar *shared-memory-object-name* nil
   "The name of the POSIX shared memory object, or nil if none is present.")
+
+(defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
+                                :app-name "qvm"
+                                :facility ':local0
+                                :log-writer (cl-syslog:null-log-writer))
+  "The CL-SYSLOG logger instance.")

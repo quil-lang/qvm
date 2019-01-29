@@ -8,10 +8,6 @@
 
 (defvar *entered-from-main* nil)
 (defvar *program-name* "qvm")
-(defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
-                                :app-name "qvm"
-                                :facility ':local0
-                                :log-writer (cl-syslog:null-log-writer)))
 
 (defparameter *benchmark-types* '("bell" "qft" "hadamard" #-forest-sdk "suite")
   "List of allowed benchmark names.")
