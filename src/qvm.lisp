@@ -132,6 +132,14 @@ This will not clear previously installed gates from the QVM."
   "Load the program PROGRAM into the quantum virtual machine QVM. If SUPERSEDE-MEMORY-SUBSYSTEM is true (default: NIL), then the memory subsystem will be recomputed for the QVM based off of the program."
   (check-type program quil:parsed-program)
 
+  (let ((qubits-needed (quil:qubits-needed program)))
+    (assert (<= qubits-needed (number-of-qubits qvm))
+            (qvm program)
+            "Trying to load a program that requires ~D qubit~:P onto a ~
+             QVM of ~D qubit~:P."
+            qubits-needed
+            (number-of-qubits qvm)))
+
   ;; Install the gates.
   (install-gates qvm program)
 

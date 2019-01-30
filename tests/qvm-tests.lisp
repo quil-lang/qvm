@@ -27,3 +27,15 @@
                            "    0, 1"))
     (is (not (eq (qvm::lookup-gate q1 "A")
                  (qvm::lookup-gate q2 "A"))))))
+
+(deftest test-too-many-qubits-in-program-for-qvm ()
+  "Test that a program can't be loaded into a QVM with too many qubits."
+  (signals error
+    (run-program 1 (with-output-to-quil
+                     "X 0"
+                     "X 1")))
+  (signals error
+    (let ((q (make-qvm 1)))
+      (load-program q (with-output-to-quil
+                        "X 0"
+                        "X 1")))))
