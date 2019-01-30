@@ -125,6 +125,12 @@ Return two values:
             (quil:qubit-index (quil:measurement-qubit instr)))
    (1+ (pc qvm))))
 
+(defmethod transition ((qvm pure-state-qvm) (instr measure-all))
+  (multiple-value-bind (qvm state) (measure-all qvm)
+    (loop :for (qubit . address) :in (measure-all-storage instr)
+          :do (setf (dereference-mref qvm address) (nth qubit state)))
+    (values qvm (1+ (pc qvm)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; The word "force" here is borrowed from the functional programming
@@ -166,6 +172,23 @@ the specified QVM."
 (defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.
   (apply-gate instr (amplitudes qvm) nil)
+  (values
+   qvm
+   (1+ (pc qvm))))
+
+;; TODO FIXME: RX GATE ONLY!!!!!!!!!!!!!!!!
+(defmethod transition ((qvm pure-state-qvm) (instr compiled-parameterized-gate-application))
+  ;; The instruction itself is a gate.
+  (apply-gate instr (amplitudes qvm) nil (first (quil:application-parameters instr)))
+  (values
+   qvm
+   (1+ (pc qvm))))
+
+(defmethod transition ((qvm pure-state-qvm) (instr compiled-measurement))
+  (let ((bit (funcall (projector-operator instr) (amplitudes qvm)))
+        (src (source-instruction instr)))
+    (when (typep src 'quil:measure)
+      (setf (dereference-mref qvm (quil:measure-address src)) bit)))
   (values
    qvm
    (1+ (pc qvm))))

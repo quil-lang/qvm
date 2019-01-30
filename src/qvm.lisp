@@ -172,6 +172,7 @@ This will not clear previously installed gates from the QVM."
 (defun compile-loaded-program (qvm)
   "Compile the loaded program on the QVM QVM."
   (unless (program-compiled-p qvm)
+    (setf (program qvm) (compile-measure-chains (program qvm) (number-of-qubits qvm)))
     (setf (program qvm)
           (map 'vector (lambda (isn) (compile-instruction qvm isn)) (program qvm)))
     (setf (program-compiled-p qvm) t))

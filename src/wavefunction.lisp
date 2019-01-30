@@ -27,7 +27,8 @@
     (+ (* re re) (* im im))))
 
 
-(declaim (ftype (function (quantum-state) nat-tuple-cardinality) wavefunction-qubits))
+(declaim (ftype (function (quantum-state) nat-tuple-cardinality) wavefunction-qubits)
+         (inline wavefunction-qubits))
 (defun wavefunction-qubits (wavefunction)
   "The number of qubits represented by the wavefunction WAVEFUNCTION."
   (declare (type quantum-state wavefunction))
@@ -330,3 +331,18 @@ If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH para
           :do (incf s (probability (aref state i)))
               (setf (aref cdf i) s)
           :finally (return cdf))))
+
+(declaim (inline gaussian-random-complex))
+(defun gaussian-random-complex ()
+  (multiple-value-bind (re im)
+      (alexandria:gaussian-random)
+    (complex re im)))
+
+(defun randomize-wavefunction (wavefunction)
+  "Randomize the elements of WAVEFUNCTION resulting in a valid complex unit vector."
+  (declare (type quantum-state wavefunction))
+  ;; Fill the vector with random Gaussian variates.
+  (map-into wavefunction #'gaussian-random-complex)
+  ;; Normalize.
+  (normalize-wavefunction wavefunction))
+

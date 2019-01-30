@@ -64,9 +64,17 @@ We are assuming the CNOTs are dense on an even number of qubits."
 
 (defun perform-benchmark (type num-qubits)
   (check-type num-qubits (integer 1))
-  (if (string-equal type "suite")
-      (qvm-benchmarks:run-benchmarks :verbose t)
-      (let ((p (alexandria:eswitch (type :test #'string-equal)
+  (cond
+    ((string-equal type "suite")
+     (qvm-benchmarks:run-benchmarks :verbose t))
+    ((string-equal type "baseline")
+     (format-log "Computing baseline serial norm timing...")
+     (finish-output)
+     (tg:gc :full t)
+     (format-log "Baseline serial norm timing: ~D ms"
+                 (norm-baseline-timing (qvm::make-vector (expt 2 num-qubits)))))
+    (t
+     (let ((p (alexandria:eswitch (type :test #'string-equal)
                  ("bell" (bell-program num-qubits))
                  ("qft"  (qft-program num-qubits))
                  ("hadamard" (hadamard-program num-qubits))
@@ -76,13 +84,7 @@ We are assuming the CNOTs are dense on an even number of qubits."
             timing)
         (qvm:load-program q p :supersede-memory-subsystem t)
 
-        (format-log "Computing baseline serial norm timing...")
-        (finish-output)
-
-        (tg:gc :full t)
-        (format-log "Baseline serial norm timing: ~D ms" (norm-baseline-timing (qvm::amplitudes q)))
-
-        (tg:gc :full t)
+                (tg:gc :full t)
 
         (format-log "Starting ~S benchmark with ~D qubits...~%" type num-qubits)
 
@@ -91,4 +93,4 @@ We are assuming the CNOTs are dense on an even number of qubits."
 
         (room)
         (terpri)
-        (format-log "Total time for program run: ~D ms" timing))))
+        (format-log "Total time for program run: ~D ms" timing)))))
