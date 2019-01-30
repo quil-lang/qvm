@@ -360,3 +360,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     (values
      qvm-ret
      (perturb-measured-bits qvm-ret measured-bits))))
+
+;;; Don't compile things for the density-qvm.
+(defmethod compile-instruction ((qvm density-qvm) isn)
+  isn)

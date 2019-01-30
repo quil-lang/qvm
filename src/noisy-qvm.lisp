@@ -13,7 +13,7 @@
    (readout-povms
     :initarg :readout-povms
     :accessor readout-povms
-    :initform (make-hash-table)
+    :initform (make-hash-table :test 'eql)
     :documentation "Noisy readout encoded as diagonal single qubit
     POVM given as a 4-element list
 
@@ -241,16 +241,6 @@ POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
         (setf (dereference-mref qvm a)
               (perturb-measurement c p00 p01 p10 p11))))))
 
-(defmethod transition ((qvm noisy-qvm) (instr quil:measure))
-  (multiple-value-bind (ret-qvm counter)
-      ;; perform actual measurement
-      (call-next-method qvm instr)
-    (corrupt-measurement-outcome ret-qvm instr)
-    (values
-     ret-qvm
-     counter)))
-
-
 (defun perturb-measured-bits (qvm measured-bits)
   "Randomly perturb the values of the bits in MEASURED-BITS in
 accordance with any available readout POVMs on the QVM. Returns an
@@ -269,9 +259,50 @@ updated list of measured bits."
                          (perturb-measurement c p00 p01 p10 p11))
                        c))))
 
-(defmethod measure-all ((qvm noisy-qvm))
+(defgeneric apply-classical-readout-noise (qvm instr)
+  (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
+  ;; Pure state QVM has no readout noise.
+  (:method ((qvm pure-state-qvm) (instr quil:measurement))
+    (declare (ignore qvm instr))
+    nil)
+  ;; Readout noise only happens to the resulting classical bit (i.e.,
+  ;; it's classical noise). As such, discarding that bit doesn't
+  ;; warrant any sort of special treatment.
+  (:method ((qvm noisy-qvm) (instr quil:measure-discard))
+    (declare (ignore qvm instr))
+    nil)
+  ;; We do have a readout bit, and we want to corrupt it.
+  (:method ((qvm noisy-qvm) (instr quil:measure))
+    (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
+           (a (quil:measure-address instr))
+           (c (dereference-mref qvm a))
+           (povm (gethash q (readout-povms qvm))))
+      (when povm
+        (destructuring-bind (p00 p01 p10 p11) povm
+          (setf (dereference-mref qvm a)
+                (perturb-measurement c p00 p01 p10 p11))))))
+  ;; For compiled measurements, refer to the source of that
+  ;; instruction.
+  (:method ((qvm noisy-qvm) (instr compiled-measurement))
+    (apply-classical-readout-noise qvm (source-instruction instr))))
+
+(defmethod transition :around ((qvm noisy-qvm) (instr quil:measurement))
+  (multiple-value-bind (ret-qvm counter)
+      ;; perform actual measurement
+      (call-next-method)
+
+    (apply-classical-readout-noise ret-qvm instr)
+
+    (values ret-qvm counter)))
+
+(defmethod measure-all :around ((qvm noisy-qvm))
   (multiple-value-bind (qvm-ret measured-bits)
-      (call-next-method qvm)
+      (call-next-method)
     (values
      qvm-ret
      (perturb-measured-bits qvm-ret measured-bits))))
+
+;;; Don't compile anything on this QVM.
+
+(defmethod compile-instruction ((qvm noisy-qvm) isn)
+  isn)

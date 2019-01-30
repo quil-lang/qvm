@@ -9,7 +9,7 @@
 (defvar *entered-from-main* nil)
 (defvar *program-name* "qvm")
 
-(defparameter *benchmark-types* '("bell" "qft" "hadamard" #-forest-sdk "suite")
+(defparameter *benchmark-types* '("baseline" "bell" "qft" "hadamard" #-forest-sdk "suite")
   "List of allowed benchmark names.")
 
 (defparameter *available-simulation-methods* '("pure-state" "full-density-matrix")
