@@ -8,12 +8,18 @@ the table from [this page](http://www.sbcl.org/platform-table.html).
 
 Despite the ease of the above, it's *not* the preferred way to acquire
 SBCL. *In fact, some components of the QVM project depend on an
-up-to-date SBCL.* The fastest way to get this is to download the latest
-binary release from [this page](http://www.sbcl.org/platform-table.html). 
+up-to-date SBCL.* The fastest way to get this is to download the
+latest binary release from [this page](http://www.sbcl.org/platform-table.html).
 
-**N.B.**: Make sure to get a binary for your platform's processor architecture, probably AMD64.
+**N.B.**: Make sure to get a binary for your platform's processor
+architecture, probably AMD64.
 
-**N.B.**: The Windows and Linux binaries are usually up-to-date, but the Mac ones seem to sometimes lag behind. This is unfortunate, because you need a relatively up-to-date SBCL to build the QVM (at least 1.3.6 is known to work). If your platform is not up-to-date, you will need to install the binaries, and then do an update from the source release, as described in the next paragraph.
+**N.B.**: The Windows and Linux binaries are usually up-to-date, but
+the Mac ones seem to sometimes lag behind. This is unfortunate,
+because you need a relatively up-to-date SBCL to build the QVM (at
+least 1.3.6 is known to work). If your platform is not up-to-date, you
+will need to install the binaries, and then do an update from the
+source release, as described in the next paragraph.
 
 For someone who intends to hack on the QVM project, the preferred way
 is to install from source code. This will give you the full compiler
@@ -24,6 +30,14 @@ platform appropriately. Installation instructions come with the
 distribution in an `INSTALL` file. After installing, download the
 source code, either from a stable source release, or bleeding-edge
 from `git`. The source release can be found on the same page.
+
+The long-story-short of the `INSTALL` file is this:
+
+1. Make sure some version of SBCL is installed.
+
+2. Run `sh make.sh --fancy`.
+
+3. Run `sh install.sh`.
 
 Make sure that `sbcl` is in your path.
 
@@ -40,6 +54,7 @@ manager. Then just execute `rlwrap sbcl`, and everything will be good.
 Quicklisp is like Python's `pip` for Lisp. 
 
 ### Automated Instructions
+
 Change to the `qvm` directory and type
 
 ```
@@ -49,10 +64,14 @@ make quicklisp
 This should download and install Quicklisp.
 
 ### Manual Instructions
-If the automated instructions didn't work or you'd like to do it manually for an unsupported platform, then do the following.
+
+If the automated instructions didn't work or you'd like to do it
+manually for an unsupported platform, then do the following.
 
 #### Step 1: Downloading Quicklisp
-Follow the instructions on the [Quicklisp website](https://www.quicklisp.org/beta/) for details. The summary is:
+
+Follow the instructions on the [Quicklisp
+website](https://www.quicklisp.org/beta/) for details. The summary is:
 
 1. Download `quicklisp.lisp`.
 
@@ -63,14 +82,17 @@ Follow the instructions on the [Quicklisp website](https://www.quicklisp.org/bet
 4. Run `(ql:add-to-init-file)` and press enter.
 
 #### Step 2: Updating Quicklisp
+
 Quicklisp can be periodically updated. Both the Quicklisp client, as
-well as all of the Quicklisp software, can be updated. The two respectively can be done via:
+well as all of the Quicklisp software, can be updated. The two
+respectively can be done via:
 
 1. Update QL client: `(ql:update-client)`
 
 2. Update all QL software: `(ql:update-all-dists)`
 
-**N.B.**: Once you have installed all of the Rigetti source code (QVM, ALEXA, ...), you can update by just doing `make deps`.
+**N.B.**: Once you have installed all of the Rigetti source code (QVM,
+ALEXA, ...), you can update by just doing `make deps`.
 
 #### Step 3: Telling Quicklisp Where Your Code Is
 
@@ -102,7 +124,7 @@ program called *buildapp*. Installation is easy. Download buildapp
 from [here](http://www.xach.com/lisp/buildapp.tgz). Extract it and
 `cd` into it. Simply do:
 
-1. `make` and
+1. `make`
 
 2. `make DESTDIR=/where/to/install install`. If you omit the `DESTDIR`
    setting, it'll go to `/usr/local/bin`.
