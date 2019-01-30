@@ -29,6 +29,12 @@
 
 (defun run-program (num-qubits program)
   "Run the program PROGRAM on a QVM of NUM-QUBITS qubits."
+  (check-type num-qubits unsigned-byte)
+  (check-type program quil:parsed-program)
+  (assert (>= num-qubits (quil:qubits-needed program))
+          (num-qubits)
+          "The program being run requires more qubits than the ~D specified."
+          num-qubits)
   (let ((qvm (make-qvm num-qubits
                        :classical-memory-model
                        (memory-descriptors-to-qvm-memory-model

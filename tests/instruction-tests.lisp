@@ -77,7 +77,7 @@
                 "H 2"
                 "RESET 0"
                 "RESET 2"))
-           (q (run-program 2 p)))
+           (q (run-program 3 p)))
       (is (double-float= 0 (qubit-probability q 0)))
       (is (double-float= 1 (qubit-probability q 1)))
       (is (double-float= 0 (qubit-probability q 2))))))
