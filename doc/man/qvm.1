@@ -1,0 +1,305 @@
+.TH QVM 1 "21 September 2018" "version 0.16.0 (qvm: 0.20.0) [1b48c69]" 
+.SH NAME
+qvm \- a quantum virtual machine for executing Quil
+.SH SYNOPSIS
+
+qvm <options> -e                # Execute Mode
+
+qvm <options> -S                # Server Mode
+
+qvm <options> --benchmark [n]   # Benchmark Mode
+.SH DESCRIPTION
+The Rigetti QVM is a high-performance, classical implementation of a
+quantum abstract machine. Specifically, it is capable of executing
+Quil in a variety of ways. The QVM has three main modes of operation:
+Execute Mode, Server Mode, and Benchmark Mode.
+
+Execute Mode runs the QVM on a single Quil file, printing out
+information about the execution, as well as a textual representation
+of the wavefunction if --verbose is provided. (If one would like full
+access to the wavefunction as an efficient representation, one should
+use --shared.)
+
+Server Mode runs the QVM as an HTTP server, taking simple POST
+requests with JSON payloads which are known to the companion library
+PyQuil. The server is useful even to a single user wishing to run a
+variety of computations.
+
+Benchmark Mode is used for stress testing the QVM on a computer.
+
+The QVM implements both a Quil interpreter and a just-in-time (JIT)
+compiler. (Note that "compilation" here does not refer to the sense
+related to translation of gate sets, but rather translation to machine
+code for rapid execution.) Interpreted mode is enabled by default and
+works for all modes of operation. JIT compilation is enabled by
+supplying the --compile option.
+
+By default, the QVM executes Quil by simulating a pure state quantum
+system. Alternative simulation methods (particularly, density matrix
+evolution) may be specified by the --simulation-method flag.
+
+The QVM does not have explicit options for running programs with noise
+models. Instead, the Quil program itself specifies PRAGMAs for
+defining Kraus operators and readout POVMs.
+.SH OPTIONS
+.IP "-e, --execute"
+(Execute Mode) Run the QVM in Execute Mode. Execute the Quil program
+supplied from stdin and print some information about the course of
+evaluation.
+.IP "-S, --server"
+(Server Mode) Run the QVM in Server Mode. Start an HTTP server and
+process HTTP API calls. To stop the server, use Ctrl-C.
+.IP "--benchmark [<n>]"
+(Benchmark Mode) Run the QVM benchmark on <n> qubits. The default is 26.
+.IP "-p <port>, --port <port>"
+(Server Mode) Run the QVM server on port <port>. The default is 5000.
+.IP "--memory-limit <num-octets>"
+Limit the amount of classical memory to <num-octets> octets usable by
+an individual Quil program. The default is 65536.
+.IP "-w <n>, --num-workers <n>"
+Force the number of parallel workers to be <n>. By default, this is
+the number of logical cores of the host machine.
+.IP "--time-limit <limit-ms>"
+(Server Mode) Limit the amount of time for a single request to
+approximately <limit-ms> milliseconds. By default, this value is 0,
+which indicates an unlimited amount of time is allowed.
+.IP "--qubit-limit <n>"
+(Server Mode) Limit requests to consuming <n> qubits.
+.IP "--benchmark-type <name>"
+(Benchmark Mode) Run the benchmark named <name>. Benchmarks include
+"bell", "qft", "hadamard".
+.IP "-h, --help"
+Show the help message.
+.IP "-v, --version"
+Show the version.
+.IP "--verbose"
+Print every instruction transition of the QVM with information about
+timing and allocation.
+
+(Execute Mode) Print each basis state and corresponding amplitude of
+the evolved wavefunction.
+.IP "-c, --compile"
+JIT compile the Quil programs to make them run faster.
+.IP "--safe-include-directory <dir>"
+Restrict the Quil INCLUDE directive exclusively to <dir>.
+.IP "--shared <name>"
+(Server Mode) Run the QVM in shared memory mode. This allocates the
+wavefunction in POSIX shared memory named <name>. If <name> is an
+empty string, then a name will be generated. The --qubits argument
+must be specified.
+.IP "--simulation-method <name>"
+The QVM executes Quil using the simulation method indicated by <name>.
+Currently, there is support for the following methods: "pure-state",
+"full-density-matrix".
+
+.SH SHARED MEMORY MODE
+Shared memory mode is enabled by "--shared" and allows for
+low-overhead wavefunction access using a POSIX shared memory segment
+pointer, compatible with C and Python (NumPy).
+
+Shared memory can be used to efficiently read and compute with the
+wavefunction. It can also be used to directly manipulate the
+amplitudes, allowing, for example, efficient state preparation.
+
+Shared memory mode is somewhat dangerous. The QVM can not verify that
+the changes you make to the wavefunction data are correct. It is
+possible to corrupt the shared memory, produce invalid wavefunctions
+(e.g., not of unit norm), or corrupt the QVM process itself (e.g., by
+not respecting the offset).
+
+When shared memory mode is enabled, a UNIX domain socket is opened
+with the specified name in the /tmp directory. When a client connects
+to the socket and sends the ASCII byte for '?', the server will
+respond with an ASCII string (no more than 1024 characters) containing
+two comma-separated integers. The first integer is the length of the
+wavefunction, and the second integer is the octet offset from the base
+pointer. For instance, the return "128,12" indicates the wavefunction
+contains 128 amplitudes, and it is offset from the shared memory
+pointer by 12 octets.
+
+The usual steps to get a valid pointer (e.g., for use as a NumPy
+array) are as follows:
+
+1. Send a '?' to the socket. Receive back "<len>,<offset>".
+
+2. Acquire a handle (i.e., an fd) on the memory using shm_open(2).
+
+3. Map the memory into the desired process using mmap(2). This will
+return a base pointer.
+
+4. Offset the returned pointer by <offset>
+octets. The pointer will now be pointing to an array of <len> complex
+double-precision floating point numbers.
+.SH HTTP API
+In Server Mode, the QVM accepts a number of POST requests over HTTP to
+accomplish tasks. In this section, we describe each such request.
+
+(The authors are aware that the usage pattern described does not
+follow standard REST conventions.)
+
+The payload of the POST request is always a JSON object (i.e.,
+dictionary). There are a few keys that are common across all
+requests. The one required key is "type", which indicates the type of
+request being made.
+
+In order to control randomness, an optional "rng-seed" key may be
+provided, which should be a non-negative integer. (Otherwise, the seed
+is presumed to itself be random.)
+
+Lastly, there are two optional keys, "gate-noise" and
+"measurement-noise", which control the inclusion of Pauli noise
+channels. The "gate-noise" key is a list of four numbers in the unit
+interval, corresponding to the probabilities of a Pauli I, X, Y, or Z
+happening after each gate. Similarly, "measurement-noise" is a single
+number in the unit interval corresponding to the probability of a
+classical bit-flip error.
+
+"ping" \- Ping the server.
+.RS
+Returns a string saying "pong" with the Lisp universal time, the
+number of seconds that have elapsed since the beginning of 1900,
+ignoring leap seconds.
+.RE
+
+"version" \- Get the server's version.
+.RS
+Returns a string containing the version of the server. This is the
+same version as provided by the "--version" option.
+.RE
+
+"info" \- Get information about the server.
+.RS
+Returns a JSON object whose keys are strings naming various runtime
+parameters of the server. The corresponding values are strings
+representing the parameter values at the time of the request.
+.RE
+
+"multishot" \- Perform a multishot experiment.
+.RS
+Runs a program a specified number of times, recording and producing
+classical memory output.
+
+For this call, the payload requires extra keys.
+
+The "trials" value should be a non-negative integer indicating how many
+shots to perform.
+
+The "addresses" value should be a JSON object whose keys are classical
+memory region names (e.g., "ro"), and whose values are either lists of
+specified addresses (to query for particular addresses, or the JSON
+Boolean true (to query all addresses).
+
+The "quil-instructions" value should be a string containing a Quil
+program. (The keys "compiled-quil" and "uncompiled-quil" are also
+accepted, but precedence is in the order stated.)
+
+Returns a JSON object whose keys are the requested memory region
+names, and whose values are lists of shot results, where a shot result
+is a list of the requested data for that region.
+.RE
+
+"wavefunction" \- Compute the wavefunction.
+.RS
+Runs a program, and returns the calculated wavefunction. Note that
+this call is in general very expensive, and one should instead
+consider using "--shared" mode.
+
+For this call, the payload requires extra keys.
+
+The "quil-instructions" value should be a string containing a Quil
+program. (The keys "compiled-quil" and "uncompiled-quil" are also
+accepted, but precedence is in the order stated.)
+
+The wavefunction is returned as a binary stream of octets
+("application/octet-stream"). The HTTP response field "Content-Length"
+contains the number of octets that will be sent. Finally, the octets
+themselves encode IEEE-754 complex double-precision floating-point
+numbers in standard computational order. For example, the first group
+of 8 octets refer to, in big-endian order, the real part of the
+amplitude associated with the all-zero state. The next group of 8
+octets refer to the imaginary part of that amplitude.
+.RE
+
+"multishot-measure" \- Perform an optimized multishot experiment.
+.RS
+This API call is similar to the "multishot" call, but is
+optimized for pure unitary circuits. In essence, this call constructs
+a wavefunction, and samples it as a probability distribution. Because
+of this, this is not a drop-in replacement for the "multishot" call.
+
+Note that if the program contains non-deterministic control flow, such
+non-determinism won't be captured in the statistics of the
+sampling. (This is because the program is only run once.) Similarly,
+if one has measurements, those measurements will be performed and the
+wavefunction will be projected out. In general, if a given program has
+measurements or control flow, this is not the correct API call to
+use. One should use "multishot" instead.
+
+For this call, the payload requires extra keys.
+
+The "quil-instructions" value should be a string containing a Quil
+program. (The keys "compiled-quil" and "uncompiled-quil" are also
+accepted, but precedence is in the order stated.)
+
+The "trials" value should be a non-negative integer indicating how many
+shots to perform.
+
+The "qubits" value should be a list of non-negative integer qubit
+indexes whose measurements we desire.
+
+Returns a list of shot results, where each shot result contains a list
+of bit-wise measurements of the requested qubits.
+
+.RE
+"expectation" \- Compute the expectation value of an operator.
+.RS
+This API call efficiently computes expectation values of a collection
+of operators O1, O2, ..., On against a given state vector
+Psi. Specifically, it returns <Psi| Oi |Psi> for each i. It does so in
+an optimized and efficient manner, and has the same caveats as the
+"multishot-measure" call.
+
+For this call, the payload requires extra keys.
+
+The "state-preparation" value should be a Quil program, as a string,
+which constructs "Psi". (One may also do state preparation indirectly
+through shared memory mode.)
+
+The "operators" value should be a list of Quil programs, corresponding
+to the operators whose expectations are to be computed.
+
+Returns a list of expectation values of the operators.
+.RE
+
+
+.SH EXAMPLES
+qvm -e < file.quil
+.RS
+Run a Quil file on the QVM.
+.RE
+
+printf "H 0\\nCNOT 0 1\\nCNOT 1 2" | qvm --verbose -e
+.RS
+Create a 3-qubit Bell state, printing information about the execution along the way.
+.RE
+
+qvm -S -p 1234
+.RS
+Start a QVM server for use with PyQuil on port 1234.
+.RE
+
+qvm -c --benchmark 25 --benchmark-type qft
+.RS
+Benchmark a 25-qubit quantum Fourier transform in compiled mode.
+.RE
+.SH BUGS
+Shared memory mode does not work with QVMs executing noisy programs
+(i.e., ones where Kraus operators or POVMs are specified).
+
+The WAIT instruction does nothing.
+.SH SUPPORT
+Contact <support@rigetti.com> or Robert Smith <robert@rigetti.com>.
+.SH COPYRIGHT
+Copyright (c) 2016-2019 Rigetti Computing
+.SH SEE ALSO
+quilc(1)
