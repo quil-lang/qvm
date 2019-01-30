@@ -13,7 +13,7 @@ test-qvm-lib:
     entrypoint: [""]
   script:
     - make dump-version-info
-    - make test-lib RIGETTI_LISP_LIBRARY_HOME=/src
+    - make test-lib DISABLE_SHARED_MEMORY_QVM_TESTS=1 RIGETTI_LISP_LIBRARY_HOME=/src
 
 test-qvm-app:
   stage: test
