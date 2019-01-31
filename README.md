@@ -92,13 +92,13 @@ process (from creating the QVM object to measuring qubits) would show
 that both states would each come up with probability 0.5.
 
 ``` common-lisp
-* (loop :for i :below 100
-        :for (qvm . qubits) := (multiple-value-list (qvm:measure-all (qvm:run-program 1 (cl-quil:parse-quil-string "H 0"))))
-        :append (alexandria:flatten qubits) :into states
-        :finally
-           (return (list (/ (count 0 states) i)
-                         (/ (count 1 states) i))))
-(51/100 49/100)
+* (loop :with results := (vector 0 0)
+        :with program := (cl-quil:parse-quil-string "H 0")
+        :repeat 100
+        :for (qvm state) := (multiple-value-list (qvm:measure (qvm:run-program 1 program) 0 nil))
+        :do (incf (aref results state))
+        :finally (return results))
+#(54 46)
 ```
 
 ### Examples
