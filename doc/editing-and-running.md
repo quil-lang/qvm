@@ -145,8 +145,7 @@ $ rlwrap sbcl
 [...]
 * (ql:quickload :quickproject)
 [...]
-* (quickproject:make-project "~/Scratch/my-proj")
-WARNING: Coercing "~/Scratch/my-proj" to directory
+* (quickproject:make-project "~/Scratch/my-proj/")
 "my-proj"
 ```
 
