@@ -80,9 +80,21 @@ qvm-sdk: qvm-sdk-base
 # Don't relocate shared libraries on barebones SDK builds
 qvm-sdk-barebones: qvm-sdk-base
 
+DOCKER_BUILD_TARGET=all
+DOCKER_TAG=rigetti/qvm:$(COMMIT_HASH)
 .PHONY: docker
 docker: Dockerfile
-	docker build -t rigetti/qvm:$(COMMIT_HASH) .
+	docker build --build-arg build_target=$(DOCKER_BUILD_TARGET) \
+		-t $(DOCKER_TAG) .
+
+docker-sdk: DOCKER_BUILD_TARGET=qvm-sdk
+docker-sdk: DOCKER_TAG=qvm-sdk
+docker-sdk: docker
+
+docker-sdk-barebones: DOCKER_BUILD_TARGET=qvm-sdk-barebones
+docker-sdk-barebones: DOCKER_TAG=qvm-sdk-barebones
+docker-sdk-barebones: docker
+
 
 ###############################################################################
 # TEST
