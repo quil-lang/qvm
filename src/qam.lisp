@@ -15,6 +15,10 @@
 (defgeneric reset-quantum-state (qam)
   (:documentation "Bring all qubits of the quantum abstract machine QAM to the zero state."))
 
+;; The c parameter, here referring to a classical register, is an optional
+;; parameter of the measure method's corresponding quil instruction MEASURE,
+;; and so is made optional here to prevent subtypes from erroneously implementing
+;; this method without considering the parameter's nullability.
 (defgeneric measure (qam q &optional c)
   (:documentation  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum abstract machine QAM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store.
 
