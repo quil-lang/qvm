@@ -316,7 +316,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
                 (* inv-norm (aref vec-density k)))))))
 
 
-(defmethod measure ((qvm density-qvm) q c)
+(defmethod measure ((qvm density-qvm) q &optional c)
   (check-type c (or null quil:memory-ref))
   (let* ((r (random 1.0d0))
          (excited-probability (density-qvm-qubit-probability qvm q))

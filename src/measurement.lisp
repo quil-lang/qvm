@@ -69,7 +69,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   ;; Return the QVM.
   qvm)
 
-(defmethod measure ((qvm pure-state-qvm) q c)
+(defmethod measure ((qvm pure-state-qvm) q &optional c)
   (check-type c (or null quil:memory-ref))
   (let* ((r (random 1.0d0))
          (excited-probability (qubit-probability qvm q))
