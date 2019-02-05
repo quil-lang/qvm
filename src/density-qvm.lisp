@@ -347,7 +347,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   (let ((measured-bits nil))
     (loop :for q :from (1- (number-of-qubits qam)) :downto 0
           :do (multiple-value-bind (ret-qam bit)
-                  (measure qam q nil)
+                  (measure qam q)
                 (push bit measured-bits)
                 (setf qam ret-qam)))
     (values
