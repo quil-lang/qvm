@@ -1,5 +1,7 @@
 # Rigetti Quantum Virtual Machine
 
+[![pipeline status](https://gitlab.com/rigetti/qvm/badges/master/pipeline.svg)](https://gitlab.com/rigetti/qvm/commits/master)
+
 This directory contains two projects. The first, `qvm`, is a classical
 implementation of the Quantum Abstract Machine (QAM), called a
 "Quantum Virtual Machine" (QVM). The second, `qvm-app`, is the
@@ -266,3 +268,42 @@ make cleanall
 ```
 
 This will delete any built executables as well.
+
+## Automated Packaging with Docker
+
+The CI pipeline for `qvm` produces a Docker image, available at
+[`rigetti/qvm`](https://hub.docker.com/r/rigetti/qvm).
+
+To get the latest stable
+version of `qvm`, run `docker pull rigetti/qvm`.
+
+## Running the QVM with Docker
+
+As outlined above, the QVM supports two modes of operation: stdin and server.
+
+To run the `qvm` in stdin mode, do the following:
+
+```shell
+echo "H 0" | docker run --rm -i rigetti/qvm -e
+```
+
+To run the `qvm` in server mode, do the following:
+
+```shell
+docker run --rm -it -p 5000:5000 rigetti/qvm -S
+```
+
+If you would like to change the port of the server to PORT, you can alter the command as follows:
+
+```shell
+docker run --rm -it -p PORT:PORT rigetti/qvm -R -p PORT
+```
+
+## Release Process
+
+1. Update `VERSION.txt` and dependency versions (if applicable) and push the commit to `master`.
+2. Push a git tag `vX.Y.Z` that contains the same version number as in `VERSION.txt`.
+3. Verify that the resulting build (triggered by pushing the tag) completes successfully.
+4. Publish a [release](https://github.com/rigetti/qvm/releases) using the tag as the name.
+5. Close the [milestone](https://github.com/rigetti/qvm/milestones) associated with this release,
+   and migrate incomplete issues to the next one.

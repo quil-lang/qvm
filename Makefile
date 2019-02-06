@@ -42,7 +42,7 @@ system-index.txt: $(QUICKLISP_SETUP)
 ###############################################################################
 
 dump-version-info:
-	sbcl --noinform --non-interactive \
+	$(QUICKLISP) \
 		--eval '(format t "~A ~A" (lisp-implementation-type) (lisp-implementation-version))' \
 		--eval '(print (ql-dist:find-system "alexa"))' \
 		--eval '(print (ql-dist:find-system "magicl"))' \
