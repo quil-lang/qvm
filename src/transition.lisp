@@ -115,8 +115,8 @@ Return two values:
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
   (values
    (measure-and-store qvm
-            (quil:qubit-index (quil:measurement-qubit instr))
-            (quil:measure-address instr))
+		      (quil:qubit-index (quil:measurement-qubit instr))
+		      (quil:measure-address instr))
    (1+ (pc qvm))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))

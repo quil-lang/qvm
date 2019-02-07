@@ -23,19 +23,17 @@ Return two values:
     1. The resulting QAM.
     2. The measured classical bit."))
 
-(defgeneric measure-and-store (qam q c)
-  (:documentation "Performs a measurement on the qubit addressed by Q in the quantum abstract machine QAM, and stores the measured
+(defun measure-and-store (qam q c)
+  "Performs a measurement on the qubit addressed by Q in the quantum abstract machine QAM, and stores the measured
 bit in the classical bit addressed by C.
 
 Return two values:
 
     1. The resulting QAM.
-    2. The measured classical bit."))
-
-(defmethod measure-and-store ((qam quantum-abstract-machine) q c)
+    2. The measured classical bit."
   (check-type c quil:memory-ref)
   (multiple-value-bind (ret-qam cbit)
-                  (measure qam q)
+      (measure qam q)
     (setf (dereference-mref qam c) cbit)
     (values ret-qam cbit)))
 
