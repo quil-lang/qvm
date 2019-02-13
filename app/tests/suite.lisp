@@ -103,7 +103,6 @@ I 2")
                       ;; measure qubits 1 and 2 which have not been
                       ;; affected by program
                       (qvm-app::perform-multishot-measure simulation-method quil 3 '(1 2) 10 nil))))
-        (print answer)
         (is (every (lambda (result) (and (= 2 (length result))
                                          (= 0 (first result))
                                          (= 0 (second result))))

@@ -99,7 +99,7 @@ amplitudes in PREPARED-STATE."
     ;; to apply the transpose to OP-MATRIX below, since it is
     ;; generally smaller. Thus we compute tr(Q^T ρ^T) = tr((ρ Q)^T) = tr(ρ Q) = tr(Q ρ).
     (let ((op-matrix (magicl:transpose
-                      (quil::gate-applications-to-logical-matrix op)))
+                      (quil::parsed-program-to-logical-matrix op)))
           (density-matrix (magicl:make-matrix :rows rows :cols cols 
                                               :data prepared-state)))
       (reduce #'+ (magicl:matrix-diagonal
