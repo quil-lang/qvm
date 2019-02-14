@@ -75,7 +75,7 @@
                                      :gate-noise gate-noise
                                      :measurement-noise measurement-noise)))
       (make-instance 'rpcq::|WavefunctionResponse|
-                     :|results| (coerce (qvm::amplitudes qvm) 'list))))))
+                     :|results| (coerce (qvm::amplitudes qvm) 'list)))))
 
 (declaim (special *program-name*))
 (defun start-rpc-server (&key
