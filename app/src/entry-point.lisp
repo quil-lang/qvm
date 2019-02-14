@@ -26,6 +26,11 @@
      :optional t
      :documentation "start a QVM server")
 
+    (("server-rpcq" #\R)
+     :type boolean
+     :optional t
+     :documentation "start a RPCQ server")
+
     (("port" #\p)
      :type integer
      :optional t
@@ -267,6 +272,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                              help
                              memory-limit
                              server
+                             server-rpcq
                              port
                              #-forest-sdk swank-port
                              num-workers
@@ -351,6 +357,10 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (quit-nicely 1))
 
   (format-log "Selected simulation method: ~A" simulation-method)
+
+  ;; TODO Remove this restriction after testing
+  (when (and server server-rpcq)
+    (format-log "Don't run both RPCQ and HTTP servers simultaneously"))
   
   (cond
     ;; Benchmark mode.
@@ -363,10 +373,10 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
        (setf benchmark 26))
      (unless (member benchmark-type *benchmark-types* :test #'string-equal)
        (error "Invalid benchmark type: ~S" benchmark-type))
-     (perform-benchmark benchmark-type benchmark))
+     (perform-benchmark benchmark-type benchmark))    
 
     ;; Server mode.
-    ((or server port)
+    (server
      (when execute
        (format-log "Warning: Ignoring execute option: ~S" execute))
 
@@ -388,6 +398,23 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
        (format-log "Created persistent memory for ~D qubits" qubits))
      ;; Start the server
      (start-server-app port))
+
+    ;; Server RPCQ mode
+    (server-rpcq
+     (when (null port) (setf port *default-host-port*))
+     ;; TODO Shared memory as above
+     (format-log "Starting RPCQ server on port ~D~%" port)
+     (let ((logger (make-instance 'cl-syslog:rfc5424-logger
+                                  :app-name *program-name*
+                                  :facility ':local0
+                                  :log-writer
+                                  #+windows (cl-syslog:stream-log-writer)
+                                  #-windows (cl-syslog:tee-to-stream
+                                             (cl-syslog:syslog-log-writer "qvm-app" :local0)))))
+       (cl-syslog:rfc-log (logger :info "Launching qvm-app.")
+         (:msgid "LOG0001"))
+       (start-rpc-server :port port
+                         :logger logger)))
 
     ;; Batch mode.
     (execute
