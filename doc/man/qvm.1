@@ -1,4 +1,4 @@
-.TH QVM 1 "21 September 2018" "version 0.16.0 (qvm: 0.20.0) [1b48c69]" 
+.TH QVM 1 "21 February 2019" "version 1.4.1 [c7a4ef9]" 
 .SH NAME
 qvm \- a quantum virtual machine for executing Quil
 .SH SYNOPSIS
@@ -65,6 +65,9 @@ approximately <limit-ms> milliseconds. By default, this value is 0,
 which indicates an unlimited amount of time is allowed.
 .IP "--qubit-limit <n>"
 (Server Mode) Limit requests to consuming <n> qubits.
+.IP "--parallelization-limit <n>"
+Specify the number of qubits a program must contain before parallelization
+kicks in. The default value is unspecified.
 .IP "--benchmark-type <name>"
 (Benchmark Mode) Run the benchmark named <name>. Benchmarks include
 "bell", "qft", "hadamard".

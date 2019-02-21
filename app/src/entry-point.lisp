@@ -56,6 +56,11 @@
      :initial-value 0
      :documentation "maximum number of qubits allowed to be used in the server (0 => unlimited)")
 
+    (("parallelization-limit")
+     :type integer
+     :optional t
+     :documentation "The number of qubits to start parallelizing at")
+
     (("benchmark")
      :type integer
      :initial-value 0
@@ -272,6 +277,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                              num-workers
                              time-limit
                              qubit-limit
+                             parallelization-limit
                              safe-include-directory
                              qubits
                              benchmark
@@ -299,7 +305,14 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
 
   (when (plusp qubit-limit)
     (setf *qubit-limit* qubit-limit))
-  
+
+  (unless (null parallelization-limit)
+    (cond
+      ((typep parallelization-limit 'qvm:parallelization-limit)
+       (setf qvm:*qubits-required-for-parallelization* parallelization-limit))
+      (t
+       (error "Invalid parallelization limit: ~D." parallelization-limit))))
+
   (when (and (integerp memory-limit)
              (not (minusp memory-limit)))
     (setf qvm::**classical-memory-size-limit** memory-limit))
@@ -351,7 +364,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (quit-nicely 1))
 
   (format-log "Selected simulation method: ~A" simulation-method)
-  
+
   (cond
     ;; Benchmark mode.
     ((or (eq T benchmark)
@@ -432,7 +445,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (t
      (format-log "You must benchmark, start a server, or execute a Quil file.")
      (quit-nicely)))
-  
+
   (quit-nicely))
 
 (defun command-line-debugger (condition previous-hook)
