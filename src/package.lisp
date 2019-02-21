@@ -12,6 +12,7 @@
 
   ;; config.lisp
   (:export
+   #:parallelization-limit              ; TYPE
    #:*qubits-required-for-parallelization*
                                         ; VARIABLE
    #:*transition-verbose*               ; VARIABLE

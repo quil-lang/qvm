@@ -308,11 +308,10 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
 
   (unless (null parallelization-limit)
     (cond
-      ((<= 1 parallelization-limit 50)
-       (setf qvm::*qubits-required-for-parallelization* parallelization-limit))
+      ((typep parallelization-limit 'qvm:parallelization-limit)
+       (setf qvm:*qubits-required-for-parallelization* parallelization-limit))
       (t
-       (warn "Wacky parallelization limit of `~D' provided; ignoring it."
-             parallelization-limit))))
+       (error "Invalid parallelization limit: ~D." parallelization-limit))))
 
   (when (and (integerp memory-limit)
              (not (minusp memory-limit)))
