@@ -21,61 +21,79 @@
          "qubit-limit" (princ-to-string *qubit-limit*))
    :test 'equal))
 
+(defun missing-keys (request &rest keys)
+  (loop :for key :in keys
+        :unless (gethash key request)
+          :collect key))
+
+(defmacro with-required-keys ((request keys) &body body)
+  ""
+  `(progn
+     (print ,request)
+     (alexandria:if-let ((missing (apply #'missing-keys ,request ,keys)))
+       (make-instance 'rpcq::|RPCError|
+                      :|id| (gethash "id" ,request)
+                      :|error| (format nil "The following required keys were missing: ~{~a~^, ~}" missing))
+       ,@(progn body))))
+
 (defun multishot (request)
-  (check-type request rpcq::|MultishotRequest|)
-  (let* ((quil-program (process-quil
-                        (safely-parse-quil-string
-                         (rpcq::|MultishotRequest-quil| request))))
-         (addresses (rpcq::|MultishotRequest-addresses| request))
-         (trials (rpcq::|MultishotRequest-trials| request))
-         (gate-noise (rpcq::|MultishotRequest-gate-noise| request))
-         (measurement-noise (rpcq::|MultishotRequest-measurement-noise| request))
-         (num-qubits (cl-quil:qubits-needed quil-program))
-         (results (perform-multishot *simulation-method* quil-program num-qubits addresses trials
-                                     :measurement-noise measurement-noise
-                                     :gate-noise gate-noise)))
-    (format-log "testing")
-    (make-instance 'rpcq::|MultishotResponse|
-                   :|results| results)))
+  (check-type request hash-table)
+  (with-required-keys (request '("quil" "addresses" "trials"))
+    (let* ((quil-program (process-quil
+                          (safely-parse-quil-string
+                           (gethash "quil" request))))
+           (addresses (gethash "addresses" request))
+           (trials (gethash "trials" request))
+           (gate-noise (gethash "gate-noise" request))
+           (measurement-noise (gethash "measuremeant-noise" request))
+           (num-qubits (cl-quil:qubits-needed quil-program))
+           (results (perform-multishot *simulation-method* quil-program num-qubits addresses trials
+                                       :measurement-noise measurement-noise
+                                       :gate-noise gate-noise)))
+      (alexandria:alist-hash-table
+       `(("results" . ,results))))))
 
 (defun multishot-measure (request)
-  (check-type request rpcq::|MultishotMeasureRequest|)
-  (multiple-value-bind (quil-program relabeling)
-      (process-quil (safely-parse-quil-string (rpcq::|MultishotMeasureRequest-quil| request)))
-    (let* ((qubits (rpcq::|MultishotMeasureRequest-qubits| request))
-           (trials (rpcq::|MultishotMeasureRequest-trials| request))
-           (num-qubits (cl-quil:qubits-needed quil-program))
-           (results (perform-multishot-measure *simulation-method* quil-program
-                                               num-qubits qubits trials
-                                               relabeling)))
-      (make-instance 'rpcq::|MultishotMeasureResponse|
-                     :|results| results))))
+  (check-type request hash-table)
+  (with-required-keys (request '("quil" "qubits" "trials"))
+    (multiple-value-bind (quil-program relabeling)
+        (process-quil (safely-parse-quil-string (gethash "quil" request)))
+      (let* ((qubits (gethash "qubits" request))
+             (trials (gethash "trials" request))
+             (num-qubits (cl-quil:qubits-needed quil-program))
+             (results (perform-multishot-measure *simulation-method* quil-program
+                                                 num-qubits qubits trials
+                                                 relabeling)))
+        (alexandria:alist-hash-table
+         `(("results" . ,results)))))))
 
 (defun expectation (request)
-  (check-type request rpcq::|ExpectationRequest|)
-  (let* ((state-prep (safely-parse-quil-string (rpcq::|ExpectationRequest-state-preparation| request)))
-         (operators (mapcar #'safely-parse-quil-string (rpcq::|ExpectationRequest-operators| request)))
-         (gate-noise (rpcq::|ExpectationRequest-gate-noise| request))
-         (measurement-noise (rpcq::|ExpectationRequest-measurement-noise| request))         
-         (num-qubits (loop :for p :in (cons state-prep operators)
-                           :maximize (cl-quil:qubits-needed p)))
-         (results (perform-expectation *simulation-method* state-prep operators num-qubits
-                                       :gate-noise gate-noise
-                                       :measurement-noise measurement-noise)))
-    (make-instance 'rpcq::|ExpectationResponse|
-                   :|results| results)))
+  (check-type request hash-table)
+  (with-required-keys (request '("state-preparation" "operators"))
+    (let* ((state-prep (safely-parse-quil-string (gethash "state-preparation" request)))
+           (operators (mapcar #'safely-parse-quil-string (gethash "operators" request)))
+           (gate-noise (gethash "gate-noise" request))
+           (measurement-noise (gethash "measurement-noise" request))         
+           (num-qubits (loop :for p :in (cons state-prep operators)
+                             :maximize (cl-quil:qubits-needed p)))
+           (results (perform-expectation *simulation-method* state-prep operators num-qubits
+                                         :gate-noise gate-noise
+                                         :measurement-noise measurement-noise)))
+      (alexandria:alist-hash-table
+       `(("results" . ,results))))))
 
 (defun wavefunction (request)
-  (check-type request rpcq::|WavefunctionRequest|)
-  (let* ((quil (process-quil (safely-parse-quil-string (rpcq::|WavefunctionRequest-quil| request))))
-         (gate-noise (rpcq::|WavefunctionRequest-gate-noise| request))
-         (measurement-noise (rpcq::|WavefunctionRequest-measurement-noise| request))    
-         (num-qubits (cl-quil:qubits-needed quil)))
-    (let ((qvm (perform-wavefunction *simulation-method* quil num-qubits
-                                     :gate-noise gate-noise
-                                     :measurement-noise measurement-noise)))
-      (make-instance 'rpcq::|WavefunctionResponse|
-                     :|results| (coerce (qvm::amplitudes qvm) 'list)))))
+  (check-type request hash-table)
+  (with-required-keys (request '("quil"))
+    (let* ((quil (process-quil (safely-parse-quil-string (gethash "quil" request))))
+           (gate-noise (gethash "gate-noise" request))
+           (measurement-noise (gethash "measurement-noise" request))    
+           (num-qubits (cl-quil:qubits-needed quil)))
+      (let ((qvm (perform-wavefunction *simulation-method* quil num-qubits
+                                       :gate-noise gate-noise
+                                       :measurement-noise measurement-noise)))
+        (alexandria:alist-hash-table
+         `(("results" . ,(coerce (qvm::amplitudes qvm) 'list))))))))
 
 (declaim (special *program-name*))
 (defun start-rpc-server (&key
