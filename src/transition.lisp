@@ -79,7 +79,7 @@ Return two values:
   (let ((q (quil:qubit-index (quil:reset-qubit-target instr))))
     ;; Do the measurement: MEASURE q
     (multiple-value-bind (measured-qvm measured-bit)
-        (measure qvm q nil)
+        (measure qvm q)
       ;; Conditionally do an X.
       (when (= 1 measured-bit)
         (apply-gate (quil:lookup-standard-gate "X")
@@ -114,16 +114,15 @@ Return two values:
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
   (values
-   (measure qvm
-            (quil:qubit-index (quil:measurement-qubit instr))
-            (quil:measure-address instr))
+   (measure-and-store qvm
+                      (quil:qubit-index (quil:measurement-qubit instr))
+                      (quil:measure-address instr))
    (1+ (pc qvm))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
   (values
    (measure qvm
-            (quil:qubit-index (quil:measurement-qubit instr))
-            nil)
+            (quil:qubit-index (quil:measurement-qubit instr)))
    (1+ (pc qvm))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;

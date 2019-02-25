@@ -15,13 +15,27 @@
 (defgeneric reset-quantum-state (qam)
   (:documentation "Bring all qubits of the quantum abstract machine QAM to the zero state."))
 
-(defgeneric measure (qam q c)
-  (:documentation  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum abstract machine QAM. Store the bit at the classical bit memory address C. If C is instead NIL, don't store.
+(defgeneric measure (qam q)
+  (:documentation  "Non-deterministically perform a measurement on the qubit addressed by Q in the quantum abstract machine QAM.
 
 Return two values:
 
     1. The resulting QAM.
     2. The measured classical bit."))
+
+(defun measure-and-store (qam q c)
+  "Performs a measurement on the qubit addressed by Q in the quantum abstract machine QAM, and stores the measured
+bit in the classical bit addressed by C.
+
+Return two values:
+
+    1. The resulting QAM.
+    2. The measured classical bit."
+  (check-type c quil:memory-ref)
+  (multiple-value-bind (ret-qam cbit)
+      (measure qam q)
+    (setf (dereference-mref qam c) cbit)
+    (values ret-qam cbit)))
 
 (defgeneric measure-all (qam)
   (:documentation "Non-deterministically perform a measurement on all qubits in the quantum abstract machine QAM.
@@ -34,7 +48,7 @@ Return two values:
   (let ((measured-bits nil))
     (loop :for q :from (1- (number-of-qubits qam)) :downto 0
           :do (multiple-value-bind (ret-qam bit)
-                  (measure qam q nil)
+                  (measure qam q)
                 (push bit measured-bits)
                 (setf qam ret-qam)))
     (values

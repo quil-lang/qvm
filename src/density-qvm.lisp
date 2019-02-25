@@ -316,8 +316,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
                 (* inv-norm (aref vec-density k)))))))
 
 
-(defmethod measure ((qvm density-qvm) q c)
-  (check-type c (or null quil:memory-ref))
+(defmethod measure ((qvm density-qvm) q)
   (let* ((r (random 1.0d0))
          (excited-probability (density-qvm-qubit-probability qvm q))
          (cbit (if (<= r excited-probability)
@@ -325,11 +324,6 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
                    0)))
     ;; Force the non-deterministic measurement.
     (density-qvm-force-measurement cbit q qvm excited-probability)
-
-    ;; Store the classical bit if necessary.
-    (unless (null c)
-      (setf (dereference-mref qvm c) cbit))
-
     ;; Return the qvm.
     (values qvm cbit)))
 
@@ -347,7 +341,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   (let ((measured-bits nil))
     (loop :for q :from (1- (number-of-qubits qam)) :downto 0
           :do (multiple-value-bind (ret-qam bit)
-                  (measure qam q nil)
+                  (measure qam q)
                 (push bit measured-bits)
                 (setf qam ret-qam)))
     (values
