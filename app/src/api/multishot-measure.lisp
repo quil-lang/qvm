@@ -27,7 +27,7 @@
            :if (eql q ':unused-qubit)
              :collect 0
            :else
-             :collect (nth-value 1 (qvm:measure qvm q nil))))))
+             :collect (nth-value 1 (qvm:measure qvm q))))))
 
 (defgeneric perform-multishot-measure (simulation-method quil num-qubits qubits num-trials relabeling)
   (:method (simulation-method quil num-qubits qubits num-trials relabeling)
