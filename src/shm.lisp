@@ -112,11 +112,11 @@
 
 ;;; Bashing an array into shared memory.
 
-(defun allocation-size (num-elements element-type)
+(defun simple-array-allocation-size (num-elements element-type)
   ;; Total amount of allocation required in memory to store a Lisp SIMPLE-ARRAY.
   #-(or sbcl ccl)
   (locally (declare (ignore num-elements element-type))
-    (error "ALLOCATION-SIZE (of ~A ~A~:P) unsupported on ~A"
+    (error "SIMPLE-ARRAY-ALLOCATION-SIZE (of ~A ~A~:P) unsupported on ~A"
            num-elements element-type
            (lisp-implementation-type)))
 
@@ -270,11 +270,14 @@ Return a POSIX-SHARED-MEMORY object."
   "Return a thunk suitable to releasing the memory associated with the POSIX-SHARED-MEMORY object SHM."
   (lambda ()
     (unless (cffi:null-pointer-p (posix-shared-memory-pointer shm))
-      (free-posix-shared-memory shm))))
+      (free-posix-shared-memory shm))
+    ;; Be consistent with the FINALIZER type defined
+    ;; elsewhere.
+    nil))
 
 (defun make-shared-array (name length element-type)
   "Return an array allocated to shared memory, along with a thunk which releases this memory."
-  (let* ((size (allocation-size length element-type))
+  (let* ((size (simple-array-allocation-size length element-type))
          (shm (make-posix-shared-memory name size))
          (shm-finalizer (posix-shared-memory-finalizer shm)))
     (multiple-value-bind (vec vec-finalizer)
@@ -285,6 +288,13 @@ Return a POSIX-SHARED-MEMORY object."
               (lambda ()
                 ;; Order matters!
                 (funcall vec-finalizer)
-                (funcall shm-finalizer))))))
+                (funcall shm-finalizer)
+                ;; Be consistent with the FINALIZER type defined
+                ;; elsewhere.
+                nil)))))
 
-
+;;; Plug in to the allocation interface defined in "allocator.lisp".
+(defmethod allocate-vector ((descr posix-shared-memory-allocation))
+  (make-shared-array (allocation-name descr)
+                     (allocation-length descr)
+                     'cflonum))

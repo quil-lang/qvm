@@ -150,3 +150,10 @@ In general, this macro is used in order to *explicitly* test for identical behav
                     (loop :for v :below q :do
                       (setf (aref result (+ y u) (+ x v))
                             (* Aij (aref B u v))))))))))))))
+
+(defun make-vector (length &rest elts)
+  (let ((vec (qvm::make-lisp-cflonum-vector length)))
+    (loop :for i :from 0
+          :for elt :in elts
+          :do (setf (aref vec i) (cflonum elt))
+          :finally (return vec))))

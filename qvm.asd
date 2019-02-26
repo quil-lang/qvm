@@ -25,7 +25,9 @@
                #:global-vars
                ;; C foreign function interface
                #:cffi
+               ;; Allocation of C vectors
                (:version #:static-vectors "1.8.3")
+               ;; Finalizers and portable GC calls
                #:trivial-garbage
                ;; Quil parsing and analysis
                (:version #:cl-quil "1.5.0")
@@ -45,8 +47,10 @@
                (:file "impl/clozure" :if-feature :clozure)
                (:file "impl/sbcl" :if-feature :sbcl)
                (:file "impl/lispworks" :if-feature :lispworks)
-               (:file "shm" :if-feature :unix)
                (:file "utilities")
+               (:file "floats")
+               (:file "allocator")
+               (:file "shm" :if-feature :unix)
                (:file "linear-algebra")
                (:file "qam")
                (:file "classical-memory")

@@ -76,7 +76,7 @@
        ;;
        ;; We explicitly zero out the memory to make sure all pages get
        ;; touched.
-       (setf (slot-value qvm 'amplitudes) (make-vector (expt 2 num-qubits)))
+       (setf (slot-value qvm 'amplitudes) (make-lisp-cflonum-vector (expt 2 num-qubits)))
        (bring-to-zero-state (amplitudes qvm))))))
 
 

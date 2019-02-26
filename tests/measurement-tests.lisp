@@ -133,7 +133,7 @@
 (deftest test-sample-wavefunction ()
   "Test that we can sample from a wavefunction correctly."
   (flet ((test-vector (&rest args)
-           (apply #'qvm::make-vector
+           (apply #'make-vector
                   (length args)
                   (mapcar #'sqrt args))))
     ;; Simple uniform test.

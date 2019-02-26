@@ -4,46 +4,6 @@
 
 (in-package #:qvm)
 
-;;; Numeric Types
-;;;
-;;; These are agreed upon *everywhere* in the QVM. These are allowed
-;;; to change, but only here.
-
-(defconstant +octets-per-flonum+ 8)
-
-(deftype flonum (&optional min)
-  "The float type used in computations."
-  (if (numberp min)
-      `(double-float ,(coerce min 'double-float))
-      `double-float))
-
-(defconstant +octets-per-cflonum+ (* 2 +octets-per-flonum+))
-
-(deftype cflonum ()
-  "The complex float type used in computations. Typically these will represent wavefunction amplitudes."
-  `(complex flonum))
-
-(defun flonum (x)
-  "Coerce X into a FLONUM."
-  (coerce x 'flonum))
-
-(define-compiler-macro flonum (&whole whole &environment env x)
-  (if (and (constantp x env)
-           (numberp x))
-      (coerce x 'flonum)
-      whole))
-
-(defun cflonum (x)
-  "Coerce X into a CFLONUM."
-  (coerce x 'cflonum))
-
-(define-compiler-macro cflonum (&whole whole &environment env x)
-  (if (and (constantp x env)
-           (numberp x))
-      (coerce x 'cflonum)
-      whole))
-
-
 ;;; Quantum State & Operator Representation
 
 (deftype quantum-state (&optional (n '*))
@@ -58,23 +18,6 @@
   "The number of octets reqquired to represent a given quantum state."
   (check-type state quantum-state)
   (* +octets-per-cflonum+ (length state)))
-
-(declaim (ftype (function (non-negative-fixnum &rest number) quantum-state) make-vector))
-(defun make-vector (size &rest elements)
-  "Make a SIZE-length complex vector whose elements are ELEMENTS."
-  (let ((vec (make-array size :element-type 'cflonum
-                              :initial-element (cflonum 0))))
-    (loop :for i :from 0
-          :for raw-element :in elements
-          :for element :of-type cflonum := (cflonum raw-element)
-          :do (setf (aref vec i) element)
-          :finally (return vec))))
-
-(define-compiler-macro make-vector (&whole form size &rest elements)
-  (if (null elements)
-      `(make-array ,size :element-type 'cflonum
-                         :initial-element (cflonum 0))
-      form))
 
 (deftype quantum-operator (&optional (n '*))
   "A representation of an operator on a quantum state. This will be a unitary square matrix where each dimension is a power-of-two."
@@ -165,7 +108,7 @@ The function will just return NIL, and modify the contents of RESULT."
           (matrix column)
           "The given matrix and column vector don't have compatible dimensions.")
   (let* ((matrix-size (array-dimension matrix 0))
-         (result (make-vector matrix-size)))
+         (result (make-lisp-cflonum-vector matrix-size)))
     (declare (type quantum-state result)
              (dynamic-extent result))
     ;; Perform the multiplication.

@@ -50,12 +50,12 @@
 (defun allocate-worker (cluster)
   "Allocate memory for the worker suitable for the cluster CLUSTER."
   (make-worker :rank +my-rank+
-               :work-area (let ((v (qvm::make-vector (area-length cluster))))
+               :work-area (let ((v (qvm::make-lisp-cflonum-vector (area-length cluster))))
                             ;; Set to |000...00>.
                             (when (= 1 +my-rank+)
                               (setf (aref v 0) (qvm:cflonum 1)))
                             v)
-               :copy-area (qvm::make-vector (area-length cluster))))
+               :copy-area (qvm::make-lisp-cflonum-vector (area-length cluster))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Reorg Amplitudes ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -371,7 +371,7 @@
   (declare (optimize speed (safety 0) (debug 0)))
   (let* ((block-length (block-length cluster (operating-qubits cluster)))
          (work-area (work-area worker))
-         (column (qvm::make-vector block-length)))
+         (column (qvm::make-lisp-cflonum-vector block-length)))
     (declare (type (simple-array qvm:cflonum (*)) work-area)
              (type (and fixnum unsigned-byte) block-length))
     (loop :for blk :below (the fixnum (area-length cluster)) :by block-length :do

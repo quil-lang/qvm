@@ -26,21 +26,21 @@
 
 (deftest test-wavefunction-qubits ()
   "Test that WAVEFUNCTION-QUBITS works."
-  (is (= 1 (qvm::wavefunction-qubits (qvm::make-vector 2))))
-  (is (= 2 (qvm::wavefunction-qubits (qvm::make-vector 4))))
-  (is (= 3 (qvm::wavefunction-qubits (qvm::make-vector 8))))
-  (is (= 4 (qvm::wavefunction-qubits (qvm::make-vector 16)))))
+  (is (= 1 (qvm::wavefunction-qubits (make-vector 2))))
+  (is (= 2 (qvm::wavefunction-qubits (make-vector 4))))
+  (is (= 3 (qvm::wavefunction-qubits (make-vector 8))))
+  (is (= 4 (qvm::wavefunction-qubits (make-vector 16)))))
 
 (deftest test-copy-wavefunction ()
   "Test that COPY-WAVEFUNCTION works."
-  (let ((wf1 (qvm::make-vector 1 1))
-        (wf2 (qvm::make-vector 2 1 2))
-        (wf4 (qvm::make-vector 4 1 2 3 4))
-        (wf8 (qvm::make-vector 8 1 2 3 4 5 6 7 8))
-        (d1 (qvm::make-vector 1))
-        (d2 (qvm::make-vector 2))
-        (d4 (qvm::make-vector 4))
-        (d8 (qvm::make-vector 8)))
+  (let ((wf1 (make-vector 1 1))
+        (wf2 (make-vector 2 1 2))
+        (wf4 (make-vector 4 1 2 3 4))
+        (wf8 (make-vector 8 1 2 3 4 5 6 7 8))
+        (d1 (make-vector 1))
+        (d2 (make-vector 2))
+        (d4 (make-vector 4))
+        (d8 (make-vector 8)))
     (macrolet ((test-each-combo (sources destinations)
                  `(progn
                     ;; Try each src first.

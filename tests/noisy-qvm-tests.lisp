@@ -5,6 +5,11 @@
 
 (in-package #:qvm-tests)
 
+(defun check-noisy-pointer-is-correct (qvm)
+  (when (typep qvm 'qvm:noisy-qvm)
+    (is (eq (qvm::amplitudes qvm)
+            (qvm::original-amplitude-pointer qvm)))))
+
 (deftest test-empty-program-depolarizing-qvm ()
   (let ((p (with-output-to-quil))
         (q (make-instance 'qvm:depolarizing-qvm
@@ -20,13 +25,13 @@
 (deftest test-simple-gate-noise ()
   "Test that the noisy gates behave as expected."
   (let ((p (with-output-to-quil
-             (write-line "X 0")))
+             "X 0"))
         (tries 500)
         (results-desired
           (list
-           (qvm::make-vector 2 0 -1)
-           (qvm::make-vector 2 1 0)
-           (qvm::make-vector 2 (complex 0 -1) 0)))
+           (make-vector 2 0 -1)
+           (make-vector 2 1 0)
+           (make-vector 2 (complex 0 -1) 0)))
         (qvm (make-instance 'qvm:depolarizing-qvm
                             :classical-memory-subsystem nil
                             :number-of-qubits 1
@@ -48,7 +53,7 @@
   "Test that the noisy gates behave as expected."
   (let* ((p (with-output-to-quil
               "DECLARE ro BIT"
-              (write-line "MEASURE 0 ro[0]")))
+              "MEASURE 0 ro[0]"))
          (tries 500)
          (results-desired (list 0 1))
          (qvm (make-instance 'qvm:depolarizing-qvm
@@ -75,19 +80,20 @@
                           :number-of-qubits 1)))
     (qvm:load-program q p)
     (qvm:run q)
+    (check-noisy-pointer-is-correct q)
     (is (double-float= 0 (qubit-probability q 0)))))
 
 (deftest test-noisy-x-gate ()
   "Test that the noisy gates behave as expected."
   (let ((p (with-output-to-quil
-             (write-line "X 0")
-             (write-line "X 1")))
+             "X 0"
+             "X 1"))
         (tries 500)
         (results-desired
           (list
-           (qvm::make-vector 4 0 0 0 1)
-           (qvm::make-vector 4 0 0 1 0)
-           (qvm::make-vector 4 0 0 (complex 0 -1) 0)))
+           (make-vector 4 0 0 0 1)
+           (make-vector 4 0 0 1 0)
+           (make-vector 4 0 0 (complex 0 -1) 0)))
         (qvm (make-instance 'qvm:noisy-qvm :classical-memory-subsystem nil
                                            :number-of-qubits 2)))
     (qvm:load-program qvm p :supersede-memory-subsystem t)
@@ -97,7 +103,8 @@
               (let ((psi (qvm::amplitudes (progn
                                             (qvm::reset-quantum-state qvm)
                                             (qvm:set-noisy-gate qvm "X" '(0) (qvm::make-pauli-perturbed-1q-gate "X" 1/4 1/4 1/4))
-                                            (qvm:run qvm)))))
+                                            (prog1 (qvm:run qvm)
+                                              (check-noisy-pointer-is-correct qvm))))))
                 (setf results-desired
                       (remove psi results-desired :test #'equalp))))
     (is (plusp tries))))
@@ -118,7 +125,8 @@
                                   (qvm::reset-quantum-state qvm)
                                   (qvm::set-readout-povm qvm 1 '(0.8d0 0.1d0
                                                                  0.2d0 0.9d0))
-                                  (qvm:run qvm)))
+                                  (prog1 (qvm:run qvm)
+                                    (check-noisy-pointer-is-correct qvm))))
                     (a (qvm:memory-ref qvm-final "ro" 0))
                     (b (qvm:memory-ref qvm-final "ro" 1)))
                 (is (= a 0))
@@ -150,7 +158,8 @@
                                   (qvm::reset-quantum-state qvm)
                                   (qvm::set-readout-povm qvm 1 '(0.8d0 0.1d0
                                                                  0.2d0 0.9d0))
-                                  (qvm:run qvm))))
+                                  (prog1 (qvm:run qvm)
+                                    (check-noisy-pointer-is-correct qvm)))))
                 (multiple-value-bind (qvm-final measured-bits)
                     (measure-all qvm-final)
                   (declare (ignore qvm-final))
