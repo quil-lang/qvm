@@ -54,27 +54,21 @@ dump-version-info:
 # BUILD
 ###############################################################################
 
+# FOREST_SDK_OPTION *must* come last - it triggers the end of normal
+# SBCL option processing
 qvm: system-index.txt
-	buildapp --output qvm \
-                 --dynamic-space-size $(QVM_WORKSPACE) \
-                 --manifest-file system-index.txt \
-                 --eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
-                 --eval '(push :hunchentoot-no-ssl *features*)' \
-		 --asdf-path . \
-                 --load-system qvm-app \
-		 $(FOREST_SDK_LOAD) \
-                 --eval '(qvm-app::zap-info)' \
-                 --eval '(qvm-app::setup-debugger)' \
-                 --compress-core \
-                 --logfile build-output.log \
-                 --entry qvm-app::%main
+	$(SBCL) $(FOREST_SDK_FEATURE) \
+	        --eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
+		--eval '(push :hunchentoot-no-ssl *features*)' \
+		--load build-app.lisp \
+                $(FOREST_SDK_OPTION)
 
 qvm-sdk-base: FOREST_SDK_FEATURE=--eval '(pushnew :forest-sdk *features*)'
 qvm-sdk-base: QVM_WORKSPACE=10240
 qvm-sdk-base: clean clean-cache qvm
 
 # By default, relocate shared libraries on SDK builds
-qvm-sdk: FOREST_SDK_LOAD=--load app/src/mangle-shared-objects.lisp
+qvm-sdk: FOREST_SDK_OPTION=--qvm-sdk
 qvm-sdk: qvm-sdk-base
 
 # Don't relocate shared libraries on barebones SDK builds
