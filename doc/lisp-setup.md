@@ -109,26 +109,6 @@ with the path which contains the `qvm` directory.
 )
 ```
 
-## Install Buildapp
-
-Lisp is an *image-based language*. This means that almost all
-development is a stateful modification of the Lisp universe, called
-the *image*. When you want to turn your program into a binary
-executable, you have to *deliver the image*. Image delivery is best
-supported by commercial Lisp implementations such as LispWorks (which
-has all sorts of options to reduce the binary size, to optimize
-things, etc.), but it is nonetheless supported by SBCL.
-
-The easiest way to do image delivery with SBCL is through a companion
-program called *buildapp*. Installation is easy. Download buildapp
-from [here](http://www.xach.com/lisp/buildapp.tgz). Extract it and
-`cd` into it. Simply do:
-
-1. `make`
-
-2. `make DESTDIR=/where/to/install install`. If you omit the `DESTDIR`
-   setting, it'll go to `/usr/local/bin`.
-
 ## (Optional) Install Emacs and SLIME
 
 Lisp is most optimally edited in Emacs. Emacs, paired with an

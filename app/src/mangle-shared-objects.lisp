@@ -1,7 +1,6 @@
 ;;;; mangle-shared-objects.lisp
 ;;;;
-;;;; This is loaded (as with CL:LOAD) before the final image is saved
-;;;; by buildapp.
+;;;; This is loaded (as with CL:LOAD) before the final image is saved.
 ;;;;
 ;;;; Rewrites shared library references to libblas.dylib and
 ;;;; liblapack.dylib on Mac SDK targets to use the Rigetti package
