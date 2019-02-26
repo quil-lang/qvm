@@ -29,7 +29,6 @@
 (defmacro with-required-keys ((request keys) &body body)
   ""
   `(progn
-     (print ,request)
      (alexandria:if-let ((missing (apply #'missing-keys ,request ,keys)))
        (make-instance 'rpcq::|RPCError|
                       :|id| (gethash "id" ,request)
