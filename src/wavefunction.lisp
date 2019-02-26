@@ -48,7 +48,7 @@
   v)
 
 (defun copy-wavefunction (wf &optional destination)
-  "Create a copy of the wavefunction WF. If DESTINATION is provided, copy the wavefunction WF into the DESTINATION vector. Only copy as many elements as can be copied, namely min(|wf|, |destination|)."
+  "Create a copy of the wavefunction WF. If DESTINATION is NIL, allocate a new vector on the Lisp heap. If DESTINATION is provided, copy the wavefunction WF into the DESTINATION vector. Only copy as many elements as can be copied, namely min(|wf|, |destination|)."
   (declare (type quantum-state wf)
            (type (or null quantum-state) destination))
   (let ((length (if (null destination)
@@ -56,7 +56,7 @@
                     (min (length wf) (length destination)))))
     (if (<= *qubits-required-for-parallelization* (1- (integer-length length)))
         (let ((copy (if (null destination)
-                        (make-vector length) ; Allocate fresh vector.
+                        (make-lisp-cflonum-vector length) ; Allocate fresh vector.
                         destination)))
           (declare (type quantum-state copy))
           (lparallel:pdotimes (i length copy)
@@ -163,7 +163,7 @@ up to amplitude ordering."
   (declare (type nat-tuple qubits)
            (type quantum-state wavefunction)
            (inline map-reordered-amplitudes))
-  (let ((col (make-vector (expt 2 (nat-tuple-cardinality qubits)))))
+  (let ((col (make-lisp-cflonum-vector (expt 2 (nat-tuple-cardinality qubits)))))
     (flet ((extract (combo address)
              (setf (aref col combo) (aref wavefunction address))
              nil))
@@ -196,7 +196,7 @@ up to amplitude ordering."
       `(locally (declare (type nat-tuple ,qubits)
                          (type quantum-state ,wavefunction)
                          (inline map-reordered-amplitudes))
-         (let ((,col (make-vector (expt 2 (nat-tuple-cardinality ,qubits)))))
+         (let ((,col (make-lisp-cflonum-vector (expt 2 (nat-tuple-cardinality ,qubits)))))
            (declare (type quantum-state ,col)
                     (dynamic-extent ,col))
            (flet ((,extract (,combo ,address)

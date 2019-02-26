@@ -24,7 +24,10 @@ which for each qubit gives the probability p(j|k) of measuring outcome
 j given actual state k. Note that we model purely classical readout
 error, i.e., the post measurement qubit state is always k, but the
 recorded outcome j may be different.")
-   ;; This is initialized in the INITIALIZE-INSTANCE after method.
+   ;; These are initialized in the INITIALIZE-INSTANCE after method.
+   (original-amplitude-pointer
+    :reader original-amplitude-pointer
+    :documentation "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation.")
    (trial-amplitudes
     :accessor %trial-amplitudes
     :documentation "A second wavefunction used when applying a noisy
@@ -42,10 +45,12 @@ hence should not be otherwise directly accessed.
 
 (defmethod initialize-instance :after ((qvm noisy-qvm) &rest args)
   (declare (ignore args))
-  ;; initialize the trial-amplitudes to an empty array of the
-  ;; correct size
-  (setf (%trial-amplitudes qvm)
-        (make-vector (expt 2 (number-of-qubits qvm)))))
+  (setf
+   ;; Initialize the trial-amplitudes to an empty array of the correct
+   ;; size.
+   (%trial-amplitudes qvm) (make-lisp-cflonum-vector (expt 2 (number-of-qubits qvm)))
+   ;; Save a pointer to the originally provided memory.
+   (slot-value qvm 'original-amplitude-pointer) (amplitudes qvm)))
 
 
 (defun make-pauli-noise-map (px py pz)
@@ -59,10 +64,11 @@ The arguments PX, PY and PZ can be interpreted as probabilities of a X, Y or Z e
   (check-type py (real 0 1))
   (check-type pz (real 0 1))
   (let* ((psum (+ px py pz))
-         (scaled-paulis (loop :for sj :in '("X" "Y" "Z")
-                              :for pj :in (list px py pz)
-                              :collect (magicl:scale (sqrt pj)
-                                                     (quil:gate-matrix (quil:lookup-standard-gate sj))))))
+         (scaled-paulis
+           (loop :for sj :in '("X" "Y" "Z")
+                 :for pj :in (list px py pz)
+                 :collect (magicl:scale (sqrt pj)
+                                        (quil:gate-matrix (quil:lookup-standard-gate sj))))))
     (check-type psum (real 0 1))
     (when (< psum 1)
       (push (magicl:scale (sqrt (- 1.0 psum)) (magicl:make-identity-matrix 2)) scaled-paulis))
@@ -161,6 +167,14 @@ POVM must be a 4-element list of double-floats."))
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
 
+(defmethod run :after ((qvm noisy-qvm))
+  ;; Only copy if we really need to.
+  (unless (eq (amplitudes qvm) (original-amplitude-pointer qvm))
+    ;; Copy the correct amplitudes into place.
+    (copy-wavefunction (amplitudes qvm) (original-amplitude-pointer qvm))
+    ;; Get the pointer back in home position. We want to swap them,
+    ;; not overwrite, because we want the scratch memory to be intact.
+    (rotatef (amplitudes qvm) (%trial-amplitudes qvm))))
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator)
@@ -213,8 +227,10 @@ POVM must be a 4-element list of double-floats."))
                   (incf summed-p (psum #'probability amps))
                :until (>= summed-p r))
 
-         ;; avoid unnecessary copying by swapping pointers to
-         ;; amplitudes and trial-amplitudes
+         ;; Avoid unnecessary copying by swapping pointers to
+         ;; amplitudes and trial-amplitudes. However, whenever we have
+         ;; finished RUNning a program, we should get the amplitudes
+         ;; back into original memory. See the :AROUND method above.
          (rotatef (amplitudes qvm) (%trial-amplitudes qvm))
 
          (normalize-wavefunction (amplitudes qvm))

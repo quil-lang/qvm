@@ -86,7 +86,7 @@ recorded outcome j may be different."))
   qvm)
 
 
-(defun make-density-qvm (num-qubits &rest args)
+(defun make-density-qvm (num-qubits &rest initargs)
   ;; The amplitudes store vec(ρ), i.e. the entries of the density
   ;; matrix ρ in row-major order. For a system of N qubits, ρ has
   ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
@@ -96,11 +96,13 @@ recorded outcome j may be different."))
   ;; position. See also RESET-QUANTUM-STATE, which we avoid
   ;; calling here because it performs an additional full traversal
   ;; of the vector.                
-  (let ((amplitudes (make-vector (expt 2 (* 2 num-qubits)) 1)))
+  (let ((amplitudes (make-lisp-cflonum-vector (expt 2 (* 2 num-qubits)))))
+    ;; Go into the zero state.
+    (setf (aref amplitudes 0) (cflonum 1))
     (apply #'make-instance 'density-qvm
            :number-of-qubits num-qubits
            :amplitudes amplitudes
-           args)))
+           initargs)))
 
 (defun full-density-number-of-qubits (vec-density)
   "Computes the number of qubits encoded by a vectorized density matrix."

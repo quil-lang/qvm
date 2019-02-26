@@ -25,5 +25,5 @@ clean up that vector."
     (declare (ignore n-bits))
     (values (static-vectors::vector-from-pointer pointer widetag num-elements)
             ;; No finalizer is needed for the vector itself in SBCL.
-            (constantly nil))))
+            (lambda () nil))))
 

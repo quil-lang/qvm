@@ -27,12 +27,24 @@
    #:with-random-state                  ; MACRO
    )
 
+  ;; floats.lisp
+  (:export
+   #:flonum                             ; TYPE, FUNCTION, COMPILER MACRO
+   #:cflonum                            ; TYPE, FUNCTION, COMPILER MACRO
+   )
+
+  ;; allocator.lisp
+  (:export
+   #:allocate-vector                    ; GENERIC, METHOD
+   #:lisp-allocation                    ; CLASS
+   #:c-allocation                       ; CLASS
+   #:posix-shared-memory-allocation     ; CLASS
+   )
+
   ;; linear-algebra.lisp
   (:export
    #:quantum-operator                   ; TYPE
    #:quantum-state                      ; TYPE
-   #:flonum                             ; TYPE, FUNCTION, COMPILER MACRO
-   #:cflonum                            ; TYPE, FUNCTION, COMPILER MACRO
    #:octets-required-for-qubits         ; FUNCTION
    )
 
