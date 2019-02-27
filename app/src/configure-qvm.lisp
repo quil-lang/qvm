@@ -16,6 +16,16 @@
            num-qubits
            (qvm::wavefunction-qubits **persistent-wavefunction**))))
 
+(defun make-wavefunction (length)
+  (cond
+    (**persistent-wavefunction**
+     (values **persistent-wavefunction** nil))
+    (t
+     (multiple-value-bind (vec fin)
+         (allocate-vector (funcall **default-allocation** length))
+       (qvm::bring-to-zero-state vec)
+       (values vec fin)))))
+
 (defgeneric make-appropriate-qvm (simulation-method quil num-qubits gate-noise measurement-noise))
 
 (defmethod make-appropriate-qvm ((simulation-method (eql 'pure-state)) quil num-qubits gate-noise measurement-noise)
@@ -34,39 +44,54 @@
       ((and (null gate-noise)
             (null measurement-noise)
             (not need-noisy-qvm))
-       (make-instance 'qvm:pure-state-qvm
-                      :number-of-qubits num-qubits
-                      :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem
-                                                                 :classical-memory-model
-                                                                 classical-memory-model)
-                      :amplitudes **persistent-wavefunction**)) ; Could be NIL.
+       (cond
+         ;; Are we using the persistent wavefunction?
+         (**persistent-wavefunction**
+          (make-instance 'qvm:pure-state-qvm
+                         :number-of-qubits num-qubits
+                         :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem
+                                                                    :classical-memory-model
+                                                                    classical-memory-model)
+                         :amplitudes **persistent-wavefunction**))
+         (t
+          (qvm:make-qvm num-qubits :classical-memory-model classical-memory-model
+                                   :allocation (funcall **default-allocation**
+                                                        (expt 2 num-qubits))))))
       (need-noisy-qvm
        (when (not (and (null gate-noise)
                        (null measurement-noise)))
          (error "Cannot simultaneously support Pauli error model and Kraus channels."))
-       (make-instance 'qvm:noisy-qvm
-                      :number-of-qubits num-qubits
-                      :noisy-gate-definitions kraus-ops
-                      :readout-povms readout-povms
-                      :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem
-                                                                 :classical-memory-model
-                                                                 classical-memory-model)
-                      :amplitudes **persistent-wavefunction**))
+
+       (multiple-value-bind (amps fin) (make-wavefunction (expt 2 num-qubits))
+         (let ((q
+                 (make-instance 'qvm:noisy-qvm
+                                :number-of-qubits num-qubits
+                                :noisy-gate-definitions kraus-ops
+                                :readout-povms readout-povms
+                                :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem
+                                                                           :classical-memory-model
+                                                                           classical-memory-model)
+                                :amplitudes amps)))
+           (when fin (tg:finalize q fin))
+           q)))
       (t
        (let ((gate-noise (or gate-noise '(0.0 0.0 0.0)))
              (measurement-noise (or measurement-noise '(0.0 0.0 0.0))))
-         (make-instance 'qvm:depolarizing-qvm
-                        :number-of-qubits num-qubits
-                        :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem
-                                                                   :classical-memory-model
-                                                                   classical-memory-model)
-                        :x (elt gate-noise 0)
-                        :y (elt gate-noise 1)
-                        :z (elt gate-noise 2)
-                        :measure-x (elt measurement-noise 0)
-                        :measure-y (elt measurement-noise 1)
-                        :measure-z (elt measurement-noise 2)
-                        :amplitudes **persistent-wavefunction**))))))
+         (multiple-value-bind (amps fin) (make-wavefunction (expt 2 num-qubits))
+           (let ((q (make-instance 'qvm:depolarizing-qvm
+                                   :number-of-qubits num-qubits
+                                   :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem
+                                                                              :classical-memory-model
+                                                                              classical-memory-model)
+                                   :x (elt gate-noise 0)
+                                   :y (elt gate-noise 1)
+                                   :z (elt gate-noise 2)
+                                   :measure-x (elt measurement-noise 0)
+                                   :measure-y (elt measurement-noise 1)
+                                   :measure-z (elt measurement-noise 2)
+                                   :amplitudes amps)))
+             (when fin (tg:finalize q fin))
+             q)))))))
 
 
 

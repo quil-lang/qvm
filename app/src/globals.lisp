@@ -15,6 +15,9 @@
 (global-vars:define-global-var **persistent-wavefunction** nil)
 (global-vars:define-global-var **persistent-wavefunction-finalizer** (constantly nil))
 
+(global-vars:define-global-var **default-allocation**
+    (lambda (n) (make-instance 'qvm:lisp-allocation :length n)))
+
 (deftype simulation-method ()
   "Available QVM simulation methods."
   `(member pure-state full-density-matrix))

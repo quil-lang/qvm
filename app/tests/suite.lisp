@@ -35,22 +35,22 @@ MEASURE 1 ro[1]"))
          (readout-povm (aref code 2))
          (measure (aref code 3)))
     ;; test gate application remapped
-    (is (= 0
-           (cl-quil:qubit-index
-            (first (cl-quil:application-arguments gate-app)))))
+    (is (zerop
+         (cl-quil:qubit-index
+          (first (cl-quil:application-arguments gate-app)))))
     ;; test kraus pragma remapped
-    (is (= 0
-           (first (cl-quil:pragma-qubit-arguments add-kraus))))
+    (is (zerop
+         (first (cl-quil:pragma-qubit-arguments add-kraus))))
     ;; test readout noise pragma remapped
-    (is (= 0
-           (cl-quil:pragma-qubit-index readout-povm)))
+    (is (zerop
+         (cl-quil:pragma-qubit-index readout-povm)))
     ;; test types of povm probabilities
     (is (typep (first (cl-quil:pragma-matrix-entries readout-povm))
                'double-float))
     ;; test measurement qubit remapped
-    (is (= 0
-           (cl-quil:qubit-index
-            (cl-quil:measurement-qubit measure))))))
+    (is (zerop
+         (cl-quil:qubit-index
+          (cl-quil:measurement-qubit measure))))))
 
 (deftest test-multishot-measure-remapping ()
   (dolist (simulation-method '(qvm-app::pure-state qvm-app::full-density-matrix))
