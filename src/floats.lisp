@@ -47,5 +47,5 @@
       (coerce x 'cflonum)
       whole))
 
-(deftype cflonum-vector ()
-  `(simple-array cflonum (*)))
+(deftype cflonum-vector (&optional (length '*))
+  `(simple-array cflonum (,length)))
