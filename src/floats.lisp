@@ -12,7 +12,7 @@
 
 (defconstant +octets-per-flonum+ 8)
 
-(deftype flonum (&optional (min '*))
+(deftype flonum (&optional min)
   "The float type used in computations."
   (cond
     ((numberp min) `(double-float ,(coerce min 'double-float)))
@@ -35,7 +35,7 @@
       (coerce x 'flonum)
       whole))
 
-(deftype flonum-vector (&optional (length '*))
+(deftype flonum-vector (&optional length)
   `(simple-array flonum (,length)))
 
 (defun cflonum (x)
@@ -48,5 +48,5 @@
       (coerce x 'cflonum)
       whole))
 
-(deftype cflonum-vector (&optional (length '*))
+(deftype cflonum-vector (&optional length)
   `(simple-array cflonum (,length)))
