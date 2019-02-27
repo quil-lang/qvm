@@ -133,12 +133,12 @@
   "Test that the allocator functionality seems to be working."
   (setf **dummy-count** 0)
   (tg:gc :full t)
-  (let ((num-loops 2500))
+  (let ((num-loops 100))
     ;; Keep allocations localized in the lexical environment below.
     (let ((a (make-instance 'dummy-allocation)))
       (loop
         ;; Boot stuff off to the next page.
-        :with junk := (make-array (qvm::getpagesize)
+        :with junk := (make-array (1+ (qvm::getpagesize))
                                   :element-type '(unsigned-byte 8)
                                   :initial-element 0)
         :repeat num-loops
@@ -150,15 +150,18 @@
       ;; Do some allocation of at least 5 quarter page sizes to kick us
       ;; off to a new page since SBCL marks garbage on a page-per-page
       ;; basis.
-      (loop :with alloc-size := (ceiling (qvm::getpagesize) 4)
-            :repeat 5
+      (loop :with alloc-size := (1- (qvm::getpagesize))
+            :repeat 1000
             :do (make-array alloc-size :element-type '(unsigned-byte 8)
                                        :initial-element 0)))
     ;; Now garbage collect, hopefully hitting all of the finalizers.
     (format t "~&[GCing... ") (finish-output)
     (tg:gc :full t)
-    (format t "Sleeping for 5 seconds...")  (finish-output)
-    (sleep 5.0)
+
+    ;; We sleep to try to hit all finalizers. Stuff might be happening
+    ;; in different threads...
+    (format t "Sleeping for 1 second...")  (finish-output)
+    (sleep 1.0)
     (format t "]")            (finish-output)
     ;; Check that we deallocated everything.
     (is (= num-loops **dummy-count**))
