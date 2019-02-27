@@ -137,8 +137,9 @@
     ;; Keep allocations localized in the lexical environment below.
     (let ((a (make-instance 'dummy-allocation)))
       (loop
-        ;; Boot stuff off to the next page.
-        :with junk := (make-array (1+ (qvm::getpagesize))
+        ;; Boot stuff off to the next page/card.
+        :with junk := (make-array #+sbcl (1+ sb-vm:gencgc-card-bytes)
+                                  #-sbcl (1+ (* 8 (qvm::getpagesize)))
                                   :element-type '(unsigned-byte 8)
                                   :initial-element 0)
         :repeat num-loops
@@ -150,7 +151,8 @@
       ;; Do some allocation of at least 5 quarter page sizes to kick us
       ;; off to a new page since SBCL marks garbage on a page-per-page
       ;; basis.
-      (loop :with alloc-size := (1- (qvm::getpagesize))
+      (loop :with alloc-size := #+sbcl (1- sb-vm:gencgc-card-bytes)
+                                #-sbcl (1- (* 8 (qvm::getpagesize)))
             :repeat 1000
             :do (make-array alloc-size :element-type '(unsigned-byte 8)
                                        :initial-element 0)))
