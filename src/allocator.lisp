@@ -43,9 +43,9 @@
 (declaim (ftype (function (t) (values cflonum-vector finalizer))
                 allocate-vector))
 (defgeneric allocate-vector (description)
-  (:documentation "Allocate a fresh zero-initialized QUANTUM-STATE vector described by DESCRIPTION. Return two values:
+  (:documentation "Allocate a fresh zero-initialized CFLONUM-VECTOR described by DESCRIPTION. Return two values:
 
-    1. The allocated vector (a QUANTUM-STATE).
+    1. The allocated vector (a CFLONUM-VECTOR).
 
     2. A finalizer thunk of type FINALIZER, which should be called when the memory is OK to be freed.
 
