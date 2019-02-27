@@ -12,11 +12,12 @@
 
 (defconstant +octets-per-flonum+ 8)
 
-(deftype flonum (&optional min)
+(deftype flonum (&optional (min '*))
   "The float type used in computations."
-  (if (numberp min)
-      `(double-float ,(coerce min 'double-float))
-      `double-float))
+  (cond
+    ((numberp min) `(double-float ,(coerce min 'double-float)))
+    ((eq '* min)   `double-float)
+    (t (error "Malformed type: (FLONUM ~S)" min))))
 
 (defconstant +octets-per-cflonum+ (* 2 +octets-per-flonum+))
 
@@ -34,8 +35,8 @@
       (coerce x 'flonum)
       whole))
 
-(deftype flonum-vector ()
-  `(simple-array flonum (*)))
+(deftype flonum-vector (&optional (length '*))
+  `(simple-array flonum (,length)))
 
 (defun cflonum (x)
   "Coerce X into a CFLONUM."
