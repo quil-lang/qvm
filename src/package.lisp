@@ -35,6 +35,7 @@
 
   ;; allocator.lisp
   (:export
+   #:allocation-length                  ; GENERIC, METHOD
    #:allocate-vector                    ; GENERIC, METHOD
    #:lisp-allocation                    ; CLASS
    #:c-allocation                       ; CLASS
