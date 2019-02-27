@@ -230,7 +230,7 @@ POVM must be a 4-element list of double-floats."))
          ;; Avoid unnecessary copying by swapping pointers to
          ;; amplitudes and trial-amplitudes. However, whenever we have
          ;; finished RUNning a program, we should get the amplitudes
-         ;; back into original memory. See the :AROUND method above.
+         ;; back into original memory. See the :AFTER method above.
          (rotatef (amplitudes qvm) (%trial-amplitudes qvm))
 
          (normalize-wavefunction (amplitudes qvm))
