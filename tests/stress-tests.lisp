@@ -98,10 +98,10 @@
           :with qvm := nil
           :for seq :below 16
           :for name := (format nil "TEST_C__~D" (mod seq 8)) ; make sure we repeat names
-          :do (setf qvm (qvm:make-qvm big-qubit-amount :shared-memory name))
+          :do (setf qvm (qvm:make-qvm big-qubit-amount :allocation name))
               (write-char #\a) (finish-output)
               (qvm::reset-quantum-state qvm) ; Do something with the
-                                        ; memory.
+                                             ; memory.
               (setf qvm nil)
               ;; We actually have to explicitly garbage collect to make
               ;; sure the memory gets freed.
@@ -113,3 +113,54 @@
 (deftest test-shared-memory-exit-hook-presence ()
   "Ensure that that the shared memory deallocation hook is present."
   (is (member 'qvm::deallocate-all-shared-memories sb-ext:*exit-hooks*)))
+
+(declaim (type fixnum **dummy-count**))
+(global-vars:define-global-var **dummy-count** 0)
+
+(defclass dummy-allocation ()
+  ())
+
+(defmethod qvm:allocation-length ((a dummy-allocation))
+  8)
+
+(defmethod qvm:allocate-vector ((a dummy-allocation))
+  (values (make-vector (qvm:allocation-length a))
+          (lambda ()
+            (sb-ext:atomic-incf **dummy-count**)
+            nil)))
+
+(deftest test-custom-allocator ()
+  "Test that the allocator functionality seems to be working."
+  (setf **dummy-count** 0)
+  (tg:gc :full t)
+  (let ((num-loops 2500))
+    ;; Keep allocations localized in the lexical environment below.
+    (let ((a (make-instance 'dummy-allocation)))
+      (loop
+        ;; Boot stuff off to the next page.
+        :with junk := (make-array (qvm::getpagesize)
+                                  :element-type '(unsigned-byte 8)
+                                  :initial-element 0)
+        :repeat num-loops
+        :sum (let ((q (make-qvm 3 :allocation a)))
+               ;; Do a little bit of nonsense with the QVM so it
+               ;; doesn't get compiled away...
+               (+ (length junk)
+                  (length (copy-wavefunction (qvm::amplitudes q))))))
+      ;; Do some allocation of at least 5 quarter page sizes to kick us
+      ;; off to a new page since SBCL marks garbage on a page-per-page
+      ;; basis.
+      (loop :with alloc-size := (ceiling (qvm::getpagesize) 4)
+            :repeat 5
+            :do (make-array alloc-size :element-type '(unsigned-byte 8)
+                                       :initial-element 0)))
+    ;; Now garbage collect, hopefully hitting all of the finalizers.
+    (format t "~&[GCing... ") (finish-output)
+    (tg:gc :full t)
+    (format t "Sleeping for 5 seconds...")  (finish-output)
+    (sleep 5.0)
+    (format t "]")            (finish-output)
+    ;; Check that we deallocated everything.
+    (is (= num-loops **dummy-count**))
+    (setf **dummy-count** 0)
+    nil))

@@ -81,40 +81,48 @@
 
 
 (defun make-qvm (num-qubits &key (classical-memory-model quil:**empty-memory-model**)
-                                 (shared-memory nil))
+                                 (allocation nil))
   "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits.
 
-If SHARED-MEMORY is a string, then the wavefunction will be allocated as a shared memory object, accessible by that name."
-  (check-type classical-memory-model quil:memory-model)
-  (check-type shared-memory (or null string))
-  (if (null shared-memory)
-      (make-instance 'pure-state-qvm
-                     :number-of-qubits num-qubits
-                     :classical-memory-subsystem (make-instance
-                                                  'classical-memory-subsystem
-                                                  :classical-memory-model
-                                                  classical-memory-model))
-      (%make-shared-qvm shared-memory num-qubits classical-memory-model)))
+ALLOCATION is an optional argument with the following behavior.
 
-(defun %make-shared-qvm (name num-qubits classical-memory-model)
-  (multiple-value-bind (vec finalizer)
-      (make-shared-array name (expt 2 num-qubits) 'cflonum)
-    ;; Set it to |...000>
-    (setf (aref vec 0) (cflonum 1))
-    ;; Create the QVM object.
-    (let ((qvm (make-instance 'pure-state-qvm
-                              :number-of-qubits num-qubits
-                              :amplitudes vec
-                              :classical-memory-subsystem (make-instance
-                                                           'classical-memory-subsystem
-                                                           :classical-memory-model
-                                                           classical-memory-model))))
-      ;; When the QVM disappears, make sure the shared memory gets
-      ;; deallocated too. XXX: This could cause problems if someone
-      ;; copies out the shared memory.
-      (tg:finalize qvm finalizer)
-      ;; Return the QVM.
-      qvm)))
+    - If it's NULL (default), then a standard wavefunction in the Lisp heap will be allocated.
+
+    - If it's a STRING, then the wavefunction will be allocated as a shared memory object, accessible by that name.
+
+    - Otherwise, it's assumed to be an object that is compatible with the ALLOCATION-LENGTH and ALLOCATE-VECTOR methods
+"
+  (check-type num-qubits unsigned-byte)
+  (check-type classical-memory-model quil:memory-model)
+  (let ((allocation
+          (etypecase allocation
+            (null
+             (make-instance 'lisp-allocation :length (expt 2 num-qubits)))
+            (string
+             (make-instance 'posix-shared-memory-allocation :length (expt 2 num-qubits)
+                                                            :name allocation))
+            (t
+             (assert (= (allocation-length allocation) (expt 2 num-qubits)))
+             allocation))))
+    (multiple-value-bind (amplitudes finalizer)
+        (allocate-vector allocation)
+      ;; Ensure we start in |...000>.
+      (bring-to-zero-state amplitudes)
+      ;; Make the QVM.
+      (let ((qvm (make-instance 'pure-state-qvm
+                                :number-of-qubits num-qubits
+                                :amplitudes amplitudes
+                                :classical-memory-subsystem
+                                (make-instance 'classical-memory-subsystem
+                                               :classical-memory-model
+                                               classical-memory-model))))
+        ;; When the QVM disappears, make sure the shared memory gets
+        ;; deallocated too. XXX: This could cause problems if someone
+        ;; copies out the shared memory. We should enforce the use of
+        ;; MAP-AMPLITUDES and AMPLITUDE-REF and the like.
+        (tg:finalize qvm finalizer)
+        ;; Return the QVM.
+        qvm))))
 
 (defun install-gates (qvm program)
   "Install the gates specified by the program PROGRAM into the QVM.
