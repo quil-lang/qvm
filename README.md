@@ -177,13 +177,28 @@ $ make qvm
 
 This will produce a binary executable `qvm` in the same directory.
 
-In some situtations, using a large number of qubits may caus heap
-exhaustion. To increase the memory available for the QVM, recompile
+In some situtations, using a large number of qubits may cause heap
+exhaustion. There are two options to ameliorate this.
+
+The first is to increase the memory available for the QVM, recompile
 and specify the workspace size (in MB)
 
 ```
 $ make QVM_WORKSPACE=4096 qvm
 ```
+
+The second is to use a different allocator when running the QVM, by
+using the `--default-allocator` argument with `"foreign"`. For
+example, to run a 30 qubit benchmark on a QVM configured for far less
+memory, one can do:
+
+```
+$ qvm --default-allocator "foreign" --benchmark 30 -c
+```
+
+This is *not* the default since this memory is not fully managed by
+the application.
+
 
 The QVM application has a few command-line switches used to configure
 the QVM. To explore those options, see the output of the following command:
