@@ -16,15 +16,16 @@
 ;;; that at least have some sort of ALLOCATION-LENGTH method to
 ;;; indicate how many CFLONUMs should be allocated.
 ;;;
-;;; The allocation method is ALLOCATE-VECTOR. This method is
-;;; specialized on the aforementioned types. Critically, this method
-;;; provides both the allocated data, as well as some finalizing
-;;; function to free the memory. Since data might be allocated
-;;; somewhere else besides the managed Lisp heap, it's up to you, the
-;;; programmer, to call the freeing function. (Save us the trouble and
-;;; don't cheat! Even with LISP-ALLOCATION vectors! If you decide to
-;;; change your mind later you'll regret it! If you don't want to use
-;;; the allocation interface, use MAKE-LISP-CFLONUM-VECTOR.)
+;;; The allocation generic function is ALLOCATE-VECTOR. This function
+;;; is specialized on the aforementioned types. Critically, this
+;;; function provides both the allocated data, as well as some
+;;; finalizing function to free the memory. Since data might be
+;;; allocated somewhere else besides the managed Lisp heap, it's up to
+;;; you, the programmer, to call the freeing function. (Save us the
+;;; trouble and don't cheat! Even with LISP-ALLOCATION vectors! If you
+;;; decide to change your mind later you'll regret it! If you don't
+;;; want to use the allocation interface, use
+;;; MAKE-LISP-CFLONUM-VECTOR.)
 ;;;
 ;;; Note that not all ALLOCATE-VECTOR specializations live in
 ;;; this file.
@@ -38,7 +39,8 @@
   nil)
 
 ;;; If we made this declaration on the DEFGENERIC, the type would get
-;;; clobbered.
+;;; clobbered. We put this type here anyway, albeit commented out, so
+;;; you know what the *real* type of this function should be.
 #+#:ignore
 (declaim (ftype (function (t) (values cflonum-vector finalizer))
                 allocate-vector))
@@ -52,7 +54,8 @@
 NOTE: Note that the finalizer may close over the allocated vector."))
 
 ;;; If we made this declaration on the DEFGENERIC, the type would get
-;;; clobbered.
+;;; clobbered. We put this type here anyway, albeit commented out, so
+;;; you know what the *real* type of this function should be.
 #+#:ignore
 (declaim (ftype (function (t) non-negative-fixnum) allocation-length))
 (defgeneric allocation-length (description)
