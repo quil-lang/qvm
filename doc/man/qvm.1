@@ -41,6 +41,13 @@ evolution) may be specified by the --simulation-method flag.
 The QVM does not have explicit options for running programs with noise
 models. Instead, the Quil program itself specifies PRAGMAs for
 defining Kraus operators and readout POVMs.
+
+The wavefunctions are allocated into a managed memory space by
+default, where garbage collection can occur. This means, however, that
+the size of this space (and thus the maximum number of qubits) must be
+specified when the QVM application was compiled. By using an
+alternative default allocation mode (i.e., by setting
+--default-allocation) such as "foreign", one can bypass this limit.
 .SH OPTIONS
 .IP "-e, --execute"
 (DEPRECATED; Execute Mode is the default.) Run the QVM in Execute
@@ -85,6 +92,13 @@ the evolved wavefunction.
 JIT compile the Quil programs to make them run faster.
 .IP "--safe-include-directory <dir>"
 Restrict the Quil INCLUDE directive exclusively to <dir>.
+.IP "default-allocation" <alloc-kind>
+Select where wavefunctions get allocated. The argument <alloc-kind>
+can either be "native" (default) for native allocation, or "foreign"
+for C-compatible allocation. The benefit of C-compatible allocation is
+that the compiled heap size (as specified by QVM_WORKSPACE at
+compile-time) does not limit the wavefunction size, but may lead to less
+predictable memory performance.
 .IP "--shared <name>"
 (Server Mode) Run the QVM in shared memory mode. This allocates the
 wavefunction in POSIX shared memory named <name>. If <name> is an
@@ -298,6 +312,8 @@ Benchmark a 25-qubit quantum Fourier transform in compiled mode.
 .SH BUGS
 Shared memory mode does not work with QVMs executing noisy programs
 (i.e., ones where Kraus operators or POVMs are specified).
+
+The allocation mode is not reflected in density matrix simulations.
 
 The WAIT instruction does nothing.
 .SH SUPPORT

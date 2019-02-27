@@ -16,8 +16,15 @@
 (defparameter *available-simulation-methods* '("pure-state" "full-density-matrix")
   "List of available simulation methods.")
 
+(defparameter *available-allocation-kinds* '("native" "foreign")
+  "Kinds of allocations that are possible.")
+
 (defparameter *option-spec*
-  `((("execute" #\e)
+  `((("default-allocation")
+     :type string
+     :initial-value "native"
+     :documentation "select where wavefunctions get allocated: \"native\" (default) for native allocation, \"foreign\" for C-compatible allocation")
+    (("execute" #\e)
      :type boolean
      :optional t
      :documentation "read a Quil program from stdin and execute it (DEPRECATED: simply elide this option)")
@@ -239,13 +246,17 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
 
 (defmethod make-shared-wavefunction ((simulation-method (eql 'pure-state)) num-qubits name)
   (multiple-value-bind (vec finalizer)
-      (qvm::make-shared-array name (expt 2 num-qubits) 'qvm:cflonum)
+      (qvm:allocate-vector (make-instance 'qvm:posix-shared-memory-allocation
+                                          :name name
+                                          :length (expt 2 num-qubits)))
     (setf (aref vec 0) (cflonum 1))
     (values vec finalizer)))
 
 (defmethod make-shared-wavefunction ((simulation-method (eql 'full-density-matrix)) num-qubits name)
     (multiple-value-bind (vec finalizer)
-        (qvm::make-shared-array name (expt 2 (* 2 num-qubits)) 'qvm:cflonum)
+        (qvm:allocate-vector (make-instance 'qvm:posix-shared-memory-allocation
+                                            :name name
+                                            :length (expt 2 (* 2 num-qubits))))
       ;; It just so happens that the pure zero state in the
       ;; density matrix formalism is the same as the pure zero state
       ;; in the state-vector formalism)
@@ -273,9 +284,24 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                 memories)))
     (terpri)))
 
+(defun allocation-description-maker (kind)
+  "Return a function INTEGER -> ALLOCATION that takes a number of elements and returns a proper descriptor for the allocation."
+  (cond
+    ((string-equal kind "native")
+     (lambda (length)
+       (make-instance 'qvm:lisp-allocation :length length)))
+    ((string-equal kind "foreign")
+     (lambda (length)
+       (make-instance 'qvm:c-allocation :length length)))
+    (t
+     (error "Invalid kind of allocation ~S, wanted any of {~{~S~^, ~}"
+            kind
+            *available-allocation-kinds*))))
+
 (defun process-options (&key version
                              check-libraries
                              verbose
+                             default-allocation
                              execute
                              help
                              memory-limit
@@ -307,6 +333,9 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
 
   (when verbose
     (setf qvm:*transition-verbose* t))
+
+  (when default-allocation
+    (setq **default-allocation** (allocation-description-maker default-allocation)))
 
   (when (plusp time-limit)
     (setf *time-limit* (/ time-limit 1000.0d0)))
@@ -445,7 +474,9 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
        ;; Allocate the QVM.
        (format-log "Allocating memory for QVM of ~D qubits." qubits-needed)
        (with-timing (alloc-time)
-         (setf qvm (make-qvm qubits-needed)))
+         (setf qvm (make-qvm qubits-needed
+                             :allocation (funcall **default-allocation**
+                                                  (expt 2 qubits-needed)))))
        (format-log "Allocation completed in ~D ms." alloc-time)
 
        ;; Load our program.

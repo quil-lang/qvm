@@ -71,7 +71,8 @@ We are assuming the CNOTs are dense on an even number of qubits."
                  ("qft"  (qft-program num-qubits))
                  ("hadamard" (hadamard-program num-qubits))
                  ("qualcs" (qualcs-program num-qubits))))
-            (q (qvm:make-qvm num-qubits))
+            (q (qvm:make-qvm num-qubits
+                             :allocation (funcall **default-allocation** (expt 2 num-qubits))))
             timing)
         (qvm:load-program q p :supersede-memory-subsystem t)
 
