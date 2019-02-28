@@ -17,6 +17,8 @@ QUICKLISP=$(SBCL) --load $(QUICKLISP_HOME)/setup.lisp \
 
 QUICKLISP_BOOTSTRAP_URL=https://beta.quicklisp.org/quicklisp.lisp
 
+PREFIX ?= /usr/local
+
 all: qvm
 
 ###############################################################################
@@ -95,6 +97,17 @@ docker-sdk-barebones: DOCKER_BUILD_TARGET=qvm-sdk-barebones
 docker-sdk-barebones: DOCKER_TAG=qvm-sdk-barebones
 docker-sdk-barebones: docker
 
+###############################################################################
+# INSTALL/UNINSTALL
+###############################################################################
+
+ .PHONY: install
+install: qvm
+	install qvm $(DESTDIR)$(PREFIX)/bin
+
+ .PHONY: uninstall
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/bin/qvm
 
 ###############################################################################
 # TEST
