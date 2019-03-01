@@ -13,14 +13,12 @@
 (defmethod perform-probabilities ((simulation-method (eql 'pure-state)) quil num-qubits &key gate-noise measurement-noise)
   (let* ((qvm (%execute-quil simulation-method quil num-qubits gate-noise measurement-noise))
          (amplitudes (qvm::amplitudes qvm))
-         (probabilities (make-array (length amplitudes) :element-type 'double-float)))
-    (loop :for i :below (length amplitudes)
-          :do (setf (aref probabilities i)
-                    (qvm::probability (aref amplitudes i))))
+         (probabilities (make-array (length amplitudes) :element-type 'qvm:flonum)))
+    (map-into probabilities #'qvm::probability (qvm::amplitudes qvm))
     (values qvm
             probabilities)))
 
 (defmethod perform-probabilities ((simulation-method (eql 'full-density-matrix)) quil num-qubits &key gate-noise measurement-noise)
   (let* ((qvm (%execute-quil simulation-method quil num-qubits gate-noise measurement-noise)))
     (values qvm
-            (qvm::density-qvm-basis-probabilities qvm))))
+            (qvm::density-qvm-measurement-probabilities qvm))))

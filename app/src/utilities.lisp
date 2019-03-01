@@ -63,7 +63,7 @@
 (declaim (inline write-complex-double-float-as-binary))
 (defun write-complex-double-float-as-binary (z stream)
   "Take a complex double-float and write to STREAM its binary representation in big endian (total 16 octets)."
-  (declare (optimize speed (safety 0) (debug 0))
+  (declare #.qvm::*optimize-dangerously-fast*
            (type (complex double-float) z))
   (let ((re (realpart z))
         (im (imagpart z)))
@@ -79,7 +79,7 @@
 (declaim (inline write-double-float-as-binary))
 (defun write-double-float-as-binary (x stream)
   "Take a double-float and write to STREAM its binary representation in big endian (total 8 octets)."
-  (declare (optimize speed (safety 0) (debug 0))
+  (declare #.qvm::*optimize-dangerously-fast*
            (type double-float x))
   (let ((encoded (ieee-floats:encode-float64 x)))
     (declare (type (unsigned-byte 64) encoded)
