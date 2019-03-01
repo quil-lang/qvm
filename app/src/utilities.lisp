@@ -76,6 +76,16 @@
       (write-64-be encoded-re stream)
       (write-64-be encoded-im stream))))
 
+(declaim (inline write-double-float-as-binary))
+(defun write-double-float-as-binary (x stream)
+  "Take a double-float and write to STREAM its binary representation in big endian (total 8 octets)."
+  (declare (optimize speed (safety 0) (debug 0))
+           (type double-float x))
+  (let ((encoded (ieee-floats:encode-float64 x)))
+    (declare (type (unsigned-byte 64) encoded)
+             (dynamic-extent encoded))
+    (write-64-be encoded stream)))
+
 (defun encode-list-as-json-list (list stream)
   (if (endp list)
       (format stream "[]")
