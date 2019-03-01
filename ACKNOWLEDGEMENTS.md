@@ -2,13 +2,13 @@
 
 ## Pre-Release History
 
-Starting in 2016, the née `qsim`, Robert Smith started the Rigetti
-QVM, which began as a substrate to study syntax and semantics for
-quantum programming languages. At the time, the predominant syntax for
-quantum programs was the graphical circuit notation, along with its
-accompanying LaTeX syntax
-[qasm](https://www.media.mit.edu/quanta/qasm2circ/). It also served as
-a foundation for understanding "computational quantum computation".
+Starting in 2016, Robert Smith started the Rigetti QVM (née `qsim`)
+as a substrate to study syntax and semantics for quantum programming
+languages. At the time, the predominant syntax for quantum programs
+was the graphical circuit notation, along with its accompanying LaTeX
+syntax [qasm](https://www.media.mit.edu/quanta/qasm2circ/). It also
+served as a foundation for understanding "computational quantum
+computation".
 
 The first Rigetti QVM implemented something akin to the "many worlds"
 interpretation of quantum mechanics. Quantum programs were written
