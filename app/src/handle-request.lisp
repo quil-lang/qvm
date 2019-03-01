@@ -166,4 +166,25 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                  (qvm:map-amplitudes
                   qvm
                   (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
+             (format-log "Response sent in ~D ms." send-response-time))))
+        ((:probabilities)
+         (check-for-quil-instrs-field js)
+         (let* ((isns (get-quil-instrs-field js))
+                (quil (let ((quil:*allow-unresolved-applications* t))
+                        (process-quil (safely-parse-quil-string isns))))
+                (num-qubits (cl-quil:qubits-needed quil)))
+           (let (send-response-time)
+             (multiple-value-bind (qvm probabilities)
+                 (perform-probabilities *simulation-method* quil num-qubits
+                                        :gate-noise gate-noise
+                                        :measurement-noise measurement-noise)
+               (with-timing (send-response-time)
+                 (setf (tbnl:content-type*) "application/octet-stream")
+                 (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
+                 (setf (tbnl:content-length*)
+                       (* qvm::+octets-per-flonum+ (length probabilities)))
+                 (let ((reply-stream (tbnl:send-headers)))
+                   (map nil
+                        (lambda (x) (write-double-float-as-binary x reply-stream))
+                        probabilities))))
              (format-log "Response sent in ~D ms." send-response-time))))))))

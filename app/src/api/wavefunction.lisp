@@ -10,12 +10,12 @@
     (api-method-not-implemented-error 'perform-wavefunction)))
 
 (defmethod perform-wavefunction ((simulation-method (eql 'pure-state)) quil num-qubits &key gate-noise measurement-noise)
-  (%perform-wavefunction simulation-method quil num-qubits gate-noise measurement-noise))
+  (%execute-quil simulation-method quil num-qubits gate-noise measurement-noise))
 
 (defmethod perform-wavefunction ((simulation-method (eql 'full-density-matrix)) quil num-qubits &key gate-noise measurement-noise)
-  (%perform-wavefunction simulation-method quil num-qubits gate-noise measurement-noise))
+  (%execute-quil simulation-method quil num-qubits gate-noise measurement-noise))
 
-(defun %perform-wavefunction (simulation-method quil num-qubits gate-noise measurement-noise)
+(defun %execute-quil (simulation-method quil num-qubits gate-noise measurement-noise)
   (check-type quil quil:parsed-program)
   (check-type num-qubits (integer 0))
   (check-type gate-noise (or null alexandria:proper-list))
