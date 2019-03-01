@@ -276,6 +276,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
 
 (defun density-qvm-qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
+  (check-type qvm density-qvm)
   (let ((vec-density (amplitudes qvm))
         (dim (expt 2 (number-of-qubits qvm))))
     ;; This is a sum along the diagonal of the DIM x DIM density matrix
@@ -283,18 +284,28 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
     (psum-dotimes (k (half dim))
       (let ((i (index-to-address k qubit 1)))
         (realpart
-         (aref vec-density (+ (* i dim) i)) ; this is rho[i,i]
+         (aref vec-density (+ i (* i dim))) ; this is rho[i,i]
          )))))
 
-(defun density-qvm-basis-probabilities (qvm)
-  "Computes a vector of probabilities for each element in the computational basis."
+(defun density-qvm-measurement-probabilities (qvm)
+  "Computes the probability distribution of measurement outcomes (a vector)
+  associated with the specified density matrix QVM.
+
+  For example, if (NUMBER-OF-QUBITS QVM) is 2, then this will return a vector
+  
+  #(p[0,0] p[0,1] p[1,0] p[1,1]) 
+
+  where p[i,j] denotes the probability that a simultaneous measurement of qubits 0,1
+  results in the outcome i,j. 
+  "
+  (check-type qvm density-qvm)
   (let* ((vec-density (amplitudes qvm))
          (dim (expt 2 (number-of-qubits qvm)))
-         (probabilities (make-array dim :element-type 'double-float)))
+         (probabilities (make-array dim :element-type 'flonum :initial-element (flonum 0))))
     (loop :for i :below dim
           :do (setf (aref probabilities i)
                     (realpart
-                     (aref vec-density (+ (* i dim) i))))
+                     (aref vec-density (+ i (* i dim)))))
           :finally (return probabilities))))
 
 
@@ -303,6 +314,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
 
 EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
 "
+  (check-type qvm density-qvm)
   ;; A measurement of qubit i corresponds to roughly this:
   ;; If outcome = 0, set rows/columns corresponding to i = 1 to zero
   ;; If outcome = 1, set rows/columns corresponding to i = 0 to zero

@@ -53,14 +53,16 @@
                (:file "configure-qvm")
                (:module "api"
                 :serial t
-                :components ((:file "ping")
+                :components ((:file "common")
+                             (:file "ping")
                              (:file "version")
                              (:file "info")
                              (:file "multishot")
                              (:file "multishot-measure")
                              (:file "expectation")
                              (:file "wavefunction")
-                             (:file "probabilities")))
+                             (:file "probabilities")
+                             (:file "run-for-effect")))
                (:file "benchmark-programs")
                (:file "server-abstraction")
                (:file "handle-request")

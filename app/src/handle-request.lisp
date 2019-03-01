@@ -4,23 +4,6 @@
 
 (in-package #:qvm-app)
 
-
-(define-condition api-method-not-implemented (error)
-  ((method :initarg :method
-           :reader api-method)
-   (simulation-method :initarg :simulation-method
-                      :reader active-simulation-method))
-  (:report (lambda (condition stream)
-             (format stream "API method ~A not supported when QVM is using ~A simulation method.~&"
-                     (api-method condition)
-                     (active-simulation-method condition)))))
-
-(defun api-method-not-implemented-error (method)
-  "Signal that the given API method named METHOD is not implemented."
-  (error 'api-method-not-implemented
-         :method method
-         :simulation-method *simulation-method*))
-
 (defun process-quil (quil)
   "Prepare the PARSED-PROGRAM QUIL for more efficient execution. Currently this only includes remapping the qubits to a minimal sequential set from 0 to (num-qubits-used - 1). Return two values: the processed Quil code and the mapping vector.
 
@@ -167,6 +150,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                   qvm
                   (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
              (format-log "Response sent in ~D ms." send-response-time))))
+        
         ((:probabilities)
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
@@ -187,4 +171,17 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                    (map nil
                         (lambda (x) (write-double-float-as-binary x reply-stream))
                         probabilities))))
-             (format-log "Response sent in ~D ms." send-response-time))))))))
+             (format-log "Response sent in ~D ms." send-response-time))))
+
+        ((:run-for-effect)
+         (check-for-quil-instrs-field js)
+         (let* ((isns (get-quil-instrs-field js))
+                (quil (let ((quil:*allow-unresolved-applications* t))
+                        (process-quil (safely-parse-quil-string isns))))
+                (num-qubits (cl-quil:qubits-needed quil)))
+           (perform-run-for-effect *simulation-method* quil num-qubits
+                                   :gate-noise gate-noise
+                                   :measurement-noise measurement-noise)
+           (load-time-value
+            (with-output-to-string (s)
+              (yason:encode t s)))))))))
