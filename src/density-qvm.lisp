@@ -286,6 +286,17 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
          (aref vec-density (+ (* i dim) i)) ; this is rho[i,i]
          )))))
 
+(defun density-qvm-basis-probabilities (qvm)
+  "Computes a vector of probabilities for each element in the computational basis."
+  (let* ((vec-density (amplitudes qvm))
+         (dim (expt 2 (number-of-qubits qvm)))
+         (probabilities (make-array dim :element-type 'double-float)))
+    (loop :for i :below dim
+          :do (setf (aref probabilities i)
+                    (realpart
+                     (aref vec-density (+ (* i dim) i))))
+          :finally (return probabilities))))
+
 
 (defun density-qvm-force-measurement (measured-value qubit qvm excited-probability)
   "Force the QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.
