@@ -27,17 +27,18 @@
        (format t "MEASURE ~D ro[~D]~%" i i)))))
 
 ;;; Benchmark from https://github.com/qulacs/qulacs
-(defun qualcs-program (n)
+(defun qualcs-program (n &key (rx-layers 10))
   "The qualcs benchmark, specified to be 10 layers of random RX rotations interleaved with 9 layers of neighboring CNOTs, followed by 100 shots.
 
 We are assuming the CNOTs are dense on an even number of qubits."
+  (assert (plusp rx-layers))
   (safely-parse-quil-string
    (with-output-to-string (*standard-output*)
      ;; Initial RX layer.
      (loop :for q :below n :do
        (format t "RX(~F) ~D~%" (random (* 2 pi)) q))
      ;; CNOT-RX layers.
-     (loop :repeat 9 :do
+     (loop :repeat (1- rx-layers) :do
        ;; CNOT's
        (loop :with qubits := (alexandria:shuffle (alexandria:iota n))
              :repeat (floor n 2)
