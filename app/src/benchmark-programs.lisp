@@ -30,7 +30,7 @@
 ;;;
 ;;; Note that the original benchmark as stated requires 100 shots. It
 ;;; is not clear if the wavefunction can be sampled to do this, or
-;;; whether the program must be run 100 times..
+;;; whether the program must be run 100 times.
 (defun qualcs-program (n &key (rx-layers 10))
   "The qualcs benchmark, specified to be 10 layers of random RX rotations interleaved with 9 layers of neighboring CNOTs, followed by measurement of all qubits.
 
