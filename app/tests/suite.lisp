@@ -70,31 +70,29 @@ I 2")
                   (qvm-app::perform-multishot-measure simulation-method processed-quil 3 qubits 1 relabeling))))
           (is (equalp results-1 results-2)))))))
 
-;;; The behavior of a MEASURE operation on a qubit outside of the
-;;; range of the QAM is undefined. This test checks the current
-;;; behavior of the PURE-STATE-QVM for such measurements (the measured
-;;; value is 0, and there is no change to the wavefunction), but in
-;;; general it seems like a bad idea. Nonetheless, since there's the
-;;; word "bug" in the test name, I'm leaving it.
 (deftest test-multishot-measure-more-qubits-bug ()
+  "Test that we handle out-of-bounds measurements correctly, even with relabelings."
   ;; Version #1
   (multiple-value-bind (p relabeling) (qvm-app::process-quil
                                        (qvm-app::safely-parse-quil-string "X 0"))
+    ;; Case 1.A. We have a relabeling, and the thing appropriately
+    ;; handles it.
     (let ((answer (mute
-                   (qvm-app::perform-multishot-measure 'qvm-app::pure-state p 1 '(0 1) 10 relabeling))))
+                    (qvm-app::perform-multishot-measure 'qvm-app::pure-state p 1 '(0 1) 10 relabeling))))
       (is (every (lambda (result) (and (= 2 (length result))
                                        (= 1 (first result))
                                        (= 0 (second result))))
-                 answer))))
+                 answer)))
+    ;; Case 1.B. We don't provide a relabeling.
+    (signals error
+      (mute
+        (qvm-app::perform-multishot-measure 'qvm-app::pure-state p 1 '(0 1) 10 nil))))
   ;; Version #2
   (let* ((p (qvm-app::safely-parse-quil-string "X 0"))
          (q (qvm:make-qvm (quil::qubits-needed p))))
     (qvm:load-program q p)
     (qvm:run q)
-    (let ((answer (qvm-app::parallel-measure q '(0 1))))
-      (is (and (= 2 (length answer))
-               (= 1 (first answer))
-               (= 0 (second answer)))))))
+    (signals error (qvm-app::parallel-measure q '(0 1)))))
 
 (deftest test-multishot-measure-disjoint-measurement-qubits ()
   (dolist (simulation-method '(qvm-app::pure-state  qvm-app::full-density-matrix))

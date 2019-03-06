@@ -4,6 +4,12 @@
 
 (in-package #:qvm-app)
 
+(defun qubits-in-range-p (qam qubits)
+  "Are all qubits in the list QUBITS in range of the QAM?"
+  (loop :with maxq := (1- (number-of-qubits qam))
+        :for q :in (remove ':unused-qubit qubits)
+        :always (<= 0 q maxq)))
+
 (defun parallel-measure (qvm &optional qubits)
   (cond
     ;; Fast path: measure all of the qubits. Note that we check for
@@ -32,7 +38,6 @@
 (defgeneric perform-multishot-measure (simulation-method quil num-qubits qubits num-trials relabeling)
   (:method (simulation-method quil num-qubits qubits num-trials relabeling)
     (api-method-not-implemented-error 'perform-multishot-measure)))
-
 
 (defmethod perform-multishot-measure ((simulation-method (eql 'pure-state)) quil num-qubits qubits num-trials relabeling)
   (%perform-multishot-measure simulation-method quil num-qubits qubits num-trials relabeling))
@@ -69,6 +74,12 @@
 
   (let ((qvm (make-appropriate-qvm simulation-method quil num-qubits nil nil))
         timing)
+    ;; Check that we've asked for sensible qubits.
+    (assert (qubits-in-range-p qvm qubits) ()
+            "The provided qubits ~S to a multishot measure are out ~
+             of range for the given QVM, which only has ~D qubit~:P."
+            qubits
+            (number-of-qubits qvm))
     ;; Make the initial state.
     (qvm:load-program qvm quil)
     (format-log "Computing ~D-qubit state for multishot/measure on ~A."
