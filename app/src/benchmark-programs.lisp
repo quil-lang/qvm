@@ -26,6 +26,34 @@
      (dotimes (i n)
        (format t "MEASURE ~D ro[~D]~%" i i)))))
 
+;;; Benchmark from https://github.com/qulacs/qulacs
+;;;
+;;; Note that the original benchmark as stated requires 100 shots. It
+;;; is not clear if the wavefunction can be sampled to do this, or
+;;; whether the program must be run 100 times..
+(defun qualcs-program (n &key (rx-layers 10))
+  "The qualcs benchmark, specified to be 10 layers of random RX rotations interleaved with 9 layers of neighboring CNOTs, followed by measurement of all qubits.
+
+We are assuming the CNOTs are dense on an even number of qubits."
+  (assert (plusp rx-layers))
+  (safely-parse-quil-string
+   (with-output-to-string (*standard-output*)
+     ;; Initial RX layer.
+     (loop :for q :below n :do
+       (format t "RX(~F) ~D~%" (random (* 2 pi)) q))
+     ;; CNOT-RX layers.
+     (loop :repeat (1- rx-layers) :do
+       ;; CNOT's
+       (loop :with qubits := (alexandria:shuffle (alexandria:iota n))
+             :repeat (floor n 2)
+             :do (format t "CNOT ~D ~D~%" (pop qubits) (pop qubits)))
+       ;; RX's
+       (loop :for q :below n :do
+         (format t "RX(~F) ~D~%" (random (* 2 pi)) q)))
+     ;; Measurements
+     (loop :for q :below n :do
+       (format t "MEASURE ~D~%" q)))))
+
 (defun norm-baseline-timing (wf)
   ;; touch all entries
   (qvm::bring-to-zero-state wf)
@@ -41,7 +69,8 @@
       (let ((p (alexandria:eswitch (type :test #'string-equal)
                  ("bell" (bell-program num-qubits))
                  ("qft"  (qft-program num-qubits))
-                 ("hadamard" (hadamard-program num-qubits))))
+                 ("hadamard" (hadamard-program num-qubits))
+                 ("qualcs" (qualcs-program num-qubits))))
             (q (qvm:make-qvm num-qubits))
             timing)
         (qvm:load-program q p :supersede-memory-subsystem t)
