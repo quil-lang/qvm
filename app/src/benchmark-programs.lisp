@@ -27,8 +27,12 @@
        (format t "MEASURE ~D ro[~D]~%" i i)))))
 
 ;;; Benchmark from https://github.com/qulacs/qulacs
+;;;
+;;; Note that the original benchmark as stated requires 100 shots. It
+;;; is not clear if the wavefunction can be sampled to do this, or
+;;; whether the program must be run 100 times..
 (defun qualcs-program (n &key (rx-layers 10))
-  "The qualcs benchmark, specified to be 10 layers of random RX rotations interleaved with 9 layers of neighboring CNOTs, followed by 100 shots.
+  "The qualcs benchmark, specified to be 10 layers of random RX rotations interleaved with 9 layers of neighboring CNOTs, followed by measurement of all qubits.
 
 We are assuming the CNOTs are dense on an even number of qubits."
   (assert (plusp rx-layers))
