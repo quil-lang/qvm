@@ -3,7 +3,7 @@
 qvm \- a quantum virtual machine for executing Quil
 .SH SYNOPSIS
 
-qvm <options> -e                # Execute Mode
+qvm <options>                   # Execute Mode
 
 qvm <options> -S                # Server Mode
 
@@ -14,11 +14,11 @@ quantum abstract machine. Specifically, it is capable of executing
 Quil in a variety of ways. The QVM has three main modes of operation:
 Execute Mode, Server Mode, and Benchmark Mode.
 
-Execute Mode runs the QVM on a single Quil file, printing out
-information about the execution, as well as a textual representation
-of the wavefunction if --verbose is provided. (If one would like full
-access to the wavefunction as an efficient representation, one should
-use --shared.)
+Execute Mode executes Quil code read from stdin(4). It will print a
+full representation of the classical memory and wavefunction to
+stdout(4). One can use this mode to pip Quil files into the QVM. (If
+one would like full access to the wavefunction as an efficient
+representation, one should use --shared with Server Mode.)
 
 Server Mode runs the QVM as an HTTP server, taking simple POST
 requests with JSON payloads which are known to the companion library
@@ -43,9 +43,9 @@ models. Instead, the Quil program itself specifies PRAGMAs for
 defining Kraus operators and readout POVMs.
 .SH OPTIONS
 .IP "-e, --execute"
-(Execute Mode) Run the QVM in Execute Mode. Execute the Quil program
-supplied from stdin and print some information about the course of
-evaluation.
+(DEPRECATED; Execute Mode is the default.) Run the QVM in Execute
+Mode. Execute the Quil program supplied from stdin and print some
+information about the course of evaluation.
 .IP "-S, --server"
 (Server Mode) Run the QVM in Server Mode. Start an HTTP server and
 process HTTP API calls. To stop the server, use Ctrl-C.
