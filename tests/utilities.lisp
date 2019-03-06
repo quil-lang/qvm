@@ -40,13 +40,13 @@
        ,@(when (member ':interpret modes)
            (list
             `(let ((qvm:*compile-before-running* nil))
-               (format t "~&    Testing interpreted mode...~%")
+               (format t "~&    [interpreting]~%")
                (finish-output)
                (,execution-body))))
        ,@(when (member ':compile modes)
            (list
             `(let ((qvm:*compile-before-running* t))
-               (format t "~&    Testing compiled mode...~%")
+               (format t "~&    [compiling]~%")
                (finish-output)
                (,execution-body))))
 
