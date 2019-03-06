@@ -9,7 +9,7 @@
 
 (deftest test-qvm-garbage-collection ()
   "Test that large QVMs get garbage collected and do so without erroring."
-  (format t "~&[Test output: ") (finish-output)
+  (format t "~&    [Test output: ") (finish-output)
   (tg:gc :full t)
   (loop :with big-qubit-amount := 23
         ;; This should allocate about
@@ -32,7 +32,7 @@
 (deftest test-posix-shared-memory-allocation/deallocation ()
   "Test allocation and deallocation of large blocks of POSIX shared memory. This test may result in total system failure."
   (run-unless-environment-has "DISABLE_SHARED_MEMORY_QVM_TESTS"
-    (format t "~&[Test output: ") (finish-output)
+    (format t "~&    [Test output: ") (finish-output)
     (let ((len (* 2 1024 1024 1024)))
       (flet ((write-ones (shm)
                (cffi:foreign-funcall
@@ -59,7 +59,7 @@
 (deftest test-shared-array-allocation/deallocation ()
   "Make sure allocation and deallocation of shared arrays works."
   (run-unless-environment-has "DISABLE_SHARED_MEMORY_QVM_TESTS"
-    (format t "~&[Test output: ") (finish-output)
+    (format t "~&    [Test output: ") (finish-output)
     (tg:gc :full t)
     (flet ((write-ones (array)
              (declare (optimize speed (safety 0) (debug 0) (space 0) (compilation-speed 0))
@@ -87,7 +87,7 @@
 (deftest test-shared-qvm-garbage-collection ()
   "Test that large shared QVMs get garbage collected and do so without erroring."
   (run-unless-environment-has "DISABLE_SHARED_MEMORY_QVM_TESTS"
-    (format t "~&[Test output: ") (finish-output)
+    (format t "~&    [Test output: ") (finish-output)
     (tg:gc :full t)
     (loop :with big-qubit-amount := 26
           ;; This should allocate about
@@ -167,7 +167,7 @@
             :do (make-array alloc-size :element-type '(unsigned-byte 8)
                                        :initial-element 0)))
     ;; Now garbage collect, hopefully hitting all of the finalizers.
-    (format t "~&[GCing... ") (finish-output)
+    (format t "~&    [GCing... ") (finish-output)
     (tg:gc :full t)
 
     ;; We sleep to try to hit all finalizers. Stuff might be happening
