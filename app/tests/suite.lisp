@@ -70,7 +70,7 @@ I 2")
                   (qvm-app::perform-multishot-measure simulation-method processed-quil 3 qubits 1 relabeling))))
           (is (equalp results-1 results-2)))))))
 
-(deftest test-multishot-measure-more-qubits-bug ()
+(deftest test-multishot-measure-qubits-out-of-bounds ()
   "Test that we handle out-of-bounds measurements correctly, even with relabelings."
   ;; Version #1
   (multiple-value-bind (p relabeling) (qvm-app::process-quil
