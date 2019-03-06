@@ -167,9 +167,16 @@ POVM must be a 4-element list of double-floats."))
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
 
+(defun requires-swapping-p (qvm)
+  "Does the noisy qvm QVM require swapping of internal pointers?"
+  (and (not (eq (amplitudes qvm) (original-amplitude-pointer qvm)))
+       #+sbcl (eq ':foreign (sb-introspect:allocation-information
+                             (original-amplitude-pointer qvm)))
+       #-sbcl t))
+
 (defmethod run :after ((qvm noisy-qvm))
   ;; Only copy if we really need to.
-  (unless (eq (amplitudes qvm) (original-amplitude-pointer qvm))
+  (when (requires-swapping-p qvm)
     ;; Copy the correct amplitudes into place.
     (copy-wavefunction (amplitudes qvm) (original-amplitude-pointer qvm))
     ;; Get the pointer back in home position. We want to swap them,
