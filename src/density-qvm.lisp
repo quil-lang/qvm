@@ -86,7 +86,7 @@ recorded outcome j may be different."))
   qvm)
 
 
-(defun make-density-qvm (num-qubits &rest initargs)
+(defun make-density-qvm (num-qubits &rest initargs &key allocation &allow-other-keys)
   ;; The amplitudes store vec(ρ), i.e. the entries of the density
   ;; matrix ρ in row-major order. For a system of N qubits, ρ has
   ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
@@ -95,14 +95,34 @@ recorded outcome j may be different."))
   ;; represented by all zero entries except for a 1 in the first
   ;; position. See also RESET-QUANTUM-STATE, which we avoid
   ;; calling here because it performs an additional full traversal
-  ;; of the vector.                
-  (let ((amplitudes (make-lisp-cflonum-vector (expt 2 (* 2 num-qubits)))))
-    ;; Go into the zero state.
-    (setf (aref amplitudes 0) (cflonum 1))
-    (apply #'make-instance 'density-qvm
-           :number-of-qubits num-qubits
-           :amplitudes amplitudes
-           initargs)))
+  ;; of the vector.
+  (let* ((expected-size (expt 2 (* 2 num-qubits)))
+         ;; See also MAKE-QVM for this kind of code.
+         (allocation
+           (etypecase allocation
+             (null
+              (make-instance 'lisp-allocation :length expected-size))
+            (string
+             (make-instance 'posix-shared-memory-allocation :length expected-size
+                                                            :name allocation))
+            (t
+             (assert (= (expt 2 (* 2 num-qubits)) (allocation-length allocation)))
+             allocation)))
+         (amplitudes (getf initargs ':amplitudes)))
+    (multiple-value-bind (amps fin)
+        (if (null amplitudes)
+            (allocate-vector allocation)
+            amplitudes)
+      (check-type amps quantum-state)
+      ;; Go into the zero state.
+      (bring-to-zero-state amps)
+      (setf (aref amps 0) (cflonum 1))
+      (let ((density-qvm (apply #'make-instance 'density-qvm
+                                :number-of-qubits num-qubits
+                                :amplitudes amps
+                                initargs)))
+        (unless (null fin) (tg:finalize density-qvm fin))
+        density-qvm))))
 
 (defun full-density-number-of-qubits (vec-density)
   "Computes the number of qubits encoded by a vectorized density matrix."
@@ -253,7 +273,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
                                :params params)
         (declare (ignore new-density))
         (setf (temporary-state qvm) temp-storage))
-      
+
       (values
        qvm
        (1+ (pc qvm)))))
@@ -273,7 +293,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
 ;;; distribution. Whereas for noise we prefer the latter, for
 ;;; measurement we prefer the former, because i) it is necessary to
 ;;; force collapse when measurements are needed for classical control,
-;;; and ii) it is what most people expect anyways. 
+;;; and ii) it is what most people expect anyways.
 
 
 (defun density-qvm-qubit-probability (qvm qubit)
@@ -320,7 +340,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   ;; A measurement of qubit i corresponds to roughly this:
   ;; If outcome = 0, set rows/columns corresponding to i = 1 to zero
   ;; If outcome = 1, set rows/columns corresponding to i = 0 to zero
-  
+
   ;; The normalization condition on the density matrix is that the
   ;; diagonal entries sum to 1, so we have to rescale the remaining
   ;; nonzero entries. This is easier than the wavefunction case, where
@@ -333,7 +353,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
          (vec-density (amplitudes qvm)))
     (pdotimes (k (length vec-density))
       ;; Check whether the row or column index refers to an annihilated state
-      (if (or (= annihilated-state (ldb (byte 1 qubit) k)) 
+      (if (or (= annihilated-state (ldb (byte 1 qubit) k))
               (= annihilated-state (ldb (byte 1 (+ qubit num-qubits)) ; in the above parlance, a "ghost" qubit
                                         k)))
           (setf (aref vec-density k) (cflonum 0))
