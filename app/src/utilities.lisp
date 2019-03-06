@@ -93,6 +93,10 @@
               (tbnl:session-id tbnl:*session*))))
 
 (defun format-log (fmt-string &rest args)
-  (apply #'cl-syslog:format-log *logger* ':info (concatenate 'string "~A" fmt-string) (session-info) args))
+  (apply #'cl-syslog:format-log
+         *logger*
+         ':info
+         (concatenate 'string "~A" fmt-string)
+         (session-info) args))
 
 

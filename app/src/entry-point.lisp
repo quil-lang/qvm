@@ -19,7 +19,7 @@
   `((("execute" #\e)
      :type boolean
      :optional t
-     :documentation "read a Quil program from stdin and execute it")
+     :documentation "read a Quil program from stdin and execute it (DEPRECATED: simply elide this option)")
 
     (("server" #\S)
      :type boolean
@@ -180,14 +180,20 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   ;; TODO? Make this join the thread, instead of spinning in a loop.
   (loop (sleep 1)))
 
-(defun format-complex (c)
-  (cond
-    ((zerop (imagpart c))
-     (format nil "~F" (realpart c)))
-    ((plusp (imagpart c))
-     (format nil "~F+~Fi" (realpart c) (imagpart c)))
-    ((minusp (imagpart c))
-     (format nil "~F-~Fi" (realpart c) (abs (imagpart c))))))
+(defun pprint-complex (stream c &optional colonp atp)
+  "A formatter for complex numbers that can be used with ~/.../."
+  (declare (ignore colonp atp))
+  (let ((re (realpart c))
+        (im (imagpart c)))
+    (cond
+      ((zerop im)
+       (format stream "~F" re))
+      ((zerop re)
+       (format stream "~Fi" im))
+      ((plusp im)
+       (format stream "~F+~Fi" re im))
+      (t                                ; equiv: (minusp im)
+       (format stream "~F-~Fi" re (- im))))))
 
 (defun resolve-safely (filename)
   (flet ((contains-up (filename)
@@ -252,18 +258,19 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (uiop:quit code t))
 
 (defun print-classical-memory (qvm)
+  "Print all of the QVM's classical memory to *STANDARD-OUTPUT*."
   (let ((memories (qvm::classical-memories qvm)))
+    (format t "Classical memory (low -> high indexes):")
     (cond
       ((zerop (hash-table-count memories))
-       (format-log "No classical memory present."))
+       (format t "~&    No memory."))
       (t
-       (format-log "Classical memory (low -> high indexes):")
        (maphash (lambda (name mv)
-                  (let ((data (with-output-to-string (s)
-                                (loop :for i :below (qvm::memory-view-length mv)
-                                      :do (format s " ~A" (qvm::memory-view-ref mv i))))))
-                    (format-log "    ~A: ~A~%" name data)))
-                memories)))))
+                  (format t "~&    ~A:" name)
+                  (loop :for i :below (qvm::memory-view-length mv)
+                        :do (format t " ~A" (qvm::memory-view-ref mv i))))
+                memories)))
+    (terpri)))
 
 (defun process-options (&key version
                              check-libraries
@@ -365,6 +372,11 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
 
   (format-log "Selected simulation method: ~A" simulation-method)
 
+  ;; Deprecation of -e/--execute
+  (when execute
+    (format-log "Warning: --execute/-e is deprecated. Elide this option ~
+                 for equivalent behavior."))
+
   (cond
     ;; Benchmark mode.
     ((or (eq T benchmark)
@@ -381,7 +393,8 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     ;; Server mode.
     ((or server port)
      (when execute
-       (format-log "Warning: Ignoring execute option: ~S" execute))
+       (format-log "Warning: Ignoring execute option: ~S" execute)
+       (setf execute nil))
 
      ;; Handle persistency and shared memory.
      (when shared
@@ -403,48 +416,66 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
      (start-server-app port))
 
     ;; Batch mode.
-    (execute
+    (t
      (when shared
        (format-log "Warning: Ignoring --shared option in execute mode."))
      (when (eq *simulation-method* 'full-density-matrix)
        (format-log "Full density matrix simulation not yet supported in batch mode.")
        (quit-nicely 1))
      (let (qvm program alloc-time exec-time qubits-needed)
-       (format-log "Reading program.")
+       ;; Read the Quil.
+       (cond
+         ((interactive-stream-p *standard-input*)
+          (format-log "Reading program from interactive terminal. Press Control-D ~
+                       when finished."))
+         (t
+          (format-log "Reading program.")))
        (setf program (safely-read-quil))
-       (setf qubits-needed (or qubits (cl-quil:qubits-needed program)))
 
+       ;; Figure out how many qubits we need.
+       (let ((really-needed (cl-quil:qubits-needed program)))
+         (when qubits
+           (assert (>= qubits really-needed) ()
+                   "Computation restricted to ~D qubit~:P but ~D are needed."
+                   qubits
+                   really-needed))
+         (setf qubits-needed (or qubits really-needed)))
+
+       ;; Allocate the QVM.
        (format-log "Allocating memory for QVM of ~D qubits." qubits-needed)
        (with-timing (alloc-time)
          (setf qvm (make-qvm qubits-needed)))
        (format-log "Allocation completed in ~D ms." alloc-time)
 
+       ;; Load our program.
        (format-log "Loading quantum program.")
        (load-program qvm program :supersede-memory-subsystem t)
 
+       ;; Execute it.
        (format-log "Executing quantum program.")
        ;; Fresh random state.
        (qvm:with-random-state ((qvm:seeded-random-state nil))
          (with-timing (exec-time)
            (run qvm)))
        (format-log "Execution completed in ~D ms." exec-time)
-       (when (or verbose (<= qubits-needed 10))
-         (format-log "Printing ~D-qubit state." qubits-needed)
-         (format-log "Amplitudes:")
+
+       ;; Print our answer to stdout.
+       (format-log "Printing classical memory and ~D-qubit state." qubits-needed)
+       (print-classical-memory qvm)
+       (format t "~&Amplitudes:")
+       (let ((nq (qvm:number-of-qubits qvm)))
          (qvm:map-amplitudes
           qvm
           (let ((i 0))
             (lambda (z)
-              (format-log "  |~v,'0B>: ~A, P=~5F%"
-                          (qvm:number-of-qubits qvm)
-                          i
-                          (format-complex z)
-                          (* 100 (qvm:probability z)))
+              (format t
+                      "~%    |~v,'0B>: ~/QVM-APP::PPRINT-COMPLEX/, ~64TP=~5F%"
+                      nq
+                      i
+                      z
+                      (* 100 (qvm:probability z)))
               (incf i)))))
-       (print-classical-memory qvm)))
-    (t
-     (format-log "You must benchmark, start a server, or execute a Quil file.")
-     (quit-nicely)))
+       (terpri))))
 
   (quit-nicely))
 
@@ -490,25 +521,22 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   ;; Run the program.
   (handler-case
       (handler-bind ((style-warning #'muffle-warning))
-        (cond
-          ((null argv)
-           (show-help)
-           (quit-nicely))
-          (t
-           (command-line-arguments:handle-command-line
-            *option-spec*
-            'process-options
-            :command-line argv
-            :name "qvm"
-            :rest-arity nil))))
+        (command-line-arguments:handle-command-line
+         *option-spec*
+         'process-options
+         :command-line argv
+         :name "qvm"
+         :rest-arity nil))
     ;; Handle Ctrl-C
     #+sbcl
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
+      (format-log "Caught Control-C. Quitting.")
       (quit-nicely))
     ;; General errors.
     (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
+      (format-log "Error encountered, Qutting.")
       (quit-nicely 1))))
 
 (defun asdf-entry-point ()
