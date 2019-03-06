@@ -129,6 +129,8 @@
             (sb-ext:atomic-incf **dummy-count**)
             nil)))
 
+;;; XXX: This test seems quite brittle, relying on lots of low-level
+;;; details.
 (deftest test-custom-allocator ()
   "Test that the allocator functionality seems to be working."
   (setf **dummy-count** 0)
@@ -138,6 +140,14 @@
     (let ((a (make-instance 'dummy-allocation)))
       (loop
         ;; Boot stuff off to the next page/card.
+        ;;
+        ;; SBCL marks object liveness on a per page (more
+        ;; specifically, per "card", which is SBCL lingo) basis. So we
+        ;; want to make sure each object gets its own page by
+        ;; allocating slightly more than a page each time. We actually
+        ;; do 8 pages just to be safe, and in the case of SBCL, use an
+        ;; internal constant that tells us precisely the size of each
+        ;; allocated slab of memory.
         :with junk := (make-array #+sbcl (1+ sb-vm:gencgc-card-bytes)
                                   #-sbcl (1+ (* 8 (qvm::getpagesize)))
                                   :element-type '(unsigned-byte 8)
