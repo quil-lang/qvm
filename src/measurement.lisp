@@ -70,6 +70,11 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   qvm)
 
 (defmethod measure ((qvm pure-state-qvm) q)
+  (check-type q nat-tuple-element)
+  (assert (< q (number-of-qubits qvm)) (qvm q)
+          "Trying to measure qubit ~D on a QVM with only ~D qubit~:P."
+          q
+          (number-of-qubits qvm))
   (let* ((r (random 1.0d0))
          (excited-probability (qubit-probability qvm q))
          (cbit (if (<= r excited-probability)

@@ -183,3 +183,9 @@
                       (qvm:measure-all qvm)
                     (is (every #'= bits measured-bits))
                     (is (= 1 (qvm::nth-amplitude qvm i)))))))))
+
+(deftest test-out-of-bounds-measurement ()
+  "Test that measuring a qubit out-of-bounds is an error."
+  (signals error (qvm:measure (qvm:make-qvm 1) -1))
+  (signals error (qvm:measure (qvm:make-qvm 1) 1))
+  (not-signals error (qvm:measure (qvm:make-qvm 1) 0)))
