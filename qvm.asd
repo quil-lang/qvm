@@ -33,7 +33,8 @@
                (:version #:cl-quil "1.5.0")
                ;; Portable random number generator
                #:mt19937
-               )
+               ;; For allocation info.
+               #+sbcl #:sb-introspect)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :around-compile (lambda (compile)
                     (let (#+sbcl (sb-ext:*derive-function-types* t))
