@@ -7,8 +7,9 @@
 
 (defun check-noisy-pointer-is-correct (qvm)
   (when (typep qvm 'qvm:noisy-qvm)
-    (is (eq (qvm::amplitudes qvm)
-            (qvm::original-amplitude-pointer qvm)))))
+    (is (or (not (qvm::requires-swapping-p qvm))
+            (eq (qvm::amplitudes qvm)
+                (qvm::original-amplitude-pointer qvm))))))
 
 (deftest test-empty-program-depolarizing-qvm ()
   (let ((p (with-output-to-quil))
