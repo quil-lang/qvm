@@ -30,6 +30,8 @@
     - :INTERPRET, where any calls to QVM:RUN will execute immediately.
 
     - :COMPILE, where any calls to QVM:RUN will pre-compile the Quil program.
+
+In general, this macro is used in order to *explicitly* test for identical behavior in different modes. One mode or the other can be used to forcibly test some aspect of a single mode. (For example, one might want to test that in :COMPILE mode, some instructions actually get compiled.)
 "
   (when (endp modes)
     (warn "No modes specified in WITH-EXECUTION-MODES."))
