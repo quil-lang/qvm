@@ -10,15 +10,16 @@
     (is (double-float= 0 (qubit-probability q 0)))))
 
 (deftest test-defgate ()
-  (let* ((p (with-output-to-quil
-              "DECLARE ro BIT"
-              "DEFGATE TEST:"
-              "    0, 1"
-              "    1, 0"
-              "TEST 0"
-              "MEASURE 0 ro[0]"))
-         (q (run-program 1 p)))
-    (is (= 1 (qvm:memory-ref q "ro" 0)))))
+  (with-execution-modes (:compile :interpret)
+    (let* ((p (with-output-to-quil
+                "DECLARE ro BIT"
+                "DEFGATE TEST:"
+                "    0, 1"
+                "    1, 0"
+                "TEST 0"
+                "MEASURE 0 ro[0]"))
+           (q (run-program 1 p)))
+      (is (= 1 (qvm:memory-ref q "ro" 0))))))
 
 (deftest test-nop ()
   (let* ((p (with-output-to-quil
@@ -107,25 +108,27 @@
 
 (deftest test-parameterized-program ()
   "Test that a simple parametric program works."
-  (let* ((p (with-output-to-quil
-              "DECLARE ro BIT[1]"
-              "DECLARE alpha REAL"
-              "MOVE alpha[0] pi"
-              "RX(alpha) 0"
-              "MEASURE 0 ro[0]"))
-         (q (run-program 1 p)))
-    (is (= 1 (qvm:memory-ref q "ro" 0)))))
+  (with-execution-modes (:compile :interpret)
+    (let* ((p (with-output-to-quil
+                "DECLARE ro BIT[1]"
+                "DECLARE alpha REAL"
+                "MOVE alpha[0] pi"
+                "RX(alpha) 0"
+                "MEASURE 0 ro[0]"))
+           (q (run-program 1 p)))
+      (is (= 1 (qvm:memory-ref q "ro" 0))))))
 
 (deftest test-parameterized-program-with-arithmetic ()
   "Test that a simple parametric program with arithmetic works."
-  (let* ((p (with-output-to-quil
-              "DECLARE ro BIT[1]"
-              "DECLARE alpha REAL"
-              "MOVE alpha[0] (pi/2.0)"
-              "RX(2.0*alpha) 0"
-              "MEASURE 0 ro[0]"))
-         (q (run-program 1 p)))
-    (is (= 1 (qvm:memory-ref q "ro" 0)))))
+  (with-execution-modes (:compile :interpret)
+    (let* ((p (with-output-to-quil
+                "DECLARE ro BIT[1]"
+                "DECLARE alpha REAL"
+                "MOVE alpha[0] (pi/2.0)"
+                "RX(2.0*alpha) 0"
+                "MEASURE 0 ro[0]"))
+           (q (run-program 1 p)))
+      (is (= 1 (qvm:memory-ref q "ro" 0))))))
 
 (deftest test-move ()
   "Test that the MOVE instruction works, since it's instrumental to the rest of the tests."

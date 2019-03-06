@@ -24,6 +24,34 @@
                 :else
                   :collect form)))))
 
+(defmacro with-execution-modes ((&rest modes) &body body)
+  "Execute body in a variety of execution modes. MODES can be:
+
+    - :INTERPRET, where any calls to QVM:RUN will execute immediately.
+
+    - :COMPILE, where any calls to QVM:RUN will pre-compile the Quil program.
+"
+  (when (endp modes)
+    (warn "No modes specified in WITH-EXECUTION-MODES."))
+  (let ((execution-body (gensym "EXECUTION-BODY-")))
+    `(flet ((,execution-body ()
+              ,@body))
+       (declare (dynamic-extent ,execution-body))
+       ,@(when (member ':interpret modes)
+           (list
+            `(let ((qvm:*compile-before-running* nil))
+               (format t "~&    Testing interpreted mode...~%")
+               (finish-output)
+               (,execution-body))))
+       ,@(when (member ':compile modes)
+           (list
+            `(let ((qvm:*compile-before-running* t))
+               (format t "~&    Testing compiled mode...~%")
+               (finish-output)
+               (,execution-body))))
+
+       nil)))
+
 (defvar *default-epsilon* 0.00001)
 
 (defmacro with-float-traps-masked (() &body body)
