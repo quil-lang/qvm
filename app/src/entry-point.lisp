@@ -6,6 +6,7 @@
 
 ;;;; Entry-point into binary executable.
 
+(defvar swank:*use-dedicated-output-stream*)
 (defvar *entered-from-main* nil)
 (defvar *program-name* "qvm")
 
