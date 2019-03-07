@@ -474,7 +474,8 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                                 (cl-syslog:stream-log-writer)
                                 #-windows
                                 (cl-syslog:tee-to-stream
-                                 (cl-syslog:syslog-log-writer "qvm" :local0))))
+                                 (cl-syslog:syslog-log-writer "qvm" :local0)
+                                 *error-output*)))
 
   ;; This finalizer can _always_ be called even if there is no
   ;; persistent wavefunction. Also, we note that the library
