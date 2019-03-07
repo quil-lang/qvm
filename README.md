@@ -192,30 +192,31 @@ the QVM. To explore those options, see the output of the following command:
 $ ./qvm --help
 ```
 
-To provide a Quil program directly to the QVM, provide the program on
-stdin and use the `-e` switch
+By default, the QVM accepts programs from stdin and writes
+results to stdout. Log messages are written to stderr.
 
 ```
-$ echo "H 0" | ./qvm -e
+$ echo 'H 0' | ./qvm
 ******************************
 * Welcome to the Rigetti QVM *
 ******************************
 Copyright (c) 2016-2019 Rigetti Computing.
 
-(Configured with 2048 MiB of workspace and 8 workers.)
+(Configured with 8192 MiB of workspace and 8 workers.)
 
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Selected simulation method: pure-state
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Reading program.
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Allocating memory for QVM of 1 qubits.
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Allocation completed in 3 ms.
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Loading quantum program.
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Executing quantum program.
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Execution completed in 3 ms.
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Printing 1-qubit state.
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - Amplitudes:
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - -   |0>: 0.7071067811865475, P= 50.0%
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - -   |1>: 0.7071067811865475, P= 50.0%
-<134>1 2019-01-28T17:00:53Z workstation.local qvm 98179 - - No classical memory present.
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Selected simulation method: pure-state
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Reading program.
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Allocating memory for QVM of 1 qubits.
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Allocation completed in 7 ms.
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Loading quantum program.
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Executing quantum program.
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Execution completed in 4 ms.
+<134>1 2019-03-07T22:56:55Z workstation.local qvm 21177 - - Printing classical memory and 1-qubit state.
+Classical memory (low -> high indexes):
+    No memory.
+Amplitudes:
+    |0>: 0.7071067811865475,                                    P= 50.0%
+    |1>: 0.7071067811865475,                                    P= 50.0%
 ```
 
 Alternatively the QVM can be started as a server that will accept
@@ -284,7 +285,7 @@ As outlined above, the QVM supports two modes of operation: stdin and server.
 To run the `qvm` in stdin mode, do the following:
 
 ```shell
-echo "H 0" | docker run --rm -i rigetti/qvm -e
+echo "H 0" | docker run --rm -i rigetti/qvm
 ```
 
 To run the `qvm` in server mode, do the following:
@@ -293,10 +294,10 @@ To run the `qvm` in server mode, do the following:
 docker run --rm -it -p 5000:5000 rigetti/qvm -S
 ```
 
-If you would like to change the port of the server to PORT, you can alter the command as follows:
+If you would like to change the port of the server to `PORT`, you can alter the command as follows:
 
 ```shell
-docker run --rm -it -p PORT:PORT rigetti/qvm -R -p PORT
+docker run --rm -it -p PORT:PORT rigetti/qvm -S -p PORT
 ```
 
 ## Release Process
