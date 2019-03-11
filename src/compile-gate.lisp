@@ -17,6 +17,10 @@
     (compile nil form)))
 
 (defmacro dotimes-parallel ((var num) &body body)
+  `(dotimes (,var ,num)
+     (declare (type non-negative-fixnum ,var))
+     ,@body)
+  #+ign
   (alexandria:once-only (num)
     `(if (< ,num (expt 2 *qubits-required-for-parallelization*))
          (dotimes (,var ,num) ,@body)
@@ -70,8 +74,8 @@ DOTIMES-ITERATOR specifies the DOTIMES-like macro that is used for iteration."
                  (1+ (%gray-bit (floor n 2))))))
     (1- (%gray-bit (1+ n)))))
 
-;; The Gray code order is solely used for efficiency. One could
-;; generate code in linear order with DPB and the like.
+;; The Gray code order is solely used for supposed efficiency. One
+;; could generate code in linear order with DPB and the like.
 (defun generate-amplitude-address-in-gray-order-bindings (indexes qubits base-address)
   "Generate the bindings for the variables in the list INDEXES, to the amplitude addresses specified BASE-ADDRESS and QUBITS in Gray code order.
 
@@ -87,6 +91,25 @@ The list INDEXES must have length 2^|QUBITS|."
                  :for last-g := (nth (gray-encode (1- i)) indexes)
                  :for g := (nth (gray-encode i) indexes)
                  :collect `(,g (logxor ,last-g ,(ash 1 (aref qubits (gray-bit (1- i))))))))))
+
+(defun generate-amplitude-address-in-parallel-bindings (indexes qubits base-address)
+  "Generate the bindings for the variables in the list INDEXES, to the amplitude addresses specified BASE-ADDRESS and nat-tuple QUBITS. The bindings can be bound in parallel with LET.
+
+The list INDEXES must have length 2^|QUBITS|."
+  (check-type qubits nat-tuple)
+  (assert (and (alexandria:proper-list-p indexes)
+               (every #'symbolp indexes)))
+
+  (let* ((n (expt 2 (nat-tuple-cardinality qubits))))
+    (assert (= n (length indexes)))
+    (list* `(,(first indexes) ,base-address)
+           (loop :for i :from 1 :below n
+                 :for g :in (rest indexes)
+                 :collect `(,g (logior ,base-address
+                                       ,(loop :for j :from 0
+                                              :for q :across qubits
+                                              :when (logbitp j i)
+                                                :sum (ash 1 q))))))))
 
 (defun generate-extraction-code (complement-address wavefunction qubits body-gen
                                  &key (generate-extractions t))
@@ -113,7 +136,7 @@ GENERATE-EXTRACTIONS will enable or disable the generation of the values. Settin
                         :collect (alexandria:format-symbol nil "I~D" i)))
          (arefs (loop :for index :in indexes
                       :collect `(aref ,wavefunction ,index))))
-    `(let* ,(generate-amplitude-address-in-gray-order-bindings indexes qubits complement-address)
+    `(let ,(generate-amplitude-address-in-parallel-bindings indexes qubits complement-address)
        (declare (type amplitude-address ,@indexes)
                 (dynamic-extent ,@indexes)
                 (ignorable ,@indexes))
