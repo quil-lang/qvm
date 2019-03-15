@@ -130,7 +130,13 @@
     (("debug")
      :type boolean
      :optional t
-     :documentation "debug mode, specifically this causes the QVM to not automatically catch execution errors allowing interactive debugging via SWANK.")))
+     :documentation "debug mode, specifically this causes the QVM to not automatically catch execution errors allowing interactive debugging via SWANK.")
+
+    #+forest-sdk
+    (("skip-version-check"
+      :type boolean
+      :initial-value nil
+      :documentation "Do not check for a new QVM version at launch."))))
 
 (defun show-help ()
   (format t "Usage:~%")
@@ -299,27 +305,27 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
             *available-allocation-kinds*))))
 
 (defun process-options (&key version
-                             check-libraries
-                             verbose
-                             default-allocation
-                             execute
-                             help
-                             memory-limit
-                             server
-                             port
-                             #-forest-sdk swank-port
-                             num-workers
-                             time-limit
-                             qubit-limit
-                             parallelization-limit
-                             safe-include-directory
-                             qubits
-                             benchmark
-                             benchmark-type
-                             compile
-                             shared
-                             simulation-method
-                             #-forest-sdk debug)
+                          check-libraries
+                          verbose
+                          execute
+                          help
+                          memory-limit
+                          server
+                          port
+                          #-forest-sdk swank-port
+                          num-workers
+                          time-limit
+                          qubit-limit
+                          parallelization-limit
+                          safe-include-directory
+                          qubits
+                          benchmark
+                          benchmark-type
+                          compile
+                          shared
+                          simulation-method
+                          #-forest-sdk debug
+                          #+forest-sdk skip-version-check)
   (when help
     (show-help)
     (quit-nicely))
@@ -330,6 +336,15 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
 
   (when check-libraries
     (check-libraries))
+
+  #+forest-sdk
+  (unless skip-version-check
+    (multiple-value-bind (available-p version)
+        (sdk-update-available-p)
+      (when available-p
+          (format t "An update is available to the SDK. You have version ~A. ~
+Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
+                  +QVM-VERSION+ version))))
 
   (when verbose
     (setf qvm:*transition-verbose* t))

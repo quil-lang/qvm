@@ -38,7 +38,9 @@
                ;; Portable globals
                #:global-vars
                ;; Logging
-               #:cl-syslog)
+               #:cl-syslog
+               ;; HTTP requests for version info
+               #:drakma)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-app-tests)))
   :pathname "app/src/"
   :serial t
