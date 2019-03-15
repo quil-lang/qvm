@@ -304,7 +304,8 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
             kind
             *available-allocation-kinds*))))
 
-(defun process-options (&key version
+(defun process-options (&key
+                          version
                           check-libraries
                           verbose
                           execute
