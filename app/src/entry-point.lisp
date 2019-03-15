@@ -342,9 +342,9 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (multiple-value-bind (available-p version)
         (ignore-errors (sdk-update-available-p))
       (when available-p
-          (format t "An update is available to the SDK. You have version ~A. ~
+        (format t "An update is available to the SDK. You have version ~A. ~
 Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
-                  +QVM-VERSION+ version))))
+                +QVM-VERSION+ version))))
 
   (when verbose
     (setf qvm:*transition-verbose* t))
