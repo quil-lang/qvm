@@ -308,6 +308,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           version
                           check-libraries
                           verbose
+                          default-allocation
                           execute
                           help
                           memory-limit
