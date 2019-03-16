@@ -10,6 +10,13 @@
   ;; Compile the program before running it.
   (when *compile-before-running*
     (when *transition-verbose*
+      (format *trace-output* "~&; Fusing gates...~%"))
+    (let ((old-length (loaded-program-length qvm)))
+      (setf (program qvm) (quil::fuse-gates-in-executable-code (program qvm)))
+      (format *trace-output* "~&; Fused length from ~D to ~D instruction~:P~%"
+              old-length
+              (loaded-program-length qvm)))
+    (when *transition-verbose*
       (format *trace-output* "~&; Compiling program loaded into QVM...~%"))
     (let ((start (get-internal-real-time)))
       (compile-loaded-program qvm)
