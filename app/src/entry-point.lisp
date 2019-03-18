@@ -136,7 +136,12 @@
     (("skip-version-check"
       :type boolean
       :initial-value nil
-      :documentation "Do not check for a new QVM version at launch."))))
+      :documentation "Do not check for a new QVM version at launch."))
+
+    (("quiet")
+     :type boolean
+     :optional t
+     :documentation "Disable all non-logging output (banner, etc).")))
 
 (defun show-help ()
   (format t "Usage:~%")
@@ -327,7 +332,8 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           shared
                           simulation-method
                           #-forest-sdk debug
-                          #+forest-sdk skip-version-check)
+                          #+forest-sdk skip-version-check
+                          quiet)
   (when help
     (show-help)
     (quit-nicely))
@@ -395,7 +401,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     (setf qvm:*compile-before-running* t))
 
   ;; Show the welcome message.
-  (show-welcome)
+  (unless quiet (show-welcome))
 
   ;; Start Swank if we were asked. Re-enable the debugger.
   #-forest-sdk
