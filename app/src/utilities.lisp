@@ -102,10 +102,10 @@
               (tbnl:session-remote-addr tbnl:*session*)
               (tbnl:session-id tbnl:*session*))))
 
-(defun format-log (fmt-string &rest args)
+(defun format-log (fmt-string &optional (level ':info) &rest args)
   (apply #'cl-syslog:format-log
          *logger*
-         ':info
+         level
          (concatenate 'string "~A" fmt-string)
          (session-info) args))
 

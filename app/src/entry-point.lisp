@@ -437,7 +437,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
   #-forest-sdk
   (when swank-port
     (enable-debugger)
-    (format-log "Starting Swank on port ~D" swank-port)
+    (format-log ':debug "Starting Swank on port ~D" swank-port)
     (setf swank:*use-dedicated-output-stream* nil)
     (swank:create-server :port swank-port
                          :dont-close t))
@@ -450,14 +450,14 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
   (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app))
   (when (and (eq *simulation-method* 'full-density-matrix)
              (null qubits))
-    (format-log "Full density matrix simulation requires --qubits to be specified.")
+    (format-log ':debug "Full density matrix simulation requires --qubits to be specified.")
     (quit-nicely 1))
 
-  (format-log "Selected simulation method: ~A" simulation-method)
+  (format-log ':debug "Selected simulation method: ~A" simulation-method)
 
   ;; Deprecation of -e/--execute
   (when execute
-    (format-log "Warning: --execute/-e is deprecated. Elide this option ~
+    (format-log ':debug "Warning: --execute/-e is deprecated. Elide this option ~
                  for equivalent behavior."))
 
   (cond
@@ -465,7 +465,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     ((or (eq T benchmark)
          (plusp benchmark))
      (when shared
-       (format-log "Warning: Ignoring --shared option in benchmark mode."))
+       (format-log ':debug "Warning: Ignoring --shared option in benchmark mode."))
      ;; Default number of qubits
      (when (eq T benchmark)
        (setf benchmark 26))
@@ -476,13 +476,13 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     ;; Server mode.
     ((or server port)
      (when execute
-       (format-log "Warning: Ignoring execute option: ~S" execute)
+       (format-log ':debug "Warning: Ignoring execute option: ~S" execute)
        (setf execute nil))
 
      ;; Handle persistency and shared memory.
      (when shared
        (unless qubits
-         (format-log "The --qubits option must be specified for --shared.")
+         (format-log ':debug "The --qubits option must be specified for --shared.")
          (quit-nicely 1))
        (let ((shm-name (if (zerop (length shared))
                            (format nil "QVM~D" (get-universal-time))
@@ -491,28 +491,28 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
          (multiple-value-setq (**persistent-wavefunction**
                                **persistent-wavefunction-finalizer**)
            (make-shared-wavefunction *simulation-method* qubits shm-name))
-         (format-log "ATTENTION! Created POSIX shared memory with name: ~A" shm-name)
+         (format-log ':debug "ATTENTION! Created POSIX shared memory with name: ~A" shm-name)
          (start-shm-info-server shm-name (length **persistent-wavefunction**)))
 
-       (format-log "Created persistent memory for ~D qubits" qubits))
+       (format-log ':debug "Created persistent memory for ~D qubits" qubits))
      ;; Start the server
      (start-server-app port))
 
     ;; Batch mode.
     (t
      (when shared
-       (format-log "Warning: Ignoring --shared option in execute mode."))
+       (format-log ':debug "Warning: Ignoring --shared option in execute mode."))
      (when (eq *simulation-method* 'full-density-matrix)
-       (format-log "Full density matrix simulation not yet supported in batch mode.")
+       (format-log ':debug "Full density matrix simulation not yet supported in batch mode.")
        (quit-nicely 1))
      (let (qvm program alloc-time exec-time qubits-needed)
        ;; Read the Quil.
        (cond
          ((interactive-stream-p *standard-input*)
-          (format-log "Reading program from interactive terminal. Press Control-D ~
+          (format-log ':debug "Reading program from interactive terminal. Press Control-D ~
                        when finished."))
          (t
-          (format-log "Reading program.")))
+          (format-log ':debug "Reading program.")))
        (setf program (safely-read-quil))
 
        ;; Figure out how many qubits we need.
