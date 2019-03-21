@@ -135,7 +135,6 @@ This will not clear previously installed gates from the QVM."
         :for gate := (quil:gate-definition-to-gate gate-def)
         :do (setf (gethash (quil:gate-name gate) gate-table) gate)))
 
-;;; TODO: How should we deal with classical memory here?
 (defun load-program (qvm program &key (supersede-memory-subsystem nil))
   "Load the program PROGRAM into the quantum virtual machine QVM. If SUPERSEDE-MEMORY-SUBSYSTEM is true (default: NIL), then the memory subsystem will be recomputed for the QVM based off of the program."
   (check-type program quil:parsed-program)
@@ -153,6 +152,15 @@ This will not clear previously installed gates from the QVM."
 
   ;; Make sure we forget we compiled.
   (setf (program-compiled-p qvm) nil)
+
+  ;; Patch the labels. This unfortunately mutates the program. It is
+  ;; what it is. (We have this CONTINUE loop so that requisite
+  ;; transforms get applied as needed.)
+  (handler-case
+      (setf program (quil:transform 'quil::patch-labels program))
+    (quil:unsatisfied-transform-dependency (c)
+      (declare (ignore c))
+      (invoke-restart 'continue)))
 
   ;; Load the code vector.
   (setf (program qvm) (quil:parsed-program-executable-code program))
