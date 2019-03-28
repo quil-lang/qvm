@@ -198,9 +198,9 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
               "The port must be between 0 and 65535.")
   (when (null port)
     (setf port *default-host-port*))
-  (format-log "Starting server on port ~D." port)
+  (format-log ':debug "Starting server on port ~D." port)
   (unless (null *qubit-limit*)
-    (format-log "Server is limited to ~D qubit~:P." *qubit-limit*))
+    (format-log ':debug "Server is limited to ~D qubit~:P." *qubit-limit*))
   (start-server port)
   ;; TODO? Make this join the thread, instead of spinning in a loop.
   (loop (sleep 1)))
@@ -525,27 +525,27 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
          (setf qubits-needed (or qubits really-needed)))
 
        ;; Allocate the QVM.
-       (format-log "Allocating memory for QVM of ~D qubits." qubits-needed)
+       (format-log ':debug "Allocating memory for QVM of ~D qubits." qubits-needed)
        (with-timing (alloc-time)
          (setf qvm (make-qvm qubits-needed
                              :allocation (funcall **default-allocation**
                                                   (expt 2 qubits-needed)))))
-       (format-log "Allocation completed in ~D ms." alloc-time)
+       (format-log ':debug "Allocation completed in ~D ms." alloc-time)
 
        ;; Load our program.
-       (format-log "Loading quantum program.")
+       (format-log ':debug "Loading quantum program.")
        (load-program qvm program :supersede-memory-subsystem t)
 
        ;; Execute it.
-       (format-log "Executing quantum program.")
+       (format-log ':debug "Executing quantum program.")
        ;; Fresh random state.
        (qvm:with-random-state ((qvm:seeded-random-state nil))
          (with-timing (exec-time)
            (run qvm)))
-       (format-log "Execution completed in ~D ms." exec-time)
+       (format-log ':debug "Execution completed in ~D ms." exec-time)
 
        ;; Print our answer to stdout.
-       (format-log "Printing classical memory and ~D-qubit state." qubits-needed)
+       (format-log ':debug "Printing classical memory and ~D-qubit state." qubits-needed)
        (print-classical-memory qvm)
        (format t "~&Amplitudes:")
        (let ((nq (qvm:number-of-qubits qvm)))
@@ -606,12 +606,12 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     #+sbcl
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
-      (format-log "Caught Control-C. Quitting.")
+      (format-log ':debug "Caught Control-C. Quitting.")
       (quit-nicely))
     ;; General errors.
     (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
-      (format-log "Error encountered, Qutting.")
+      (format-log ':debug "Error encountered, Qutting.")
       (quit-nicely 1))))
 
 (defun asdf-entry-point ()
