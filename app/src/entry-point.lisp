@@ -316,15 +316,12 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
             *available-allocation-kinds*))))
 
 (defun log-level-string-to-symbol (log-level)
-  (alexandria:eswitch (log-level :test #'string=)
-    ("debug" :debug)
-    ("info" :info)
-    ("notice" :notice)
-    ("warning" :warning)
-    ("err" :err)
-    ("crit" :crit)
-    ("alert" :alert)
-    ("emerg" :emerg)))
+  (let ((log-level-kw (assoc (intern (string-upcase log-level) 'keyword)
+                             cl-syslog::*priorities*)))
+    (unless log-level-kw
+      (error "Invalid logging level: ~a" log-level))
+
+    (car log-level-kw)))
 
 (defun process-options (&key
                           version
