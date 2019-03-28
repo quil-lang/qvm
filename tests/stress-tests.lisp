@@ -28,9 +28,10 @@
   (write-char #\]) (finish-output)
   nil)
 
-#+unix
 (deftest test-posix-shared-memory-allocation/deallocation ()
   "Test allocation and deallocation of large blocks of POSIX shared memory. This test may result in total system failure."
+  #+windows (skip)
+  #-windows
   (run-unless-environment-has "DISABLE_SHARED_MEMORY_QVM_TESTS"
     (format t "~&    [Test output: ") (finish-output)
     (let ((len (* 2 1024 1024 1024)))
@@ -55,9 +56,10 @@
     (write-char #\]) (finish-output)
     (tg:gc :full t)))
 
-#+unix
 (deftest test-shared-array-allocation/deallocation ()
   "Make sure allocation and deallocation of shared arrays works."
+  #+windows (skip)
+  #-windows
   (run-unless-environment-has "DISABLE_SHARED_MEMORY_QVM_TESTS"
     (format t "~&    [Test output: ") (finish-output)
     (tg:gc :full t)
@@ -83,9 +85,10 @@
       (write-char #\]) (finish-output))
     nil))
 
-#+unix
 (deftest test-shared-qvm-garbage-collection ()
   "Test that large shared QVMs get garbage collected and do so without erroring."
+  #+windows (skip)
+  #-windows
   (run-unless-environment-has "DISABLE_SHARED_MEMORY_QVM_TESTS"
     (format t "~&    [Test output: ") (finish-output)
     (tg:gc :full t)
@@ -109,9 +112,10 @@
     (write-char #\]) (finish-output)
     nil))
 
-#+(and sbcl unix)
 (deftest test-shared-memory-exit-hook-presence ()
   "Ensure that that the shared memory deallocation hook is present."
+  #+(or windows (not sbcl)) (skip)
+  #-(or windows (not sbcl))
   (is (member 'qvm::deallocate-all-shared-memories sb-ext:*exit-hooks*)))
 
 (declaim (type fixnum **dummy-count**))
