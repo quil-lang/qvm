@@ -76,19 +76,19 @@ We are assuming the CNOTs are dense on an even number of qubits."
             timing)
         (qvm:load-program q p :supersede-memory-subsystem t)
 
-        (format-log ':debug "Computing baseline serial norm timing...")
+        (format-log "Computing baseline serial norm timing...")
         (finish-output)
 
         (tg:gc :full t)
-        (format-log ':debug "Baseline serial norm timing: ~D ms" (norm-baseline-timing (qvm::amplitudes q)))
+        (format-log "Baseline serial norm timing: ~D ms" (norm-baseline-timing (qvm::amplitudes q)))
 
         (tg:gc :full t)
 
-        (format-log ':debug "Starting ~S benchmark with ~D qubits...~%" type num-qubits)
+        (format-log "Starting ~S benchmark with ~D qubits...~%" type num-qubits)
 
         (with-timing (timing)
           (time (qvm:run q)))
 
         (room)
         (terpri)
-        (format-log ':debug "Total time for program run: ~D ms" timing))))
+        (format-log "Total time for program run: ~D ms" timing))))

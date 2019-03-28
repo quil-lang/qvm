@@ -40,7 +40,7 @@
   ;; If we have nothing to compute the expectation of, then return
   ;; nothing.
   (when (null operators)
-    (format-log ':debug "No operators to compute expectation of. Returning NIL.")
+    (format-log "No operators to compute expectation of. Returning NIL.")
     (return-from %perform-expectation '()))
 
   ;; Otherwise, go about business.
@@ -48,28 +48,28 @@
         timing)
     ;; Make the initial state.
     (qvm:load-program qvm state-prep)
-    (format-log ':debug "Computing initial state for expectation value ~
+    (format-log "Computing initial state for expectation value ~
                  computation on ~A"
                 (class-name (class-of qvm)))
     (with-timing (timing)
       (with-timeout
           (qvm:run qvm)))
-    (format-log ':debug "Finished state prep in ~D ms." timing)
-    (format-log ':debug "Copying prepared state.")
+    (format-log "Finished state prep in ~D ms." timing)
+    (format-log "Copying prepared state.")
     (let ((prepared-wf
             (with-timing (timing)
               (qvm:copy-wavefunction (qvm::amplitudes qvm))))
           (first-time t))
-      (format-log ':debug "Copied prepared state in ~D ms." timing)
+      (format-log "Copied prepared state in ~D ms." timing)
       ;; Compute the expectations of the operators.
       (loop :for i :from 1
             :for op :in operators
             :collect (let (expectation)
-                       (format-log ':debug "Computing the expectation value of the ~:R operator." i)
+                       (format-log "Computing the expectation value of the ~:R operator." i)
                        (with-timing (timing)
                          (setf expectation (funcall expectation-op qvm prepared-wf op first-time))
                          (setf first-time nil))
-                       (format-log ':debug "Computed ~:R expectation value in ~D ms." i timing)
+                       (format-log "Computed ~:R expectation value in ~D ms." i timing)
                        (assert (< (abs (imagpart expectation)) 1e-14))
                        (unless (zerop (imagpart expectation))
                          (warn "Non-zero but acceptable imaginary part of expectation value: ~A" expectation))
@@ -100,7 +100,7 @@ amplitudes in PREPARED-STATE."
     ;; generally smaller. Thus we compute tr(Q^T ρ^T) = tr((ρ Q)^T) = tr(ρ Q) = tr(Q ρ).
     (let ((op-matrix (magicl:transpose
                       (quil::parsed-program-to-logical-matrix op)))
-          (density-matrix (magicl:make-matrix :rows rows :cols cols
+          (density-matrix (magicl:make-matrix :rows rows :cols cols 
                                               :data prepared-state)))
       (reduce #'+ (magicl:matrix-diagonal
                    (quil::matrix-rescale-and-multiply op-matrix density-matrix))))))

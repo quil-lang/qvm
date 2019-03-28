@@ -14,8 +14,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                  :for i :from 0
                  :always (= x i))))
     (unless trivial-mapping-p
-      (format-log ':debug
-                  "Mapping qubits: ~{~A~^, ~}"
+      (format-log "Mapping qubits: ~{~A~^, ~}"
                   (loop :for x :across mapping
                         :for i :from 0
                         :when (/= i x)
@@ -60,7 +59,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
          (measurement-noise (gethash "measurement-noise" js)))
     (qvm:with-random-state ((get-random-state (gethash "rng-seed" js)))
       ;; Basic logging
-      (format-log ':debug "Got ~S request from API key/User ID: ~S / ~S" type api-key user-id)
+      (format-log "Got ~S request from API key/User ID: ~S / ~S" type api-key user-id)
       ;; Dispatch
       (ecase (keywordify type)
         ;; For simple tests.
@@ -150,8 +149,8 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                  (qvm:map-amplitudes
                   qvm
                   (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
-             (format-log ':debug "Response sent in ~D ms." send-response-time))))
-
+             (format-log "Response sent in ~D ms." send-response-time))))
+        
         ((:probabilities)
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
@@ -172,7 +171,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                    (map nil
                         (lambda (x) (write-double-float-as-binary x reply-stream))
                         probabilities))))
-             (format-log ':debug "Response sent in ~D ms." send-response-time))))
+             (format-log "Response sent in ~D ms." send-response-time))))
 
         ((:run-for-effect)
          (check-for-quil-instrs-field js)
