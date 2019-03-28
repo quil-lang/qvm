@@ -82,29 +82,29 @@
             (number-of-qubits qvm))
     ;; Make the initial state.
     (qvm:load-program qvm quil)
-    (format-log "Computing ~D-qubit state for multishot/measure on ~A."
+    (format-log ':debug "Computing ~D-qubit state for multishot/measure on ~A."
                 num-qubits
                 (class-name (class-of qvm)))
     (with-timing (timing)
       (with-timeout
           (qvm:run qvm)))
-    (format-log "Finished state computation in ~D ms." timing)
-    (format-log "Copying state.")
+    (format-log ':debug "Finished state computation in ~D ms." timing)
+    (format-log ':debug "Copying state.")
     (let ((prepared-wf
             (with-timing (timing)
               (qvm:copy-wavefunction (qvm::amplitudes qvm))))
           (first-time t))
-      (format-log "Copied prepared state in ~D ms." timing)
+      (format-log ':debug "Copied prepared state in ~D ms." timing)
       (flet ((reload (qvm)
                (unless first-time
                  (qvm:copy-wavefunction prepared-wf (qvm::amplitudes qvm)))
                (setf first-time nil)))
         ;; Do the parallel measurements
-        (format-log "Doing ~D ~D-qubit measurements." num-trials (length qubits))
+        (format-log ':debug "Doing ~D ~D-qubit measurements." num-trials (length qubits))
         (prog1
             (with-timing (timing)
               (loop :repeat num-trials
                     :collect (progn
                                (reload qvm)
                                (parallel-measure qvm qubits))))
-          (format-log "Done measuring in ~D ms." timing))))))
+          (format-log ':debug "Done measuring in ~D ms." timing))))))

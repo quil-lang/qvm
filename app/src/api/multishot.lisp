@@ -81,7 +81,7 @@
                                         :size (hash-table-count addresses)))
         timing)
     (qvm:load-program qvm quil :supersede-memory-subsystem t)
-    (format-log "Running experiment with ~D trial~:P on ~A"
+    (format-log ':debug "Running experiment with ~D trial~:P on ~A"
                 num-trials
                 (class-name (class-of qvm)))
     (with-timing (timing)
@@ -100,7 +100,7 @@
         ;; Collect all of the memory that the user requests.
         (collect-result-data qvm addresses trial-results)))
 
-    (format-log "Finished in ~D ms" timing)
+    (format-log ':debug "Finished in ~D ms" timing)
     ;; We collected everything in reverse. So, reverse that.
     (maphash (lambda (k v)
                (setf (gethash k trial-results) (nreverse v)))

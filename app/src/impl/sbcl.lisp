@@ -107,7 +107,7 @@
                    (sb-bsd-sockets:socket-close server-socket)
                    (delete-file path))))
              :name (format nil "Socket server on ~A for Shared Memory QVM" path))))
-    (format-log "ATTENTION! Started shm info socket server on ~A" path)
+    (format-log ':debug "ATTENTION! Started shm info socket server on ~A" path)
     (values)))
 
 (defun disable-debugger ()

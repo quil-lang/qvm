@@ -30,9 +30,9 @@
   (let ((qvm (make-appropriate-qvm simulation-method quil num-qubits gate-noise measurement-noise))
         timing)
     (qvm:load-program qvm quil)
-    (format-log "Running experiment on ~A" (class-name (class-of qvm)))
+    (format-log ':debug "Running experiment on ~A" (class-name (class-of qvm)))
     (with-timing (timing)
       (with-timeout
         (qvm:run qvm)))
-    (format-log "Finished in ~D ms" timing)
+    (format-log ':debug "Finished in ~D ms" timing)
     qvm))

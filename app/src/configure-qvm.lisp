@@ -31,7 +31,7 @@
 (defmethod make-appropriate-qvm ((simulation-method (eql 'pure-state)) quil num-qubits gate-noise measurement-noise)
   "Determine if a QVM:NOISY-QVM or QVM:DEPOLARIZING-QVM is needed."
   (throw-error-if-over-allocated num-qubits)
-  (format-log "Making qvm of ~D qubit~:P" num-qubits)
+  (format-log ':debug "Making qvm of ~D qubit~:P" num-qubits)
   (let* ((kraus-ops (extract-kraus-ops quil))
          (readout-povms (extract-readout-povms quil))
          (need-noisy-qvm (or (plusp
