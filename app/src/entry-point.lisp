@@ -146,7 +146,7 @@
     (("log-level")
      :type string
      :optional t
-     :initial-value "info"
+     :initial-value "debug"
      :documentation "maximum logging level (\"debug\", \"info\", \"notice\", \"warning\", \"err\", \"crit\", \"alert\", or \"emerg\")")))
 
 (defun show-help ()
