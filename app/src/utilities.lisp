@@ -107,14 +107,16 @@
 keyword it is assumed to be a non-default log level (:debug), otherwise it is a control
 string followed by optional args (as in FORMAT)."
   (if (symbolp level-or-fmt-string)
-      `(apply #'cl-syslog:format-log
-              *logger*
-              ',level-or-fmt-string
-              ,(concatenate 'string "~A" (first fmt-string-or-args))
-              (session-info) ',(rest fmt-string-or-args))
-      `(apply #'cl-syslog:format-log
-              *logger*
-              ':debug
-              ,(concatenate 'string "~A" level-or-fmt-string)
-              (session-info)
-              ',fmt-string-or-args)))
+      `(cl-syslog:format-log
+        *logger*
+        ',level-or-fmt-string
+        "~A~?" (session-info)
+        ,(first fmt-string-or-args)
+        (list ,@(rest fmt-string-or-args)))
+      `(cl-syslog:format-log
+        *logger*
+        ':debug
+        "~A~?"
+        (session-info)
+        ,level-or-fmt-string
+        (list ,@fmt-string-or-args))))
