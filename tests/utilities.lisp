@@ -8,9 +8,7 @@
   (alexandria:once-only (env-var)
     `(cond
        ((uiop:getenvp ,env-var)
-        (format t "~&[The environment variable ~A is set, ~
-                      so this test is being skipped.]~%"
-                ,env-var))
+        (skip))
        (t
         ,@body))))
 
