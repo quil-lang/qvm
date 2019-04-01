@@ -198,9 +198,9 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
               "The port must be between 0 and 65535.")
   (when (null port)
     (setf port *default-host-port*))
-  (format-log ':debug "Starting server on port ~D." port)
+  (format-log "Starting server on port ~D." port)
   (unless (null *qubit-limit*)
-    (format-log ':debug "Server is limited to ~D qubit~:P." *qubit-limit*))
+    (format-log "Server is limited to ~D qubit~:P." *qubit-limit*))
   (start-server port)
   ;; TODO? Make this join the thread, instead of spinning in a loop.
   (loop (sleep 1)))
@@ -434,7 +434,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
   #-forest-sdk
   (when swank-port
     (enable-debugger)
-    (format-log ':debug "Starting Swank on port ~D" swank-port)
+    (format-log "Starting Swank on port ~D" swank-port)
     (setf swank:*use-dedicated-output-stream* nil)
     (swank:create-server :port swank-port
                          :dont-close t))
@@ -447,14 +447,14 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
   (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app))
   (when (and (eq *simulation-method* 'full-density-matrix)
              (null qubits))
-    (format-log ':debug "Full density matrix simulation requires --qubits to be specified.")
+    (format-log "Full density matrix simulation requires --qubits to be specified.")
     (quit-nicely 1))
 
-  (format-log ':debug "Selected simulation method: ~A" simulation-method)
+  (format-log "Selected simulation method: ~A" simulation-method)
 
   ;; Deprecation of -e/--execute
   (when execute
-    (format-log ':debug "Warning: --execute/-e is deprecated. Elide this option ~
+    (format-log "Warning: --execute/-e is deprecated. Elide this option ~
                  for equivalent behavior."))
 
   (cond
@@ -462,7 +462,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     ((or (eq T benchmark)
          (plusp benchmark))
      (when shared
-       (format-log ':debug "Warning: Ignoring --shared option in benchmark mode."))
+       (format-log "Warning: Ignoring --shared option in benchmark mode."))
      ;; Default number of qubits
      (when (eq T benchmark)
        (setf benchmark 26))
@@ -473,13 +473,13 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     ;; Server mode.
     ((or server port)
      (when execute
-       (format-log ':debug "Warning: Ignoring execute option: ~S" execute)
+       (format-log "Warning: Ignoring execute option: ~S" execute)
        (setf execute nil))
 
      ;; Handle persistency and shared memory.
      (when shared
        (unless qubits
-         (format-log ':debug "The --qubits option must be specified for --shared.")
+         (format-log "The --qubits option must be specified for --shared.")
          (quit-nicely 1))
        (let ((shm-name (if (zerop (length shared))
                            (format nil "QVM~D" (get-universal-time))
@@ -488,28 +488,28 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
          (multiple-value-setq (**persistent-wavefunction**
                                **persistent-wavefunction-finalizer**)
            (make-shared-wavefunction *simulation-method* qubits shm-name))
-         (format-log ':debug "ATTENTION! Created POSIX shared memory with name: ~A" shm-name)
+         (format-log "ATTENTION! Created POSIX shared memory with name: ~A" shm-name)
          (start-shm-info-server shm-name (length **persistent-wavefunction**)))
 
-       (format-log ':debug "Created persistent memory for ~D qubits" qubits))
+       (format-log "Created persistent memory for ~D qubits" qubits))
      ;; Start the server
      (start-server-app port))
 
     ;; Batch mode.
     (t
      (when shared
-       (format-log ':debug "Warning: Ignoring --shared option in execute mode."))
+       (format-log "Warning: Ignoring --shared option in execute mode."))
      (when (eq *simulation-method* 'full-density-matrix)
-       (format-log ':debug "Full density matrix simulation not yet supported in batch mode.")
+       (format-log "Full density matrix simulation not yet supported in batch mode.")
        (quit-nicely 1))
      (let (qvm program alloc-time exec-time qubits-needed)
        ;; Read the Quil.
        (cond
          ((interactive-stream-p *standard-input*)
-          (format-log ':debug "Reading program from interactive terminal. Press Control-D ~
+          (format-log "Reading program from interactive terminal. Press Control-D ~
                        when finished."))
          (t
-          (format-log ':debug "Reading program.")))
+          (format-log "Reading program.")))
        (setf program (safely-read-quil))
 
        ;; Figure out how many qubits we need.
@@ -522,27 +522,27 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
          (setf qubits-needed (or qubits really-needed)))
 
        ;; Allocate the QVM.
-       (format-log ':debug "Allocating memory for QVM of ~D qubits." qubits-needed)
+       (format-log "Allocating memory for QVM of ~D qubits." qubits-needed)
        (with-timing (alloc-time)
          (setf qvm (make-qvm qubits-needed
                              :allocation (funcall **default-allocation**
                                                   (expt 2 qubits-needed)))))
-       (format-log ':debug "Allocation completed in ~D ms." alloc-time)
+       (format-log "Allocation completed in ~D ms." alloc-time)
 
        ;; Load our program.
-       (format-log ':debug "Loading quantum program.")
+       (format-log "Loading quantum program.")
        (load-program qvm program :supersede-memory-subsystem t)
 
        ;; Execute it.
-       (format-log ':debug "Executing quantum program.")
+       (format-log "Executing quantum program.")
        ;; Fresh random state.
        (qvm:with-random-state ((qvm:seeded-random-state nil))
          (with-timing (exec-time)
            (run qvm)))
-       (format-log ':debug "Execution completed in ~D ms." exec-time)
+       (format-log "Execution completed in ~D ms." exec-time)
 
        ;; Print our answer to stdout.
-       (format-log ':debug "Printing classical memory and ~D-qubit state." qubits-needed)
+       (format-log "Printing classical memory and ~D-qubit state." qubits-needed)
        (print-classical-memory qvm)
        (format t "~&Amplitudes:")
        (let ((nq (qvm:number-of-qubits qvm)))
@@ -603,12 +603,12 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     #+sbcl
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
-      (format-log ':debug "Caught Control-C. Quitting.")
+      (format-log "Caught Control-C. Quitting.")
       (quit-nicely))
     ;; General errors.
     (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
-      (format-log ':debug "Error encountered, Qutting.")
+      (format-log "Error encountered, Qutting.")
       (quit-nicely 1))))
 
 (defun asdf-entry-point ()

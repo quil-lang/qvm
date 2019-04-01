@@ -102,9 +102,19 @@
               (tbnl:session-remote-addr tbnl:*session*)
               (tbnl:session-id tbnl:*session*))))
 
-(defun format-log (level fmt-string &rest args)
-  (apply #'cl-syslog:format-log
-         *logger*
-         level
-         (concatenate 'string "~A" fmt-string)
-         (session-info) args))
+(defmacro format-log (level-or-fmt-string &rest fmt-string-or-args)
+  "Send a message to syslog. If the first argument LEVEL-OR-FMT-STRING is a
+keyword it is assumed to be a non-default log level, otherwise it is a control
+string followed by optional args (as in FORMAT)."
+  (if (symbolp level-or-fmt-string)
+      `(apply #'cl-syslog:format-log
+              *logger*
+              ',level-or-fmt-string
+              ,(concatenate 'string "~A" (first fmt-string-or-args))
+              (session-info) ',(rest fmt-string-or-args))
+      `(apply #'cl-syslog:format-log
+              *logger*
+              ':debug
+              ,(concatenate 'string "~A" level-or-fmt-string)
+              (session-info)
+              ',fmt-string-or-args)))
