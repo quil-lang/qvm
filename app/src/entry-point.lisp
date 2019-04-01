@@ -447,22 +447,22 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
   (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app))
   (when (and (eq *simulation-method* 'full-density-matrix)
              (null qubits))
-    (format-log "Full density matrix simulation requires --qubits to be specified.")
+    (format-log :err "Full density matrix simulation requires --qubits to be specified.")
     (quit-nicely 1))
 
   (format-log "Selected simulation method: ~A" simulation-method)
 
   ;; Deprecation of -e/--execute
   (when execute
-    (format-log "Warning: --execute/-e is deprecated. Elide this option ~
-                 for equivalent behavior."))
+    (format-log :warning "--execute/-e is deprecated. Elide this option ~
+                          for equivalent behavior."))
 
   (cond
     ;; Benchmark mode.
     ((or (eq T benchmark)
          (plusp benchmark))
      (when shared
-       (format-log "Warning: Ignoring --shared option in benchmark mode."))
+       (format-log :warning "Ignoring --shared option in benchmark mode."))
      ;; Default number of qubits
      (when (eq T benchmark)
        (setf benchmark 26))
@@ -479,7 +479,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
      ;; Handle persistency and shared memory.
      (when shared
        (unless qubits
-         (format-log "The --qubits option must be specified for --shared.")
+         (format-log :err "The --qubits option must be specified for --shared.")
          (quit-nicely 1))
        (let ((shm-name (if (zerop (length shared))
                            (format nil "QVM~D" (get-universal-time))
@@ -498,7 +498,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     ;; Batch mode.
     (t
      (when shared
-       (format-log "Warning: Ignoring --shared option in execute mode."))
+       (format-log :warning "Ignoring --shared option in execute mode."))
      (when (eq *simulation-method* 'full-density-matrix)
        (format-log "Full density matrix simulation not yet supported in batch mode.")
        (quit-nicely 1))
@@ -608,7 +608,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     ;; General errors.
     (error (c)
       (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
-      (format-log "Error encountered, Qutting.")
+      (format-log :err "Error encountered, quitting.")
       (quit-nicely 1))))
 
 (defun asdf-entry-point ()

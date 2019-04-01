@@ -46,12 +46,12 @@
   :serial t
   :entry-point "qvm-app::asdf-entry-point"
   :components ((:file "package")
+               (:file "globals")
+               (:file "utilities")
                (:file "qvm-app-version")
                (:file "shm-info-server")
                (:file "impl/sbcl" :if-feature :sbcl)
                (:file "impl/clozure" :if-feature :clozure)
-               (:file "globals")
-               (:file "utilities")
                (:file "configure-qvm")
                (:module "api"
                 :serial t
