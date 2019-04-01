@@ -141,7 +141,7 @@
     (("quiet")
      :type boolean
      :optional t
-     :documentation "Disable all non-logging output (banner, etc).")
+     :documentation "Disable all non-essential printed output to stdout (banner, etc.).")
 
     (("log-level")
      :type string
