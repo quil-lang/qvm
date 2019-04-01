@@ -40,7 +40,8 @@
     (when (find "--qvm-sdk" sb-ext:*posix-argv* :test 'string=)
       (load "app/src/mangle-shared-objects.lisp"))
     (sb-ext:save-lisp-and-die output-file
-                              :compression t
+                              :compression #+sb-core-compression t
+                                           #-sb-core-compression nil
                               :save-runtime-options t
                               :executable t
                               :toplevel toplevel)))
