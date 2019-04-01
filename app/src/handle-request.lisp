@@ -150,7 +150,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                   qvm
                   (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
              (format-log "Response sent in ~D ms." send-response-time))))
-        
+
         ((:probabilities)
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
