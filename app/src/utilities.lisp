@@ -104,7 +104,7 @@
 
 (defmacro format-log (level-or-fmt-string &rest fmt-string-or-args)
   "Send a message to syslog. If the first argument LEVEL-OR-FMT-STRING is a
-keyword it is assumed to be a non-default log level, otherwise it is a control
+keyword it is assumed to be a non-default log level (:debug), otherwise it is a control
 string followed by optional args (as in FORMAT)."
   (if (symbolp level-or-fmt-string)
       `(apply #'cl-syslog:format-log
