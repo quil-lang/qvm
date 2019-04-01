@@ -136,7 +136,18 @@
     (("skip-version-check"
       :type boolean
       :initial-value nil
-      :documentation "Do not check for a new QVM version at launch."))))
+      :documentation "Do not check for a new QVM version at launch."))
+
+    (("quiet")
+     :type boolean
+     :optional t
+     :documentation "Disable all non-essential printed output to stdout (banner, etc.).")
+
+    (("log-level")
+     :type string
+     :optional t
+     :initial-value "debug"
+     :documentation "maximum logging level (\"debug\", \"info\", \"notice\", \"warning\", \"err\", \"crit\", \"alert\", or \"emerg\")")))
 
 (defun show-help ()
   (format t "Usage:~%")
@@ -304,6 +315,14 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
             kind
             *available-allocation-kinds*))))
 
+(defun log-level-string-to-symbol (log-level)
+  (let ((log-level-kw (assoc (intern (string-upcase log-level) 'keyword)
+                             cl-syslog::*priorities*)))
+    (unless log-level-kw
+      (error "Invalid logging level: ~a" log-level))
+
+    (car log-level-kw)))
+
 (defun process-options (&key
                           version
                           check-libraries
@@ -327,7 +346,21 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           shared
                           simulation-method
                           #-forest-sdk debug
-                          #+forest-sdk skip-version-check)
+                          #+forest-sdk skip-version-check
+                          quiet
+                          log-level)
+
+  (setf *logger* (make-instance 'cl-syslog:rfc5424-logger
+                                :app-name "qvm"
+                                :facility ':local0
+                                :maximum-priority (log-level-string-to-symbol log-level)
+                                :log-writer
+                                #+windows
+                                (cl-syslog:stream-log-writer)
+                                #-windows
+                                (cl-syslog:tee-to-stream
+                                 (cl-syslog:syslog-log-writer "qvm" :local0)
+                                 *error-output*)))
   (when help
     (show-help)
     (quit-nicely))
@@ -395,7 +428,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     (setf qvm:*compile-before-running* t))
 
   ;; Show the welcome message.
-  (show-welcome)
+  (unless quiet (show-welcome))
 
   ;; Start Swank if we were asked. Re-enable the debugger.
   #-forest-sdk
@@ -545,17 +578,6 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
 (defun %main (argv)
   (setup-debugger)
   (setf *entered-from-main* t)
-
-  (setf *logger* (make-instance 'cl-syslog:rfc5424-logger
-                                :app-name "qvm"
-                                :facility ':local0
-                                :log-writer
-                                #+windows
-                                (cl-syslog:stream-log-writer)
-                                #-windows
-                                (cl-syslog:tee-to-stream
-                                 (cl-syslog:syslog-log-writer "qvm" :local0)
-                                 *error-output*)))
 
   ;; This finalizer can _always_ be called even if there is no
   ;; persistent wavefunction. Also, we note that the library
