@@ -110,13 +110,12 @@ string followed by optional args (as in FORMAT)."
       `(cl-syslog:format-log
         *logger*
         ',level-or-fmt-string
-        "~A~?" (session-info)
-        ,(first fmt-string-or-args)
-        (list ,@(rest fmt-string-or-args)))
+        "~A~@?" (session-info)
+        ,@fmt-string-or-args)
       `(cl-syslog:format-log
         *logger*
         ':debug
-        "~A~?"
+        "~A~@?"
         (session-info)
         ,level-or-fmt-string
-        (list ,@fmt-string-or-args))))
+        ,@fmt-string-or-args)))
