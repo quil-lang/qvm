@@ -14,7 +14,7 @@
                                                   :name nil
                                                   :defaults *load-truename*))
       (output-file (make-pathname :name "qvm"
-                                  :type #+windows "exe" #-windows nil))
+                                  :type #+win32 "exe" #-win32 nil))
       (system-table (make-hash-table :test 'equal))
       (toplevel (lambda ()
                   (with-simple-restart (abort "Abort")
@@ -45,4 +45,3 @@
                               :save-runtime-options t
                               :executable t
                               :toplevel toplevel)))
-
