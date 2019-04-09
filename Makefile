@@ -13,6 +13,7 @@ QUICKLISP_SETUP=$(QUICKLISP_HOME)/setup.lisp
 QUICKLISP=$(SBCL) --load $(QUICKLISP_HOME)/setup.lisp \
 	--eval '(push (truename ".") asdf:*central-registry*)' \
 	--eval '(push :hunchentoot-no-ssl *features*)' \
+	--eval '(push :drakma-no-ssl *features*)' \
 	--eval "(push (truename \"$(RIGETTI_LISP_LIBRARY_HOME)\") ql:*local-project-directories*)"
 
 QUICKLISP_BOOTSTRAP_URL=https://beta.quicklisp.org/quicklisp.lisp
@@ -62,6 +63,7 @@ qvm: system-index.txt
 	$(SBCL) $(FOREST_SDK_FEATURE) \
 	        --eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
 		--eval '(push :hunchentoot-no-ssl *features*)' \
+		--eval '(push :drakma-no-ssl *features*)' \
 		--load build-app.lisp \
                 $(FOREST_SDK_OPTION)
 
