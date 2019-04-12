@@ -7,7 +7,7 @@
 ;;; This file contains tests of the MADPI simulation technique.
 
 (defun test-path-eval-instance (s)
-  (let* ((p (quil:parse-quil-string (format nil s)))
+  (let* ((p (quil:parse-quil (format nil s)))
          (n (quil:qubits-needed p))
          (qvm (make-qvm n)))
     (load-program qvm p)

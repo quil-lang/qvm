@@ -23,7 +23,7 @@
 
 
 (deftest test-remapping ()
-  (let* ((quil (cl-quil:parse-quil-string "X 1
+  (let* ((quil (cl-quil:parse-quil "X 1
 PRAGMA ADD-KRAUS X 1 \"(1.0 0.0 0.0 1.0)\"
 PRAGMA READOUT-POVM 1 \"(0.9 0.2 0.1 0.8)\"
 DECLARE ro BIT[1]
@@ -58,10 +58,10 @@ MEASURE 1 ro[1]"))
            (quil-code "X 1
 X 3
 I 2")
-           (quil (cl-quil:parse-quil-string quil-code)))
+           (quil (cl-quil:parse-quil quil-code)))
       ;; process-quil modifies the program so we need to re-parse the source.
       (multiple-value-bind (processed-quil relabeling)
-          (mute (qvm-app::process-quil (cl-quil:parse-quil-string quil-code)))
+          (mute (qvm-app::process-quil (cl-quil:parse-quil quil-code)))
         (let ((results-1
                 (mute
                   (qvm-app::perform-multishot-measure simulation-method quil 4 qubits 1 nil)))
@@ -154,7 +154,7 @@ H 0")) ; we are in the |-> state
 
 (deftest test-expectation-mixed-op ()
   (dolist (simulation-method '(qvm-app::pure-state qvm-app::full-density-matrix))
-    (let ((state-prep (qvm-app::safely-parse-quil-string "H 0")) 
+    (let ((state-prep (qvm-app::safely-parse-quil-string "H 0"))
           (ops (list (qvm-app::safely-parse-quil-string "X 0
 Y 1"))))
       (let ((answer (mute

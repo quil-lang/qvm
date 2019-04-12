@@ -57,7 +57,7 @@ Alternatively, the `qvm:run-program` function will handle QVM object
 creation. For example,
 
 ``` common-lisp
-* (setq *qvm* (qvm:run-program 2 (cl-quil:parse-quil-string "H 0")))
+* (setq *qvm* (qvm:run-program 2 (cl-quil:parse-quil "H 0")))
 ```
 
 creates a 2-qubit QVM object and on it runs the Quil program `H 0`.
@@ -98,7 +98,7 @@ that both states would each come up with probability 0.5.
 
 ``` common-lisp
 * (loop :with results := (vector 0 0)
-        :with program := (cl-quil:parse-quil-string "H 0")
+        :with program := (cl-quil:parse-quil "H 0")
         :repeat 100
         :for (qvm state) := (multiple-value-list (qvm:measure (qvm:run-program 1 program) 0))
         :do (incf (aref results state))

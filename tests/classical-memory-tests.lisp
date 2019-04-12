@@ -9,7 +9,7 @@
   (let* ((memories (qvm::allocate-memory-for-model
                     (qvm:memory-descriptors-to-qvm-memory-model
                      (quil:parsed-program-memory-definitions
-                      (quil:parse-quil-string "
+                      (quil:parse-quil "
 DECLARE ro BIT[64]
 DECLARE beta INTEGER SHARING ro")))))
          (ro (gethash "ro" memories))
@@ -19,7 +19,7 @@ DECLARE beta INTEGER SHARING ro")))))
 
 (deftest test-load-out-of-range ()
   "Test that we detect an error when a bit is out of range with a LOAD or STORE."
-  (let* ((p (quil:parse-quil-string "
+  (let* ((p (quil:parse-quil "
 DECLARE idx INTEGER
 DECLARE z REAL[4]
 DECLARE target REAL
@@ -38,7 +38,7 @@ LOAD target z idx   # NOT OK!
 
 (deftest test-measure-out-of-range ()
   "Test that we detect an error when a bit is out of range with a MEASURE."
-  (let* ((p (quil:parse-quil-string "
+  (let* ((p (quil:parse-quil "
 DECLARE ro BIT[1]
 X 0
 X 1
@@ -52,7 +52,7 @@ MEASURE 1 ro[1]
       (qvm:run q))))
 
 (deftest test-bit-offsetting-bit ()
-  (let* ((p (quil:parse-quil-string "
+  (let* ((p (quil:parse-quil "
 DECLARE mem BIT[1024]     # 128 octets
 DECLARE b0 BIT SHARING mem
 DECLARE b1 BIT SHARING mem OFFSET 1 BIT
@@ -90,7 +90,7 @@ MOVE b80 1
     (is (= 1 (qvm::memory-ref q "b80" 0)))))
 
 (deftest test-bit-offsetting-octet ()
-  (let* ((p (quil:parse-quil-string "
+  (let* ((p (quil:parse-quil "
 DECLARE mem OCTET[128]
 
 DECLARE o0 OCTET SHARING mem
@@ -110,7 +110,7 @@ MOVE o2 255
 
 (deftest test-quake-style-square-root ()
   "Test the good old-fashioned \"fast inverse square root\", except we compute the square root proper."
-  (let ((p (quil:parse-quil-string "
+  (let ((p (quil:parse-quil "
 DECLARE input REAL
 DECLARE output REAL
 DECLARE output-i INTEGER SHARING output
@@ -144,7 +144,7 @@ MOVE output tmp
 
 (deftest test-indirect-comparators ()
   "Test that comparators actually execute and produce at least somewhat reliable results."
-  (let ((p (quil:parse-quil-string "
+  (let ((p (quil:parse-quil "
 DECLARE bx BIT[2]
 DECLARE rx REAL[2]
 DECLARE ix INTEGER[2]
@@ -252,7 +252,7 @@ GT gt[3] ox[0] ox[1]
 
 (deftest test-exhange ()
   "Test that EXCHANGE does the job."
-  (let* ((p (quil:parse-quil-string "
+  (let* ((p (quil:parse-quil "
 DECLARE bx BIT[2]
 DECLARE rx REAL[2]
 DECLARE ix INTEGER[2]
@@ -290,7 +290,7 @@ EXCHANGE ox[0] ox[1]
 
 (deftest test-memory-name-closure-bug ()
   "This was a bug where the reader and writer closures had their NAME and LENGTH bindings mutated in a loop."
-  (let ((valid-quil (quil:parse-quil-string "
+  (let ((valid-quil (quil:parse-quil "
 DECLARE ro BIT[4]
 DECLARE theta REAL[1]
 MOVE theta[0] 0.0

@@ -72,7 +72,7 @@
     (quil:print-instruction isn s)))
 
 (defun string->instruction (string)
-  (aref (quil:parsed-program-executable-code (quil:parse-quil-string string)) 0))
+  (aref (quil:parsed-program-executable-code (quil:parse-quil string)) 0))
 
 (let ((lock (bt:make-lock "Printer Lock")))
   (defun format-locked (format-string &rest format-args)

@@ -250,7 +250,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (flet ((parse-it (string)
            (let* ((quil::*allow-unresolved-applications* t)
                   (parse-results
-                    (quil:parse-quil-string string)))
+                    (quil:parse-quil string)))
              parse-results)))
     (if (null *safe-include-directory*)
         (parse-it string)
