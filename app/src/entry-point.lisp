@@ -34,6 +34,11 @@
      :optional t
      :documentation "start a QVM server")
 
+    (("host")
+     :type string
+     :optional t
+     :documentation "host on which to start the QVM server")
+
     (("port" #\p)
      :type integer
      :optional t
@@ -190,18 +195,20 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           (or *num-workers* (max 1 (qvm:count-logical-cores))))
   nil)
 
-(defparameter *host-address* "0.0.0.0")
+(defparameter *default-host-address* "0.0.0.0")
 (defparameter *default-host-port* 5000)
 
-(defun start-server-app (port)
+(defun start-server-app (host port)
   (check-type port (or null (integer 0 65535))
               "The port must be between 0 and 65535.")
+  (when (null host)
+    (setf host *default-host-address*))
   (when (null port)
     (setf port *default-host-port*))
   (format-log "Starting server on port ~D." port)
   (unless (null *qubit-limit*)
     (format-log "Server is limited to ~D qubit~:P." *qubit-limit*))
-  (start-server port)
+  (start-server host port)
   ;; TODO? Make this join the thread, instead of spinning in a loop.
   (loop (sleep 1)))
 
@@ -332,6 +339,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           help
                           memory-limit
                           server
+                          host
                           port
                           #-forest-sdk swank-port
                           num-workers
@@ -614,7 +622,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
 (defun asdf-entry-point ()
   (%main (list* "qvm-app" (uiop:command-line-arguments))))
 
-(defun start-server (port)
+(defun start-server (host port)
   #+forest-sdk
   (setq tbnl:*log-lisp-backtraces-p* nil
         tbnl:*log-lisp-errors-p* nil)
@@ -625,7 +633,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
         tbnl:*catch-errors-p* (not *debug*))
   (setq *app* (make-instance
                'vhost
-               :address *host-address*
+               :address host
                :port port
                :taskmaster (make-instance 'tbnl:one-thread-per-connection-taskmaster)))
   (when (null (dispatch-table *app*))
