@@ -177,7 +177,7 @@ This will not clear previously installed gates from the QVM."
   ;; Return the modified QVM.
   qvm)
 
-(defun compile-loaded-program (qvm)
+(defmethod compile-loaded-program ((qvm pure-state-qvm))
   "Compile the loaded program on the QVM QVM."
   (unless (program-compiled-p qvm)
     (setf (program qvm) (quil::fuse-gates-in-executable-code (program qvm)))

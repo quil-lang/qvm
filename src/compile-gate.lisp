@@ -374,7 +374,16 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
                      ,@initargs)))
              (apply #'make-instance class-name all-initargs)))))))
 
-;;; Measure chains
+
+;;; Measure Chain Compilation
+;;;
+;;; Below is an implementation that finds chains of MEASURE commands,
+;;; and collapses them into a single sampling operation.
+;;;
+;;; This compilation trick is only triggered if there is a contiguous
+;;; sequence of measurements on *all* qubits. As such, many completely
+;;; valid programs fail this check, and the optimization won't kick
+;;; in.
 
 (defclass measure-all ()
   ((storage :initarg :storage
@@ -383,22 +392,22 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
   (:documentation "A pseudo-instruction for measuring all qubits simultaneously."))
 
 (defmethod cl-quil::%max-qubit ((isn measure-all))
-  (loop :for (q . _) :in (measure-all-storage isn)
-        :maximize q))
+  (loop :for qubit-mref :in (measure-all-storage isn)
+        :maximize (car qubit-mref)))
 
-(defmethod quil::print-instruction-generic ((instr measure-all) stream)
-  (format stream "{MEASURE-ALL to ~D location~:P}"
+(defmethod cl-quil::print-instruction-generic ((instr measure-all) stream)
+  (format stream "{ MEASURE-ALL to ~D location~:P }"
           (length (measure-all-storage instr))))
 
 (defun measure-chain-at (i code)
   "Is there a measure chain at I in CODE?"
-  (let ((n 0))
-    (loop :for k :from i :below (length code)
-          :for isn := (elt code k)
-          :do (if (typep isn 'quil:measurement)
-                  (incf n)
-                  (loop-finish))
-          :finally (return n))))
+  (loop :with n := 0
+        :for k :from i :below (length code)
+        :for isn := (elt code k)
+        :do (if (typep isn 'quil:measurement)
+                (incf n)
+                (loop-finish))
+        :finally (return n)))
 
 (defun find-measure-chains (n code)
   "Find measure chains containing all qubits 0 <= q < n."

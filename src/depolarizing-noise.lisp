@@ -97,3 +97,7 @@ It should be that PX + PY + PZ <= 1.
                             (probability-measure-x qvm)
                             (probability-measure-y qvm)
                             (probability-measure-z qvm))))
+
+;;; Don't compile things for the depolarizing-qvm.
+(defmethod compile-loaded-program ((qvm depolarizing-qvm))
+  qvm)

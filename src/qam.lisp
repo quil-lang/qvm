@@ -42,18 +42,20 @@ Return two values:
 Return two values:
 
     1. The resulting QAM.
-    2. A list of measured bits."))
-
-(defmethod measure-all (qam)
-  (let ((measured-bits nil))
-    (loop :for q :from (1- (number-of-qubits qam)) :downto 0
-          :do (multiple-value-bind (ret-qam bit)
-                  (measure qam q)
-                (push bit measured-bits)
-                (setf qam ret-qam)))
-    (values
-     qam
-     measured-bits)))
+    2. A list of measured bits.")
+  (:method ((qam t))
+    (let ((measured-bits nil))
+      (loop :for q :from (1- (number-of-qubits qam)) :downto 0
+            :do (multiple-value-bind (ret-qam bit)
+                    (measure qam q)
+                  (push bit measured-bits)
+                  (setf qam ret-qam)))
+      (values
+       qam
+       measured-bits))))
 
 (defgeneric number-of-qubits (qam)
   (:documentation "Return the number of qubits configured on the quantum abstract machine QAM."))
+
+(defgeneric compile-loaded-program (qam)
+  (:documentation "Compile the program loaded into the qam QAM so as to optimize execution."))
