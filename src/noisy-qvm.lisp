@@ -298,3 +298,7 @@ updated list of measured bits."
     (values
      qvm-ret
      (perturb-measured-bits qvm-ret measured-bits))))
+
+;;; Don't compile things for the noisy-qvm.
+(defmethod compile-loaded-program ((qvm noisy-qvm))
+  qvm)
