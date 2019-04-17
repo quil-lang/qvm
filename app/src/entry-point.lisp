@@ -501,7 +501,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
 
        (format-log "Created persistent memory for ~D qubits" qubits))
      ;; Start the server
-     (start-server-app port))
+     (start-server-app host port))
 
     ;; Batch mode.
     (t
