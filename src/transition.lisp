@@ -125,6 +125,12 @@ Return two values:
             (quil:qubit-index (quil:measurement-qubit instr)))
    (1+ (pc qvm))))
 
+(defmethod transition ((qvm pure-state-qvm) (instr measure-all))
+  (multiple-value-bind (qvm state) (measure-all qvm)
+    (loop :for (qubit . address) :in (measure-all-storage instr)
+          :do (setf (dereference-mref qvm address) (nth qubit state)))
+    (values qvm (1+ (pc qvm)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; The word "force" here is borrowed from the functional programming

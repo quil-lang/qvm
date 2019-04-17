@@ -217,3 +217,46 @@
          (q (run-program 3 p)))
     (is (= 1 (qvm:memory-ref q "ro" 0)))
     (is (= 0 (qvm:memory-ref q "ro" 1)))))
+
+(deftest test-measure-chain-compilation ()
+  "Test that measure chains are collapsed nicely."
+  (let* ((pp (quil:parse-quil-string "
+DECLARE ro BIT[3]
+MEASURE 0
+X 0
+MEASURE 0
+MEASURE 0
+MEASURE 2
+X 0
+MEASURE 0 ro[0]
+MEASURE 1
+MEASURE 2
+X 0
+MEASURE 0 ro[2]
+MEASURE 0 ro[1]
+MEASURE 1 ro[2]
+MEASURE 2
+X 0"))
+         (code (qvm::compile-measure-chains (quil:parsed-program-executable-code pp) 3))
+         (q (run-program 4 (progn (setf (quil:parsed-program-executable-code pp) code)
+                                  pp))))
+    (loop :for isn :across code
+          :for type :in '(quil:measure-discard
+                          quil:application
+                          quil:measure-discard
+                          quil:measure-discard
+                          quil:measure-discard
+                          quil:application
+                          qvm::measure-all
+                          quil:no-operation
+                          quil:no-operation
+                          quil:application
+                          qvm::measure-all
+                          quil:no-operation
+                          quil:no-operation
+                          quil:no-operation
+                          quil:application)
+          :do (is (typep isn type)))
+    (is (= 0 (qvm:memory-ref q "ro" 0)))
+    (is (= 1 (qvm:memory-ref q "ro" 1)))
+    (is (= 0 (qvm:memory-ref q "ro" 2)))))

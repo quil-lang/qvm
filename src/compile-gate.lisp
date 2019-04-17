@@ -373,3 +373,68 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
                      ;; The rest of the inirargs
                      ,@initargs)))
              (apply #'make-instance class-name all-initargs)))))))
+
+;;; Measure chains
+
+(defclass measure-all ()
+  ((storage :initarg :storage
+            :reader measure-all-storage
+            :documentation "A list of qubit-mref pairs to store, in order."))
+  (:documentation "A pseudo-instruction for measuring all qubits simultaneously."))
+
+(defmethod cl-quil::%max-qubit ((isn measure-all))
+  (loop :for (q . _) :in (measure-all-storage isn)
+        :maximize q))
+
+(defmethod quil::print-instruction-generic ((instr measure-all) stream)
+  (format stream "{MEASURE-ALL to ~D location~:P}"
+          (length (measure-all-storage instr))))
+
+(defun measure-chain-at (i code)
+  "Is there a measure chain at I in CODE?"
+  (let ((n 0))
+    (loop :for k :from i :below (length code)
+          :for isn := (elt code k)
+          :do (if (typep isn 'quil:measurement)
+                  (incf n)
+                  (loop-finish))
+          :finally (return n))))
+
+(defun find-measure-chains (n code)
+  "Find measure chains containing all qubits 0 <= q < n."
+  (let ((chains nil))
+    (loop :for i :below (length code)
+          :for chain := (measure-chain-at i code)
+          :when (plusp chain)
+            :do (progn
+                  (unless (< chain n)
+                    (let ((measures (subseq code i (+ i chain))))
+                      (loop :with bitset := 0
+                            :for m :across measures
+                            :for q := (quil:qubit-index (quil:measurement-qubit m))
+                            :do (setf (ldb (byte 1 q) bitset) 1)
+                            :finally (when (= bitset (1- (expt 2 n)))
+                                       (push (cons i measures) chains)))))
+                  (incf i chain)))
+    (nreverse chains)))
+
+(defun measure-chain-to-instruction (chain)
+  "Convert a measure chain into a MEASURE-ALL pseudo-instruction."
+  (make-instance 'measure-all
+                 :storage (loop :for isn :across chain
+                                :for q := (quil:qubit-index
+                                           (quil:measurement-qubit isn))
+                                :when (typep isn 'quil:measure)
+                                  :collect (cons q (quil:measure-address isn)))))
+
+(defun compile-measure-chains (code n)
+  "Given a code vector CODE of N qubits, compile all measure chains."
+  (let ((chains (find-measure-chains n code)))
+    (if (endp chains)
+        code
+        (let ((code (copy-seq code)))
+          (loop :for (start . chain) :in chains
+                :for end := (+ start (length chain))
+                :do (fill code (make-instance 'quil:no-operation) :start start :end end)
+                    (setf (elt code start) (measure-chain-to-instruction chain)))
+          code))))
