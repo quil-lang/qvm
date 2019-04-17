@@ -23,13 +23,16 @@ The library is released under the [Apache license 2.0](LICENSE.txt).
 
 ### Usage
 
-The QVM library is best loaded using Quicklisp. Please read and follow
+The QVM library is available on Quicklisp, but of course may not have the latest features.
+It can be loaded simply with:
+```common-lisp
+* (ql:quickload :qvm)
+```
+
+Alternatively, one can download and load it manually. Please read and follow
 the instructions in [`lisp-setup.md#install-quicklisp`](doc/lisp-setup.md) to get Quicklisp
 installed. Pay particular attention to the section "Telling Quicklisp
 Where Your Code Is".
-
->**Note**: `qvm` is not yet available through Quicklisp's distribution
->mechanism, and must be installed manually.
 
 Download both this repository *and* [quilc](http://github.com/rigetti/quilc) into the
 `ql:*local-project-directories*` location. If all is correct, the `qvm`
