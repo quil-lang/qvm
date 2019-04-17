@@ -37,11 +37,13 @@
     (("host")
      :type string
      :optional t
+     :initial-value "0.0.0.0"
      :documentation "host on which to start the QVM server")
 
     (("port" #\p)
      :type integer
      :optional t
+     :initial-value 5000
      :documentation "port to start the QVM server on")
 
     (("qubits" #\q)
@@ -195,16 +197,9 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           (or *num-workers* (max 1 (qvm:count-logical-cores))))
   nil)
 
-(defparameter *default-host-address* "0.0.0.0")
-(defparameter *default-host-port* 5000)
-
 (defun start-server-app (host port)
   (check-type port (or null (integer 0 65535))
               "The port must be between 0 and 65535.")
-  (when (null host)
-    (setf host *default-host-address*))
-  (when (null port)
-    (setf port *default-host-port*))
   (format-log "Starting server on port ~D." port)
   (unless (null *qubit-limit*)
     (format-log "Server is limited to ~D qubit~:P." *qubit-limit*))
