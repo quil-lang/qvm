@@ -42,13 +42,19 @@
                ;; HTTP requests for version info
                #:drakma
                ;; Portable *features*
-               #:trivial-features)
+               #:trivial-features
+               ;; UUIDs
+               #:unicly
+               ;; URI parsing
+               #:cl-ppcre
+               )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-app-tests)))
   :pathname "app/src/"
   :serial t
   :entry-point "qvm-app::asdf-entry-point"
   :components ((:file "package")
                (:file "globals")
+               (:file "persistent")
                (:file "utilities")
                (:file "qvm-app-version")
                (:file "shm-info-server")
@@ -66,7 +72,9 @@
                              (:file "expectation")
                              (:file "wavefunction")
                              (:file "probabilities")
-                             (:file "run-for-effect")))
+                             (:file "run-for-effect")
+                             (:file "persist")
+                             (:file "obliviate")))
                (:file "benchmark-programs")
                (:file "server-abstraction")
                (:file "handle-request")

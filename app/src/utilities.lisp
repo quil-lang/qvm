@@ -91,6 +91,10 @@
       (format stream "[]")
       (yason:encode list stream)))
 
+(defun yason-encode-to-string (obj)
+  (with-output-to-string (s)
+    (yason:encode obj s)))
+
 ;;; Functions depending on the server state
 
 (defun session-info ()

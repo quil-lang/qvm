@@ -24,7 +24,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
 
 (defun get-random-state (arg)
   (etypecase arg
-    (null (qvm:seeded-random-state nil))
+    (null          (qvm:seeded-random-state nil))
     (unsigned-byte (qvm:seeded-random-state arg))))
 
 (defun check-required-fields (hash-table &rest fields)

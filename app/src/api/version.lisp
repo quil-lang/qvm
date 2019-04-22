@@ -9,3 +9,7 @@
    '(#\Newline)
    (with-output-to-string (*standard-output*)
      (show-version))))
+
+(defun |GET-version| (request)
+  (declare (ignore request))
+  (handle-version))

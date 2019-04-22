@@ -617,6 +617,23 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
 (defun asdf-entry-point ()
   (%main (list* "qvm-app" (uiop:command-line-arguments))))
 
+(defparameter *dispatch-table*
+  '(
+    ;; The behemoth. This is for backwards compatibility.
+    (:exact "/"                                  :POST handle-post-request)
+    ;; Now more sensible, fine-grained REST endpoints.
+    ;;
+    ;; Get the version of the server.
+    (:exact "/version"                           :GET |GET-version|)
+    ;; Ping the server.
+    (:exact "/ping"                              :GET |GET-ping|)
+    ;; Query, allocate, and delete persistent QVMs.
+    (:exact "/persist"                           :GET    |GET-persist|)
+    (:exact "/persist"                           :POST   |POST-persist|)
+    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)" :DELETE |DELETE-persist|)
+    ;; Remove any and all persistent QVMs.
+    (:exact "/obliviate"                         :POST   |POST-obliviate|)))
+
 (defun start-server (host port)
   #+forest-sdk
   (setq tbnl:*log-lisp-backtraces-p* nil
@@ -632,9 +649,12 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
                :port port
                :taskmaster (make-instance 'tbnl:one-thread-per-connection-taskmaster)))
   (when (null (dispatch-table *app*))
-    (push
-     (create-prefix/method-dispatcher "/" ':POST 'handle-post-request)
-     (dispatch-table *app*)))
+    (dolist (entry *dispatch-table*)
+      (push
+       (ecase (first entry)
+         (:exact (apply #'create-exact/method-dispatcher (rest entry)))
+         (:regex (apply #'create-regex/method-dispatcher (rest entry))))
+       (dispatch-table *app*))))
   (tbnl:start *app*))
 
 (defun stop-server ()
