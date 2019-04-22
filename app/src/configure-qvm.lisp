@@ -1,34 +1,23 @@
 ;;;; src/configure-qvm.lisp
 ;;;;
 ;;;; Author: Nikolas Tezak
+;;;;         Robert Smith
 
 (in-package #:qvm-app)
 
 (defun throw-error-if-over-allocated (num-qubits)
   "Throws an error if the number of qubits requested exceeds the max (defined from command line parameter --qubit-limit)."
   (when (and (integerp *qubit-limit*) (> num-qubits *qubit-limit*))
-    (error "~D qubits were requested, but the QVM ~
-             is limited to ~D qubits." num-qubits *qubit-limit*))
-  (when (and **persistent-wavefunction**
-             (> num-qubits (qvm::wavefunction-qubits **persistent-wavefunction**)))
-    (error "~D qubits were requested, but the persistent QVM ~
-            was specified to only have ~D. Consider increasing it."
-           num-qubits
-           (qvm::wavefunction-qubits **persistent-wavefunction**))))
+    (error "~D qubit~:P were requested, but the QVM ~
+            is limited to ~D qubit~:P." num-qubits *qubit-limit*)))
 
 (defun make-wavefunction (length)
-  (cond
-    (**persistent-wavefunction**
-     (values **persistent-wavefunction** nil))
-    (t
-     (multiple-value-bind (vec fin)
-         (allocate-vector (funcall **default-allocation** length))
-       (qvm::bring-to-zero-state vec)
-       (values vec fin)))))
+  (multiple-value-bind (vec fin)
+      (allocate-vector (funcall **default-allocation** length))
+    (qvm::bring-to-zero-state vec)
+    (values vec fin)))
 
-(defgeneric make-appropriate-qvm (simulation-method quil num-qubits gate-noise measurement-noise))
-
-(defmethod make-appropriate-qvm ((simulation-method (eql 'pure-state)) quil num-qubits gate-noise measurement-noise)
+(defun make-appropriate-qvm (quil num-qubits gate-noise measurement-noise)
   "Determine if a QVM:NOISY-QVM or QVM:DEPOLARIZING-QVM is needed."
   (throw-error-if-over-allocated num-qubits)
   (format-log "Making qvm of ~D qubit~:P" num-qubits)
@@ -44,19 +33,9 @@
       ((and (null gate-noise)
             (null measurement-noise)
             (not need-noisy-qvm))
-       (cond
-         ;; Are we using the persistent wavefunction?
-         (**persistent-wavefunction**
-          (make-instance 'qvm:pure-state-qvm
-                         :number-of-qubits num-qubits
-                         :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem
-                                                                    :classical-memory-model
-                                                                    classical-memory-model)
-                         :amplitudes **persistent-wavefunction**))
-         (t
-          (qvm:make-qvm num-qubits :classical-memory-model classical-memory-model
-                                   :allocation (funcall **default-allocation**
-                                                        (expt 2 num-qubits))))))
+       (qvm:make-qvm num-qubits :classical-memory-model classical-memory-model
+                                :allocation (funcall **default-allocation**
+                                                     (expt 2 num-qubits))))
       (need-noisy-qvm
        (when (not (and (null gate-noise)
                        (null measurement-noise)))
@@ -94,48 +73,6 @@
              q)))))))
 
 
-
-(defmethod make-appropriate-qvm ((simulation-method (eql 'full-density-matrix)) quil num-qubits gate-noise measurement-noise)
-  (when (and (integerp *qubit-limit*) (> num-qubits *qubit-limit*))
-    (error "~D qubits were requested, but the QVM ~
-             is limited to ~D qubits." num-qubits *qubit-limit*))
-  (when (and **persistent-wavefunction**
-             (> num-qubits
-                (qvm::full-density-number-of-qubits **persistent-wavefunction**)))
-    (error "~D qubits were requested, but the persistent QVM ~
-            was specified to only have ~D. Consider increasing it."
-           num-qubits
-           (qvm::full-density-number-of-qubits **persistent-wavefunction**)))
-  (let* ((kraus-ops (extract-kraus-ops quil))
-         (readout-povms (extract-readout-povms quil))
-         (classical-memory-model (qvm::memory-descriptors-to-qvm-memory-model
-                                  (quil:parsed-program-memory-definitions quil))))
-
-    ;; EXTRACT-KRAUS-OPS gives us matrices, but DENSITY-QVM is expecting superoperators
-    ;; Time to convert
-    (loop :for key :being :the :hash-keys :of kraus-ops
-          :do (setf (gethash key kraus-ops)
-                    (qvm::kraus-list (mapcar #'qvm::lift-matrix-to-superoperator
-                                             (gethash key kraus-ops)))))
-
-    (let ((memory (make-instance 'qvm:classical-memory-subsystem
-                                 :classical-memory-model
-                                 classical-memory-model)))
-      (if **persistent-wavefunction**
-          (make-instance 'qvm:density-qvm
-                         ;; if the persistent wf is allocated, we need to use the whole thing
-                         :number-of-qubits (qvm::full-density-number-of-qubits **persistent-wavefunction**)
-                         :noisy-gate-definitions kraus-ops
-                         :readout-povms readout-povms
-                         :classical-memory-subsystem memory
-                         :amplitudes **persistent-wavefunction**)
-          (qvm::make-density-qvm num-qubits
-                                 :noisy-gate-definitions kraus-ops
-                                 :readout-povms readout-povms
-                                 :classical-memory-subsystem memory)))))
-
-
-
 (defun extract-kraus-ops (quil)
   "Iterate over the instructions in QUIL, collect all PRAGMA ADD-KRAUS
 statements and convert them into a hash-table with keys
@@ -160,7 +97,6 @@ statements and convert them into a hash-table with keys
                 (change-class instr 'cl-quil:no-operation))
     kraus-ops))
 
-
 (defun extract-readout-povms (quil)
   "Iterate over the instructions in QUIL, collect all PRAGMA
 READOUT-POVM statements and convert them into a hash-table with keys
@@ -176,3 +112,57 @@ single qubit readout povm.
                 ;; warnings about these pragmas
                 (change-class instr 'cl-quil:no-operation))
     readout-povms))
+
+
+(defgeneric overwrite-execution-parameters-according-to-program
+    (qvm program &key &allow-other-keys)
+  ;; We want to execute every available method without playing funny
+  ;; games using :BEFORE/:AFTER/:AROUND in the standard method
+  ;; combination.
+  (:method-combination progn)
+  (:documentation "Overwrite execution parameters of the QVM according to the program, and any other keys of data. (This is used, for example, to extract and set the memory model or noise parameters.)"))
+
+;;; Overwrite the program and memory subsystem.
+(defmethod overwrite-execution-parameters-according-to-program progn
+  ((qvm qvm:pure-state-qvm) program &key &allow-other-keys)
+  ;; XXX: We may want to keep the classical memory across runs!
+  (load-program qvm program :supersede-memory-subsystem t)
+  nil)
+
+(defun %load-noisy-parameters (qvm program)
+  (setf (slot-value qvm 'qvm::noisy-gate-definitions) (extract-kraus-ops program)
+        (slot-value qvm 'qvm::readout-povms)          (extract-readout-povms program))
+  nil)
+
+;;; Overwrite the noisy operators.
+(defmethod overwrite-execution-parameters-according-to-program progn
+  ((qvm qvm:noisy-qvm) program &key &allow-other-keys)
+  (%load-noisy-parameters qvm program)
+  nil)
+
+(defmethod overwrite-execution-parameters-according-to-program progn
+  ((qvm qvm:density-qvm) program &key &allow-other-keys)
+  (%load-noisy-parameters qvm program)
+  ;; EXTRACT-KRAUS-OPS gives us matrices, but DENSITY-QVM is expecting superoperators
+  ;; Time to convert
+  (loop :with kraus-ops := (qvm::noisy-gate-definitions qvm)
+        :for key :being :the :hash-keys :of kraus-ops
+        :do (setf (gethash key kraus-ops)
+                  (qvm::kraus-list (mapcar #'qvm::lift-matrix-to-superoperator
+                                           (gethash key kraus-ops)))))
+  nil)
+
+(defmethod overwrite-execution-parameters-according-to-program progn
+  ((qvm qvm:depolarizing-qvm) program &key gate-noise measurement-noise &allow-other-keys)
+  (declare (ignore program))
+  ;; Only overwrite if we were provided with something.
+  (when (or gate-noise measurement-noise)
+    (let ((gate-noise        (or gate-noise        '(0.0 0.0 0.0)))
+          (measurement-noise (or measurement-noise '(0.0 0.0 0.0))))
+      (setf (qvm::probability-gate-x qvm)    (elt gate-noise 0)
+            (qvm::probability-gate-y qvm)    (elt gate-noise 1)
+            (qvm::probability-gate-z qvm)    (elt gate-noise 2)
+            (qvm::probability-measure-x qvm) (elt measurement-noise 0)
+            (qvm::probability-measure-y qvm) (elt measurement-noise 1)
+            (qvm::probability-measure-z qvm) (elt measurement-noise 2))
+      nil)))

@@ -4,6 +4,14 @@
 
 (in-package #:qvm-app)
 
+(defun extract-json-payload (request)
+  (let ((js (ignore-errors (yason:parse
+                            (hunchentoot:raw-post-data :request request
+                                                       :force-text t)))))
+    (unless  (hash-table-p js)
+      (error "Invalid JSON payload."))
+    js))
+
 (defun process-quil (quil)
   "Prepare the PARSED-PROGRAM QUIL for more efficient execution. Currently this only includes remapping the qubits to a minimal sequential set from 0 to (num-qubits-used - 1). Return two values: the processed Quil code and the mapping vector.
 
@@ -29,7 +37,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
 
 (defun check-required-fields (hash-table &rest fields)
   (dolist (field fields t)
-    (when (null (nth-value 1 (gethash field hash-table)))
+    (unless (nth-value 1 (gethash field hash-table))
       (error "Expected the field ~A to exist." field))))
 
 (defun get-quil-instrs-field (hash-table)
@@ -41,25 +49,44 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
   (unless (get-quil-instrs-field hash-table)
     (error "Expected a QUIL-INSTRUCTIONS type field to exist.")))
 
+(defun %execute (qvm)
+  (let (timing)
+    (format-log "Running experiment on ~A" (class-name (class-of qvm)))
+    (with-timing (timing)
+      (with-timeout
+        (qvm:run qvm)))
+    (format-log "Finished in ~D ms" timing)
+    qvm))
+
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
 
-  (let* ((api-key (tbnl:header-in* ':X-API-KEY request))
-         (user-id (tbnl:header-in* ':X-USER-ID request))
-         (data (hunchentoot:raw-post-data :request request
-                                          :force-text t))
-         (js (let* ((js (ignore-errors (yason:parse data))))
-               (unless (and (hash-table-p js)
-                            (check-required-fields js "type"))
-                 (error "Invalid request."))
+  (let* ((js (let ((js (extract-json-payload request)))
+               (check-required-fields js "type")
                js))
          (type (gethash "type" js))
          (gate-noise (gethash "gate-noise" js))
-         (measurement-noise (gethash "measurement-noise" js)))
+         (measurement-noise (gethash "measurement-noise" js))
+         (client-ip (tbnl:real-remote-addr request))
+         (persistent-qvm-key (gethash "persistent-key" js))
+         (persistent-qvm-record
+           (if (null persistent-qvm-key)
+               nil
+               (lookup-persistent-qvm-for-ip persistent-qvm-key client-ip))))
+    ;; (check-type num-qubits (integer 0))
+    (check-type gate-noise (or null alexandria:proper-list))
+    (check-type measurement-noise (or null alexandria:proper-list))
+    (assert (and (or (null gate-noise)
+                     (= 3 (length gate-noise)))
+                 (every #'realp gate-noise)))
+    (assert (and (or (null measurement-noise)
+                     (= 3 (length measurement-noise)))
+                 (every #'realp measurement-noise)))
+
     (qvm:with-random-state ((get-random-state (gethash "rng-seed" js)))
       ;; Basic logging
-      (format-log "Got ~S request from API key/User ID: ~S / ~S" type api-key user-id)
+      (format-log "Got a ~S request from ~S" type client-ip)
       ;; Dispatch
       (ecase (keywordify type)
         ;; For simple tests.
@@ -88,8 +115,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                                             :gate-noise gate-noise
                                             :measurement-noise measurement-noise)))
            (check-type results hash-table)
-           (with-output-to-string (s)
-             (yason:encode results s))))
+           (yason-encode-to-string results)))
 
         ;; Multishot with final measure.
         ((:multishot-measure)
@@ -133,11 +159,25 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
                 (quil (let ((quil:*allow-unresolved-applications* t))
-                        (process-quil (safely-parse-quil-string isns))))
-                (num-qubits (cl-quil:qubits-needed quil)))
-           (let ((qvm (perform-wavefunction *simulation-method* quil num-qubits
-                                            :gate-noise gate-noise
-                                            :measurement-noise measurement-noise))
+                        (cond
+                          ((null persistent-qvm-record)
+                           (process-quil (safely-parse-quil-string isns)))
+                          (t
+                           (safely-parse-quil-string isns)))))
+                (num-qubits (cl-quil:qubits-needed quil))
+                (qvm (cond
+                       ((null persistent-qvm-record)
+                        (let ((q (make-appropriate-qvm quil num-qubits gate-noise measurement-noise)))
+                          (qvm:load-program q quil)
+                          q))
+                       (t
+                        (let ((q (persistent-record-qvm persistent-qvm-record)))
+                          (overwrite-execution-parameters-according-to-program
+                           q quil
+                           :gate-noise gate-noise
+                           :measurement-noise measurement-noise)
+                          q)))))
+           (let ((qvm (%execute qvm))
                  send-response-time)
              (with-timing (send-response-time)
                (setf (tbnl:content-type*) "application/octet-stream")
@@ -155,7 +195,11 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
                 (quil (let ((quil:*allow-unresolved-applications* t))
-                        (process-quil (safely-parse-quil-string isns))))
+                        (cond
+                          ((null persistent-qvm-record)
+                           (process-quil (safely-parse-quil-string isns)))
+                          (t
+                           (safely-parse-quil-string isns)))))
                 (num-qubits (cl-quil:qubits-needed quil)))
            (let (send-response-time)
              (multiple-value-bind (qvm probabilities)
@@ -171,17 +215,4 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                    (map nil
                         (lambda (x) (write-double-float-as-binary x reply-stream))
                         probabilities))))
-             (format-log "Response sent in ~D ms." send-response-time))))
-
-        ((:run-for-effect)
-         (check-for-quil-instrs-field js)
-         (let* ((isns (get-quil-instrs-field js))
-                (quil (let ((quil:*allow-unresolved-applications* t))
-                        (process-quil (safely-parse-quil-string isns))))
-                (num-qubits (cl-quil:qubits-needed quil)))
-           (perform-run-for-effect *simulation-method* quil num-qubits
-                                   :gate-noise gate-noise
-                                   :measurement-noise measurement-noise)
-           (load-time-value
-            (with-output-to-string (s)
-              (yason:encode t s)))))))))
+             (format-log "Response sent in ~D ms." send-response-time))))))))

@@ -12,26 +12,33 @@
 (defvar *app* nil)
 (defvar *debug* nil)
 
-(global-vars:define-global-var **persistent-wavefunction** nil)
-(global-vars:define-global-var **persistent-wavefunction-finalizer** (constantly nil))
+(defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
+                                :app-name "qvm"
+                                :facility ':local0
+                                :log-writer (cl-syslog:null-log-writer))
+  "The CL-SYSLOG logger instance.")
+
+(defparameter *available-simulation-methods* '("pure-state" "density")
+  "List of available simulation methods.")
+
+(defparameter *available-allocation-kinds* '("native" "foreign")
+  "Kinds of allocations that are possible.")
 
 (global-vars:define-global-var **default-allocation**
     (lambda (n) (make-instance 'qvm:lisp-allocation :length n)))
 
 (deftype simulation-method ()
   "Available QVM simulation methods."
-  `(member pure-state full-density-matrix))
+  `(member pure-state                   ; Exact pure state evolution
+           pauli-pure-state             ; Pauli channel
+           stochastic-pure-state        ; Stochastic pure state evolution
+           density                      ; Density matrix evolution
+           ))
 
-(defvar *simulation-method*  nil
-  "The active QVM simulation method.
-
-This is set once upon initialization of the QVM and is controlled by the --similation-method option")
-
-(defvar *shared-memory-object-name* nil
-  "The name of the POSIX shared memory object, or nil if none is present.")
-
-(defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
-                                :app-name "qvm"
-                                :facility ':local0
-                                :log-writer (cl-syslog:null-log-writer))
-  "The CL-SYSLOG logger instance.")
+(defun string-to-simulation-method (string)
+  ;; We do this so we don't dynamically intern uncollectable symbols.
+  (alexandria:eswitch (string :test #'string=)
+    ("pure-state"            'pure-state)
+    ("pauli-pure-state"      'pauli-pure-state)
+    ("stochastic-pure-state" 'stochastic-pure-state)
+    ("density"               'density)))

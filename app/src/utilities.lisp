@@ -95,6 +95,13 @@
   (with-output-to-string (s)
     (yason:encode obj s)))
 
+(defun quit-nicely (&optional (code 0))
+  ;; Portability function.
+  #+sbcl
+  (sb-ext:exit :code code :abort nil)
+  #-sbcl
+  (uiop:quit code t))
+
 ;;; Functions depending on the server state
 
 (defun session-info ()

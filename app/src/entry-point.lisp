@@ -13,12 +13,6 @@
 (defparameter *benchmark-types* '("bell" "qft" "hadamard" "qualcs" #-forest-sdk "suite")
   "List of allowed benchmark names.")
 
-(defparameter *available-simulation-methods* '("pure-state" "full-density-matrix")
-  "List of available simulation methods.")
-
-(defparameter *available-allocation-kinds* '("native" "foreign")
-  "Kinds of allocations that are possible.")
-
 (defparameter *option-spec*
   `((("default-allocation")
      :type string
@@ -122,17 +116,6 @@
      :optional t
      :documentation "allow INCLUDE only files in this directory")
 
-    (("shared")
-     :type string
-     :optional t
-     :documentation "make the QVM use POSIX shared memory. If an empty string is provided, a name will be generated and printed out at initialization. Otherwise the name provided will be used. Must specify --qubits. Only relevant to --server option.")
-
-    (("simulation-method")
-     :type string
-     :initial-value "pure-state"
-     :documentation ,(format nil "the method of qvm simulation; includes {~{~S~^, ~}}. Note that FULL-DENSITY-MATRIX simulation requiresthat --qubits be specified."
-                             *available-simulation-methods*))
-
     #-forest-sdk
     (("debug")
      :type boolean
@@ -174,9 +157,9 @@
   (unless (magicl.foreign-libraries:foreign-symbol-available-p "zuncsd_"
                                                                'magicl.foreign-libraries:liblapack)
     (format t "The loaded version of LAPACK is missing necessary functionality.~%")
-    (uiop:quit 1))
+    (quit-nicely 1))
   (format t "Library check passed.~%")
-  (uiop:quit 0))
+  (quit-nicely 0))
 
 (defun show-welcome ()
   (format t "~&~
@@ -261,33 +244,6 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   "Safely read the Quil from the stream STREAM, defaulting to *STANDARD-INPUT*."
   (safely-parse-quil-string (slurp-lines stream)))
 
-(defgeneric make-shared-wavefunction (simulation-method num-qubits name))
-
-(defmethod make-shared-wavefunction ((simulation-method (eql 'pure-state)) num-qubits name)
-  (multiple-value-bind (vec finalizer)
-      (qvm:allocate-vector (make-instance 'qvm:posix-shared-memory-allocation
-                                          :name name
-                                          :length (expt 2 num-qubits)))
-    (setf (aref vec 0) (cflonum 1))
-    (values vec finalizer)))
-
-(defmethod make-shared-wavefunction ((simulation-method (eql 'full-density-matrix)) num-qubits name)
-    (multiple-value-bind (vec finalizer)
-        (qvm:allocate-vector (make-instance 'qvm:posix-shared-memory-allocation
-                                            :name name
-                                            :length (expt 2 (* 2 num-qubits))))
-      ;; It just so happens that the pure zero state in the
-      ;; density matrix formalism is the same as the pure zero state
-      ;; in the state-vector formalism)
-      (setf (aref vec 0) (cflonum 1))
-      (values vec finalizer)))
-
-(defun quit-nicely (&optional (code 0))
-  #+sbcl
-  (sb-ext:exit :code code :abort nil)
-  #-sbcl
-  (uiop:quit code t))
-
 (defun print-classical-memory (qvm)
   "Print all of the QVM's classical memory to *STANDARD-OUTPUT*."
   (let ((memories (qvm::classical-memories qvm)))
@@ -346,8 +302,6 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           benchmark
                           benchmark-type
                           compile
-                          shared
-                          simulation-method
                           #-forest-sdk debug
                           #+forest-sdk skip-version-check
                           quiet
@@ -442,19 +396,6 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     (swank:create-server :port swank-port
                          :dont-close t))
 
-  (unless (member simulation-method *available-simulation-methods* :test #'string-equal)
-    (error "Invalid simulation method: ~S" simulation-method))
-
-
-  ;; Determine the simulation method, and set *SIMULATION-METHOD* appropriately
-  (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app))
-  (when (and (eq *simulation-method* 'full-density-matrix)
-             (null qubits))
-    (format-log :err "Full density matrix simulation requires --qubits to be specified.")
-    (quit-nicely 1))
-
-  (format-log "Selected simulation method: ~A" simulation-method)
-
   ;; Deprecation of -e/--execute
   (when execute
     (format-log :warning "--execute/-e is deprecated. Elide this option ~
@@ -464,8 +405,6 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
     ;; Benchmark mode.
     ((or (eq T benchmark)
          (plusp benchmark))
-     (when shared
-       (format-log :warning "Ignoring --shared option in benchmark mode."))
      ;; Default number of qubits
      (when (eq T benchmark)
        (setf benchmark 26))
@@ -479,32 +418,11 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
        (format-log "Warning: Ignoring execute option: ~S" execute)
        (setf execute nil))
 
-     ;; Handle persistency and shared memory.
-     (when shared
-       (unless qubits
-         (format-log :err "The --qubits option must be specified for --shared.")
-         (quit-nicely 1))
-       (let ((shm-name (if (zerop (length shared))
-                           (format nil "QVM~D" (get-universal-time))
-                           shared)))
-         (setf *shared-memory-object-name* shm-name)
-         (multiple-value-setq (**persistent-wavefunction**
-                               **persistent-wavefunction-finalizer**)
-           (make-shared-wavefunction *simulation-method* qubits shm-name))
-         (format-log "ATTENTION! Created POSIX shared memory with name: ~A" shm-name)
-         (start-shm-info-server shm-name (length **persistent-wavefunction**)))
-
-       (format-log "Created persistent memory for ~D qubits" qubits))
      ;; Start the server
      (start-server-app host port))
 
     ;; Batch mode.
     (t
-     (when shared
-       (format-log :warning "Ignoring --shared option in execute mode."))
-     (when (eq *simulation-method* 'full-density-matrix)
-       (format-log "Full density matrix simulation not yet supported in batch mode.")
-       (quit-nicely 1))
      (let (qvm program alloc-time exec-time qubits-needed)
        ;; Read the Quil.
        (cond
@@ -570,7 +488,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
           (type-of condition)
           condition)
   (force-output *error-output*)
-  (uiop:quit 1))
+  (quit-nicely 1))
 
 (defun setup-debugger ()
   #+forest-sdk
@@ -581,13 +499,6 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
 (defun %main (argv)
   (setup-debugger)
   (setf *entered-from-main* t)
-
-  ;; This finalizer can _always_ be called even if there is no
-  ;; persistent wavefunction. Also, we note that the library
-  ;; implementing shared memory also takes care of this. We just want
-  ;; to be extra sure.
-  (qvm::call-at-exit **persistent-wavefunction-finalizer**)
-
   ;; Save the program name away.
   (setf *program-name* (pop argv))
 
@@ -617,20 +528,24 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
 (defun asdf-entry-point ()
   (%main (list* "qvm-app" (uiop:command-line-arguments))))
 
-(defparameter *dispatch-table*
+(global-vars:define-global-parameter **dispatch-table**
   '(
     ;; The behemoth. This is for backwards compatibility.
-    (:exact "/"                                  :POST handle-post-request)
+    (:exact "/"                                  :POST   handle-post-request)
     ;; Now more sensible, fine-grained REST endpoints.
     ;;
     ;; Get the version of the server.
-    (:exact "/version"                           :GET |GET-version|)
+    (:exact "/version"                           :GET    |GET-version|)
     ;; Ping the server.
-    (:exact "/ping"                              :GET |GET-ping|)
+    (:exact "/ping"                              :GET    |GET-ping|)
+    ;; Run a computation solely for its effect.
+    (:regex "/effect/(?<id>(?:[A-Za-z0-9]|-)+)"  :GET    |GET-effect/id|)
+    (:exact "/effect"                            :POST   |POST-effect|)
     ;; Query, allocate, and delete persistent QVMs.
     (:exact "/persist"                           :GET    |GET-persist|)
+    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)" :GET    |GET-persist/id|)
     (:exact "/persist"                           :POST   |POST-persist|)
-    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)" :DELETE |DELETE-persist|)
+    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)" :DELETE |DELETE-persist/id|)
     ;; Remove any and all persistent QVMs.
     (:exact "/obliviate"                         :POST   |POST-obliviate|)))
 
@@ -649,7 +564,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
                :port port
                :taskmaster (make-instance 'tbnl:one-thread-per-connection-taskmaster)))
   (when (null (dispatch-table *app*))
-    (dolist (entry *dispatch-table*)
+    (dolist (entry **dispatch-table**)
       (push
        (ecase (first entry)
          (:exact (apply #'create-exact/method-dispatcher (rest entry)))
