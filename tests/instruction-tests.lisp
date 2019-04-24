@@ -220,7 +220,7 @@
 
 (deftest test-measure-chain-compilation ()
   "Test that measure chains are collapsed nicely."
-  (let* ((pp (quil:parse-quil-string "
+  (let* ((pp (quil:parse-quil "
 DECLARE ro BIT[3]
 MEASURE 0
 X 0
