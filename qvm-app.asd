@@ -11,7 +11,7 @@
                ;; QFT
                #:qvm-examples
                ;; Quil parsing
-               (:version #:cl-quil "1.5.0")
+               (:version #:cl-quil "1.7.0")
                ;; Command line argument parsing
                #:command-line-arguments
                ;; ASDF-companion utility library
