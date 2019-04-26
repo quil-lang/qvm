@@ -162,3 +162,11 @@ Y 1"))))
                       ;; to a compatible size
                       (qvm-app::perform-expectation simulation-method state-prep ops 5))))
         (is (quil::double= 0.0 (first answer)))))))
+
+(deftest test-server-startup-behaviour ()
+  ;; Test that providing -p without -S does *not* start the server.
+  (is (typep (with-input-from-string (*standard-input* "H 0")
+               (quilc::%entry-point (list "quilc" "-p" "1000")))
+             'hash-table))
+  ;; TODO One day, some more checks that quilc behaves.
+  )

@@ -32,6 +32,7 @@
     (("server" #\S)
      :type boolean
      :optional t
+     :initial-value nil
      :documentation "start a QVM server")
 
     (("host")
@@ -474,7 +475,7 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
      (perform-benchmark benchmark-type benchmark))
 
     ;; Server mode.
-    ((or server port)
+    (server
      (when execute
        (format-log "Warning: Ignoring execute option: ~S" execute)
        (setf execute nil))
