@@ -170,3 +170,6 @@ Y 1"))))
              'hash-table))
   ;; TODO One day, some more checks that quilc behaves.
   )
+
+(deftest test-update-available ()
+  (is (qvm-app::sdk-update-available-p "0.0.0")))
