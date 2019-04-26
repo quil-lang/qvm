@@ -176,20 +176,20 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                            q quil
                            :gate-noise gate-noise
                            :measurement-noise measurement-noise)
-                          q)))))
-           (let ((qvm (%execute qvm))
-                 send-response-time)
-             (with-timing (send-response-time)
-               (setf (tbnl:content-type*) "application/octet-stream")
-               (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
-               (setf (tbnl:content-length*)
-                     (qvm:octets-required-for-quantum-state (qvm::amplitudes qvm)))
-               (let ((reply-stream (tbnl:send-headers)))
-                 ;; Write out the wavefunction.
-                 (qvm:map-amplitudes
-                  qvm
-                  (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
-             (format-log "Response sent in ~D ms." send-response-time))))
+                          q))))
+                send-response-time)
+           (setf qvm (%execute qvm))
+           (with-timing (send-response-time)
+             (setf (tbnl:content-type*) "application/octet-stream")
+             (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
+             (setf (tbnl:content-length*)
+                   (qvm:octets-required-for-quantum-state (qvm::amplitudes qvm)))
+             (let ((reply-stream (tbnl:send-headers)))
+               ;; Write out the wavefunction.
+               (qvm:map-amplitudes
+                qvm
+                (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
+           (format-log "Response sent in ~D ms." send-response-time)))
 
         ((:probabilities)
          (check-for-quil-instrs-field js)
