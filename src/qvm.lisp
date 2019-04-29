@@ -156,11 +156,12 @@ This will not clear previously installed gates from the QVM."
   ;; Patch the labels. This unfortunately mutates the program. It is
   ;; what it is. (We have this CONTINUE loop so that requisite
   ;; transforms get applied as needed.)
-  (handler-case
-      (setf program (quil:transform 'quil::patch-labels program))
-    (quil:unsatisfied-transform-dependency (c)
-      (declare (ignore c))
-      (invoke-restart 'continue)))
+  (handler-bind
+      ((quil:unsatisfied-transform-dependency
+         (lambda (c)
+           (declare (ignore c))
+           (invoke-restart 'continue))))
+    (setf program (quil:transform 'quil::patch-labels program)))
 
   ;; Load the code vector.
   (setf (program qvm) (quil:parsed-program-executable-code program))
