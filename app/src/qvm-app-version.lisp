@@ -36,18 +36,22 @@
   )
 
 (defun latest-sdk-version ()
-  "Get the latest QVM SDK version as tagged on Github"
-  (let* ((s (drakma:http-request "https://api.github.com/repos/rigetti/qvm/releases/latest"
-                                 :want-stream t))
-         (p (yason:parse s)))
-    (multiple-value-bind (version success)
-        (gethash "name" p)
-      ;; versions tagged on github are prefixed with "v"
-      (when success
-        (subseq version 1)))))
+  "Get the latest SDK quilc version, or NIL if unavailable."
+  (handler-case
+      (let* ((s (drakma:http-request "http://downloads.rigetti.com/qcs-sdk/version"
+                                     :want-stream t))
+             (p (yason:parse s)))
+        (multiple-value-bind (version success)
+            (gethash "qvm" p)
+          (when success
+            version)))
+    (usocket:ns-host-not-found-error (condition)
+      (declare (ignore condition))
+      nil)))
 
-(defun sdk-update-available-p ()
+(defun sdk-update-available-p (current-version)
   "Test whether the current QVM version is the latest SDK
 version. Second value returned indicates the latest version."
   (let ((latest (latest-sdk-version)))
-    (values (not (string= latest +QVM-VERSION+)) latest)))
+    (values (and latest (not (string= latest current-version)))
+            latest)))
