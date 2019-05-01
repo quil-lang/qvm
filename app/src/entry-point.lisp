@@ -175,9 +175,9 @@
   (unless (magicl.foreign-libraries:foreign-symbol-available-p "zuncsd_"
                                                                'magicl.foreign-libraries:liblapack)
     (format t "The loaded version of LAPACK is missing necessary functionality.~%")
-    (uiop:quit 1))
+    (quit-nicely 1))
   (format t "Library check passed.~%")
-  (uiop:quit 0))
+  (quit-nicely 0))
 
 (defun show-welcome ()
   (format t "~&~
@@ -571,7 +571,7 @@ Version ~A is available from https://www.rigetti.com/forest~%"
           (type-of condition)
           condition)
   (force-output *error-output*)
-  (uiop:quit 1))
+  (quit-nicely 1))
 
 (defun setup-debugger ()
   #+forest-sdk
