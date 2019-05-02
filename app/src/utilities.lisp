@@ -33,9 +33,6 @@
           :until (null byte)
           :do (write-char (code-char byte) s))))
 
-(defun keywordify (str)
-  (intern (string-upcase str) :keyword))
-
 (declaim (inline write-64-be))
 (defun write-64-be (byte stream)
   "Write the 64-bit unsigned-byte BYTE to the binary stream STREAM."

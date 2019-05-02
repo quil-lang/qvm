@@ -58,6 +58,18 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
     (format-log "Finished in ~D ms" timing)
     qvm))
 
+(defun post-request-type (type-string)
+  (gethash (string-upcase type-string)
+           (load-time-value
+            (alexandria:alist-hash-table
+             (loop :for kw :in '(:ping :version :info
+                                 :multishot :multishot-measure
+                                 :expectation :wavefunction)
+                   :collect (list (symbol-name kw) kw))
+             :test 'equal)
+            t)
+           ':unknown))
+
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
@@ -65,7 +77,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
   (let* ((js (let ((js (extract-json-payload request)))
                (check-required-fields js "type")
                js))
-         (type (gethash "type" js))
+         (type (post-request-type (gethash "type" js)))
          (gate-noise (gethash "gate-noise" js))
          (measurement-noise (gethash "measurement-noise" js))
          (client-ip (tbnl:real-remote-addr request))
@@ -88,7 +100,10 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
       ;; Basic logging
       (format-log "Got a ~S request from ~S" type client-ip)
       ;; Dispatch
-      (ecase (keywordify type)
+      (ecase type
+        ((:unknown)
+         (error "Unknown request type: ~A" type))
+
         ;; For simple tests.
         ((:ping)
          (handle-ping))
@@ -158,12 +173,11 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
         ((:wavefunction)
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
-                (quil (let ((quil:*allow-unresolved-applications* t))
-                        (cond
-                          ((null persistent-qvm-record)
-                           (process-quil (safely-parse-quil-string isns)))
-                          (t
-                           (safely-parse-quil-string isns)))))
+                (quil (cond
+                        ((null persistent-qvm-record)
+                         (process-quil (safely-parse-quil-string isns)))
+                        (t
+                         (safely-parse-quil-string isns))))
                 (num-qubits (cl-quil:qubits-needed quil))
                 (qvm (cond
                        ((null persistent-qvm-record)
@@ -189,30 +203,4 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                (qvm:map-amplitudes
                 qvm
                 (lambda (z) (write-complex-double-float-as-binary z reply-stream)))))
-           (format-log "Response sent in ~D ms." send-response-time)))
-
-        ((:probabilities)
-         (check-for-quil-instrs-field js)
-         (let* ((isns (get-quil-instrs-field js))
-                (quil (let ((quil:*allow-unresolved-applications* t))
-                        (cond
-                          ((null persistent-qvm-record)
-                           (process-quil (safely-parse-quil-string isns)))
-                          (t
-                           (safely-parse-quil-string isns)))))
-                (num-qubits (cl-quil:qubits-needed quil)))
-           (let (send-response-time)
-             (multiple-value-bind (qvm probabilities)
-                 (perform-probabilities *simulation-method* quil num-qubits
-                                        :gate-noise gate-noise
-                                        :measurement-noise measurement-noise)
-               (with-timing (send-response-time)
-                 (setf (tbnl:content-type*) "application/octet-stream")
-                 (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
-                 (setf (tbnl:content-length*)
-                       (* qvm::+octets-per-flonum+ (length probabilities)))
-                 (let ((reply-stream (tbnl:send-headers)))
-                   (map nil
-                        (lambda (x) (write-double-float-as-binary x reply-stream))
-                        probabilities))))
-             (format-log "Response sent in ~D ms." send-response-time))))))))
+           (format-log "Response sent in ~D ms." send-response-time)))))))

@@ -70,7 +70,7 @@
                              (:file "multishot-measure")
                              (:file "expectation")
                              (:file "probabilities")
-                             (:file "run-for-effect")
+                             (:file "effect")
                              (:file "persist")
                              (:file "obliviate")))
                (:file "benchmark-programs")

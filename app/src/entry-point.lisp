@@ -531,23 +531,31 @@ Version ~A is available from downloads.rigetti.com/qcs-sdk/forest-sdk.dmg~%"
 (global-vars:define-global-parameter **dispatch-table**
   '(
     ;; The behemoth. This is for backwards compatibility.
-    (:exact "/"                                  :POST   handle-post-request)
+    (:exact "/"                                        :POST   handle-post-request)
     ;; Now more sensible, fine-grained REST endpoints.
     ;;
     ;; Get the version of the server.
-    (:exact "/version"                           :GET    |GET-version|)
+    (:exact "/version"                                 :GET    |GET-version|)
     ;; Ping the server.
-    (:exact "/ping"                              :GET    |GET-ping|)
-    ;; Run a computation solely for its effect.
-    (:regex "/effect/(?<id>(?:[A-Za-z0-9]|-)+)"  :GET    |GET-effect/id|)
-    (:exact "/effect"                            :POST   |POST-effect|)
+    (:exact "/ping"                                    :GET    |GET-ping|)
     ;; Query, allocate, and delete persistent QVMs.
-    (:exact "/persist"                           :GET    |GET-persist|)
-    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)" :GET    |GET-persist/id|)
-    (:exact "/persist"                           :POST   |POST-persist|)
-    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)" :DELETE |DELETE-persist/id|)
+    (:exact "/persist"                                 :GET    |GET-persist|)
+    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)"       :GET    |GET-persist/id|)
+    (:exact "/persist"                                 :POST   |POST-persist|)
+    (:regex "/persist/(?<id>(?:[A-Za-z0-9]|-)+)"       :DELETE |DELETE-persist/id|)
     ;; Remove any and all persistent QVMs.
-    (:exact "/obliviate"                         :POST   |POST-obliviate|)))
+    (:exact "/obliviate"                               :POST   |POST-obliviate|)
+    ;; Run a computation solely for its effect.
+    (:regex "/effect/(?<id>(?:[A-Za-z0-9]|-)+)"        :POST   |POST-effect/id|)
+    ;; used to be called "wavefunction"
+    (:regex "/state/(?<id>(?:[A-Za-z0-9]|-)+)"         :POST   |POST-state/id|)
+    (:regex "/probabilities/(?<id>(?:[A-Za-z0-9]|-)+)" :POST   |POST-probabilities/id|)
+    ;; used to be called "multishot"
+    (:regex "/run/(?<id>(?:[A-Za-z0-9]|-)+)"           :POST   |POST-run/id|)
+    ;; used to be called "multishot-measure"
+    (:regex "/sample/(?<id>(?:[A-Za-z0-9]|-)+)"        :POST   |POST-sample/id|)
+    ;; 
+    (:regex "/expectation/(?<id>(?:[A-Za-z0-9]|-)+)"   :POST   |POST-expectation/id|)))
 
 (defun start-server (host port)
   #+forest-sdk
