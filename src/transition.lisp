@@ -82,7 +82,10 @@ Return two values:
         (measure qvm q)
       ;; Conditionally do an X.
       (when (= 1 measured-bit)
-        (apply-gate (quil:lookup-standard-gate "X")
+        (apply-gate (load-time-value
+                     (quil:gate-definition-to-gate
+                      (quil:lookup-standard-gate "X"))
+                     t)
                     (amplitudes measured-qvm)
                     (nat-tuple q)))
       (values measured-qvm (1+ (pc measured-qvm))))))
