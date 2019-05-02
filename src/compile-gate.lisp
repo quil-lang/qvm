@@ -329,15 +329,7 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
 (defun pull-teeth-to-get-a-gate (gate-app)
   "Produce a valid, applicable gate from the application GATE-APPLICATION."
   (check-type gate-app quil:gate-application)
-  (if (quil::anonymous-gate-application-p gate-app)
-      (quil::gate-application-gate gate-app)
-      (if (slot-boundp gate-app 'quil::gate)
-          (quil::gate-application-gate gate-app)
-          (funcall
-           (quil::operator-description-gate-lifter
-            (quil:application-operator gate-app))
-           (quil:gate-definition-to-gate
-            (quil::gate-application-resolution gate-app))))))
+  (quil:gate-application-gate gate-app))
 
 (defmethod compile-instruction (qvm (isn quil:gate-application))
   ;; Reject compiling an operator with unknown parameters.
