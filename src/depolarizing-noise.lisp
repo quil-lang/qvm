@@ -48,9 +48,9 @@ It should be that PX + PY + PZ <= 1.
 "
   (check-type qubit unsigned-byte)
   (assert (<= (+ px py pz) 1))
-  (let ((X (lookup-gate qvm "X"))
-        (Y (lookup-gate qvm "Y"))
-        (Z (lookup-gate qvm "Z"))
+  (let ((X (quil:gate-definition-to-gate (quil:lookup-standard-gate "X")))
+        (Y (quil:gate-definition-to-gate (quil:lookup-standard-gate "Y")))
+        (Z (quil:gate-definition-to-gate (quil:lookup-standard-gate "Z")))
         (sum (+ px py pz)))
     (probabilistically sum
       (setf px (/ px sum)

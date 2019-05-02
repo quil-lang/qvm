@@ -68,7 +68,9 @@ The arguments PX, PY and PZ can be interpreted as probabilities of a X, Y or Z e
            (loop :for sj :in '("X" "Y" "Z")
                  :for pj :in (list px py pz)
                  :collect (magicl:scale (sqrt pj)
-                                        (quil:gate-matrix (quil:lookup-standard-gate sj))))))
+                                        (quil:gate-matrix
+                                         (quil:gate-definition-to-gate
+                                          (quil:lookup-standard-gate sj)))))))
     (check-type psum (real 0 1))
     (when (< psum 1)
       (push (magicl:scale (sqrt (- 1.0 psum)) (magicl:make-identity-matrix 2)) scaled-paulis))
@@ -94,7 +96,9 @@ by GATE-NAME. The resulting gate is equivalent to I' * U, i.e., the ideal gate U
 a noisy identity gate I' as defined in MAKE-PAULI-NOISE-MAP.
 "
   (let ((kraus-ops (make-pauli-noise-map px py pz))
-        (u (quil:gate-matrix (quil:lookup-standard-gate gate-name))))
+        (u (quil:gate-matrix
+            (quil:gate-definition-to-gate
+             (quil:lookup-standard-gate gate-name)))))
     (mapcar (lambda (v) (magicl:multiply-complex-matrices v u)) kraus-ops)))
 
 (defun check-kraus-ops (kraus-ops)
