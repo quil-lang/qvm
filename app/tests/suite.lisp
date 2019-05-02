@@ -163,13 +163,33 @@ Y 1"))))
                       (qvm-app::perform-expectation simulation-method state-prep ops 5))))
         (is (quil::double= 0.0 (first answer)))))))
 
+(define-condition server-started-condition ()
+  ()
+  (:documentation "A throw-away condition for testing server startup behaviour."))
+
 (deftest test-server-startup-behaviour ()
-  ;; Test that providing -p without -S does *not* start the server.
-  (is (typep (with-input-from-string (*standard-input* "H 0")
-               (quilc::%entry-point (list "quilc" "-p" "1000")))
-             'hash-table))
-  ;; TODO One day, some more checks that quilc behaves.
-  )
+  "Test that providing -p without -S does *not* start the server."
+  (with-mocked-function-definitions
+      ((qvm-app::quit-nicely (lambda (&optional (code 0))
+                               (is (zerop code))
+                               (return-from test-server-startup-behaviour)))
+       (qvm-app::start-server-app (lambda (host port)
+                                    (declare (ignore host port))
+                                    (signal 'server-started-condition)))
+       ;; The entry point of qvm-app sets an error handler, which
+       ;; would catch the condition signalled above; entry point also
+       ;; disables the debugger and causes SBCL to exit. We don't want
+       ;; that, so we mock that function to do nothing.
+       (qvm-app::setup-debugger (constantly nil)))
+    (not-signals server-started-condition
+      ;; We mock the definition of qvm-app's server startup functions
+      ;; and signal a condition if they are invoked. If the test is to
+      ;; pass, then those functions should not be invoked and no
+      ;; condition should be signalled.
+      (with-input-from-string (*standard-input* "H 0")
+        (qvm-app::%main (list "qvm-app" "-p" "1000"))
+        ;; Note: this should be unreachable because we quit-nicely.
+        (is nil)))))
 
 (deftest test-update-available ()
   (multiple-value-bind (update-available-p update)
@@ -179,3 +199,5 @@ Y 1"))))
         ;; we don't want to error in that case. Skip instead.
         (is update)
         (skip))))
+
+
