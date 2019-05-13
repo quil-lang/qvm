@@ -56,10 +56,14 @@ information about the course of evaluation.
 .IP "-S, --server"
 (Server Mode) Run the QVM in Server Mode. Start an HTTP server and
 process HTTP API calls. To stop the server, use Ctrl-C.
+.IP "--host"
+Host on which to start the server. The default is "0.0.0.0".
 .IP "--benchmark [<n>]"
 (Benchmark Mode) Run the QVM benchmark on <n> qubits. The default is 26.
 .IP "-p <port>, --port <port>"
 (Server Mode) Run the QVM server on port <port>. The default is 5000.
+.IP "-q <qubits>, --qubits <qubits>"
+The number of qubits that should be forcefully used.
 .IP "--memory-limit <num-octets>"
 Limit the amount of classical memory to <num-octets> octets usable by
 an individual Quil program. The default is 65536.
@@ -92,7 +96,7 @@ the evolved wavefunction.
 JIT compile the Quil programs to make them run faster.
 .IP "--safe-include-directory <dir>"
 Restrict the Quil INCLUDE directive exclusively to <dir>.
-.IP "default-allocation" <alloc-kind>
+.IP "--default-allocation" <alloc-kind>
 Select where wavefunctions get allocated. The argument <alloc-kind>
 can either be "native" (default) for native allocation, or "foreign"
 for C-compatible allocation. The benefit of C-compatible allocation is
@@ -114,6 +118,21 @@ latest SDK release; a locally built QVM may be ahead of the SDK
 version.
 .IP "--proxy <proxy>"
 Proxy to be used with --check-sdk-version.
+.IP "--check-libraries"
+Check that required foreign libraries are present and that their
+versions are adequate.
+.IP "--quiet"
+Disable all non-essential printed output to stdout (banner, etc.).
+.IP "--log-level"
+Maximum logging level. Any logs with a less sever level will be
+ignored. Available options are "debug" (default), "info", "notice",
+"warning", "err", "crit", "alert", or "emerg".
+.IP "--benchmark <qubits>"
+Perform a benchmark on <qubits> number of qubits (default is
+26).
+.IP "--benchmark-type <type>"
+The type of benchmark to run. Available options are "bell" (default),
+"qft", "hadamard", "qualcs", or "suite" (non-SDK).
 
 .SH SHARED MEMORY MODE
 Shared memory mode is enabled by "--shared" and allows for
