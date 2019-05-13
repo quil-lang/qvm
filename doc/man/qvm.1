@@ -108,6 +108,12 @@ must be specified.
 The QVM executes Quil using the simulation method indicated by <name>.
 Currently, there is support for the following methods: "pure-state",
 "full-density-matrix".
+.IP "--check-sdk-version"
+Check for an update to the QVM. This check is specifically against the
+latest SDK release; a locally built QVM may be ahead of the SDK
+version.
+.IP "--proxy <proxy>"
+Proxy to be used with --check-sdk-version.
 
 .SH SHARED MEMORY MODE
 Shared memory mode is enabled by "--shared" and allows for
