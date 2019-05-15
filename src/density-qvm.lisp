@@ -169,7 +169,6 @@ recorded outcome j may be different."))
   (single-kraus
    (make-instance 'quil:simple-gate
                   :name (string (gensym "KRAUS-TEMP"))
-                  :dimension (quil:gate-dimension mat)
                   :matrix mat)))
 
 (defgeneric conjugate-entrywise (gate)
@@ -177,12 +176,10 @@ recorded outcome j may be different."))
   (:method ((gate quil:simple-gate))
     (make-instance 'quil:simple-gate
                    :name (concatenate 'string (quil:gate-name gate) "*")
-                   :dimension (quil:gate-dimension gate)
                    :matrix (magicl:conjugate-entrywise (quil:gate-matrix gate))))
   (:method ((gate quil:permutation-gate))
     (make-instance 'quil:permutation-gate
                    :name (concatenate 'string (quil:gate-name gate) "*")
-                   :dimension (quil:gate-dimension gate)
                    :permutation (quil:permutation-gate-permutation gate)))
   (:method ((gate quil:parameterized-gate))
     (make-instance 'quil:parameterized-gate
