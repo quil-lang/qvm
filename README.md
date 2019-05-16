@@ -1,6 +1,7 @@
 # Rigetti Quantum Virtual Machine
 
 [![pipeline status](https://gitlab.com/rigetti/qvm/badges/master/pipeline.svg)](https://gitlab.com/rigetti/qvm/commits/master)
+[![docker pulls](https://img.shields.io/docker/pulls/rigetti/qvm.svg)](https://hub.docker.com/r/rigetti/qvm)
 
 This directory contains two projects. The first, `qvm`, is a classical
 implementation of the Quantum Abstract Machine (QAM), called a
@@ -318,7 +319,7 @@ If you would like to change the port of the server to `PORT`, you can alter the 
 docker run --rm -it -p PORT:PORT rigetti/qvm -S -p PORT
 ```
 
-Port 5000 is exposed using the EXPOSE directive in the `rigetti/quilc` image, so you can
+Port 5000 is exposed using the EXPOSE directive in the `rigetti/qvm` image, so you can
 additionally use the `-P` option to automatically bind this container port to a randomly
 assigned host port. You can then inspect the mapping using `docker port CONTAINER [PORT]`.
 
