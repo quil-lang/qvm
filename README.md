@@ -187,6 +187,8 @@ exhaustion. There are two options to ameliorate this.
 The first is to increase the memory available for the QVM, recompile
 and specify the workspace size (in MB)
 
+boop
+
 ```
 $ make QVM_WORKSPACE=4096 qvm
 ```
