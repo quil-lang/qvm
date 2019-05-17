@@ -189,6 +189,7 @@ and specify the workspace size (in MB)
 
 ```
 $ make QVM_WORKSPACE=4096 qvm
+$ make install
 ```
 
 The second is to use a different allocator when running the QVM, by
@@ -197,7 +198,7 @@ example, to run a 30 qubit benchmark on a QVM configured for far less
 memory, one can do:
 
 ```
-$ ./qvm --default-allocator "foreign" --benchmark 30 -c
+$ qvm --default-allocator "foreign" --benchmark 30 -c
 ```
 
 This is *not* the default since this memory is not fully managed by
@@ -208,7 +209,7 @@ The QVM application has a few command-line switches used to configure
 the QVM. To explore those options, see the output of the following command:
 
 ```
-$ ./qvm --help
+$ qvm --help
 ```
 
 By default, the QVM accepts programs from stdin and writes
@@ -217,10 +218,10 @@ results to stdout. Log messages are written to stderr.
 > *Note*: If you're on Windows and using the Command Prompt, the echo
 > command is slightly different to the examples shown below: do not
 > wrap your quil code in quotes. For example, in Command Prompt, you
-> would do `echo H 0 | ./qvm` *not* `echo "H 0" | ./qvm`.
+> would do `echo H 0 | qvm` *not* `echo "H 0" | qvm`.
 
 ```
-$ echo 'H 0' | ./qvm
+$ echo 'H 0' | qvm
 ******************************
 * Welcome to the Rigetti QVM *
 ******************************
@@ -247,7 +248,7 @@ Alternatively the QVM can be started as a server that will accept
 instructions over a network connection
 
 ```
-$ ./qvm -S
+$ qvm -S
 ******************************
 * Welcome to the Rigetti QVM *
 ******************************
