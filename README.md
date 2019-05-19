@@ -1,6 +1,7 @@
 # Rigetti Quantum Virtual Machine
 
 [![pipeline status](https://gitlab.com/rigetti/qvm/badges/master/pipeline.svg)](https://gitlab.com/rigetti/qvm/commits/master)
+[![github release](https://img.shields.io/github/release/rigetti/qvm.svg)](https://github.com/rigetti/qvm/releases)
 [![docker pulls](https://img.shields.io/docker/pulls/rigetti/qvm.svg)](https://hub.docker.com/r/rigetti/qvm)
 
 This directory contains two projects. The first, `qvm`, is a classical
