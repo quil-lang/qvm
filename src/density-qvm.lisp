@@ -400,7 +400,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
                 (push bit measured-bits)
                 (setf qam ret-qam)))
     (values
-     ret-qam
+     qam
      measured-bits)))
 
 (defmethod measure-all ((qvm density-qvm))
