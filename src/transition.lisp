@@ -117,13 +117,13 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
   (setf (pc qvm) (1+ (pc qvm)))
   (measure-and-store qvm
-		     (quil:qubit-index (quil:measurement-qubit instr))
-		     (quil:measure-address instr)))
+                     (quil:qubit-index (quil:measurement-qubit instr))
+                     (quil:measure-address instr)))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
   (setf (pc qvm) (1+ (pc qvm)))
   (measure qvm
-	   (quil:qubit-index (quil:measurement-qubit instr))))
+           (quil:qubit-index (quil:measurement-qubit instr))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr measure-all))
   (multiple-value-bind (qvm state) (measure-all qvm)
@@ -160,10 +160,10 @@ the specified QVM."
           (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
       (unless (= given-qubits expected-qubits)
         (error 'invalid-instruction-encountered
-	       :instruction instr
-	       :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
-				expected-qubits
-				given-qubits))))
+               :instruction instr
+               :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
+                                expected-qubits
+                                given-qubits))))
     
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (setf (pc qvm) (1+ (pc qvm)))
