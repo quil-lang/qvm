@@ -47,13 +47,15 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:no-operation))
   (declare (ignore instr))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:pragma))
   ;; Ignore the pragma. Warn only when we want verbose output.
   (when *transition-verbose*
     (warn "Ignoring PRAGMA: ~A" instr))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:halt))
   (declare (ignore instr))

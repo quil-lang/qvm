@@ -246,9 +246,8 @@ POVM must be a 4-element list of double-floats."))
 
          (normalize-wavefunction (amplitudes qvm))
 
-         (values
-          qvm
-          (1+ (pc qvm)))))
+         (setf (pc qvm) (1+ (pc qvm)))
+	 qvm))
       (t
        ;; if we cannot find a noise model for the gate forward args to
        ;; the original (transition ...) call defined for
@@ -269,13 +268,9 @@ POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
               (perturb-measurement c p00 p01 p10 p11))))))
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:measure))
-  (multiple-value-bind (ret-qvm counter)
-      ;; perform actual measurement
-      (call-next-method qvm instr)
+  (let ((ret-qvm (call-next-method qvm instr)))
     (corrupt-measurement-outcome ret-qvm instr)
-    (values
-     ret-qvm
-     counter)))
+    ret-qvm))
 
 
 (defun perturb-measured-bits (qvm measured-bits)
