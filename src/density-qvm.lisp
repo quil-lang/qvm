@@ -368,10 +368,21 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     ;; Return the qvm.
     (values qvm cbit)))
 
-(defmethod transition ((qvm density-qvm) (instr quil:measure))
+(defmethod transition ((qvm density-qvm) (instr quil:measure))d
   (let ((ret-qvm (call-next-method qvm instr)))
     (corrupt-measurement-outcome ret-qvm instr)
     ret-qvm))
+
+(defmethod transition ((qvm density-qvm) (instr quil:measure-discard))
+  (let ((ρ (density-matrix-view qvm))
+        (q (quil:qubit-index (quil:measurement-qubit instr))))
+    (dotimes (i (array-dimension ρ 0))
+      (dotimes (j (array-dimension ρ 1))
+        ;; Zeroing out the non-basis state projectors (the
+        ;; off-diagonal projectors: |0><1| and |1><0|)
+        (unless (logbitp q (logeqv i j))
+          (setf (aref ρ i j) (cflonum 0))))))
+  (values qvm (1+ (pc qvm))))
 
 ;;; This is what the QAM does.
 (defun naive-measure-all (qam)
