@@ -22,7 +22,7 @@
 (defgeneric transition (qvm instr)
   (:documentation "Execute the instruction INSTR on the QVM.
 
-Return just the resulting (possibly modified) QVM after executing INSTR. (used to also return pc)"))
+Return just the resulting (possibly modified) QVM after executing INSTR. (Historical note: used to also return pc)"))
 
 (defmethod transition :around (qvm instr)
   (cond
@@ -103,15 +103,15 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
   qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-when))
-  (if (= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
-      (setf (pc qvm) (quil:jump-label instr))
-      (incf (pc qvm)))
+  (cond ((= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
+	 (setf (pc qvm) (quil:jump-label instr)))
+	(t (incf (pc qvm))))
   qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-unless))
-  (if (zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
-      (setf (pc qvm) (quil:jump-label instr))
-      (incf (pc qvm)))
+  (cond ((zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
+	 (setf (pc qvm) (quil:jump-label instr)))
+	(t (incf (pc qvm))))
   qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

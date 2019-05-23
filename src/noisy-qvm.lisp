@@ -268,10 +268,9 @@ POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
               (perturb-measurement c p00 p01 p10 p11))))))
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:measure))
-  (let ((ret-qvm (call-next-method qvm instr)))
-    (corrupt-measurement-outcome ret-qvm instr)
-    ret-qvm))
-
+  (call-next-method qvm instr)
+  (corrupt-measurement-outcome qvm instr)
+  qvm)
 
 (defun perturb-measured-bits (qvm measured-bits)
   "Randomly perturb the values of the bits in MEASURED-BITS in
