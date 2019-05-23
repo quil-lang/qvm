@@ -17,13 +17,15 @@
   (let ((mref (quil:classical-target instr)))
     (setf (dereference-mref qvm mref)
           (- (dereference-mref qvm mref))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-negate-integer))
   (let ((mref (quil:classical-target instr)))
     (setf (dereference-mref qvm mref)
           (ensure-s64 (- (dereference-mref qvm mref)))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; NOT ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -31,19 +33,22 @@
   (let ((mref (quil:classical-target instr)))
     (setf (dereference-mref qvm mref)
           (- 1 (dereference-mref qvm mref))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-not-octet))
   (let ((mref (quil:classical-target instr)))
     (setf (dereference-mref qvm mref)
           (ldb (byte 8 0) (lognot (dereference-mref qvm mref)))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-not-integer))
   (let ((mref (quil:classical-target instr)))
     (setf (dereference-mref qvm mref)
           (ldb (byte 64 0) (lognot (dereference-mref qvm mref)))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; AND ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -55,7 +60,8 @@
                     left/target
                     (dereference-mref qvm left/target)
                     ,(subst 'right '* accessor)))
-     (values qvm (1+ (pc qvm)))))
+     (setf (pc qvm) (1+ (pc qvm)))
+     qvm))
 
 (defun %perform-and (qvm target-mref left right)
   (setf (dereference-mref qvm target-mref) (logand left right)))
@@ -137,7 +143,8 @@
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-exchange))
   (rotatef (dereference-mref qvm (quil:classical-left-operand instr))
            (dereference-mref qvm (quil:classical-right-operand instr)))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; CONVERT ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -145,37 +152,43 @@
   (let ((dst (quil:classical-left-operand instr))
         (src (quil:classical-right-operand instr)))
     (setf (dereference-mref qvm dst) (ensure-s64 (round (dereference-mref qvm src)))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-convert-integer/bit))
   (let ((dst (quil:classical-left-operand instr))
         (src (quil:classical-right-operand instr)))
     (setf (dereference-mref qvm dst) (ensure-s64 (dereference-mref qvm src))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-convert-real/integer))
   (let ((dst (quil:classical-left-operand instr))
         (src (quil:classical-right-operand instr)))
     (setf (dereference-mref qvm dst) (coerce (dereference-mref qvm src) 'double-float)))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-convert-real/bit))
   (let ((dst (quil:classical-left-operand instr))
         (src (quil:classical-right-operand instr)))
     (setf (dereference-mref qvm dst) (coerce (dereference-mref qvm src) 'double-float)))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-convert-bit/integer))
   (let ((dst (quil:classical-left-operand instr))
         (src (quil:classical-right-operand instr)))
     (setf (dereference-mref qvm dst) (boolean-bit (not (zerop (dereference-mref qvm src))))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:classical-convert-bit/real))
   (let ((dst (quil:classical-left-operand instr))
         (src (quil:classical-right-operand instr)))
     (setf (dereference-mref qvm dst) (boolean-bit (not (zerop (dereference-mref qvm src))))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; ADD, SUB, MUL, DIV ;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -252,7 +265,8 @@
          (offset (dereference-mref qvm (quil:classical-right-operand instr))))
     (assert (not (null src-mv)) () "Couldn't find memory named ~S" src-name)
     (setf (dereference-mref qvm dst) (memory-view-ref src-mv offset)))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; STORE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -265,7 +279,8 @@
     (setf (memory-view-ref dst-mv offset) (etypecase src
                                             (quil:constant (quil:constant-value src))
                                             (quil:memory-ref (dereference-mref qvm src)))))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; EQ, LT, LE, GT, GE ;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -281,7 +296,8 @@
                         (boolean-bit
                          (,comparator (dereference-mref qvm a)
                                       (dereference-mref qvm b))))
-                  (values qvm (1+ (pc qvm))))))))
+                  (setf (pc qvm) (1+ (pc qvm)))
+		  qvm)))))
 
 (defmacro define-direct-comparator (comparator &rest classes)
   `(progn
@@ -295,7 +311,8 @@
                         (boolean-bit
                          (,comparator (dereference-mref qvm a)
                                       (quil:constant-value b))))
-                  (values qvm (1+ (pc qvm))))))))
+                  (setf (pc qvm) (1+ (pc qvm)))
+		  qvm)))))
 
 (define-indirect-comparator =
   quil:classical-equality-bit/bit/bit

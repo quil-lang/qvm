@@ -22,13 +22,7 @@
 (defgeneric transition (qvm instr)
   (:documentation "Execute the instruction INSTR on the QVM.
 
-Return two values:
-
-    1. The resulting (possibly modified) QVM after executing INSTR.
-
-    2. The new value the program counter should be to execute the next
-       relevant instruction. If this value is null, then execution
-       should be halted."))
+Return just the resulting (possibly modified) QVM after executing INSTR. (used to also return pc)"))
 
 (defmethod transition :around (qvm instr)
   (cond
@@ -63,12 +57,14 @@ Return two values:
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:halt))
   (declare (ignore instr))
-  (values qvm nil))
+  (setf (pc qvm) nil)
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:reset))
   (declare (ignore instr))
   (reset-quantum-state qvm)
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:reset-qubit))
   ;; We have to be careful here. We can't just project out this qubit,
@@ -88,24 +84,27 @@ Return two values:
                      t)
                     (amplitudes measured-qvm)
                     (nat-tuple q)))
-      (values measured-qvm (1+ (pc measured-qvm))))))
+      (setf (pc qvm) (1+ (pc measured-qvm)))
+      qvm)))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:wait))
   (declare (ignore instr))
   (when *transition-verbose*
     (warn "WAIT executed. Nothing to wait on."))
-  (values qvm (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;; JUMP, JUMP-WHEN, JUMP-UNLESS ;;;;;;;;;;;;;;;;;;;;
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:unconditional-jump))
-  (values qvm (quil:jump-label instr)))
+  (setf (pc qvm) (quil:jump-label instr))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-when))
-  (values qvm
-          (if (= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
-              (quil:jump-label instr)
-              (1+ (pc qvm)))))
+  (if (= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
+      (setf (pc qvm) (quil:jump-label instr))
+      (setf (pc qvm) (1+ (pc qvm))))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-unless))
   (if (zerop (dereference-mref qvm (quil:conditional-jump-address instr)))

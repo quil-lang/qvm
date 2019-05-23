@@ -271,9 +271,8 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
         (declare (ignore new-density))
         (setf (temporary-state qvm) temp-storage))
 
-      (values
-       qvm
-       (1+ (pc qvm)))))
+    (setf (pc qvm) (1+ (pc qvm)))
+    qvm))
 
 
 ;;; Measurement
@@ -370,13 +369,9 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     (values qvm cbit)))
 
 (defmethod transition ((qvm density-qvm) (instr quil:measure))
-  (multiple-value-bind (ret-qvm counter)
-      ;; perform actual measurement
-      (call-next-method qvm instr)
-    (corrupt-measurement-outcome qvm instr)
-    (values
-     ret-qvm
-     counter)))
+  (let ((ret-qvm (call-next-method qvm instr)))
+    (corrupt-measurement-outcome ret-qvm instr)
+    ret-qvm))
 
 ;;; This is what the QAM does.
 (defun naive-measure-all (qam)
