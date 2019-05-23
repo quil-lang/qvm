@@ -271,7 +271,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
         (declare (ignore new-density))
         (setf (temporary-state qvm) temp-storage))
 
-    (setf (pc qvm) (1+ (pc qvm)))
+    (incf (pc qvm))
     qvm))
 
 
@@ -382,7 +382,8 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
         ;; off-diagonal projectors: |0><1| and |1><0|)
         (unless (logbitp q (logeqv i j))
           (setf (aref ρ i j) (cflonum 0))))))
-  (values qvm (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
 
 ;;; This is what the QAM does.
 (defun naive-measure-all (qam)

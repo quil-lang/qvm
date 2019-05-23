@@ -47,14 +47,14 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:no-operation))
   (declare (ignore instr))
-  (setf (pc qvm) (1+ (pc qvm)))
+  (incf (pc qvm))
   qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:pragma))
   ;; Ignore the pragma. Warn only when we want verbose output.
   (when *transition-verbose*
     (warn "Ignoring PRAGMA: ~A" instr))
-  (setf (pc qvm) (1+ (pc qvm)))
+  (incf (pc qvm))
   qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:halt))
@@ -65,7 +65,7 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
 (defmethod transition ((qvm pure-state-qvm) (instr quil:reset))
   (declare (ignore instr))
   (reset-quantum-state qvm)
-  (setf (pc qvm) (1+ (pc qvm)))
+  (incf (pc qvm))
   qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:reset-qubit))
@@ -93,7 +93,7 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
   (declare (ignore instr))
   (when *transition-verbose*
     (warn "WAIT executed. Nothing to wait on."))
-  (setf (pc qvm) (1+ (pc qvm)))
+  (incf (pc qvm))
   qvm)
 
 ;;;;;;;;;;;;;;;;;;;; JUMP, JUMP-WHEN, JUMP-UNLESS ;;;;;;;;;;;;;;;;;;;;
@@ -105,25 +105,25 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-when))
   (if (= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
       (setf (pc qvm) (quil:jump-label instr))
-      (setf (pc qvm) (1+ (pc qvm))))
+      (incf (pc qvm)))
   qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-unless))
   (if (zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
       (setf (pc qvm) (quil:jump-label instr))
-      (setf (pc qvm) (1+ (pc qvm))))
+      (incf (pc qvm)))
   qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
-  (setf (pc qvm) (1+ (pc qvm)))
+  (incf (pc qvm))
   (measure-and-store qvm
                      (quil:qubit-index (quil:measurement-qubit instr))
                      (quil:measure-address instr)))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
-  (setf (pc qvm) (1+ (pc qvm)))
+  (incf (pc qvm))
   (measure qvm
            (quil:qubit-index (quil:measurement-qubit instr))))
 
@@ -131,7 +131,7 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (used t
   (multiple-value-bind (qvm state) (measure-all qvm)
     (loop :for (qubit . address) :in (measure-all-storage instr)
           :do (setf (dereference-mref qvm address) (nth qubit state)))
-    (setf (pc qvm) (1+ (pc qvm)))
+    (incf (pc qvm))
     qvm))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -168,11 +168,11 @@ the specified QVM."
                                 given-qubits))))
     
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
-    (setf (pc qvm) (1+ (pc qvm)))
+    (incf (pc qvm))
     qvm))
 
 (defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.
   (apply-gate instr (amplitudes qvm) nil)
-  (setf (pc qvm) (1+ (pc qvm)))
+  (incf (pc qvm))
   qvm)

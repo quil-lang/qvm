@@ -246,7 +246,7 @@ POVM must be a 4-element list of double-floats."))
 
          (normalize-wavefunction (amplitudes qvm))
 
-         (setf (pc qvm) (1+ (pc qvm)))
+         (incf (pc qvm))
 	 qvm))
       (t
        ;; if we cannot find a noise model for the gate forward args to
