@@ -368,7 +368,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     ;; Return the qvm.
     (values qvm cbit)))
 
-(defmethod transition ((qvm density-qvm) (instr quil:measure))d
+(defmethod transition ((qvm density-qvm) (instr quil:measure))
   (let ((ret-qvm (call-next-method qvm instr)))
     (corrupt-measurement-outcome ret-qvm instr)
     ret-qvm))
