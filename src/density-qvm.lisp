@@ -102,12 +102,12 @@ recorded outcome j may be different."))
            (etypecase allocation
              (null
               (make-instance 'lisp-allocation :length expected-size))
-            (string
-             (make-instance 'posix-shared-memory-allocation :length expected-size
-                                                            :name allocation))
-            (t
-             (assert (= (expt 2 (* 2 num-qubits)) (allocation-length allocation)))
-             allocation)))
+             (string
+              (make-instance 'posix-shared-memory-allocation :length expected-size
+                                                             :name allocation))
+             (t
+              (assert (= (expt 2 (* 2 num-qubits)) (allocation-length allocation)))
+              allocation)))
          (amplitudes (getf initargs ':amplitudes)))
     (multiple-value-bind (amps fin)
         (if (null amplitudes)
@@ -258,18 +258,18 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
           (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
           (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits))
           (sop    (or (gethash (list gate-name qubits)
-                                 (noisy-gate-definitions qvm))
-                        (single-kraus gate))))
+                               (noisy-gate-definitions qvm))
+                      (single-kraus gate))))
 
-      (multiple-value-bind (new-density temp-storage)
-          (apply-superoperator sop
-                               (amplitudes qvm)
-                               (apply #'nat-tuple qubits)
-                               (apply #'nat-tuple ghosts)
-                               :temporary-storage (temporary-state qvm)
-                               :params params)
-        (declare (ignore new-density))
-        (setf (temporary-state qvm) temp-storage))
+    (multiple-value-bind (new-density temp-storage)
+        (apply-superoperator sop
+                             (amplitudes qvm)
+                             (apply #'nat-tuple qubits)
+                             (apply #'nat-tuple ghosts)
+                             :temporary-storage (temporary-state qvm)
+                             :params params)
+      (declare (ignore new-density))
+      (setf (temporary-state qvm) temp-storage))
 
     (incf (pc qvm))
     qvm))

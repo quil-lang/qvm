@@ -104,14 +104,14 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-when))
   (cond ((= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
-	 (setf (pc qvm) (quil:jump-label instr)))
-	(t (incf (pc qvm))))
+         (setf (pc qvm) (quil:jump-label instr)))
+        (t (incf (pc qvm))))
   qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-unless))
   (cond ((zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
-	 (setf (pc qvm) (quil:jump-label instr)))
-	(t (incf (pc qvm))))
+         (setf (pc qvm) (quil:jump-label instr)))
+        (t (incf (pc qvm))))
   qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
