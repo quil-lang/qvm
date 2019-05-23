@@ -29,11 +29,10 @@
         (finish-output *trace-output*))))
 
   ;; Actually start the execution.
-  (loop :with pc := 0
-        :until (or (null pc) (>= pc (loaded-program-length qvm))) :do
-          (setf (pc qvm) pc)
-          (multiple-value-setq (qvm pc)
-            (transition qvm (current-instruction qvm)))
+  (setf (pc qvm) 0)
+  (loop :until (or (null (pc qvm)) (>= (pc qvm) (loaded-program-length qvm))) :do
+          (setf qvm
+		(transition qvm (current-instruction qvm)))
         :finally (return qvm)))
 
 (defun run-program (num-qubits program)

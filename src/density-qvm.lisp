@@ -102,12 +102,12 @@ recorded outcome j may be different."))
            (etypecase allocation
              (null
               (make-instance 'lisp-allocation :length expected-size))
-            (string
-             (make-instance 'posix-shared-memory-allocation :length expected-size
-                                                            :name allocation))
-            (t
-             (assert (= (expt 2 (* 2 num-qubits)) (allocation-length allocation)))
-             allocation)))
+             (string
+              (make-instance 'posix-shared-memory-allocation :length expected-size
+                                                             :name allocation))
+             (t
+              (assert (= (expt 2 (* 2 num-qubits)) (allocation-length allocation)))
+              allocation)))
          (amplitudes (getf initargs ':amplitudes)))
     (multiple-value-bind (amps fin)
         (if (null amplitudes)
@@ -258,22 +258,21 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
           (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
           (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits))
           (sop    (or (gethash (list gate-name qubits)
-                                 (noisy-gate-definitions qvm))
-                        (single-kraus gate))))
+                               (noisy-gate-definitions qvm))
+                      (single-kraus gate))))
 
-      (multiple-value-bind (new-density temp-storage)
-          (apply-superoperator sop
-                               (amplitudes qvm)
-                               (apply #'nat-tuple qubits)
-                               (apply #'nat-tuple ghosts)
-                               :temporary-storage (temporary-state qvm)
-                               :params params)
-        (declare (ignore new-density))
-        (setf (temporary-state qvm) temp-storage))
+    (multiple-value-bind (new-density temp-storage)
+        (apply-superoperator sop
+                             (amplitudes qvm)
+                             (apply #'nat-tuple qubits)
+                             (apply #'nat-tuple ghosts)
+                             :temporary-storage (temporary-state qvm)
+                             :params params)
+      (declare (ignore new-density))
+      (setf (temporary-state qvm) temp-storage))
 
-      (values
-       qvm
-       (1+ (pc qvm)))))
+    (incf (pc qvm))
+    qvm))
 
 
 ;;; Measurement
@@ -370,15 +369,9 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     (values qvm cbit)))
 
 (defmethod transition ((qvm density-qvm) (instr quil:measure))
-  (multiple-value-bind (ret-qvm counter)
-      ;; Perform actual measurement. This will call PURE-STATE-QVM's
-      ;; TRANSITION method which will in turn call the above MEASURE
-      ;; method on the density qvm.
-      (call-next-method qvm instr)
-    (corrupt-measurement-outcome ret-qvm instr)
-    (values
-     ret-qvm
-     counter)))
+  (call-next-method qvm instr)
+  (corrupt-measurement-outcome qvm instr)
+  qvm)
 
 (defmethod transition ((qvm density-qvm) (instr quil:measure-discard))
   (let ((ρ (density-matrix-view qvm))
@@ -389,7 +382,8 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
         ;; off-diagonal projectors: |0><1| and |1><0|)
         (unless (logbitp q (logeqv i j))
           (setf (aref ρ i j) (cflonum 0))))))
-  (values qvm (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
 
 ;;; This is what the QAM does.
 (defun naive-measure-all (qam)

@@ -22,13 +22,7 @@
 (defgeneric transition (qvm instr)
   (:documentation "Execute the instruction INSTR on the QVM.
 
-Return two values:
-
-    1. The resulting (possibly modified) QVM after executing INSTR.
-
-    2. The new value the program counter should be to execute the next
-       relevant instruction. If this value is null, then execution
-       should be halted."))
+Return just the resulting (possibly modified) QVM after executing INSTR. (Historical note: used to also return pc)"))
 
 (defmethod transition :around (qvm instr)
   (cond
@@ -53,22 +47,26 @@ Return two values:
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:no-operation))
   (declare (ignore instr))
-  (values qvm (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:pragma))
   ;; Ignore the pragma. Warn only when we want verbose output.
   (when *transition-verbose*
     (warn "Ignoring PRAGMA: ~A" instr))
-  (values qvm (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:halt))
   (declare (ignore instr))
-  (values qvm nil))
+  (setf (pc qvm) nil)
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:reset))
   (declare (ignore instr))
   (reset-quantum-state qvm)
-  (values qvm (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:reset-qubit))
   ;; We have to be careful here. We can't just project out this qubit,
@@ -88,51 +86,53 @@ Return two values:
                      t)
                     (amplitudes measured-qvm)
                     (nat-tuple q)))
-      (values measured-qvm (1+ (pc measured-qvm))))))
+      (setf (pc qvm) (1+ (pc measured-qvm)))
+      qvm)))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:wait))
   (declare (ignore instr))
   (when *transition-verbose*
     (warn "WAIT executed. Nothing to wait on."))
-  (values qvm (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;; JUMP, JUMP-WHEN, JUMP-UNLESS ;;;;;;;;;;;;;;;;;;;;
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:unconditional-jump))
-  (values qvm (quil:jump-label instr)))
+  (setf (pc qvm) (quil:jump-label instr))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-when))
-  (values qvm
-          (if (= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
-              (quil:jump-label instr)
-              (1+ (pc qvm)))))
+  (cond ((= 1 (dereference-mref qvm (quil:conditional-jump-address instr)))
+         (setf (pc qvm) (quil:jump-label instr)))
+        (t (incf (pc qvm))))
+  qvm)
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-unless))
-  (values qvm
-          (if (zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
-              (quil:jump-label instr)
-              (1+ (pc qvm)))))
+  (cond ((zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
+         (setf (pc qvm) (quil:jump-label instr)))
+        (t (incf (pc qvm))))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
-  (values
-   (measure-and-store qvm
-                      (quil:qubit-index (quil:measurement-qubit instr))
-                      (quil:measure-address instr))
-   (1+ (pc qvm))))
+  (incf (pc qvm))
+  (measure-and-store qvm
+                     (quil:qubit-index (quil:measurement-qubit instr))
+                     (quil:measure-address instr)))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
-  (values
-   (measure qvm
-            (quil:qubit-index (quil:measurement-qubit instr)))
-   (1+ (pc qvm))))
+  (incf (pc qvm))
+  (measure qvm
+           (quil:qubit-index (quil:measurement-qubit instr))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr measure-all))
   (multiple-value-bind (qvm state) (measure-all qvm)
     (loop :for (qubit . address) :in (measure-all-storage instr)
           :do (setf (dereference-mref qvm address) (nth qubit state)))
-    (values qvm (1+ (pc qvm)))))
+    (incf (pc qvm))
+    qvm))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -162,19 +162,17 @@ the specified QVM."
           (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
       (unless (= given-qubits expected-qubits)
         (error 'invalid-instruction-encountered
-                 :instruction instr
-                 :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
-                                  expected-qubits
-                                  given-qubits))))
+               :instruction instr
+               :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
+                                expected-qubits
+                                given-qubits))))
     
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
-    (values
-       qvm
-       (1+ (pc qvm)))))
+    (incf (pc qvm))
+    qvm))
 
 (defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.
   (apply-gate instr (amplitudes qvm) nil)
-  (values
-   qvm
-   (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
