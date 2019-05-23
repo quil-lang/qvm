@@ -171,3 +171,19 @@
                   (setf results-desired
                         (remove measured-bits results-desired :test #'equalp)))))
     (is (plusp tries))))
+
+(deftest test-density-qvm-1q-measure-discard ()
+  "Test that measure discard behaves as expected."
+  ;; We prepare the pure state (1/sqrt(2))(|0> - |1>). If we were to
+  ;; measure and record the outcome, we would know with certainty
+  ;; which of |0> or |1> the state had collapsed into. If we discard
+  ;; that outcome (in some sense) then we should find ourselves in the
+  ;; mixed state |ψ> = 1/2 (|0><0| + |1><1|)
+  (let ((p (quil:parse-quil "H 0
+MEASURE 0"))
+        (qvm (make-density-qvm 1)))
+    (load-program qvm p)
+    (run qvm)
+    (let ((mat (qvm::density-matrix-view qvm)))
+      (is (double-float= (realpart (aref mat 1 1)) 0.5))
+      (is (double-float= (realpart (aref mat 0 0)) 0.5)))))
