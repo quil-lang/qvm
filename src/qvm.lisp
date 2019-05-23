@@ -83,13 +83,9 @@
 (defun make-qvm (num-qubits &key (classical-memory-model quil:**empty-memory-model**)
                                  (allocation nil))
   "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits.
-
 ALLOCATION is an optional argument with the following behavior.
-
     - If it's NULL (default), then a standard wavefunction in the Lisp heap will be allocated.
-
     - If it's a STRING, then the wavefunction will be allocated as a shared memory object, accessible by that name.
-
     - Otherwise, it's assumed to be an object that is compatible with the ALLOCATION-LENGTH and ALLOCATE-VECTOR methods
 "
   (check-type num-qubits unsigned-byte)
@@ -126,7 +122,6 @@ ALLOCATION is an optional argument with the following behavior.
 
 (defun install-gates (qvm program)
   "Install the gates specified by the program PROGRAM into the QVM.
-
 This will not clear previously installed gates from the QVM."
   ;; XXX FIXME: This should be improved by some first class definition
   ;; of environments.
@@ -236,7 +231,6 @@ This will not clear previously installed gates from the QVM."
 
 (defun lookup-gate (qvm gate &key error)
   "Look up the definition of the gate named GATE (a symbol or string) within the QVM. Return NIL if not found.
-
 If ERROR is T, then signal an error when the gate wasn't found."
   (let ((name (etypecase gate
                 (symbol (symbol-name gate))
@@ -248,10 +242,10 @@ If ERROR is T, then signal an error when the gate wasn't found."
       found-gate)))
 
 (defmethod reset-quantum-state ((qvm pure-state-qvm))
-    ;; We don't reset the classical state because that memory could be
-    ;; shared.
-    (bring-to-zero-state (amplitudes qvm))
-    qvm)
+  ;; We don't reset the classical state because that memory could be
+  ;; shared.
+  (bring-to-zero-state (amplitudes qvm))
+  qvm)
 
 (defun reset-classical-memory (qvm)
   "Zero out all of the classical memory of the qvm QVM."

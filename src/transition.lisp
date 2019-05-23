@@ -108,31 +108,30 @@ Return two values:
               (1+ (pc qvm)))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:jump-unless))
-  (values qvm
-          (if (zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
-              (quil:jump-label instr)
-              (1+ (pc qvm)))))
+  (if (zerop (dereference-mref qvm (quil:conditional-jump-address instr)))
+      (setf (pc qvm) (quil:jump-label instr))
+      (setf (pc qvm) (1+ (pc qvm))))
+  qvm)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
-  (values
-   (measure-and-store qvm
-                      (quil:qubit-index (quil:measurement-qubit instr))
-                      (quil:measure-address instr))
-   (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  (measure-and-store qvm
+		     (quil:qubit-index (quil:measurement-qubit instr))
+		     (quil:measure-address instr)))
 
 (defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
-  (values
-   (measure qvm
-            (quil:qubit-index (quil:measurement-qubit instr)))
-   (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  (measure qvm
+	   (quil:qubit-index (quil:measurement-qubit instr))))
 
 (defmethod transition ((qvm pure-state-qvm) (instr measure-all))
   (multiple-value-bind (qvm state) (measure-all qvm)
     (loop :for (qubit . address) :in (measure-all-storage instr)
           :do (setf (dereference-mref qvm address) (nth qubit state)))
-    (values qvm (1+ (pc qvm)))))
+    (setf (pc qvm) (1+ (pc qvm)))
+    qvm))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -162,19 +161,17 @@ the specified QVM."
           (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
       (unless (= given-qubits expected-qubits)
         (error 'invalid-instruction-encountered
-                 :instruction instr
-                 :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
-                                  expected-qubits
-                                  given-qubits))))
+	       :instruction instr
+	       :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
+				expected-qubits
+				given-qubits))))
     
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
-    (values
-       qvm
-       (1+ (pc qvm)))))
+    (setf (pc qvm) (1+ (pc qvm)))
+    qvm))
 
 (defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.
   (apply-gate instr (amplitudes qvm) nil)
-  (values
-   qvm
-   (1+ (pc qvm))))
+  (setf (pc qvm) (1+ (pc qvm)))
+  qvm)
