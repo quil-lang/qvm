@@ -146,7 +146,7 @@ clean:
 # Clean the Lisp cache, reindex local projects.
 clean-cache:
 	@echo "Deleting $(LISP_CACHE)"
-	$(QUICKLISP) --noinform --non-interactive \
+	$(QUICKLISP) \
              --eval "(ql:register-local-projects)"
 	rm -rf $(LISP_CACHE)
 
