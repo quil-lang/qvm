@@ -5,30 +5,22 @@
 (in-package #:qvm)
 
 (defun hadamard-program (n)
-  (make-instance
-   'quil:parsed-program
-   :executable-code (loop :with v := (make-array (* 2 n))
-                          :for i :below n
-                          :do (setf (aref v i)
-                                    (make-instance
-                                     'quil:unresolved-application
-                                     :operator "H"
-                                     :arguments (list (quil:qubit i))))
-                              (setf (aref v (+ n i))
-                                    (make-instance
-                                     'quil:measure
-                                     :qubit (quil:qubit i)
-                                     :address (quil:address i)))
-                          :finally (return v))))
+  (quil:parse-quil
+   (with-output-to-string (s)
+     (format s "DECLARE ro BIT[~d]~%" n)
+     (dotimes (q n)
+       (format s "H ~d~%" q))
+     (dotimes (q n)
+       (format s "MEASURE ~d ro[~d]~%" q q)))))
 
 (defun testme ()
   (prepare-for-parallelization 1)
-  (setf qvm::*qubits-required-for-parallelization* 100)
-  
+  (setf qvm::*qubits-required-for-parallelization* 49)
+
   (setf qvm:*transition-verbose* t)
   (let ((q (make-qvm 25))
         (p (hadamard-program 25)))
-    (load-program q p)
+    (load-program q p :supersede-memory-subsystem t)
     (sb-sprof:with-profiling (:max-samples 10000
                               :report :flat
                               :threads :all
@@ -36,8 +28,4 @@
       (run q)))
   nil)
 
-
 ;;; MAIN
-
-
-
