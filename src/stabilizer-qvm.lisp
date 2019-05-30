@@ -44,7 +44,7 @@
          (unless exists?
            (setf (gethash name **cliffords**)
                  (quil.clifford:matrix-to-clifford
-                  (quil:gate-matrix 
+                  (quil:gate-matrix
                    (pull-teeth-to-get-a-gate gate-app))))
            (setf clifford (gethash name **cliffords**)))
          clifford)))
@@ -74,7 +74,8 @@
 
 (defmethod transition ((qvm stabilizer-qvm) (instr quil:reset))
   (cl-quil.clifford::zero-out-tableau (stabilizer-qvm-tableau qvm))
-  (values qvm (1+ (pc qvm))))
+  (incf (pc qvm))
+  qvm)
 
 (defmethod transition ((qvm stabilizer-qvm) (instr quil:reset-qubit))
   (let ((q (quil:qubit-index (quil:reset-qubit-target instr))))
@@ -85,20 +86,19 @@
       (when (= 1 measured-bit)
         ;; XXX: We are abusing the fact that TRANSITION doesn't modify the pc.
         (transition qvm (quil::build-gate "X" () q)))
-      (values measured-qvm (1+ (pc measured-qvm))))))
+      (incf (pc measured-qvm))
+      measured-qvm)))
 
 (defmethod transition ((qvm stabilizer-qvm) (instr quil:measure))
-  (values
-   (measure-and-store qvm
-                      (quil:qubit-index (quil:measurement-qubit instr))
-                      (quil:measure-address instr))
-   (1+ (pc qvm))))
+  (incf (pc qvm))
+  (measure-and-store qvm
+                     (quil:qubit-index (quil:measurement-qubit instr))
+                     (quil:measure-address instr)))
 
 (defmethod transition ((qvm stabilizer-qvm) (instr quil:measure-discard))
-  (values
-   (measure qvm
-            (quil:qubit-index (quil:measurement-qubit instr)))
-   (1+ (pc qvm))))
+  (incf (pc qvm))
+  (measure qvm
+           (quil:qubit-index (quil:measurement-qubit instr))))
 
 (defmethod transition ((qvm stabilizer-qvm) (instr quil:gate-application))
   (let* ((clifford (gate-application-to-clifford instr))
@@ -116,7 +116,8 @@
     (apply (compile-clifford clifford)
            (stabilizer-qvm-tableau qvm)
            qubits)
-    (values qvm (1+ (pc qvm)))))
+    (incf (pc qvm))
+    qvm))
 
 
 ;;; A little test fixture.
@@ -189,4 +190,5 @@
     (apply (compile-clifford clifford :cache nil)
            (stabilizer-qvm-tableau qvm)
            qubits)
-    (values qvm (1+ (pc qvm)))))
+    (incf (pc qvm))
+    qvm))
