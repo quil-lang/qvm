@@ -33,4 +33,5 @@
                (:file "noisy-qvm-tests")
                (:file "density-qvm-tests")
                (:file "stress-tests")
-               (:file "path-simulate-tests")))
+               (:file "path-simulate-tests")
+               (:file "parallel-tests")))
