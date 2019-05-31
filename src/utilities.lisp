@@ -167,8 +167,7 @@ The result will be a list of cons cells representing half-open intervals (on the
   #-unix
   1)
 
-(let ((prepared? nil)
-      (workers-allotted nil))
+(let ((prepared? nil))
   (defun prepare-for-parallelization (&optional num-workers)
     "Prepare for parallelization.
 
@@ -188,14 +187,13 @@ NOTE: This must be done before computations can be done.
              cores is ~D."
             num-workers
             (count-logical-cores))
-    (when (and prepared? (integerp num-workers) (not (= workers-allotted num-workers))) ; force creating a new kernel
+    (when (and prepared? (integerp num-workers) (not (= (lparallel:kernel-worker-count) num-workers))) ; force creating a new kernel
       (lparallel:end-kernel :wait t)
       (setf prepared? nil))
     (unless prepared?
       (let ((num-workers (or num-workers (count-logical-cores))))
         (setf lparallel:*kernel*
               (lparallel:make-kernel num-workers :name "QVM Worker"))
-        (setf workers-allotted num-workers)
         (setf prepared? t)))
 
     (values)))
