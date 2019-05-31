@@ -168,7 +168,7 @@ The result will be a list of cons cells representing half-open intervals (on the
   1)
 
 (defun prepare-for-parallelization (&optional num-workers)
-  "Prepare for parallelization.
+  "Create a worker pool if none exists or if NUM-WORKERS has changed.
 
 If NUM-WORKERS is not provided, the number of workers will be set to the number of logical cores of your machine. ~
 This function does nothing if NUM-WORKERS workers have already been created. ~
