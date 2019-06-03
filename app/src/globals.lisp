@@ -11,6 +11,8 @@
 (defvar *safe-include-directory* nil)
 (defvar *app* nil)
 (defvar *debug* nil)
+(defvar *single-user-mode* nil
+  "Is the qvm-app configured for just a single user at a time? (Using this doesn't affect correctness, just performance.)")
 
 (global-vars:define-global-var **persistent-wavefunction** nil)
 (global-vars:define-global-var **persistent-wavefunction-finalizer** (constantly nil))

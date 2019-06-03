@@ -48,6 +48,18 @@
            addresses)
   results)
 
+(defun merge-results (result-tables)
+  "Merge the result tables RESULT-TABLES into a single table."
+  (let ((merged-results (make-hash-table :test 'equal)))
+    (dolist (table result-tables merged-results)
+      (maphash (lambda (key value)
+                 (setf (gethash key merged-results)
+                       (nreconc value (gethash key merged-results nil))))
+               table))))
+
+(defvar *trials-required-for-parallelization* 1000
+  "The number of trials required for parallelization to occur.")
+
 (defun %perform-multishot (simulation-method quil num-qubits addresses num-trials gate-noise measurement-noise)
   (check-type simulation-method simulation-method)
   (check-type quil quil:parsed-program)
@@ -69,12 +81,49 @@
                    (= 3 (length measurement-noise)))
                (every #'realp measurement-noise)))
 
+  (cond
+    ;; If we have too many qubits or too few trials, just do things
+    ;; single-threaded.
+    ((or (not *single-user-mode*)
+         (>= num-qubits qvm::*qubits-required-for-parallelization*)
+         (< num-trials *trials-required-for-parallelization*)
+         (= 1 (lparallel:kernel-worker-count)))
+     (%perform-multishot/single-threaded simulation-method quil num-qubits addresses num-trials gate-noise measurement-noise))
+    ;; Parallelize the loop across all cores.
+    (t
+     (let* ((num-tasks (lparallel:kernel-worker-count))
+            (task-counts (loop :for (start . end) :in (qvm::subdivide num-trials num-tasks)
+                               :collect (- end start)))
+            (ch (lparallel:make-channel))
+            timing
+            results)
+       (format-log "Running multishot experiment with ~D worker~:P" num-tasks)
+       (with-timing (timing)
+         ;; Submit work to everybody.
+         (dolist (task-count task-counts)
+           (lparallel:submit-task ch (let ((task-count task-count))
+                                       (lambda ()
+                                         (%perform-multishot/single-threaded
+                                          simulation-method
+                                          quil
+                                          num-qubits
+                                          addresses
+                                          task-count
+                                          gate-noise
+                                          measurement-noise)))))
+         ;; Receive and coalesce results.
+         (setf results (merge-results (loop :repeat num-tasks :collect (lparallel:receive-result ch)))))
+       (format-log "Finished all multishot tasks in ~D ms" timing)
+       results))))
+
+(defun %perform-multishot/single-threaded (simulation-method quil num-qubits addresses num-trials gate-noise measurement-noise)
   ;; Bail out early if there's no work to actually do.
   (when (or (zerop (hash-table-count addresses))
             (zerop num-trials)
             (loop :for v :being :the :hash-values :of addresses
                   :always (null v)))
-    (return-from %perform-multishot (load-time-value (make-hash-table) t)))
+    (return-from %perform-multishot/single-threaded
+      (load-time-value (make-hash-table) t)))
 
   (let ((qvm (make-appropriate-qvm simulation-method quil num-qubits gate-noise measurement-noise))
         (trial-results (make-hash-table :test 'equal

@@ -133,6 +133,9 @@ Perform a benchmark on <qubits> number of qubits (default is
 .IP "--benchmark-type <type>"
 The type of benchmark to run. Available options are "bell" (default),
 "qft", "hadamard", "qualcs", or "suite" (non-SDK).
+.IP "--single-user"
+If the QVM server is intended to service only one request at a time,
+this option may make processing the requests more efficient.
 
 .SH SHARED MEMORY MODE
 Shared memory mode is enabled by "--shared" and allows for

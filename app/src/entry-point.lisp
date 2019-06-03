@@ -24,6 +24,12 @@
      :type string
      :initial-value "native"
      :documentation "select where wavefunctions get allocated: \"native\" (default) for native allocation, \"foreign\" for C-compatible allocation")
+
+    (("single-user")
+     :type boolean
+     :optional t
+     :documentation "enable if the server is intended to service just one request at a time")
+
     (("execute" #\e)
      :type boolean
      :optional t
@@ -335,6 +341,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           check-libraries
                           verbose
                           default-allocation
+                          single-user
                           execute
                           help
                           memory-limit
@@ -501,7 +508,16 @@ Version ~A is available from https://www.rigetti.com/forest~%"
          (start-shm-info-server shm-name (length **persistent-wavefunction**)))
 
        (format-log "Created persistent memory for ~D qubits" qubits))
-     ;; Start the server
+     ;; Start the server.
+     ;;
+     ;; As we learned from quilc, making a global state mutation isn't
+     ;; good for reproducible tests. This should really be bound as a
+     ;; special, or threaded through. But since QVM-APP hasn't gone
+     ;; through the transformation yet of changing these global
+     ;; mutations to bindings, we just follow suit here.
+     (setf *single-user-mode* single-user)
+     (when *single-user-mode*
+       (format-log "Starting the QVM server in single-user mode"))
      (start-server-app host port))
 
     ;; Batch mode.
