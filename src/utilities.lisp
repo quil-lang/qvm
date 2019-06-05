@@ -167,32 +167,31 @@ The result will be a list of cons cells representing half-open intervals (on the
   #-unix
   1)
 
-(defun prepare-for-parallelization (&optional num-workers)
+(defun prepare-for-parallelization (&optional (num-workers (count-logical-cores)))
   "Create a worker pool if none exists or if NUM-WORKERS has changed.
 
-If NUM-WORKERS is not provided, the number of workers will be set to the number of logical cores of your machine. ~
-This function does nothing if NUM-WORKERS workers have already been created. ~
-If NUM-WORKERS is provided it should be less than the number of logical cores of your machine.
+If NUM-WORKERS is not provided, the number of workers will be set to the number of logical cores of your machine.
+This function does nothing if NUM-WORKERS workers have already been created.
+If NUM-WORKERS is provided it should be less than or equal to the number of logical cores of your machine.
 
-NOTE: This must be done before computations can be done.
+NOTE: This must be called before computations can be done.
 "
-  (check-type num-workers (or null (integer 1)))
-  (assert (or (null num-workers) (<= num-workers (count-logical-cores)))
-          ()
-          "The number of workers for parallelization exceeds the ~
-             number of cores. This could be because ~
-             #'QVM:PREPARE-FOR-PARALLELIZATION was called too early. ~
-             The number of workers is ~D and the number of logical ~
-             cores is ~D."
-          num-workers
-          (count-logical-cores))
-  (when (and lparallel:*kernel*
-             (integerp num-workers)
-             (not (= (lparallel:kernel-worker-count) num-workers))) ; force creating a new kernel
-    (lparallel:end-kernel :wait t))
-  (unless lparallel:*kernel*
+  (check-type num-workers (integer 1))
+  (when (> num-workers (count-logical-cores))
+    (warn
+     "The number of workers for parallelization exceeds the ~
+       number of cores. This could be because ~
+       #'QVM:PREPARE-FOR-PARALLELIZATION was called too early. ~
+       The number of workers is ~D and the number of logical ~
+       cores is ~D."
+     num-workers
+     (count-logical-cores)))
+  (unless (or (null lparallel:*kernel*)
+              (= (lparallel:kernel-worker-count) num-workers)) ; force creating a new kernel
+    (lparallel:end-kernel :wait t)) ; Sets lparallel:*kernel* to nil as a side effect
+  (when (null lparallel:*kernel*)
     (setf lparallel:*kernel*
-          (lparallel:make-kernel (or num-workers (count-logical-cores)) :name "QVM Worker")))
+          (lparallel:make-kernel num-workers :name "QVM Worker")))
 
   (values))
 
