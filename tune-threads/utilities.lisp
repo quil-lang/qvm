@@ -17,6 +17,11 @@ If the minimum is degenerate, the fist index is returned."
       (setf min-val next-val)
       (setf min-ind (1+ ind)))))
 
+(defun norm-min (list)
+  "Normalize LIST by its minimum element"
+  (let ((min (apply #'min list)))
+    (map 'list #'(lambda (x) (/ x min)) list)))
+
 (defmacro simple-time (num-trials &body body)
   "Execute BODY NUM-TRIALS times and return the run time in seconds."
   (alexandria:with-gensyms (start-time stop-time i)
