@@ -15,21 +15,22 @@
   (qvm:run q)
   (reset-qvm q))
 
-;; (defun prepare-quil-prog-for-timing (q &key (num-trials 1) (num-threads 4))
-;;   )
-
-(defun time-quil-prog-raw (q &key (num-trials 1) (num-threads 4))
+(defun prepare-quil-prog-for-timing (num-threads)
   "Time the quil program in qvm Q and return the number of seconds."
   (setf qvm:*transition-verbose* nil)
   (setf cl-quil::*allow-unresolved-applications* t)
   (setf qvm::*qubits-required-for-parallelization* 2) ; for testing, always use parallelization
   (qvm::prepare-for-parallelization num-threads)
+  nil)
+
+(defun time-quil-prog-raw (q &key (num-trials 1) (num-threads 4))
+  "Time the quil program in qvm Q and return the number of seconds."
+  (prepare-quil-prog-for-timing num-threads)
   (simple-time num-trials (run-and-reset-qvm q)))
 
-(defun time-quil-prog (&key (num-trials 1) (num-threads 4) (q nil))
+(defun time-quil-prog (q &key (num-trials 1) (num-threads 4))
   "Time the quil program in qvm Q and return the number of seconds per thread per trial."
-  (/ (time-quil-prog-raw q :num-trials num-trials :num-threads num-threads))
-  (* num-threads num-trials))
+  (/ (time-quil-prog-raw q :num-trials num-trials :num-threads num-threads) (* num-threads num-trials)))
 
 (defun hadamard-program-source (n)
   "Return a quil source program that performs a Hadamard gate on each of N qubits and measures each qubit."
@@ -56,7 +57,7 @@
 
 (defun time-hadamard (&key (num-trials 1) (num-threads 4) (num-qubits 10))
   "Time the Hadamard program and return the number of seconds per thread per trial."
-  (time-quil-prog :num-trials num-trials :num-threads num-threads :q (prepare-hadamard-test num-qubits)))
+  (time-quil-prog (prepare-hadamard-test num-qubits) :num-trials num-trials :num-threads num-threads))
 
 (defun scan-num-threads (&key (num-trials 1) (num-qubits 12)
                               (max-num-threads (qvm:count-logical-cores))
@@ -65,4 +66,4 @@
   "Return a list of execution time per sample per thread of the qvm/program Q for different numbers of threads.
 The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
   (norm-min (loop :for i :from min-num-threads :to max-num-threads
-                  :collect (time-quil-prog :num-threads i :num-trials num-trials :q q))))
+                  :collect (time-quil-prog q :num-threads i :num-trials num-trials ))))
