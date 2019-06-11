@@ -32,6 +32,12 @@
   "Time the quil program in qvm Q and return the number of seconds per thread per trial."
   (/ (time-quil-prog-raw q :num-trials num-trials :num-threads num-threads) (* num-threads num-trials)))
 
+(defun find-num-trials (q num-threads time-limit &optional (hint 0))
+  (if (= hint 1)
+      1
+      (let* ((one-time (time-quil-prog-raw q :num-threads num-threads :num-trials 1)))
+        (1+ (floor (/ time-limit one-time))))))
+
 (defun hadamard-program-source (n)
   "Return a quil source program that performs a Hadamard gate on each of N qubits and measures each qubit."
   (with-output-to-string (s)
@@ -59,11 +65,25 @@
   "Time the Hadamard program and return the number of seconds per thread per trial."
   (time-quil-prog (prepare-hadamard-test num-qubits) :num-trials num-trials :num-threads num-threads))
 
-(defun scan-num-threads (&key (num-trials 1) (num-qubits 12)
+(defun scan-num-threads (&key (time-limit 5.0) (num-qubits 12)
                               (max-num-threads (qvm:count-logical-cores))
                               (min-num-threads 1)
                               (q (prepare-hadamard-test num-qubits)))
   "Return a list of execution time per sample per thread of the qvm/program Q for different numbers of threads.
 The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
-  (norm-min (loop :for i :from min-num-threads :to max-num-threads
-                  :collect (time-quil-prog q :num-threads i :num-trials num-trials ))))
+  (norm-min
+   (let ((num-trials 0))
+     (loop :for num-threads :from min-num-threads :to max-num-threads
+           :collect
+                                        ; (find-num-trials q num-threads time-limit num-trials)
+           (progn (setf num-trials (find-num-trials q num-threads time-limit num-trials))
+                  (time-quil-prog q :num-threads num-threads :num-trials num-trials))))))
+
+(defun scan-num-threads-old (&key (num-trials 1) (num-qubits 12)
+                              (max-num-threads (qvm:count-logical-cores))
+                              (min-num-threads 1)
+                              (q (prepare-hadamard-test num-qubits)))
+  "Return a list of execution time per sample per thread of the qvm/program Q for different numbers of threads.
+The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
+  (norm-min (loop :for num-threads :from min-num-threads :to max-num-threads
+                  :collect (time-quil-prog q :num-threads num-threads :num-trials num-trials))))
