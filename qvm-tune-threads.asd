@@ -13,4 +13,5 @@
   :components (
                (:file "package")
                (:file "utilities")
+               (:file "tests")
                (:file "tune-threads")))
