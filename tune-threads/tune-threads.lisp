@@ -33,6 +33,7 @@
   (/ (time-quil-prog-raw q :num-trials num-trials :num-threads num-threads) (* num-threads num-trials)))
 
 (defun find-num-trials (q num-threads time-limit &optional (hint 0))
+  "Choose the number of trials for the qvm/program Q that take around TIME-LIMIT seconds to complete."
   (if (= hint 1)
       1
       (loop :with one-time := 0.0

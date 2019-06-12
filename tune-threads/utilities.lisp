@@ -36,7 +36,7 @@ If the minimum is degenerate, the fist index is returned."
          (/ (- ,stop-time ,start-time) (float internal-time-units-per-second))))))
 
 (defmacro simple-time-dev (num-reps num-trials &body body)
-  "Execute BODY NUM-TRIALS repeatedly in NUM-REPS blocks of NUM-TRIALS trials each,
+  "Execute BODY repeatedly in NUM-REPS blocks of NUM-TRIALS trials each,
 and return the mean and standard deviation of the run time seconds.
 This provides a measure of the variation in timing over NUM-TRIALS trials."
   `(let ((cum-time 0.0)
