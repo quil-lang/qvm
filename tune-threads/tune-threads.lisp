@@ -87,8 +87,11 @@ The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
 (defun scan-num-threads-qubits (&key (time-limit 5.0)
                                      (max-num-threads (qvm:count-logical-cores))
                                      (min-num-threads 1)
-                                     (min-num-qubits 2))
-  (loop :for num-qubits :from min-num-qubits :to 23
+                                     (min-num-qubits 2)
+                                     (max-num-qubits 23))
+  "Scan both the number of qubits and the number of threads to find the optimal number
+ of threads for each number of qubits. The Hadamard program is hard-coded."
+  (loop :for num-qubits :from min-num-qubits :to max-num-qubits
         :do (let* ((q (prepare-hadamard-test num-qubits))
                    (scan-times
                      (scan-num-threads :time-limit time-limit :max-num-threads max-num-threads :min-num-threads min-num-threads :q q))
