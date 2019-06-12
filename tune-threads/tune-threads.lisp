@@ -35,8 +35,13 @@
 (defun find-num-trials (q num-threads time-limit &optional (hint 0))
   (if (= hint 1)
       1
-      (let* ((one-time (time-quil-prog-raw q :num-threads num-threads :num-trials 1)))
-        (1+ (floor (/ time-limit one-time))))))
+      (loop :with one-time := 0.0
+            :with num-trials := 1
+            :do
+               (setf one-time (time-quil-prog-raw q :num-threads num-threads :num-trials num-trials))
+               (setf num-trials (* num-trials 2))
+            :while (< one-time 0.1) ; avoid divide by zero and times very close to zero
+            :finally (return (1+ (floor (/ time-limit (/ one-time num-trials))))))))
 
 (defun hadamard-program-source (n)
   "Return a quil source program that performs a Hadamard gate on each of N qubits and measures each qubit."
@@ -75,15 +80,25 @@ The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
    (let ((num-trials 0))
      (loop :for num-threads :from min-num-threads :to max-num-threads
            :collect
-                                        ; (find-num-trials q num-threads time-limit num-trials)
            (progn (setf num-trials (find-num-trials q num-threads time-limit num-trials))
                   (time-quil-prog q :num-threads num-threads :num-trials num-trials))))))
 
-(defun scan-num-threads-old (&key (num-trials 1) (num-qubits 12)
-                              (max-num-threads (qvm:count-logical-cores))
-                              (min-num-threads 1)
-                              (q (prepare-hadamard-test num-qubits)))
-  "Return a list of execution time per sample per thread of the qvm/program Q for different numbers of threads.
-The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
-  (norm-min (loop :for num-threads :from min-num-threads :to max-num-threads
-                  :collect (time-quil-prog q :num-threads num-threads :num-trials num-trials))))
+(defun scan-num-threads-qubits (&key (time-limit 5.0)
+                                     (max-num-threads (qvm:count-logical-cores))
+                                     (min-num-threads 1)
+                                     (min-num-qubits 2))
+  (loop :for num-qubits :from min-num-qubits :to 23
+        :do (let* ((q (prepare-hadamard-test num-qubits))
+                   (scan-times
+                     (scan-num-threads :time-limit time-limit :max-num-threads max-num-threads :min-num-threads min-num-threads :q q))
+                   (optimal-num-qubits (1+ (cadr (findmin scan-times)))))
+              (format t "nq: ~2d: nthreads: ~2d  ~a~%" num-qubits optimal-num-qubits scan-times))))
+
+;; (defun scan-num-threads-fixed (&key (num-trials 1) (num-qubits 12)
+;;                               (max-num-threads (qvm:count-logical-cores))
+;;                               (min-num-threads 1)
+;;                               (q (prepare-hadamard-test num-qubits)))
+;;   "Return a list of execution time per sample per thread of the qvm/program Q for different numbers of threads.
+;; The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
+;;   (norm-min (loop :for num-threads :from min-num-threads :to max-num-threads
+;;                   :collect (time-quil-prog q :num-threads num-threads :num-trials num-trials))))
