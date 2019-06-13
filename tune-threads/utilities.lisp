@@ -25,7 +25,7 @@ If the minimum is degenerate, the fist index is returned."
 (defun norm-min (list)
   "Normalize LIST by its minimum element"
   (let ((min (apply #'min list)))
-    (map 'list #'(lambda (x) (/ x min)) list)))
+    (mapcar #'(lambda (x) (/ x min)) list)))
 
 (defmacro simple-time (num-trials &body body)
   "Execute BODY NUM-TRIALS times and return the run time in seconds."

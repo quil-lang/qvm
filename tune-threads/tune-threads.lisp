@@ -82,9 +82,11 @@ The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
   "Scan both the number of qubits and the number of threads to find the optimal number
  of threads for each number of qubits."
   (format t "qubits threads rel-times~%" )
-  (loop :for num-qubits :from min-num-qubits :to max-num-qubits
-        :for q := (funcall prepare-qvm-program num-qubits)
-        :for scan-times := (scan-num-threads :time-limit time-limit :num-qubits num-qubits
-                                            :max-num-threads max-num-threads :min-num-threads min-num-threads :q q)
-        :for optimal-num-qubits = (1+ (cadr (findmin scan-times)))
-        :do (format t "~3d    ~3d     (~{~2$~^ ~})~%" num-qubits optimal-num-qubits scan-times)))
+  (let ((*print-pprint-dispatch* (copy-pprint-dispatch)))
+    (set-pprint-dispatch 'float (lambda (s f) (format s "~,2f" f)))
+    (loop :for num-qubits :from min-num-qubits :to max-num-qubits
+          :for q := (funcall prepare-qvm-program num-qubits)
+          :for scan-times := (scan-num-threads :time-limit time-limit :num-qubits num-qubits
+                                               :max-num-threads max-num-threads :min-num-threads min-num-threads :q q)
+          :for optimal-num-qubits = (1+ (cadr (findmin scan-times)))
+          :do (format t "~3d    ~3d     ~a~%" num-qubits optimal-num-qubits scan-times))))
