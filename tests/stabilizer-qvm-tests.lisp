@@ -35,6 +35,14 @@ S 1")))
     (signals simple-error
       (test-quickrun stab-qvm program))))
 
+(deftest test-circuits-small ()
+  (let ((pure-qvm (qvm::make-qvm 2))
+        (stab-qvm (qvm::make-stabilizer-qvm 2))
+        (program (cl-quil::parse-quil "T 0")))
+    (test-quickrun pure-qvm program)
+    (signals simple-error
+      (test-quickrun stab-qvm program))))
+
 (deftest test-random-small ()
   (declare (optimize (speed 0) debug (space 0)))
   (dotimes (i 100)
@@ -53,7 +61,7 @@ S 1")))
   (loop :for i :from 1 :to 4 :do
     (loop :repeat 100
           :for c := (cl-quil.clifford::random-clifford i)
-          :for m := (cl-quil.clifford::clifford-to-matrix c)
+          :for m := (cl-quil.clifford::clifford-to-matrix-v2 c)
           :for d := (cl-quil.clifford::matrix-to-clifford m)
           :do (is (cl-quil.clifford::clifford= c d)))))
 
