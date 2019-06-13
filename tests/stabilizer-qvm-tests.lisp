@@ -19,7 +19,8 @@
   (let ((pure-qvm (qvm::make-qvm 2))
         (stab-qvm (qvm::make-stabilizer-qvm 2))
         (program (cl-quil::parse-quil "H 0
-CNOT 0 1")))
+CNOT 0 1
+S 1")))
     (test-quickrun pure-qvm program)
     (test-quickrun stab-qvm program)
     (is (every #'cl-quil.clifford::complex~
@@ -35,14 +36,26 @@ CNOT 0 1")))
       (test-quickrun stab-qvm program))))
 
 (deftest test-random-small ()
-  (let ((pure-qvm (qvm::make-qvm 5))
-        (stab-qvm (qvm::make-stabilizer-qvm 5))
-        (program (qvm::random-clifford-program 10 2 4)))
-    (test-quickrun pure-qvm program)
-    (test-quickrun stab-qvm program)
-    (is (every #'cl-quil.clifford::complex~
-               (qvm::amplitudes pure-qvm)
-               (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))))
+  (declare (optimize (speed 0) debug (space 0)))
+  (dotimes (i 100)
+    (let* ((n 2)
+           (pure-qvm (qvm::make-qvm n))
+           (stab-qvm (qvm::make-stabilizer-qvm n))
+           (program (qvm::random-clifford-program 2 n n)))
+      (test-quickrun pure-qvm program)
+      (test-quickrun stab-qvm program)
+      #+ignore(break "~A~2%~A~%" (qvm::amplitudes pure-qvm) (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))
+      (is (every #'cl-quil.clifford::complex~
+                 (qvm::amplitudes pure-qvm)
+                 (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
+
+(deftest test-clifford-matrix-conversions ()
+  (loop :for i :from 1 :to 4 :do
+    (loop :repeat 100
+          :for c := (cl-quil.clifford::random-clifford i)
+          :for m := (cl-quil.clifford::clifford-to-matrix c)
+          :for d := (cl-quil.clifford::matrix-to-clifford m)
+          :do (is (cl-quil.clifford::clifford= c d)))))
 
 (defparameter *cool-tests* '(test-zero-state test-bell-state test-nonclifford
                              test-random-small))

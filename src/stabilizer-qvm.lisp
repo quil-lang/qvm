@@ -155,18 +155,19 @@
 (defun random-range (a b)
   (+ a (random (- b a))))
 
-(defun random-clifford-program (length max-clifford-arity max-qubit &key (measure nil))
-  (assert (>= max-qubit max-clifford-arity))
-  (let* ((code (make-array (+ length (if measure (1+ max-qubit) 0))))
+(defun random-clifford-program (length max-clifford-arity num-qubits &key (measure nil))
+  (assert (>= num-qubits max-clifford-arity))
+  (let* ((code (make-array (+ length (if measure num-qubits 0))))
          (program (make-instance 'quil:parsed-program :executable-code code)))
     (dotimes (i length)
       (let ((arity (random-range 1 (1+ max-clifford-arity))))
         (setf (aref code i)
               (apply #'make-clifford-application
                      (cl-quil.clifford:random-clifford arity)
-                     (random-qubits arity max-qubit)))))
+                     (loop :for q :from (1- arity) :downto 0 :collect q)
+                     #+ignore (random-qubits arity (1- num-qubits))))))
     (when measure
-      (dotimes (i (1+ max-qubit))
+      (dotimes (i num-qubits)
         (let ((j (+ length i)))
           (setf (aref code j)
                 (make-instance 'quil:measure-discard :qubit (quil:qubit i))))))
@@ -187,8 +188,16 @@
                                 expected-qubits
                                 given-qubits))))
     ;; Don't cache these guys. They're probably made up Clifford gates.
+    (cl-quil.clifford::tableau-clear-scratch (stabilizer-qvm-tableau qvm))
     (apply (compile-clifford clifford :cache nil)
            (stabilizer-qvm-tableau qvm)
            qubits)
     (incf (pc qvm))
     qvm))
+
+(defmethod transition ((qvm pure-state-qvm) (instr clifford-application))
+  (transition qvm (make-instance 'quil:gate-application
+                                 :operator (quil:named-operator "dummy")
+                                 :gate (make-instance 'quil:simple-gate :matrix (cl-quil.clifford::clifford-to-matrix (clifford-application-clifford instr)))
+                                 :parameters nil
+                                 :arguments (quil:application-arguments instr))))
