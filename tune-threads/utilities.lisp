@@ -40,10 +40,11 @@ If the minimum is degenerate, the fist index is returned."
 and return the mean and standard deviation of the run time seconds.
 This provides a measure of the variation in timing over NUM-TRIALS trials."
   (alexandria:with-gensyms (cum-time cum-time-sq one-time i)
-    `(let ((,cum-time 0.0)
-           (,cum-time-sq 0.0))
-       (dotimes (,i ,num-reps)
-         (let ((,one-time (simple-time ,num-trials ,@body)))
-           (setf ,cum-time (+ ,one-time ,cum-time))
-           (setf ,cum-time-sq (+ (expt ,one-time 2) ,cum-time-sq))))
-       (mean-dev-from-sums ,cum-time ,cum-time-sq ,num-reps))))
+    (alexandria:once-only (num-reps)
+      `(let ((,cum-time 0.0)
+             (,cum-time-sq 0.0))
+         (dotimes (,i ,num-reps)
+           (let ((,one-time (simple-time ,num-trials ,@body)))
+             (setf ,cum-time (+ ,one-time ,cum-time))
+             (setf ,cum-time-sq (+ (expt ,one-time 2) ,cum-time-sq))))
+         (mean-dev-from-sums ,cum-time ,cum-time-sq ,num-reps)))))

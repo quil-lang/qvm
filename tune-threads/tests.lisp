@@ -17,7 +17,7 @@
 (defun rand-mean-dev (n)
   "Return the mean and standard deviation computed from N samples.
 This is meant to test MEAN-DEV-FROM-SUMS."
-  (let* ((sums (rand-sums n)))
+  (let ((sums (rand-sums n)))
     (mean-dev-from-sums (car sums) (cadr sums) n)))
 
 (defun rand-test (n)
