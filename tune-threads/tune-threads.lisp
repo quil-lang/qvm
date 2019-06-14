@@ -63,7 +63,9 @@
   "Time the Hadamard program and return the number of seconds per thread per trial."
   (time-quil-prog (prepare-hadamard-test num-qubits) :num-trials num-trials :num-threads num-threads))
 
-(defun scan-num-threads (&key (time-limit 5.0) (num-qubits 12)
+(defvar *default-testing-time-limit* 2.0)
+
+(defun scan-num-threads (&key (time-limit *default-testing-time-limit*) (num-qubits 12)
                               (max-num-threads (qvm:count-logical-cores))
                               (min-num-threads 1)
                               (q (prepare-hadamard-test num-qubits)))
@@ -75,7 +77,7 @@ The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
          :for num-threads :from min-num-threads :to max-num-threads
          :collect (time-quil-prog q :num-threads num-threads :num-trials num-trials))))
 
-(defun scan-num-threads-qubits (&key (time-limit 1.0)
+(defun scan-num-threads-qubits (&key (time-limit *default-testing-time-limit*)
                                      (min-num-threads 1) (max-num-threads (qvm:count-logical-cores))
                                      (min-num-qubits 2) (max-num-qubits 23)
                                      (prepare-qvm-program #'prepare-hadamard-test))
