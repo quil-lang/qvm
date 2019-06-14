@@ -12,15 +12,14 @@
 (defun findmin (list)
   "Return a list whose two elements are the minimum value of LIST and the index of that value.
 If the minimum is degenerate, the fist index is returned."
-  (do* ((min-val (car list))
-        (min-ind 0)
-        (list (cdr list) (cdr list))
-        (next-val (car list) (car list))
-        (ind 0 (1+ ind)))
-       ((null list) (list min-val min-ind))
-    (when (< next-val min-val)
-      (setf min-val next-val)
-      (setf min-ind (1+ ind)))))
+  (loop :for item :in list
+        :for i :from 0
+        :with imin := 0
+        :with minitem := (first list)
+        :do (when (< item minitem)
+              (setf imin i)
+              (setf minitem item))
+        :finally (return (list minitem imin ))))
 
 (defun norm-min (list)
   "Normalize LIST by its minimum element"

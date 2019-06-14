@@ -26,14 +26,12 @@
   "Time the quil program in qvm Q and return the number of seconds per thread per trial."
   (/ (time-quil-prog-raw q :num-trials num-trials :num-threads num-threads) (* num-threads num-trials)))
 
-(defun find-num-trials (q num-threads time-limit &optional (hint 0))
+(defun find-num-trials (q num-threads time-limit)
   "Choose the number of trials for the qvm/program Q that take around TIME-LIMIT seconds to complete."
-  (if (= hint 1)
-      1
-      (loop :for num-trials := 1 :then (* num-trials 2)
-            :for one-time := 0.0 :then (time-quil-prog-raw q :num-threads num-threads :num-trials num-trials)
-            :while (< one-time 0.1) ; avoid divide by zero and times very close to zero
-            :finally (return (1+ (floor (/ time-limit (/ one-time num-trials))))))))
+  (loop :for num-trials := 1 :then (* num-trials 2)
+        :for one-time := 0.0 :then (time-quil-prog-raw q :num-threads num-threads :num-trials num-trials)
+        :while (< one-time 0.1) ; avoid divide by zero and times very close to zero
+        :finally (return (1+ (floor (/ time-limit (/ one-time num-trials)))))))
 
 (defun hadamard-program-source (n)
   "Return a quil source program that performs a Hadamard gate on each of N qubits and measures each qubit."
@@ -65,16 +63,15 @@
 
 (defvar *default-testing-time-limit* 2.0)
 
-(defun scan-num-threads (&key (time-limit *default-testing-time-limit*) (num-qubits 12)
-                              (max-num-threads (qvm:count-logical-cores))
-                              (min-num-threads 1)
-                              (q (prepare-hadamard-test num-qubits)))
+(defun scan-num-threads (num-qubits &key (time-limit *default-testing-time-limit*)
+                                          (min-num-threads 1) (max-num-threads (qvm:count-logical-cores))
+                                          (q (prepare-hadamard-test num-qubits)))
   "Return a list of execution time per sample per thread of the qvm/program Q for different numbers of threads.
 The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
   (norm-min
-   (loop :for num-trials := (find-num-trials q num-threads time-limit 0)
-           :then (find-num-trials q num-threads time-limit num-trials)
-         :for num-threads :from min-num-threads :to max-num-threads
+   (loop :for num-threads :from min-num-threads :to max-num-threads
+         :for num-trials := (find-num-trials q num-threads time-limit)
+           :then (if (> num-trials 1) (find-num-trials q num-threads time-limit) 1)
          :collect (time-quil-prog q :num-threads num-threads :num-trials num-trials))))
 
 (defun scan-num-threads-qubits (&key (time-limit *default-testing-time-limit*)
@@ -88,7 +85,7 @@ The number of threads varies from MIN-NUM-THREADS to MAX-NUM-THREADS."
     (set-pprint-dispatch 'float (lambda (s f) (format s "~,2f" f)))
     (loop :for num-qubits :from min-num-qubits :to max-num-qubits
           :for q := (funcall prepare-qvm-program num-qubits)
-          :for scan-times := (scan-num-threads :time-limit time-limit :num-qubits num-qubits
-                                               :max-num-threads max-num-threads :min-num-threads min-num-threads :q q)
-          :for optimal-num-qubits = (1+ (cadr (findmin scan-times)))
+          :for scan-times := (scan-num-threads num-qubits :time-limit time-limit
+                                               :min-num-threads min-num-threads :max-num-threads max-num-threads :q q)
+          :for optimal-num-qubits = (1+ (second (findmin scan-times)))
           :do (format t "~3d    ~3d     ~a~%" num-qubits optimal-num-qubits scan-times))))
