@@ -175,9 +175,12 @@
     (quil::record-transform 'quil::patch-labels program)
     program))
 
+;; NEED TO FIX: qubits seem to be ordered opposite to our usual
+;; convention in the stabilizer qvm. Reversing them here is a
+;; temporary fix.
 (defmethod transition ((qvm stabilizer-qvm) (instr clifford-application))
   (let* ((clifford (clifford-application-clifford instr))
-         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
+         (qubits (reverse (mapcar #'quil:qubit-index (quil:application-arguments instr)))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
           (expected-qubits (quil.clifford:num-qubits clifford)))
