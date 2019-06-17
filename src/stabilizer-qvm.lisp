@@ -164,7 +164,7 @@
         (setf (aref code i)
               (apply #'make-clifford-application
                      (cl-quil.clifford:random-clifford arity)
-                     (loop :for q :from (1- arity) :downto 0 :collect q)
+                     (loop :for q :to (1- arity) :collect q)#+ignore(loop :for q :from (1- arity) :downto 0 :collect q)
                      #+ignore (random-qubits arity (1- num-qubits))))))
     (when measure
       (dotimes (i num-qubits)
@@ -175,12 +175,15 @@
     (quil::record-transform 'quil::patch-labels program)
     program))
 
-;; NEED TO FIX: qubits seem to be ordered opposite to our usual
-;; convention in the stabilizer qvm. Reversing them here is a
-;; temporary fix.
+(defun print-clifford-program (program)
+  (let ((code (quil:parsed-program-executable-code program)))
+    (dotimes (i (length code))
+      (let ((isn (aref code i)))
+        (format t "~%~A: ~A on ~A" i (qvm::clifford-application-clifford isn) (quil:application-arguments isn))))))
+
 (defmethod transition ((qvm stabilizer-qvm) (instr clifford-application))
   (let* ((clifford (clifford-application-clifford instr))
-         (qubits (reverse (mapcar #'quil:qubit-index (quil:application-arguments instr)))))
+         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
           (expected-qubits (quil.clifford:num-qubits clifford)))
@@ -198,9 +201,12 @@
     (incf (pc qvm))
     qvm))
 
+;; For some reason, when transitioning through this method, the
+;; instruction's arguments are reversed. This counter-reverse is a
+;; temporary fix that should be properly patched later.
 (defmethod transition ((qvm pure-state-qvm) (instr clifford-application))
   (transition qvm (make-instance 'quil:gate-application
                                  :operator (quil:named-operator "dummy")
-                                 :gate (make-instance 'quil:simple-gate :matrix (cl-quil.clifford::clifford-to-matrix (clifford-application-clifford instr)))
+                                 :gate (make-instance 'quil:simple-gate :matrix (cl-quil.clifford::clifford-to-matrix-v2 (clifford-application-clifford instr)))
                                  :parameters nil
-                                 :arguments (quil:application-arguments instr))))
+                                 :arguments (reverse (quil:application-arguments instr)))))
