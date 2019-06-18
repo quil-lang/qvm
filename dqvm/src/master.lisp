@@ -21,13 +21,16 @@
         :for r :from 1 :to +worker-count+ :do
           (mpi:mpi-send serialized-cluster r)))
 
+(defun qubit-indices (instruction)
+  "Return list of qubit indices on which INSTRUCTION operates."
+  (mapcar #'quil:qubit-index (quil:application-arguments instruction)))
+
 (defun set-cluster-instruction (cluster instruction)
   "Update the current instruction and current qubits that the cluster is to act on."
   (check-type cluster cluster)
   (check-type instruction quil:gate-application)
   (setf (current-instruction cluster) (instruction->string instruction))
-  (setf (operating-qubits cluster) (mapcar #'quil:qubit-index
-                                           (quil:application-arguments instruction))))
+  (setf (operating-qubits cluster) (qubit-indices instruction)))
 
 (defun set-ordering-from-instruction (cluster instruction)
   "Set the current ordering of the amplitudes of the wavefunction.
@@ -35,8 +38,7 @@
 Warning! This doesn't actually change the ordering. This is for bookkeeping purposes only, and if not used carefully, can cause the recorded ordering to be out of sync with the actual wavefunction ordering."
   (check-type cluster cluster)
   (check-type instruction quil:gate-application)
-  (setf (ordering cluster) (mapcar #'quil:qubit-index
-                                   (quil:application-arguments instruction))))
+  (setf (ordering cluster) (qubit-indices instruction)))
 
 
 (defun %main-master (&key program)

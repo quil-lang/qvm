@@ -192,7 +192,7 @@
     (let ((type mpi:+mpi-byte+)
           (count (* 2 8 (length array))))
       ;; TODO check the mpi-status
-      (mpi::%mpi-recv ptr count type source tag comm mpi:+mpi-status-ignore+))))
+      (mpi::%mpi-recv ptr count type source tag comm (cffi:null-pointer)))))
 
 (defun receive-complex-array (&key (source mpi:+mpi-any-source+)
                                    (tag mpi:+mpi-any-tag+)
@@ -379,17 +379,17 @@
       (qvm::matrix-multiply matrix column)
       (setf (subseq work-area blk (+ blk block-length)) column))))
 
-(defun instruction-matrix (InStRuCtIoN &optional env)
+(defun instruction-matrix (instruction)
   (qvm::magicl-matrix-to-quantum-operator
-   (quil::lookup-gate-in-environment instruction env)))
+   (quil:gate-matrix instruction)))
 
-(defun execute-instruction (cluster worker instruction &optional env)
+(defun execute-instruction (cluster worker instruction)
   ;; Fill copy area with sentinels for debugging.
   (fill (copy-area worker) (qvm:cflonum -31337))
   ;; Reorganize the amplitudes.
   (reorganize-amplitudes cluster worker)
   ;; Multiply the matrices.
-  (multiply-blocks-by-matrix (instruction-matrix instruction env) cluster worker))
+  (multiply-blocks-by-matrix (instruction-matrix instruction) cluster worker))
 
 (defun instruction-string (instruction)
   (with-output-to-string (s)
@@ -429,7 +429,7 @@
         (let ((instruction (string->instruction (current-instruction cluster))))
           (format-locked "Executing instruction: ~A~%" (instruction->string instruction))
           (print-usage nil "pre instruction")
-          (execute-instruction cluster worker instruction nil))
+          (execute-instruction cluster worker instruction))
         (print-usage nil "post instruction")
 
         (everybody-synchronize "Waiting for everybody to finish executing an instruction")
