@@ -43,13 +43,9 @@ S 1")))
               (chp-tab (cl-quil.clifford::make-tableau-zero-state n)))
           (test-quickrun pure-qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code chp-tab :silent t)
-          (unless (every #'cl-quil.clifford::complex~
-                     (qvm::amplitudes pure-qvm)
-                     (cl-quil.clifford::tableau-wavefunction chp-tab))
-            (format t "~%~A~%~A~%~A~%" quil-code (qvm::amplitudes pure-qvm) (cl-quil.clifford::tableau-wavefunction chp-tab)))
-          (is (every #'cl-quil.clifford::complex~
-                     (qvm::amplitudes pure-qvm)
-                     (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
+          (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
 
 (deftest test-random-qvm-vs-chp-medium ()
   (let ((n 10))
@@ -59,9 +55,9 @@ S 1")))
               (chp-tab (cl-quil.clifford::make-tableau-zero-state n)))
           (test-quickrun pure-qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code chp-tab :silent t)
-          (is (every #'cl-quil.clifford::complex~
-                     (qvm::amplitudes pure-qvm)
-                     (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
+          (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
 
 (deftest test-random-qvm-vs-chp-large ()
   (let ((n 15))
@@ -71,9 +67,9 @@ S 1")))
                (chp-tab (cl-quil.clifford::make-tableau-zero-state n)))
           (test-quickrun pure-qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code chp-tab :silent t)
-          (is (every #'cl-quil.clifford::complex~
-                     (qvm::amplitudes pure-qvm)
-                     (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
+          (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
 
 (deftest test-random-stabilizer-vs-chp ()
   (let ((n 10))
@@ -83,7 +79,6 @@ S 1")))
                (tab (cl-quil.clifford::make-tableau-zero-state n)))
           (test-quickrun qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code tab :silent t)
-          ;; (when (zerop (mod i 10)) (format t "Sample wavefunction:~%~A~%" (cl-quil.clifford::tableau-wavefunction tab)))
           ;; Print the error-causing program
           (unless (every #'cl-quil.clifford::complex~
                          (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau qvm))
@@ -101,9 +96,9 @@ S 1")))
            (program (qvm::random-clifford-program 1 1 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (is (every #'cl-quil.clifford::complex~
-                 (qvm::amplitudes pure-qvm)
-                 (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
+      (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
 (deftest test-two-qubit-one-clifford ()
   (dotimes (i 100)
@@ -111,32 +106,11 @@ S 1")))
            (pure-qvm (qvm::make-qvm n))
            (stab-qvm (qvm::make-stabilizer-qvm n))
            (program (qvm::random-clifford-program 1 2 n)))
-      ;; (qvm::transition pure-qvm (make-instance 'quil:gate-application
-      ;;                                          :operator (quil:named-operator "dummy")
-      ;;                                          :gate (make-instance 'quil:simple-gate :matrix (cl-quil.clifford::clifford-to-matrix-v2 (cl-quil.clifford::clifford-element IZ -> -XY
-      ;;                                                                                                                                    XI -> -YX
-      ;;                                                                                                                                    ZI -> -ZX)))
-      ;;                                          :parameters nil
-      ;;                                          :arguments (mapcar #'quil:qubit '(1 0))))
-      ;; (qvm::transition stab-qvm (qvm::make-clifford-application (cl-quil.clifford::clifford-element IZ -> -XY
-      ;;                                                             XI -> -YX
-      ;;                                                             ZI -> -ZX) 0 1))
-      ;; (unless (every #'cl-quil.clifford::complex~
-      ;;                (qvm::amplitudes pure-qvm)
-      ;;                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))
-      ;;   (qvm::print-clifford-program program)
-      ;;   (format t "~%UH OH!!!~%qvm: ~A~%stab: ~A" (qvm::amplitudes pure-qvm) (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))
-      ;; Actual run
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (unless (every #'cl-quil.clifford::complex~
-                     (qvm::amplitudes pure-qvm)
-                     (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))
-        (qvm::print-clifford-program program)
-        (format t "~%qvm: ~A~%stab: ~A" (qvm::amplitudes pure-qvm) (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))
-      (is (every #'cl-quil.clifford::complex~
-                 (qvm::amplitudes pure-qvm)
-                 (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
+      (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
 (deftest test-one-qubit-two-clifford ()
   (dotimes (i 100)
@@ -146,14 +120,9 @@ S 1")))
            (program (qvm::random-clifford-program 2 1 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (unless (every #'cl-quil.clifford::complex~
-                     (qvm::amplitudes pure-qvm)
-                     (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))
-        (qvm::print-clifford-program program)
-        (format t "~%qvm: ~A~%stab: ~A" (qvm::amplitudes pure-qvm) (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))
-      (is (every #'cl-quil.clifford::complex~
-                 (qvm::amplitudes pure-qvm)
-                 (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
+      (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
 (deftest test-two-qubit-two-clifford ()
   (dotimes (i 100)
@@ -163,14 +132,9 @@ S 1")))
            (program (qvm::random-clifford-program 2 2 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (unless (every #'cl-quil.clifford::complex~
-                 (qvm::amplitudes pure-qvm)
-                 (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))
-        (qvm::print-clifford-program program)
-        (format t "~%qvm: ~A~%stab: ~A" (qvm::amplitudes pure-qvm) (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))
-      (is (every #'cl-quil.clifford::complex~
-                 (qvm::amplitudes pure-qvm)
-                 (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
+      (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
 (deftest test-hella-random-cliffords ()
   (dotimes (i 100)
@@ -180,9 +144,9 @@ S 1")))
            (program (qvm::random-clifford-program 10 3 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (is (every #'cl-quil.clifford::complex~
-                 (qvm::amplitudes pure-qvm)
-                 (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
+      (is (cl-quil.clifford::global-phase=
+               (qvm::amplitudes pure-qvm)
+               (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
 ;; Doesn't really work because matrix-to-clifford seems broken
 (deftest test-clifford-matrix-conversions ()
