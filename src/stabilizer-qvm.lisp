@@ -164,7 +164,7 @@
         (setf (aref code i)
               (apply #'make-clifford-application
                      (cl-quil.clifford:random-clifford arity)
-                     (loop :for q :to (1- arity) :collect q)#+ignore(loop :for q :from (1- arity) :downto 0 :collect q)
+                     (loop :for q :from (1- arity) :downto 0 :collect q)
                      #+ignore (random-qubits arity (1- num-qubits))))))
     (when measure
       (dotimes (i num-qubits)
@@ -201,12 +201,9 @@
     (incf (pc qvm))
     qvm))
 
-;; For some reason, when transitioning through this method, the
-;; instruction's arguments are reversed. This counter-reverse is a
-;; temporary fix that should be properly patched later.
 (defmethod transition ((qvm pure-state-qvm) (instr clifford-application))
   (transition qvm (make-instance 'quil:gate-application
                                  :operator (quil:named-operator "dummy")
                                  :gate (make-instance 'quil:simple-gate :matrix (cl-quil.clifford::clifford-to-matrix (clifford-application-clifford instr)))
                                  :parameters nil
-                                 :arguments (reverse (quil:application-arguments instr)))))
+                                 :arguments (quil:application-arguments instr))))

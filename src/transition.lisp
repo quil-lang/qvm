@@ -173,7 +173,6 @@ the specified QVM."
                :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
                                 expected-qubits
                                 given-qubits))))
-    
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (incf (pc qvm))
     qvm))

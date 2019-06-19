@@ -156,5 +156,11 @@ S 1")))
           :for d := (cl-quil.clifford::matrix-to-clifford m)
           :do (is (cl-quil.clifford::clifford= c d)))))
 
-;; (defparameter *cool-tests* '(test-zero-state test-bell-state test-nonclifford
-;;                              test-random-small))
+(defparameter *cool-tests* '(test-zero-state test-bell-state test-random-qvm-vs-chp-small test-random-qvm-vs-chp-medium test-random-qvm-vs-chp-large test-random-stabilizer-vs-chp test-one-qubit-one-clifford test-two-qubit-one-clifford test-one-qubit-two-clifford test-two-qubit-two-clifford test-hella-random-cliffords test-clifford-matrix-conversions))
+
+(defun run-stabilizer-qvm-tests ()
+  (flet ((print-and-run (sym)
+           (format t "~%Running test ~A:" sym)
+           (funcall sym)))
+    (mapcar #'print-and-run *cool-tests*)))
+
