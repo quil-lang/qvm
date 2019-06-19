@@ -11,7 +11,7 @@
 (deftest test-zero-state ()
   (let ((pure-qvm (qvm::make-qvm 10))
         (stab-qvm (qvm::make-stabilizer-qvm 10)))
-    (is (every #'cl-quil.clifford::complex~
+    (is (every #'quil::double~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))))
 
@@ -23,7 +23,7 @@ CNOT 0 1
 S 1")))
     (test-quickrun pure-qvm program)
     (test-quickrun stab-qvm program)
-    (is (every #'cl-quil.clifford::complex~
+    (is (every #'quil::double~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))))
 
@@ -80,11 +80,11 @@ S 1")))
           (test-quickrun qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code tab :silent t)
           ;; Print the error-causing program
-          (unless (every #'cl-quil.clifford::complex~
+          (unless (every #'quil::double~
                          (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau qvm))
                          (cl-quil.clifford::tableau-wavefunction tab))
             (format t "~%~A~%" quil-code))
-          (is (every #'cl-quil.clifford::complex~
+          (is (every #'quil::double~
                      (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau qvm))
                      (cl-quil.clifford::tableau-wavefunction tab))))))))
 
@@ -141,21 +141,20 @@ S 1")))
     (let* ((n 10)
            (pure-qvm (qvm::make-qvm n))
            (stab-qvm (qvm::make-stabilizer-qvm n))
-           (program (qvm::random-clifford-program 10 3 n)))
+           (program (qvm::random-clifford-program 10 5 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
       (is (cl-quil.clifford::global-phase=
-               (qvm::amplitudes pure-qvm)
-               (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
+           (qvm::amplitudes pure-qvm)
+           (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
-;; Doesn't really work because matrix-to-clifford seems broken
-;; (deftest test-clifford-matrix-conversions ()
-;;   (loop :for i :from 1 :to 4 :do
-;;     (loop :repeat 100
-;;           :for c := (cl-quil.clifford::random-clifford i)
-;;           :for m := (cl-quil.clifford::clifford-to-matrix-v2 c)
-;;           :for d := (cl-quil.clifford::matrix-to-clifford m)
-;;           :do (is (cl-quil.clifford::clifford= c d)))))
+(deftest test-clifford-matrix-conversions ()
+  (loop :for i :from 1 :to 4 :do
+    (loop :repeat 100
+          :for c := (cl-quil.clifford::random-clifford i)
+          :for m := (cl-quil.clifford::clifford-to-matrix c)
+          :for d := (cl-quil.clifford::matrix-to-clifford m)
+          :do (is (cl-quil.clifford::clifford= c d)))))
 
 ;; (defparameter *cool-tests* '(test-zero-state test-bell-state test-nonclifford
 ;;                              test-random-small))
