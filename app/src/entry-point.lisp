@@ -131,7 +131,7 @@
     (("simulation-method")
      :type string
      :initial-value "pure-state"
-     :documentation ,(format nil "the method of qvm simulation; includes {~{~S~^, ~}}. Note that FULL-DENSITY-MATRIX simulation requiresthat --qubits be specified."
+     :documentation ,(format nil "the method of qvm simulation; includes {~{~S~^, ~}}. Note that FULL-DENSITY-MATRIX simulation requires that --qubits be specified."
                              *available-simulation-methods*))
 
     #-forest-sdk

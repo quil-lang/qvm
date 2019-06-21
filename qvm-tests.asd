@@ -35,3 +35,4 @@
                (:file "stress-tests")
                (:file "path-simulate-tests")
                (:file "stabilizer-qvm-tests")))
+               (:file "parallel-tests")))
