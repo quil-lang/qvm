@@ -8,14 +8,14 @@
   (qvm::load-program qvm prog)
   (qvm::run qvm))
 
-(deftest test-zero-state ()
+(deftest test-stabilizer-zero-state ()
   (let ((pure-qvm (qvm::make-qvm 10))
         (stab-qvm (qvm::make-stabilizer-qvm 10)))
     (is (every #'quil::double~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))))
 
-(deftest test-bell-state ()
+(deftest test-stabilizer-bell-state ()
   (let ((pure-qvm (qvm::make-qvm 2))
         (stab-qvm (qvm::make-stabilizer-qvm 2))
         (program (cl-quil::parse-quil "H 0
@@ -27,7 +27,7 @@ S 1")))
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm))))))
 
-(deftest test-nonclifford ()
+(deftest test-stabilizer-nonclifford ()
   (let ((pure-qvm (qvm::make-qvm 2))
         (stab-qvm (qvm::make-stabilizer-qvm 2))
         (program (cl-quil::parse-quil "T 0")))
@@ -155,12 +155,3 @@ S 1")))
           :for m := (cl-quil.clifford::clifford-to-matrix c)
           :for d := (cl-quil.clifford::matrix-to-clifford m)
           :do (is (cl-quil.clifford::clifford= c d)))))
-
-(defparameter *cool-tests* '(test-zero-state test-bell-state test-nonclifford test-random-qvm-vs-chp-small test-random-qvm-vs-chp-medium test-random-qvm-vs-chp-large test-random-stabilizer-vs-chp test-one-qubit-one-clifford test-two-qubit-one-clifford test-one-qubit-two-clifford test-two-qubit-two-clifford test-hella-random-cliffords test-clifford-matrix-conversions))
-
-(defun run-stabilizer-qvm-tests ()
-  (flet ((print-and-run (sym)
-           (format t "~%Running test ~A:" sym)
-           (funcall sym)))
-    (mapcar #'print-and-run *cool-tests*)))
-

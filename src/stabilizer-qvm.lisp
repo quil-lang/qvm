@@ -83,10 +83,9 @@
     (multiple-value-bind (measured-qvm measured-bit)
         (measure qvm q)
       ;; Conditionally do an X.
-      (when (= 1 measured-bit)
-        ;; XXX: We are abusing the fact that TRANSITION doesn't modify the pc.
-        (transition qvm (quil::build-gate "X" () q)))
-      (incf (pc measured-qvm))
+      (cond
+        ((= 1 measured-bit) (transition qvm (quil::build-gate "X" () q)))
+        (t (incf (pc measured-qvm))))
       measured-qvm)))
 
 (defmethod transition ((qvm stabilizer-qvm) (instr quil:measure))
@@ -128,7 +127,7 @@
   (:documentation "A gate application that's actually a Clifford."))
 
 (defmethod quil::print-instruction-generic ((instr clifford-application) stream)
-  (format stream "<clifford>~{ ~a~}"
+  (format stream "~{ ~/cl-quil:instruction-fmt/~}" 
           (mapcar (lambda (thing) (quil:print-instruction thing nil))
                   (quil:application-arguments instr))))
 

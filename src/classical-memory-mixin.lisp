@@ -14,7 +14,7 @@
 (defclass classical-memory-mixin ()
   ((classical-memory-subsystem :initarg :classical-memory-subsystem
                                :reader classical-memory-subsystem
-                                  :documentation "The classical memory subsystem of the QVM. No memory by default.")
+                               :documentation "The classical memory subsystem of the QVM. No memory by default.")
    (program-counter :accessor pc
                     :initform 0
                     :documentation "The program counter.")
