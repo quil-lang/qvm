@@ -127,9 +127,8 @@
   (:documentation "A gate application that's actually a Clifford."))
 
 (defmethod quil::print-instruction-generic ((instr clifford-application) stream)
-  (format stream "~{ ~/cl-quil:instruction-fmt/~}" 
-          (mapcar (lambda (thing) (quil:print-instruction thing nil))
-                  (quil:application-arguments instr))))
+  (format stream "<clifford>~{ ~/cl-quil:instruction-fmt/~}"
+          (quil:application-arguments instr)))
 
 (defmethod print-object ((o clifford-application) stream)
   (print-unreadable-object (o stream :type t :identity t)
