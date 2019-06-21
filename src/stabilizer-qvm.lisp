@@ -164,8 +164,7 @@
         (setf (aref code i)
               (apply #'make-clifford-application
                      (cl-quil.clifford:random-clifford arity)
-                     (loop :for q :from (1- arity) :downto 0 :collect q)
-                     #+ignore (random-qubits arity (1- num-qubits))))))
+                     (loop :for q :from (1- arity) :downto 0 :collect q)))))
     (when measure
       (dotimes (i num-qubits)
         (let ((j (+ length i)))
@@ -174,12 +173,6 @@
     ;; hack: cheat so we don't run this transform
     (quil::record-transform 'quil::patch-labels program)
     program))
-
-(defun print-clifford-program (program)
-  (let ((code (quil:parsed-program-executable-code program)))
-    (dotimes (i (length code))
-      (let ((isn (aref code i)))
-        (format t "~%~A: ~A on ~A" i (qvm::clifford-application-clifford isn) (quil:application-arguments isn))))))
 
 (defmethod transition ((qvm stabilizer-qvm) (instr clifford-application))
   (let* ((clifford (clifford-application-clifford instr))
@@ -194,7 +187,6 @@
                                 expected-qubits
                                 given-qubits))))
     ;; Don't cache these guys. They're probably made up Clifford gates.
-    (cl-quil.clifford::tableau-clear-scratch (stabilizer-qvm-tableau qvm))
     (apply (compile-clifford clifford :cache nil)
            (stabilizer-qvm-tableau qvm)
            qubits)

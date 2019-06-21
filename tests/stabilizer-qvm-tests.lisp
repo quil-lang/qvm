@@ -43,7 +43,7 @@ S 1")))
               (chp-tab (cl-quil.clifford::make-tableau-zero-state n)))
           (test-quickrun pure-qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code chp-tab :silent t)
-          (is (cl-quil.clifford::global-phase=
+          (is (cl-quil.clifford::global-phase~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
 
@@ -55,7 +55,7 @@ S 1")))
               (chp-tab (cl-quil.clifford::make-tableau-zero-state n)))
           (test-quickrun pure-qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code chp-tab :silent t)
-          (is (cl-quil.clifford::global-phase=
+          (is (cl-quil.clifford::global-phase~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
 
@@ -67,7 +67,7 @@ S 1")))
                (chp-tab (cl-quil.clifford::make-tableau-zero-state n)))
           (test-quickrun pure-qvm (cl-quil:parse-quil quil-code))
           (cl-quil.clifford::interpret-chp chp-code chp-tab :silent t)
-          (is (cl-quil.clifford::global-phase=
+          (is (cl-quil.clifford::global-phase~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction chp-tab))))))))
 
@@ -96,7 +96,7 @@ S 1")))
            (program (qvm::random-clifford-program 1 1 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (is (cl-quil.clifford::global-phase=
+      (is (cl-quil.clifford::global-phase~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
@@ -108,7 +108,7 @@ S 1")))
            (program (qvm::random-clifford-program 1 2 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (is (cl-quil.clifford::global-phase=
+      (is (cl-quil.clifford::global-phase~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
@@ -120,7 +120,7 @@ S 1")))
            (program (qvm::random-clifford-program 2 1 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (is (cl-quil.clifford::global-phase=
+      (is (cl-quil.clifford::global-phase~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
@@ -132,7 +132,7 @@ S 1")))
            (program (qvm::random-clifford-program 2 2 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (is (cl-quil.clifford::global-phase=
+      (is (cl-quil.clifford::global-phase~
                (qvm::amplitudes pure-qvm)
                (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
@@ -144,7 +144,7 @@ S 1")))
            (program (qvm::random-clifford-program 10 5 n)))
       (test-quickrun pure-qvm program)
       (test-quickrun stab-qvm program)
-      (is (cl-quil.clifford::global-phase=
+      (is (cl-quil.clifford::global-phase~
            (qvm::amplitudes pure-qvm)
            (cl-quil.clifford::tableau-wavefunction (qvm::stabilizer-qvm-tableau stab-qvm)))))))
 
@@ -156,7 +156,7 @@ S 1")))
           :for d := (cl-quil.clifford::matrix-to-clifford m)
           :do (is (cl-quil.clifford::clifford= c d)))))
 
-(defparameter *cool-tests* '(test-zero-state test-bell-state test-random-qvm-vs-chp-small test-random-qvm-vs-chp-medium test-random-qvm-vs-chp-large test-random-stabilizer-vs-chp test-one-qubit-one-clifford test-two-qubit-one-clifford test-one-qubit-two-clifford test-two-qubit-two-clifford test-hella-random-cliffords test-clifford-matrix-conversions))
+(defparameter *cool-tests* '(test-zero-state test-bell-state test-nonclifford test-random-qvm-vs-chp-small test-random-qvm-vs-chp-medium test-random-qvm-vs-chp-large test-random-stabilizer-vs-chp test-one-qubit-one-clifford test-two-qubit-one-clifford test-one-qubit-two-clifford test-two-qubit-two-clifford test-hella-random-cliffords test-clifford-matrix-conversions))
 
 (defun run-stabilizer-qvm-tests ()
   (flet ((print-and-run (sym)
