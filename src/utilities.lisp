@@ -167,36 +167,33 @@ The result will be a list of cons cells representing half-open intervals (on the
   #-unix
   1)
 
-(let ((prepared? nil)
-      (workers-allotted nil))
-  (defun prepare-for-parallelization (&optional num-workers)
-    "Prepare for parallelization with the correct number of workers scaling with the number of logical cores of your machine.
+(defun prepare-for-parallelization (&optional (num-workers (count-logical-cores)))
+  "Create a worker pool if none exists or if NUM-WORKERS has changed.
 
-If NUM-WORKERS is provided, it can force the number of workers. If it's greater than 1, then it should be less than the number of logical cores of your machine.
+If NUM-WORKERS is not provided, the number of workers will be set to the number of logical cores of your machine.
+This function does nothing if NUM-WORKERS workers have already been created.
+If NUM-WORKERS is provided it should be less than or equal to the number of logical cores of your machine.
 
-NOTE: This must be done before computations can be done.
+NOTE: This must be called before computations can be done.
 "
-    (check-type num-workers (or null (integer 1)))
-    (let ((num-logical-cores (or num-workers (count-logical-cores))))
-      (assert (or (null workers-allotted)
-                  (= 1 workers-allotted)
-                  (<= workers-allotted num-logical-cores))
-              ()
-              "The number of workers for parallelization exceeds the ~
-               number of cores. This could be because ~
-               #'QVM:PREPARE-FOR-INITIALIZATION was called too early. ~
-               The number of workers is ~D and the number of logical ~
-               cores is ~D."
-              workers-allotted
-              num-logical-cores)
-      (unless prepared?
-        (let ((num-workers (max 1 num-logical-cores)))
-          (setf lparallel:*kernel*
-                (lparallel:make-kernel num-workers :name "QVM Worker"))
-          (setf workers-allotted num-workers)
-          (setf prepared? t))))
+  (check-type num-workers (integer 1))
+  (when (> num-workers (count-logical-cores))
+    (warn
+     "The number of workers for parallelization exceeds the ~
+       number of cores. This could be because ~
+       #'QVM:PREPARE-FOR-PARALLELIZATION was called too early. ~
+       The number of workers is ~D and the number of logical ~
+       cores is ~D."
+     num-workers
+     (count-logical-cores)))
+  (unless (or (null lparallel:*kernel*)
+              (= (lparallel:kernel-worker-count) num-workers)) ; force creating a new kernel
+    (lparallel:end-kernel :wait t)) ; Sets lparallel:*kernel* to nil as a side effect
+  (when (null lparallel:*kernel*)
+    (setf lparallel:*kernel*
+          (lparallel:make-kernel num-workers :name "QVM Worker")))
 
-    (values)))
+  (values))
 
 ;;; Bit Injection/Ejection
 

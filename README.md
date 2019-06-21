@@ -123,7 +123,6 @@ The function `bit-reversal-circuit` takes a list of qubit indices and
 returns a list of instructions that will reverse the qubit amplitudes
 in "bit-reversal order" (e.g., the coefficient of `|1110>` gets
 mapped to `|0111>`):
-that the amplitudes get reversed
 
 ``` common-lisp
 (qvm-examples:bit-reversal-circuit '(1 2 3 4))
