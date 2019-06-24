@@ -10,7 +10,7 @@
   "Number of NOPs in a vector of instructions CODE."
   (count-if (lambda (x) (typep x 'quil:no-operation)) code))
 
-(defmethod run ((qvm pure-state-qvm))
+(defmethod run :before ((qvm pure-state-qvm))
   ;; Compile the program before running it.
   (when *compile-before-running*
     (when *transition-verbose*
@@ -26,8 +26,9 @@
           (format *trace-output* "~&; Optimization eliminated ~D instruction~:P (~5F%)."
                   eliminated
                   (float (* 100 (/ eliminated (length (program qvm)))))))
-        (finish-output *trace-output*))))
+        (finish-output *trace-output*)))))
 
+(defmethod run ((qvm classical-memory-mixin))
   ;; Actually start the execution.
   (setf (pc qvm) 0)
   (loop :until (or (null (pc qvm)) (>= (pc qvm) (loaded-program-length qvm))) :do

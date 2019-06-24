@@ -78,6 +78,13 @@
    #:classical-memory-subsystem         ; CLASS
    )
 
+  ;; classical-memory-mixin.lisp
+  (:export
+   #:classical-memory-mixin             ; CLASS
+   #:memory-ref                         ; FUNCTION
+   #:load-program                       ; FUNCTION
+   )
+
   ;; wavefunction.lisp
   (:export
    #:copy-wavefunction                  ; FUNCTION
@@ -97,8 +104,6 @@
    #:pure-state-qvm                     ; CLASS
    #:number-of-qubits                   ; ACCESSOR
    #:make-qvm                           ; FUNCTION
-   #:load-program                       ; FUNCTION
-   #:memory-ref                         ; FUNCTION
    #:nth-amplitude                      ; FUNCTION
    #:map-amplitudes                     ; FUNCTION
    #:octets-required-for-quantum-state  ; FUNCTION

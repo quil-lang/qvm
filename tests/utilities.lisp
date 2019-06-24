@@ -36,7 +36,7 @@ In general, this macro is used in order to *explicitly* test for identical behav
   (let ((execution-body (gensym "EXECUTION-BODY-")))
     `(flet ((,execution-body ()
               ,@body))
-       (declare (dynamic-extent ,execution-body))
+       (declare (dynamic-extent #',execution-body))
        ,@(when (member ':interpret modes)
            (list
             `(let ((qvm:*compile-before-running* nil))
