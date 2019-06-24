@@ -12,13 +12,13 @@
         :for random := (random 1.0d0)
         :sum random :into sum
         :sum (expt random 2) :into sumsq
-        :finally (return (list sum sumsq))))
+        :finally (return (values sum sumsq))))
 
 (defun rand-mean-dev (n)
   "Return the mean and standard deviation computed from N samples.
 This is meant to test MEAN-DEV-FROM-SUMS."
-  (let ((sums (rand-sums n)))
-    (mean-dev-from-sums (car sums) (cadr sums) n)))
+  (multiple-value-bind (sum sumsq ) (rand-sums n)
+    (mean-dev-from-sums sum sumsq n)))
 
 (defun rand-test (n)
   "Test the deviation of the sample mean and standard deviation of N numbers from the population values.
