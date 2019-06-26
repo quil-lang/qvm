@@ -10,7 +10,7 @@
 (defun mean-dev-from-sums (x-sum x-sq-sum n)
   "Given a sum X-SUM and sum of squares X-SQ-SUM of N iid random samples, compute the mean and the standard deviation"
   (let ((x-mean (/ x-sum n)))
-    (list x-mean (sqrt (- (/ x-sq-sum n) (expt x-mean 2))))))
+    (values x-mean (sqrt (- (/ x-sq-sum n) (expt x-mean 2))))))
 
 (defun findmin (seq)
   "Return the index of the minimum value in SEQ.
@@ -20,15 +20,15 @@ If the minimum is degenerate, the fist index is returned."
         :for i :from 0
         :with imin := 0
         :with minitem := (elt seq 0)
-        :do (when (< item minitem)
-              (setf imin i)
-              (setf minitem item))
+        :when (< item minitem)
+          :do (setf imin i
+                    minitem item)
         :finally (return imin )))
 
 (defun rescale-by-minimum (seq)
   "Normalize SEQ by its minimum element"
   (let ((min (alexandria:extremum seq #'<)))
-    (map 'vector #'(lambda (x) (/ x min)) seq)))
+    (map 'vector (lambda (x) (/ x min)) seq)))
 
 (defmacro simple-time (num-trials &body body)
   "Execute BODY NUM-TRIALS times and return the run time in seconds."

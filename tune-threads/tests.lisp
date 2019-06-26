@@ -23,5 +23,5 @@ This is meant to test MEAN-DEV-FROM-SUMS."
 (defun rand-test (n)
   "Test the deviation of the sample mean and standard deviation of N numbers from the population values.
 The numbers should approach zero with increasing N."
-  (destructuring-bind (mean dev) (rand-mean-dev n)
+  (multiple-value-bind (mean dev) (rand-mean-dev n)
     (list (- mean 0.5d0) (- dev (sqrt (/ 1.0d0 12))))))
