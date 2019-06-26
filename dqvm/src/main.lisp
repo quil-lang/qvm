@@ -72,26 +72,21 @@
   (when (master-node-p)
     (show-welcome))
 
-  (let (program)
-    (when execute
-      ;; Do all file handling here, not in the node code.
-      (when (master-node-p)
-        (setf program (safely-read-quil execute)))
-
-      (assert (and (plusp +worker-count+)
-                   (power-of-two-p +worker-count+))
-              ()
-              "There has to be a positive power-of-two ~
+  (when execute
+    (when (master-node-p)
+      (assert (power-of-two-p +worker-count+)
+              nil
+              "There has to be a power-of-two ~
              number of workers. We have ~D."
-              +worker-count+)
-      (with-errors-printed-verbosely
-          (unwind-protect
-               (if (master-node-p)
-                   (dqvm.master:%main-master :program program)
-                   (dqvm.worker:%main-worker))
-            (mpi:mpi-finalize)))
+              +worker-count+))
 
-      (quit-nicely))))
+    (with-errors-printed-verbosely
+      (unwind-protect (if (master-node-p)
+                          (dqvm.master:%main-master :program (safely-read-quil execute))
+                          (dqvm.worker:%main-worker))
+        (quit-nicely -1)))
+
+    (quit-nicely)))
 
 (defun %main (argv)
   "The entry point to the program."
