@@ -5,7 +5,6 @@
 ;;; This file contains the main entry point to the program.
 
 (defparameter *program-name* "dqvm")
-(defparameter *program* "H 0")
 
 (defparameter *option-spec*
   `((("execute" #\e)
@@ -73,25 +72,26 @@
   (when (master-node-p)
     (show-welcome))
 
-  (when execute
-    ;; Do all file handling here, not in the node code.
-    (when (master-node-p)
-      (setf *program* (safely-read-quil execute)))
+  (let (program)
+    (when execute
+      ;; Do all file handling here, not in the node code.
+      (when (master-node-p)
+        (setf program (safely-read-quil execute)))
 
-    (assert (and (plusp +worker-count+)
-                 (power-of-two-p +worker-count+))
-            ()
-            "There has to be a positive power-of-two ~
+      (assert (and (plusp +worker-count+)
+                   (power-of-two-p +worker-count+))
+              ()
+              "There has to be a positive power-of-two ~
              number of workers. We have ~D."
-            +worker-count+)
-    (with-errors-printed-verbosely
-      (unwind-protect
-           (if (master-node-p)
-               (dqvm.master:%main-master :program *program*)
-               (dqvm.worker:%main-worker))
-        (mpi:mpi-finalize)))
+              +worker-count+)
+      (with-errors-printed-verbosely
+          (unwind-protect
+               (if (master-node-p)
+                   (dqvm.master:%main-master :program program)
+                   (dqvm.worker:%main-worker))
+            (mpi:mpi-finalize)))
 
-    (quit-nicely)))
+      (quit-nicely))))
 
 (defun %main (argv)
   "The entry point to the program."
