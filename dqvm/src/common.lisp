@@ -24,7 +24,7 @@
 
 (defun power-of-two-p (x)
   "Is X a power of two?"
-  (check-type x unsigned-byte)
+  (check-type x (integer 1 *))
   (zerop (logand x (1- x))))
 
 (defmacro with-total-readability (&body body)
