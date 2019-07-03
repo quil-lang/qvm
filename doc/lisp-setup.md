@@ -145,8 +145,7 @@ your `.emacs` file. This will make everything good.
                slime-indentation))
 
 (setq slime-net-coding-system 'utf-8-unix
-      slime-truncate-lines nil
-      slime-multiprocessing t)
+      slime-truncate-lines nil)
 
 (setq lisp-lambda-list-keyword-parameter-alignment t
       lisp-lambda-list-keyword-alignment t)
