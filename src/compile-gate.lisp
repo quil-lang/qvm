@@ -53,13 +53,13 @@ This function is similar to the function SET-QUBIT-COMPONENTS-OF-AMPLITUDE-ADDRE
   (check-type address symbol)
   (check-type flags non-negative-fixnum)
   (check-type qubits nat-tuple)
-  (loop :with code := address
+  (loop :with mask := #b0
         :for i :from 0
         :for q :across qubits
         :for bit := (ldb (byte 1 i) flags)
         :unless (zerop bit)
-          :do (setf code `(dpb 1 (byte 1 ,q) ,code))
-        :finally (return code)))
+          :do (setf mask (dpb 1 (byte 1 q) mask))
+        :finally (return `(logior ,mask ,address))))
 
 (defun generate-extraction-code (complement-address wavefunction qubits body-gen
                                  &key (generate-extractions t))
