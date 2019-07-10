@@ -407,3 +407,9 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
 ;;; Don't compile things for the density-qvm.
 (defmethod compile-loaded-program ((qvm density-qvm))
   qvm)
+
+;;; TODO: FIXME: we should be able to compile density operator stuff
+;;; just fine.
+(defmethod compile-instruction ((qvm density-qvm) isn)
+  (declare (ignore qvm))
+  isn)
