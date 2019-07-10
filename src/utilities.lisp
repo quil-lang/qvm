@@ -245,6 +245,21 @@ NOTE: This must be called before computations can be done.
        (declare (type non-negative-fixnum left right))
        (the non-negative-fixnum (logior left right)))))
 
+(defun gray-encode (n)
+  "Compute the Nth Gray code."
+  (check-type n (integer 0))
+  (logxor n (ash n -1)))
+
+(defun gray-bit (n)
+  "Let G(n) be the Nth number in Gray code order with G(0) = 0, i.e., GRAY-ENCODE. Then
+    (G (1+ n)) == (LOGXOR (G n) (ASH 1 (GRAY-BIT n)))."
+  (check-type n (integer 0))
+  (labels ((%gray-bit (n)
+             (if (oddp n)
+                 1
+                 (1+ (%gray-bit (floor n 2))))))
+    (1- (%gray-bit (1+ n)))))
+
 (defun seeded-random-state (seed)
   "Return an MT19937 random state that has been initialized from SEED,
 which should be either NIL (meaning to use the current value of

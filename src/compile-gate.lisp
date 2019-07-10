@@ -16,6 +16,8 @@
   (handler-bind (#+sbcl (sb-ext:compiler-note #'muffle-warning))
     (compile nil form)))
 
+(global-vars:define-global-var **dotimes-iterator** 'pdotimes)
+
 ;;;;;;;;;;;;;;;;;;;;;;; GATE APPLICATION CODE ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun generate-complement-iteration (qubits wavefunction body-gen &key (dotimes-iterator 'cl:dotimes))
@@ -32,7 +34,7 @@ DOTIMES-ITERATOR specifies the DOTIMES-like macro that is used for iteration."
     `(,dotimes-iterator (i (the non-negative-fixnum
                                 (expt 2 (the nat-tuple-cardinality
                                              (- (wavefunction-qubits ,wavefunction)
-                                                (nat-tuple-cardinality ,qubits))))))
+                                                ,(nat-tuple-cardinality qubits))))))
        (declare (type non-negative-fixnum i))
        (let ((,addr i))
          (declare (type amplitude-address ,addr))
@@ -155,7 +157,7 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
                  operator
                  amps
                  arefs))))
-           :dotimes-iterator 'lparallel:pdotimes)))))
+           :dotimes-iterator **dotimes-iterator**)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; PERMUTATION GATES ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -210,7 +212,7 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
                permutation
                arefs))
             :generate-extractions nil))
-         :dotimes-iterator 'lparallel:pdotimes))))
+         :dotimes-iterator **dotimes-iterator**))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;; APPLY OPERATOR CACHING ;;;;;;;;;;;;;;;;;;;;;;;
