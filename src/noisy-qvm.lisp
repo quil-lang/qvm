@@ -268,7 +268,7 @@ POVMs (e.g. a NOISY-QVM or DENSITY-QVM)."
               (perturb-measurement c p00 p01 p10 p11))))))
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:measure))
-  (call-next-method qvm instr)
+  (call-next-method)
   (corrupt-measurement-outcome qvm instr)
   qvm)
 
