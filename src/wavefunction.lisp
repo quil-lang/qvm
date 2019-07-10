@@ -330,3 +330,18 @@ If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH para
           :do (incf s (probability (aref state i)))
               (setf (aref cdf i) s)
           :finally (return cdf))))
+
+(declaim (inline gaussian-random-complex))
+(defun gaussian-random-complex ()
+  "Return a complex number with Gaussian-random real and imaginary parts."
+  (multiple-value-bind (re im)
+      (alexandria:gaussian-random)
+    (complex re im)))
+
+(defun randomize-wavefunction (wavefunction)
+  "Randomize the elements of WAVEFUNCTION resulting in a valid complex unit vector."
+  (declare (type quantum-state wavefunction))
+  ;; Fill the vector with random Gaussian variates.
+  (map-into wavefunction #'gaussian-random-complex)
+  ;; Normalize.
+  (normalize-wavefunction wavefunction))
