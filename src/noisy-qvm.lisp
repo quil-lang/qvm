@@ -13,7 +13,7 @@
    (readout-povms
     :initarg :readout-povms
     :accessor readout-povms
-    :initform (make-hash-table)
+    :initform (make-hash-table :test 'eql)
     :documentation "Noisy readout encoded as diagonal single qubit
     POVM given as a 4-element list
 
