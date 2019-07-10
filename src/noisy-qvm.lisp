@@ -292,7 +292,7 @@ updated list of measured bits."
 
 (defmethod measure-all ((qvm noisy-qvm))
   (multiple-value-bind (qvm-ret measured-bits)
-      (call-next-method qvm)
+      (call-next-method)
     (values
      qvm-ret
      (perturb-measured-bits qvm-ret measured-bits))))
@@ -300,3 +300,7 @@ updated list of measured bits."
 ;;; Don't compile things for the noisy-qvm.
 (defmethod compile-loaded-program ((qvm noisy-qvm))
   qvm)
+
+(defmethod compile-instruction ((qvm noisy-qvm) isn)
+  (declare (ignore qvm))
+  isn)
