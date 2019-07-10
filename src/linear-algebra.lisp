@@ -44,7 +44,7 @@
          (op   (make-matrix rows cols)))
     (dotimes (r rows op)
       (dotimes (c cols)
-        (setf (aref op r c) (magicl:ref m r c))))))
+        (setf (aref op r c) (cflonum (magicl:ref m r c)))))))
 
 
 ;;; Quantum Operator Operations/Manipulations
