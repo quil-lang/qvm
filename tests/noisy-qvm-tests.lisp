@@ -114,8 +114,8 @@
   "Test that noisy readout behaves as expected on the given QVM (having at least 2 qubits)."
   (let* ((p (with-output-to-quil
               "DECLARE ro BIT[2]"
-              (write-line "MEASURE 0 ro[0]")
-              (write-line "MEASURE 1 ro[1]")))
+              "MEASURE 0 ro[0]"
+              "MEASURE 1 ro[1]"))
          (tries 500)
          (results-desired '(1 0)))
     (qvm:load-program qvm p :supersede-memory-subsystem t)
@@ -130,9 +130,11 @@
                                     (check-noisy-pointer-is-correct qvm))))
                     (a (qvm:memory-ref qvm-final "ro" 0))
                     (b (qvm:memory-ref qvm-final "ro" 1)))
-                (is (= a 0))
+                (is (zerop a))
                 (setf results-desired
-                      (remove b results-desired :test #'eq))))
+                      (remove b results-desired :test #'=))))
+    ;; For this POVM, we should not have exhausted all 500 tries in
+    ;; any realistic situation.
     (is (plusp tries))))
 
 (deftest test-noisy-qvm-noisy-readout ()
@@ -144,8 +146,8 @@
 (deftest test-noisy-measure-all ()
   "Test that MEASURE-ALL works correctly for noisy readout"
   (let ((p (with-output-to-quil
-             (write-line "X 0")
-             (write-line "X 1")))
+             "X 0"
+             "X 1"))
         (tries 500)
         (results-desired '((1 1)
                            (1 0)))
