@@ -160,6 +160,89 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
            :dotimes-iterator **dotimes-iterator**)))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASUREMENTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *unrolling-size* 0
+  "Maximum number of loop body duplications in loop unrolling. Zero disables unrolling.")
+
+;;; TODO: Parallelize
+(defun generate-single-qubit-measurement-code (qubit)
+  (declare (type nat-tuple-element qubit))
+  (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero inv-norm delete-address mask keep-address)
+    `(lambda (,wavefunction)
+       (declare ,*optimize-dangerously-fast*
+                (type quantum-state ,wavefunction)
+                (notinline random))
+       (let ((,size (length ,wavefunction))
+             (,zero-probability (flonum 0)))
+         (declare (type non-negative-fixnum ,size)
+                  (type flonum ,zero-probability))
+         ;; Calculate the probability
+         ,(cond
+            ((zerop qubit)
+             `(loop :for ,address :of-type non-negative-fixnum :below ,size :by 2 :do
+               (incf ,zero-probability (probability (aref ,wavefunction ,address)))))
+            (t
+             (let ((jump (ash 1 qubit)))
+               `(loop :with ,address :of-type non-negative-fixnum := 0
+                      :while (< ,address ,size)
+                      :do (progn
+                            (loop :repeat ,jump :do
+                              (incf ,zero-probability (probability (aref ,wavefunction ,address)))
+                              (incf ,address))
+                            ;; At this point, we will have a 1 in the
+                            ;; QUBIT'th position.
+                            (incf ,address ,jump))))))
+         ;; Who do we spare?
+         (let* ((,keep-zero (< (the flonum (random (flonum 1))) ,zero-probability))
+                (,inv-norm (if ,keep-zero
+                               (/ (sqrt (the (flonum 0) ,zero-probability)))
+                               (/ (sqrt (the (flonum 0) (- (flonum 1) ,zero-probability)))))))
+           (declare (type boolean ,keep-zero)
+                    (type flonum ,inv-norm))
+           ;; ADDRESS = to be kept
+           ;; DELETE-ADDRESS = to be projected out
+           ,(cond
+              ((zerop qubit)
+               `(loop :for ,keep-address :of-type non-negative-fixnum :from (if ,keep-zero 0 1) :below ,size :by 2
+                      :for ,delete-address :of-type non-negative-fixnum := (logxor ,keep-address 1)
+                      :do (setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
+                                (aref ,wavefunction ,delete-address) (cflonum 0))))
+              (t
+               (let ((jump (ash 1 qubit)))
+                 `(loop :with ,address :of-type non-negative-fixnum := 0
+                        :with ,mask := (if ,keep-zero 0 ,jump)
+                        :while (< ,address ,size)
+                        :do (progn
+                              ;; decide on unrolling
+                              ,(if (<= jump *unrolling-size*)
+                                   ;; yes unroll
+                                   `(let* ((,keep-address   (logior ,address ,mask))
+                                           (,delete-address (logxor ,keep-address ,jump)))
+                                      (declare (type non-negative-fixnum ,keep-address ,delete-address))
+                                      ,@(loop
+                                          :repeat jump
+                                          :append `((setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
+                                                          (aref ,wavefunction ,delete-address) (cflonum 0))
+                                                    ;; increment lower half of address
+                                                    (incf ,keep-address)
+                                                    (incf ,delete-address))))
+                                   ;; no don't unroll
+                                   `(loop :with ,keep-address :of-type non-negative-fixnum := (logior ,address ,mask)
+                                          :with ,delete-address :of-type non-negative-fixnum := (logxor ,keep-address ,jump)
+                                          :repeat ,jump
+                                          :do
+                                             (setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
+                                                   (aref ,wavefunction ,delete-address) (cflonum 0))
+                                             ;; increment lower half of address
+                                             (incf ,keep-address)
+                                             (incf ,delete-address)))
+                              ;; increment upper half of address
+                              (incf ,address ,(* 2 jump)))))))
+           ;; Return what we kept (aka measured).
+           (if ,keep-zero 0 1))))))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;; PERMUTATION GATES ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun permutation-to-transpositions (permutation)
@@ -246,11 +329,19 @@ This function will compile new ones on-demand."
         (find-or-make-apply-matrix-operator-function (nat-tuple p q)))))
   nil)
 
-(defclass compiled-gate-application (quil:gate-application)
+(defclass compiled-instruction ()       ; Explicitly do *NOT* subclass
+                                        ; from QUIL:INSTRUCTION.
   ((source-instruction :initarg :source-instruction
                        :accessor source-instruction
-                       :documentation "The instruction that was compiled to produce this one.")
-   (source-gate :initarg :source-gate
+                       :documentation "The instruction that was compiled to produce this one."))
+(:metaclass abstract-class))
+
+(defmethod quil::print-instruction-generic ((instr compiled-instruction) stream)
+  (format stream "compiled{ ~/quil:instruction-fmt/ }" (source-instruction instr))
+  nil)
+
+(defclass compiled-gate-application (compiled-instruction quil:gate-application)
+  ((source-gate :initarg :source-gate
                 :reader source-gate
                 :documentation "The gate object being represented by this application.")
    (apply-operator :initarg :apply-operator
@@ -269,11 +360,12 @@ This function will compile new ones on-demand."
   ()
   (:documentation "A compiled GATE-APPLICATION where the gate happens to be a permutation gate."))
 
-(defmethod quil::print-instruction-generic ((instr compiled-gate-application) stream)
-  (format stream "compiled{ ")
-  (quil:print-instruction (source-instruction instr) stream)
-  (format stream " }")
-  nil)
+(defclass compiled-measurement (compiled-instruction quil:measurement)
+  ((projector-operator :initarg :projector-operator
+                       :reader projector-operator
+                       :documentation "Projection function which takes a WAVEFUNCTION as an argument and returns the measured bit result."))
+  (:documentation "A compiled MEASURE, regardless of its classical effect."))
+
 
 (defgeneric compile-operator (op qubits parameters)
   (:documentation "Compile the operator OP into an efficient representation. Return two values:
@@ -319,7 +411,8 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
   (declare (ignore qvm))
   isn)
 
-(defmethod compile-instruction (qvm (isn compiled-gate-application))
+;;; Don't re-compile already compiled things.
+(defmethod compile-instruction (qvm (isn compiled-instruction))
   (declare (ignore qvm))
   isn)
 
@@ -368,9 +461,17 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
                      ,@initargs)))
              (apply #'make-instance class-name all-initargs)))))))
 
+(defmethod compile-instruction ((qvm pure-state-qvm) (isn quil:measurement))
+  (let ((qubit (quil:measurement-qubit isn)))
+    (make-instance 'compiled-measurement
+                   :source-instruction isn
+                   :qubit qubit
+                   :projector-operator
+                   (compile-lambda
+                    (generate-single-qubit-measurement-code (quil:qubit-index qubit))))))
 
-;;; Measure Chain Compilation
-;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE CHAINS ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;; Below is an implementation that finds chains of MEASURE commands,
 ;;; and collapses them into a single sampling operation.
 ;;;

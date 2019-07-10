@@ -183,4 +183,10 @@ the specified QVM."
   (incf (pc qvm))
   qvm)
 
-
+(defmethod transition ((qvm pure-state-qvm) (instr compiled-measurement))
+  (let ((bit (funcall (projector-operator instr) (amplitudes qvm)))
+        (src (source-instruction instr)))
+    (when (typep src 'quil:measure)
+      (setf (dereference-mref qvm (quil:measure-address src)) bit)))
+  (incf (pc qvm))
+  qvm)
