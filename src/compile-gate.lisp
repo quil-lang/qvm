@@ -302,10 +302,16 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
 
 (global-vars:define-global-var **apply-matrix-operator-functions**
     (make-hash-table :test 'equal)
-  "A table mapping lists of qubit indexes representing Hilbert spaces to their compiled gate application functions.")
+  "A table mapping lists of qubit indexes representing Hilbert spaces to their compiled gate application functions.
+
+Keys have the form:
+
+    (:gate &rest qubits)
+    (:measure qubit)
+")
 
 (defun find-or-make-apply-matrix-operator-function (qubits)
-  "Find a matrix application function for the Hilbert subspace designated by QUBITS.
+  "Find a matrix application function for the Hilbert subspace designated by QUBITS (a NAT-TUPLE).
 
 This function will compile new ones on-demand."
   (check-type qubits nat-tuple)
@@ -315,13 +321,26 @@ This function will compile new ones on-demand."
               (compile-lambda
                (generate-gate-application-code qubits))))))
 
+(defun find-or-make-projector-operator-function (qubit)
+  "Find a projector function for the Hilbert subspace designated by QUBIT (a QUIL:QUBIT).
+
+This function will compile new ones on-demand."
+  (check-type qubit quil:qubit)
+  (let* ((index (quil:qubit-index qubit))
+         (key (list ':measure index)))
+    (or (gethash key **apply-matrix-operator-functions**)
+        (setf (gethash key **apply-matrix-operator-functions**)
+              (compile-lambda
+               (generate-single-qubit-measurement-code index))))))
+
 ;; This function gets called at compile-time in apply-gate.lisp.
 (defun warm-apply-matrix-operator-cache (&key (max-qubits 36))
   "Warm up the **APPLY-MATRIX-OPERATOR-FUNCTIONS** cache for Hilbert spaces B_i and B_i (x) B_j for 0 <= i, j <= MAX-QUBITS."
   (check-type max-qubits nat-tuple-cardinality)
-  ;; Warm the 1q cache.
+  ;; Warm the 1q & measure cache.
   (loop :for q :to max-qubits :do
-    (find-or-make-apply-matrix-operator-function (nat-tuple q)))
+    (find-or-make-apply-matrix-operator-function (nat-tuple q))
+    (find-or-make-projector-operator-function (quil:qubit q)))
   ;; Warm the 2q cache.
   (loop :for p :to max-qubits :do
     (loop :for q :to max-qubits :do
@@ -466,9 +485,7 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
     (make-instance 'compiled-measurement
                    :source-instruction isn
                    :qubit qubit
-                   :projector-operator
-                   (compile-lambda
-                    (generate-single-qubit-measurement-code (quil:qubit-index qubit))))))
+                   :projector-operator (find-or-make-projector-operator-function qubit))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE CHAINS ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
