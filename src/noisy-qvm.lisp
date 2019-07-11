@@ -282,7 +282,6 @@ POVM must be a 4-element list of double-floats."))
     (%corrupt-qvm-memory-with-povm qvm instr))
   ;; For compiled measurements, refer to the source of that
   ;; instruction.
-  #+#:not-yet
   (:method ((qvm noisy-qvm) (instr compiled-measurement))
     (apply-classical-readout-noise qvm (source-instruction instr))))
 
