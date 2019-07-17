@@ -4,6 +4,9 @@
 
 (in-package #:qvm-tests)
 
+;;; A "cheeky measurement test" is one that subverts the measurement
+;;; chain compilation.
+
 (deftest test-index-to-address ()
   "Test the INDEX-TO-ADDRESS function."
   (let ((index        #b1111)
@@ -31,6 +34,22 @@
         (is (= 0 (qvm:memory-ref qvm "ro" 1)))
         (is (= 1 (qvm:memory-ref qvm "ro" 2)))))))
 
+(deftest test-simple-cheeky-measurements ()
+  "Test that some simple measurements work subverting measurement chain optimization."
+  (with-execution-modes (:compile)
+    (let ((p (with-output-to-quil
+               "DECLARE ro BIT[3]"
+               "X 0"
+               "X 2"
+               "X 3"
+               "MEASURE 0 ro[0]"
+               "MEASURE 1 ro[1]"
+               "MEASURE 2 ro[2]")))
+      (let ((qvm (qvm:run-program (cl-quil:qubits-needed p) p)))
+        (is (= 1 (qvm:memory-ref qvm "ro" 0)))
+        (is (= 0 (qvm:memory-ref qvm "ro" 1)))
+        (is (= 1 (qvm:memory-ref qvm "ro" 2)))))))
+
 (deftest test-simple-measurements-with-swap ()
   "Test that some simple measurements work with SWAP."
   (with-execution-modes (:compile :interpret)
@@ -48,11 +67,41 @@
         (is (= 1 (qvm:memory-ref qvm "ro" 1)))
         (is (= 0 (qvm:memory-ref qvm "ro" 2)))))))
 
+(deftest test-simple-cheeky-measurements-with-swap ()
+  "Test that some simple measurements work with SWAP subverting measurement chain optimization."
+  (with-execution-modes (:compile)
+    (let ((p (with-output-to-quil
+               "DECLARE ro BIT[3]"
+               "X 0"
+               "X 2"
+               "X 3"
+               "SWAP 0 1"
+               "SWAP 0 2"
+               "MEASURE 0 ro[0]"
+               "MEASURE 1 ro[1]"
+               "MEASURE 2 ro[2]")))
+      (let ((qvm (qvm:run-program (cl-quil:qubits-needed p) p)))
+        (is (= 1 (qvm:memory-ref qvm "ro" 0)))
+        (is (= 1 (qvm:memory-ref qvm "ro" 1)))
+        (is (= 0 (qvm:memory-ref qvm "ro" 2)))))))
+
 (deftest test-unit-wavefunction-after-measurements ()
   "Test that the wavefunction is of length nearly 1 after measurements."
   (with-execution-modes (:compile :interpret)
     (let ((progs (loop :for i :from 5 :to 15
                        :collect (with-output-to-quil
+                                  (loop :for q :below i
+                                        :do (format t "H ~D~%MEASURE ~D~%" q q))))))
+      (loop :for p :in progs
+            :for q := (qvm:run-program (cl-quil:qubits-needed p) p)
+            :do (is (double-float= 1 (sqrt (reduce #'+ (qvm::amplitudes q) :key #'probability))))))))
+
+(deftest test-unit-wavefunction-after-cheeky-measurements ()
+  "Test that the wavefunction is of length nearly 1 after measurements subverting measurement chain optimization."
+  (with-execution-modes (:compile)
+    (let ((progs (loop :for i :from 5 :to 15
+                       :collect (with-output-to-quil
+                                  (format t "X ~D~%" i)
                                   (loop :for q :below i
                                         :do (format t "H ~D~%MEASURE ~D~%" q q))))))
       (loop :for p :in progs
@@ -79,6 +128,8 @@
       (is (<= (max 0.0 (- percent-ones tolerance))
               got-percent-ones
               (min 1.0 (+ percent-ones tolerance)))))))
+
+;;; these statistical tests are cheeky
 
 (deftest test-hadamard-measurements ()
   (with-execution-modes (:compile :interpret)

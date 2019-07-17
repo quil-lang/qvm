@@ -311,6 +311,15 @@ whether the number of iterations N exceeds the threshold set by
          (dotimes (,i ,n ,ret)
            ,@body))))
 
+(defmacro sum-dotimes ((i range) &body body)
+  "Compute the sum of BODY for I in ranging over 0 <= I < RANGE. RANGE must be a non-negative fixnum."
+  (multiple-value-bind (body decls) (alexandria:parse-body body :documentation nil :whole nil)
+    (alexandria:with-gensyms (sum)
+      `(let ((,sum (flonum 0)))
+         (declare (type flonum ,sum))
+         (dotimes (,i ,range ,sum)
+           ,@decls
+           (incf ,sum (progn ,@body)))))))
 
 (defmacro psum-dotimes ((i range) &body body)
   "Compute the sum of BODY for I in ranging over 0 <= I < RANGE. RANGE must be a non-negative fixnum."

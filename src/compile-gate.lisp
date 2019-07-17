@@ -16,7 +16,7 @@
   (handler-bind (#+sbcl (sb-ext:compiler-note #'muffle-warning))
     (compile nil form)))
 
-(global-vars:define-global-var **dotimes-iterator** 'pdotimes)
+(global-vars:define-global-var **dotimes-iterator** 'pdotimes) ; Note this is the QVM's PDOTIMES.
 
 ;;;;;;;;;;;;;;;;;;;;;;; GATE APPLICATION CODE ;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -162,85 +162,68 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASUREMENTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter *unrolling-size* 0
-  "Maximum number of loop body duplications in loop unrolling. Zero disables unrolling.")
+(defun %generate-rotate (n-k k x)
+  (check-type n-k symbol)
+  (check-type k nat-tuple-element)
+  (check-type x symbol)
+  (if (zerop k)
+      x
+      `(logior (ash (ldb (byte ,n-k 0) ,x) ,k)
+               (ldb (byte ,k ,n-k) ,x))))
 
-;;; TODO: Parallelize
-(defun generate-single-qubit-measurement-code (qubit)
+(defun %generate-zero-probability (wf size qubit)
+  (check-type wf symbol)
+  (check-type size symbol)
+  (check-type qubit nat-tuple-element)
+  (alexandria:with-gensyms (n-k address)
+    `(let ((,n-k (- (wavefunction-qubits ,wf) ,qubit)))
+       (declare (type nat-tuple-cardinality ,n-k)
+                (ignorable ,n-k))
+       ;; Iterate through all bitstrings of length N/2.
+       (psum-dotimes (,address (half ,size))
+         ;(declare (type non-negative-fixnum ,address))
+         ;; Create a bitstring 1111...110
+         (let ((,address (* 2 ,address)))
+           (declare (type non-negative-fixnum ,address))
+           ;; Rotate the 0 into the right place.
+           (probability (aref ,wf ,(%generate-rotate n-k qubit address))))))))
+
+(declaim (ftype (function (bit bit) bit) bit=)
+         (inline bit=))
+(defun bit= (a b)
+  (ldb (byte 1 0) (logeqv a b))
+  #+#:other (- 1 (logxor a b))
+  #+#:other (if (= a b) 1 0))
+
+(defun generate-single-qubit-measurement-code (qubit &key (dotimes-iterator **dotimes-iterator**))
   (declare (type nat-tuple-element qubit))
-  (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero inv-norm delete-address mask keep-address)
+  (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero keep-zero-bit inv-norm address-bit)
     `(lambda (,wavefunction)
        (declare ,*optimize-dangerously-fast*
                 (type quantum-state ,wavefunction)
                 (notinline random))
-       (let ((,size (length ,wavefunction))
-             (,zero-probability (flonum 0)))
+       (let* ((,size (length ,wavefunction))
+              (,zero-probability ,(%generate-zero-probability wavefunction size qubit)))
          (declare (type non-negative-fixnum ,size)
                   (type flonum ,zero-probability))
-         ;; Calculate the probability
-         ,(cond
-            ((zerop qubit)
-             `(loop :for ,address :of-type non-negative-fixnum :below ,size :by 2 :do
-               (incf ,zero-probability (probability (aref ,wavefunction ,address)))))
-            (t
-             (let ((jump (ash 1 qubit)))
-               `(loop :with ,address :of-type non-negative-fixnum := 0
-                      :while (< ,address ,size)
-                      :do (progn
-                            (loop :repeat ,jump :do
-                              (incf ,zero-probability (probability (aref ,wavefunction ,address)))
-                              (incf ,address))
-                            ;; At this point, we will have a 1 in the
-                            ;; QUBIT'th position.
-                            (incf ,address ,jump))))))
          ;; Who do we spare?
          (let* ((,keep-zero (< (the flonum (random (flonum 1))) ,zero-probability))
+                (,keep-zero-bit (if ,keep-zero 0 1))
                 (,inv-norm (if ,keep-zero
                                (/ (sqrt (the (flonum 0) ,zero-probability)))
                                (/ (sqrt (the (flonum 0) (- (flonum 1) ,zero-probability)))))))
            (declare (type boolean ,keep-zero)
+                    (type bit ,keep-zero-bit)
                     (type flonum ,inv-norm))
-           ;; ADDRESS = to be kept
-           ;; DELETE-ADDRESS = to be projected out
-           ,(cond
-              ((zerop qubit)
-               `(loop :for ,keep-address :of-type non-negative-fixnum :from (if ,keep-zero 0 1) :below ,size :by 2
-                      :for ,delete-address :of-type non-negative-fixnum := (logxor ,keep-address 1)
-                      :do (setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
-                                (aref ,wavefunction ,delete-address) (cflonum 0))))
-              (t
-               (let ((jump (ash 1 qubit)))
-                 `(loop :with ,address :of-type non-negative-fixnum := 0
-                        :with ,mask := (if ,keep-zero 0 ,jump)
-                        :while (< ,address ,size)
-                        :do (progn
-                              ;; decide on unrolling
-                              ,(if (<= jump *unrolling-size*)
-                                   ;; yes unroll
-                                   `(let* ((,keep-address   (logior ,address ,mask))
-                                           (,delete-address (logxor ,keep-address ,jump)))
-                                      (declare (type non-negative-fixnum ,keep-address ,delete-address))
-                                      ,@(loop
-                                          :repeat jump
-                                          :append `((setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
-                                                          (aref ,wavefunction ,delete-address) (cflonum 0))
-                                                    ;; increment lower half of address
-                                                    (incf ,keep-address)
-                                                    (incf ,delete-address))))
-                                   ;; no don't unroll
-                                   `(loop :with ,keep-address :of-type non-negative-fixnum := (logior ,address ,mask)
-                                          :with ,delete-address :of-type non-negative-fixnum := (logxor ,keep-address ,jump)
-                                          :repeat ,jump
-                                          :do
-                                             (setf (aref ,wavefunction ,keep-address) (* ,inv-norm (aref ,wavefunction ,keep-address))
-                                                   (aref ,wavefunction ,delete-address) (cflonum 0))
-                                             ;; increment lower half of address
-                                             (incf ,keep-address)
-                                             (incf ,delete-address)))
-                              ;; increment upper half of address
-                              (incf ,address ,(* 2 jump)))))))
-           ;; Return what we kept (aka measured).
-           (if ,keep-zero 0 1))))))
+           ;; We return the bit KEEP-ZERO-BIT which is also our measurement result.
+           (,dotimes-iterator (,address ,size ,keep-zero-bit)
+             (declare (type non-negative-fixnum ,address))
+             (let ((,address-bit (ldb (byte 1 ,qubit) ,address)))
+               (declare (type bit ,address-bit))
+               (setf (aref ,wavefunction ,address)
+                     (* (cflonum (bit= ,address-bit ,keep-zero-bit))
+                        ,inv-norm
+                        (aref ,wavefunction ,address))))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; PERMUTATION GATES ;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -168,39 +168,6 @@
     (is (= 1 (qvm:memory-ref q "r" 0)))
     (is (= 1 (qvm:memory-ref q "int" 0)))))
 
-#+ign
-(deftest test-classical-binaries ()
-  "Test the classical binary instructions AND, OR, MOVE, and EXCHANGE."
-  (flet ((test-prog (instr a b expected-a expected-b)
-           (let* ((p (with-output-to-quil
-                       (when (= 1 a)
-                         (format t "TRUE [0]~%"))
-                       (when (= 1 b)
-                         (format t "TRUE [1]~%"))
-                       (format t "~A [0] [1]~%" instr)))
-                  (q (run-program 1 p)))
-             (is (= expected-a (classical-bit q 0)))
-             (is (= expected-b (classical-bit q 1))))))
-    (test-prog "AND" 0 0  0 0)
-    (test-prog "AND" 0 1  0 0)
-    (test-prog "AND" 1 0  1 0)
-    (test-prog "AND" 1 1  1 1)
-
-    (test-prog "OR" 0 0  0 0)
-    (test-prog "OR" 0 1  0 1)
-    (test-prog "OR" 1 0  1 1)
-    (test-prog "OR" 1 1  1 1)
-
-    (test-prog "MOVE" 0 0  0 0)
-    (test-prog "MOVE" 0 1  0 0)
-    (test-prog "MOVE" 1 0  1 1)
-    (test-prog "MOVE" 1 1  1 1)
-
-    (test-prog "EXCHANGE" 0 0  0 0)
-    (test-prog "EXCHANGE" 0 1  1 0)
-    (test-prog "EXCHANGE" 1 0  0 1)
-    (test-prog "EXCHANGE" 1 1  1 1)))
-
 (deftest test-flip-circuit ()
   "Test the FLIP circuit. Will flip [0] once, and [1] twice. Tests in particular the ability to generate unique labels within circuits."
   (let* ((p (with-output-to-quil
