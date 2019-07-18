@@ -26,13 +26,10 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 (defun qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
   (declare #.*optimize-dangerously-fast*
-           (inline probability))
+           (inline wavefunction-excited-state-probability))
   (let ((wavefunction (amplitudes qvm)))
     (declare (type quantum-state wavefunction))
-    (psum-dotimes (i (half (length wavefunction)))
-      (let ((address (index-to-address i qubit 1)))
-        (declare (type amplitude-address address))
-        (probability (aref wavefunction address))))))
+    (wavefunction-excited-state-probability wavefunction qubit)))
 
 (defun force-measurement (measured-value qubit qvm excited-probability)
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly.

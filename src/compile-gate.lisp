@@ -162,32 +162,6 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASUREMENTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun %generate-rotate (n-k k x)
-  (check-type n-k symbol)
-  (check-type k nat-tuple-element)
-  (check-type x symbol)
-  (if (zerop k)
-      x
-      `(logior (ash (ldb (byte ,n-k 0) ,x) ,k)
-               (ldb (byte ,k ,n-k) ,x))))
-
-(defun %generate-zero-probability (wf size qubit)
-  (check-type wf symbol)
-  (check-type size symbol)
-  (check-type qubit nat-tuple-element)
-  (alexandria:with-gensyms (n-k address)
-    `(let ((,n-k (- (wavefunction-qubits ,wf) ,qubit)))
-       (declare (type nat-tuple-cardinality ,n-k)
-                (ignorable ,n-k))
-       ;; Iterate through all bitstrings of length N/2.
-       (psum-dotimes (,address (half ,size))
-         ;(declare (type non-negative-fixnum ,address))
-         ;; Create a bitstring 1111...110
-         (let ((,address (* 2 ,address)))
-           (declare (type non-negative-fixnum ,address))
-           ;; Rotate the 0 into the right place.
-           (probability (aref ,wf ,(%generate-rotate n-k qubit address))))))))
-
 (declaim (ftype (function (bit bit) bit) bit=)
          (inline bit=))
 (defun bit= (a b)
@@ -197,13 +171,13 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
 
 (defun generate-single-qubit-measurement-code (qubit &key (dotimes-iterator **dotimes-iterator**))
   (declare (type nat-tuple-element qubit))
-  (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero keep-zero-bit inv-norm address-bit)
+  (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero keep-zero-bit inv-norm annihilation-factor address-bit)
     `(lambda (,wavefunction)
        (declare ,*optimize-dangerously-fast*
                 (type quantum-state ,wavefunction)
                 (notinline random))
        (let* ((,size (length ,wavefunction))
-              (,zero-probability ,(%generate-zero-probability wavefunction size qubit)))
+              (,zero-probability (wavefunction-ground-state-probability ,wavefunction ,qubit)))
          (declare (type non-negative-fixnum ,size)
                   (type flonum ,zero-probability))
          ;; Who do we spare?
@@ -215,15 +189,17 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
            (declare (type boolean ,keep-zero)
                     (type bit ,keep-zero-bit)
                     (type flonum ,inv-norm))
-           ;; We return the bit KEEP-ZERO-BIT which is also our measurement result.
+           ;; We return the bit KEEP-ZERO-BIT which is also our
+           ;; measurement result. Annihilate the unworthy in this
+           ;; loop.
            (,dotimes-iterator (,address ,size ,keep-zero-bit)
              (declare (type non-negative-fixnum ,address))
-             (let ((,address-bit (ldb (byte 1 ,qubit) ,address)))
-               (declare (type bit ,address-bit))
+             (let* ((,address-bit (ldb (byte 1 ,qubit) ,address))
+                    (,annihilation-factor (* ,inv-norm (flonum (bit= ,keep-zero-bit ,address-bit)))))
+               (declare (type bit ,address-bit)
+                        (type flonum ,annihilation-factor))
                (setf (aref ,wavefunction ,address)
-                     (* (cflonum (bit= ,address-bit ,keep-zero-bit))
-                        ,inv-norm
-                        (aref ,wavefunction ,address))))))))))
+                     (* ,annihilation-factor (aref ,wavefunction ,address))))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; PERMUTATION GATES ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -463,6 +439,8 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
                      ,@initargs)))
              (apply #'make-instance class-name all-initargs)))))))
 
+;;; So far, compiled measurements aren't any faster. *sad trombone*
+;; #+#:ignore
 (defmethod compile-instruction ((qvm pure-state-qvm) (isn quil:measurement))
   (let ((qubit (quil:measurement-qubit isn)))
     (make-instance 'compiled-measurement
