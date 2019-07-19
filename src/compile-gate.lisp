@@ -170,6 +170,9 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
   #+#:other (if (= a b) 1 0))
 
 (defun generate-single-qubit-measurement-code (qubit &key (dotimes-iterator **dotimes-iterator**))
+  "Generate a lambda expression which takes a wavefunction and non-deterministically measures QUBIT. The lambda will mutate the wavefunction and return the bit measured.
+
+DOTIMES-ITERATOR controls which style of DOTIMES is used."
   (declare (type nat-tuple-element qubit))
   (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero keep-zero-bit inv-norm annihilation-factor address-bit)
     `(lambda (,wavefunction)
