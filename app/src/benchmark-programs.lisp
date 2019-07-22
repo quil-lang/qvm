@@ -54,6 +54,18 @@ We are assuming the CNOTs are dense on an even number of qubits."
      (loop :for q :below n :do
        (format t "MEASURE ~D~%" q)))))
 
+(defun interleaved-measurements-program (n)
+  (assert (>= n 2))
+  (safely-parse-quil-string
+   (with-output-to-string (*standard-output*)
+     (dotimes (q n)
+       (format t "RX(~F) ~D~%" (random (* 2 pi)) q))
+     (dotimes (q n)
+       (let ((qubits (subseq (alexandria:shuffle (alexandria:iota n)) 0 2))
+             (mqubit (random n)))
+         (format t "PSWAP(~F) ~D ~D~%" (random (* 2 pi)) (pop qubits) (pop qubits))
+         (format t "MEASURE ~D~%" mqubit))))))
+
 (defun norm-baseline-timing (wf)
   ;; touch all entries
   (qvm::bring-to-zero-state wf)
@@ -78,7 +90,8 @@ We are assuming the CNOTs are dense on an even number of qubits."
                 ("bell" (bell-program num-qubits))
                 ("qft"  (qft-program num-qubits))
                 ("hadamard" (hadamard-program num-qubits))
-                ("qualcs" (qualcs-program num-qubits))))
+                ("qualcs" (qualcs-program num-qubits))
+                ("interleaved-measurements" (interleaved-measurements-program num-qubits))))
            (q (qvm:make-qvm num-qubits
                             :allocation (funcall **default-allocation** (expt 2 num-qubits))))
            timing)

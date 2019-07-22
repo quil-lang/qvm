@@ -16,6 +16,8 @@
   (handler-bind (#+sbcl (sb-ext:compiler-note #'muffle-warning))
     (compile nil form)))
 
+(global-vars:define-global-var **dotimes-iterator** 'pdotimes) ; Note this is the QVM's PDOTIMES.
+
 ;;;;;;;;;;;;;;;;;;;;;;; GATE APPLICATION CODE ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun generate-complement-iteration (qubits wavefunction body-gen &key (dotimes-iterator 'cl:dotimes))
@@ -32,7 +34,7 @@ DOTIMES-ITERATOR specifies the DOTIMES-like macro that is used for iteration."
     `(,dotimes-iterator (i (the non-negative-fixnum
                                 (expt 2 (the nat-tuple-cardinality
                                              (- (wavefunction-qubits ,wavefunction)
-                                                (nat-tuple-cardinality ,qubits))))))
+                                                ,(nat-tuple-cardinality qubits))))))
        (declare (type non-negative-fixnum i))
        (let ((,addr i))
          (declare (type amplitude-address ,addr))
@@ -155,7 +157,52 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
                  operator
                  amps
                  arefs))))
-           :dotimes-iterator 'lparallel:pdotimes)))))
+           :dotimes-iterator **dotimes-iterator**)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASUREMENTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(declaim (ftype (function (bit bit) bit) bit=)
+         (inline bit=))
+(defun bit= (a b)
+  (ldb (byte 1 0) (logeqv a b))
+  #+#:other (- 1 (logxor a b))
+  #+#:other (if (= a b) 1 0))
+
+(defun generate-single-qubit-measurement-code (qubit &key (dotimes-iterator **dotimes-iterator**))
+  "Generate a lambda expression which takes a wavefunction and non-deterministically measures QUBIT. The lambda will mutate the wavefunction and return the bit measured.
+
+DOTIMES-ITERATOR controls which style of DOTIMES is used."
+  (declare (type nat-tuple-element qubit))
+  (alexandria:with-gensyms (wavefunction size zero-probability address keep-zero keep-zero-bit inv-norm annihilation-factor address-bit)
+    `(lambda (,wavefunction)
+       (declare ,*optimize-dangerously-fast*
+                (type quantum-state ,wavefunction)
+                (notinline random))
+       (let* ((,size (length ,wavefunction))
+              (,zero-probability (wavefunction-ground-state-probability ,wavefunction ,qubit)))
+         (declare (type non-negative-fixnum ,size)
+                  (type flonum ,zero-probability))
+         ;; Who do we spare?
+         (let* ((,keep-zero (< (the flonum (random (flonum 1))) ,zero-probability))
+                (,keep-zero-bit (if ,keep-zero 0 1))
+                (,inv-norm (if ,keep-zero
+                               (/ (sqrt (the (flonum 0) ,zero-probability)))
+                               (/ (sqrt (the (flonum 0) (- (flonum 1) ,zero-probability)))))))
+           (declare (type boolean ,keep-zero)
+                    (type bit ,keep-zero-bit)
+                    (type flonum ,inv-norm))
+           ;; We return the bit KEEP-ZERO-BIT which is also our
+           ;; measurement result. Annihilate the unworthy in this
+           ;; loop.
+           (,dotimes-iterator (,address ,size ,keep-zero-bit)
+             (declare (type non-negative-fixnum ,address))
+             (let* ((,address-bit (ldb (byte 1 ,qubit) ,address))
+                    (,annihilation-factor (* ,inv-norm (flonum (bit= ,keep-zero-bit ,address-bit)))))
+               (declare (type bit ,address-bit)
+                        (type flonum ,annihilation-factor))
+               (setf (aref ,wavefunction ,address)
+                     (* ,annihilation-factor (aref ,wavefunction ,address))))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; PERMUTATION GATES ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -210,17 +257,23 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
                permutation
                arefs))
             :generate-extractions nil))
-         :dotimes-iterator 'lparallel:pdotimes))))
+         :dotimes-iterator **dotimes-iterator**))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;; APPLY OPERATOR CACHING ;;;;;;;;;;;;;;;;;;;;;;;
 
 (global-vars:define-global-var **apply-matrix-operator-functions**
     (make-hash-table :test 'equal)
-  "A table mapping lists of qubit indexes representing Hilbert spaces to their compiled gate application functions.")
+  "A table mapping lists of qubit indexes representing Hilbert spaces to their compiled gate application functions.
+
+Keys have the form:
+
+    (:gate &rest qubits)
+    (:measure qubit)
+")
 
 (defun find-or-make-apply-matrix-operator-function (qubits)
-  "Find a matrix application function for the Hilbert subspace designated by QUBITS.
+  "Find a matrix application function for the Hilbert subspace designated by QUBITS (a NAT-TUPLE).
 
 This function will compile new ones on-demand."
   (check-type qubits nat-tuple)
@@ -230,13 +283,26 @@ This function will compile new ones on-demand."
               (compile-lambda
                (generate-gate-application-code qubits))))))
 
+(defun find-or-make-projector-operator-function (qubit)
+  "Find a projector function for the Hilbert subspace designated by QUBIT (a QUIL:QUBIT).
+
+This function will compile new ones on-demand."
+  (check-type qubit quil:qubit)
+  (let* ((index (quil:qubit-index qubit))
+         (key (list ':measure index)))
+    (or (gethash key **apply-matrix-operator-functions**)
+        (setf (gethash key **apply-matrix-operator-functions**)
+              (compile-lambda
+               (generate-single-qubit-measurement-code index))))))
+
 ;; This function gets called at compile-time in apply-gate.lisp.
 (defun warm-apply-matrix-operator-cache (&key (max-qubits 36))
   "Warm up the **APPLY-MATRIX-OPERATOR-FUNCTIONS** cache for Hilbert spaces B_i and B_i (x) B_j for 0 <= i, j <= MAX-QUBITS."
   (check-type max-qubits nat-tuple-cardinality)
-  ;; Warm the 1q cache.
+  ;; Warm the 1q & measure cache.
   (loop :for q :to max-qubits :do
-    (find-or-make-apply-matrix-operator-function (nat-tuple q)))
+    (find-or-make-apply-matrix-operator-function (nat-tuple q))
+    (find-or-make-projector-operator-function (quil:qubit q)))
   ;; Warm the 2q cache.
   (loop :for p :to max-qubits :do
     (loop :for q :to max-qubits :do
@@ -244,11 +310,19 @@ This function will compile new ones on-demand."
         (find-or-make-apply-matrix-operator-function (nat-tuple p q)))))
   nil)
 
-(defclass compiled-gate-application (quil:gate-application)
+(defclass compiled-instruction ()       ; Explicitly do *NOT* subclass
+                                        ; from QUIL:INSTRUCTION.
   ((source-instruction :initarg :source-instruction
                        :accessor source-instruction
-                       :documentation "The instruction that was compiled to produce this one.")
-   (source-gate :initarg :source-gate
+                       :documentation "The instruction that was compiled to produce this one."))
+(:metaclass abstract-class))
+
+(defmethod quil::print-instruction-generic ((instr compiled-instruction) stream)
+  (format stream "compiled{ ~/quil:instruction-fmt/ }" (source-instruction instr))
+  nil)
+
+(defclass compiled-gate-application (compiled-instruction quil:gate-application)
+  ((source-gate :initarg :source-gate
                 :reader source-gate
                 :documentation "The gate object being represented by this application.")
    (apply-operator :initarg :apply-operator
@@ -267,11 +341,12 @@ This function will compile new ones on-demand."
   ()
   (:documentation "A compiled GATE-APPLICATION where the gate happens to be a permutation gate."))
 
-(defmethod quil::print-instruction-generic ((instr compiled-gate-application) stream)
-  (format stream "compiled{ ")
-  (quil:print-instruction (source-instruction instr) stream)
-  (format stream " }")
-  nil)
+(defclass compiled-measurement (compiled-instruction quil:measurement)
+  ((projector-operator :initarg :projector-operator
+                       :reader projector-operator
+                       :documentation "Projection function which takes a WAVEFUNCTION as an argument and returns the measured bit result."))
+  (:documentation "A compiled MEASURE, regardless of its classical effect."))
+
 
 (defgeneric compile-operator (op qubits parameters)
   (:documentation "Compile the operator OP into an efficient representation. Return two values:
@@ -317,7 +392,8 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
   (declare (ignore qvm))
   isn)
 
-(defmethod compile-instruction (qvm (isn compiled-gate-application))
+;;; Don't re-compile already compiled things.
+(defmethod compile-instruction (qvm (isn compiled-instruction))
   (declare (ignore qvm))
   isn)
 
@@ -366,9 +442,17 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
                      ,@initargs)))
              (apply #'make-instance class-name all-initargs)))))))
 
+;;; So far, compiled measurements aren't any faster. *sad trombone*
+;; #+#:ignore
+(defmethod compile-instruction ((qvm pure-state-qvm) (isn quil:measurement))
+  (let ((qubit (quil:measurement-qubit isn)))
+    (make-instance 'compiled-measurement
+                   :source-instruction isn
+                   :qubit qubit
+                   :projector-operator (find-or-make-projector-operator-function qubit))))
 
-;;; Measure Chain Compilation
-;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE CHAINS ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;; Below is an implementation that finds chains of MEASURE commands,
 ;;; and collapses them into a single sampling operation.
 ;;;

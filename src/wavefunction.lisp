@@ -26,6 +26,26 @@
     (declare (type flonum re im))
     (+ (* re re) (* im im))))
 
+(declaim (ftype (function (quantum-state nat-tuple-element) flonum)
+                wavefunction-ground-state-probability))
+(defun-inlinable wavefunction-ground-state-probability (wavefunction qubit)
+  "Compute the probability that qubit QUBIT is in the ground state."
+  (declare #.*optimize-dangerously-fast*)
+  (psum-dotimes (i (half (length wavefunction)))
+    (let ((address (inject-bit i qubit)))
+      (declare (type amplitude-address address))
+      (probability (aref wavefunction address)))))
+
+(declaim (ftype (function (quantum-state nat-tuple-element) flonum)
+                wavefunction-excited-state-probability))
+(defun-inlinable wavefunction-excited-state-probability (wavefunction qubit)
+  "Compute the probability that qubit QUBIT is in the excited state."
+  (declare #.*optimize-dangerously-fast*)
+  (psum-dotimes (i (half (length wavefunction)))
+    (let ((address (index-to-address i qubit 1)))
+      (declare (type amplitude-address address))
+      (probability (aref wavefunction address)))))
+
 
 (declaim (ftype (function (quantum-state) nat-tuple-cardinality) wavefunction-qubits)
          (inline wavefunction-qubits))

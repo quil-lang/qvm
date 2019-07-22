@@ -25,6 +25,7 @@
   "The complex float type used in computations. Typically these will represent wavefunction amplitudes."
   `(complex flonum))
 
+(declaim (inline flonum))
 (defun flonum (x)
   "Coerce X into a FLONUM."
   (coerce x 'flonum))
@@ -38,6 +39,7 @@
 (deftype flonum-vector (&optional length)
   `(simple-array flonum (,length)))
 
+(declaim (inline cflonum))
 (defun cflonum (x)
   "Coerce X into a CFLONUM."
   (coerce x 'cflonum))
