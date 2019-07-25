@@ -59,6 +59,12 @@
              (compiled-matrix gate)
              wavefunction))
 
+  (:method ((gate compiled-inlined-matrix-gate-application) wavefunction qubits &rest parameters)
+    (declare (ignore qubits))
+    (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-INLINED-MATRIX-GATE-APPLICATIONs.")
+    (funcall (compiled-gate-apply-operator gate)
+             wavefunction))
+
   (:method ((gate compiled-permutation-gate-application) wavefunction qubits &rest parameters)
     (declare (ignore qubits))
     (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-PERMUTATION-GATE-APPLICATIONs.")
