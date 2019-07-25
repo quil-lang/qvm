@@ -20,6 +20,9 @@
 (defvar *compile-before-running* nil
   "Compile programs loaded into the QVM before running them.")
 
+(defvar *inline-static-gates-during-compilation* nil
+  "Inline the actual gate matrices into the compiled instructions.")
+
 (defvar *optimize-dangerously-fast*
   '(optimize speed (safety 0) (debug 0) (space 0) (compilation-speed 0))
   "Optimization qualities for when the code should go as fast as possible.")

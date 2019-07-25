@@ -113,23 +113,45 @@ GENERATE-EXTRACTIONS will enable or disable the generation of the values. Settin
 (defun generate-inner-matrix-multiply-code (n matrix column result)
   "Generate N x N matrix multiplication code.
 
-MATRIX should be a symbol which should (eventually) be bound to a QUANTUM-OPERATOR object.
+MATRIX should either:
+
+    - a symbol which should (eventually) be bound to a QUANTUM-OPERATOR object.
+
+    - a QUANTUM-OPERATOR
 
 COLUMN should be a list of symbols all of which should (eventually) be bound to the vector being multiplied.
 
 RESULT should be a list of SETF-able forms to which the result will be assigned."
   (check-type n non-negative-fixnum)
-  (check-type matrix symbol)
   (check-type column alexandria:proper-list)
   (check-type result alexandria:proper-list)
   (assert (= n (length column) (length result)))
-  `(progn
-     ,@(loop :for i :below n
-             :for r :in result
-             :collect `(setf ,r
-                             (+ ,@(loop :for j :below n
-                                        :for c := (nth j column)
-                                        :collect `(* ,c (aref ,matrix ,i ,j))))))))
+  (etypecase matrix
+    (symbol
+     `(progn
+        ,@(loop :for i :below n
+                :for r :in result
+                :collect `(setf ,r
+                                (+ ,@(loop :for j :below n
+                                           :for c := (nth j column)
+                                           :collect `(* ,c (aref ,matrix ,i ,j))))))))
+    (quantum-operator
+     `(progn
+        ,@(loop :for i :below n
+                :for r :in result
+                :for r-code := (loop :for j :below n
+                                     :for c := (nth j column)
+                                     :for mij := (aref matrix i j)
+                                     :unless (zerop mij)
+                                       :collect (if (= 1 mij)
+                                                    c
+                                                    `(* ,c ,(aref matrix i j))))
+                ;; Avoid setting R1 = C1.
+                :unless (and (= 1 (length r-code))
+                             (symbolp (first r-code))
+                             (eql (position r result)
+                                  (position (first r-code) column)))
+                  :collect `(setf ,r (+ ,@r-code)))))))
 
 (defun generate-gate-application-code (qubits)
   "Generate a lambda form which takes two arguments, a QUANTUM-OPERATOR and a QUANTUM-STATE, which efficiently applies that operator to that state, lifted from the Hilbert space designated by QUBITS.
@@ -155,6 +177,33 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
                 (generate-inner-matrix-multiply-code
                  operator-size
                  operator
+                 amps
+                 arefs))))
+           :dotimes-iterator **dotimes-iterator**)))))
+
+(defun generate-gate-application-code-with-matrix (qubits matrix)
+  "Generate a lambda form which takes two arguments, a QUANTUM-OPERATOR and a QUANTUM-STATE, which efficiently applies that operator to that state, lifted from the Hilbert space designated by QUBITS.
+QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
+  (check-type qubits nat-tuple)
+  (check-type matrix quantum-operator)
+  (let* ((num-gate-qubits (nat-tuple-cardinality qubits))
+         (operator-size (expt 2 num-gate-qubits)))
+    (alexandria:with-gensyms (wavefunction)
+      `(lambda (,wavefunction)
+         (declare ,*optimize-dangerously-fast*
+                  (type quantum-state ,wavefunction))
+         ,(generate-complement-iteration
+           qubits
+           wavefunction
+           (lambda (addr)
+             (generate-extraction-code
+              addr
+              wavefunction
+              qubits
+              (lambda (amps arefs)
+                (generate-inner-matrix-multiply-code
+                 operator-size
+                 matrix
                  amps
                  arefs))))
            :dotimes-iterator **dotimes-iterator**)))))
@@ -331,11 +380,19 @@ This function will compile new ones on-demand."
   (:metaclass abstract-class)
   (:documentation "A representation of a compiled gate application."))
 
+;;; The APPLY-OPERATOR is a function QUANTUM-OPERATOR * QUANTUM-STATE -> QUANTUM-STATE.
 (defclass compiled-matrix-gate-application (compiled-gate-application)
   ((gate-matrix :initarg :gate-matrix
                 :reader compiled-matrix
                 :documentation "The (static) matrix represented by this application."))
   (:documentation "A compiled GATE-APPLICATION. Note that this is a subclass of GATE-APPLICATION."))
+
+;;; The APPLY-OPERATOR is a function QUANTUM-STATE -> QUANTUM-STATE.
+(defclass compiled-inlined-matrix-gate-application (compiled-gate-application)
+  ((gate-matrix :initarg :gate-matrix
+                :reader compiled-matrix
+                :documentation "The (static) matrix represented by this application."))
+  (:documentation "A compiled GATE-APPLICATION that has the matrix inlined. Note that this is a subclass of GATE-APPLICATION."))
 
 (defclass compiled-permutation-gate-application (compiled-gate-application)
   ()
@@ -362,18 +419,34 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
 
 (defmethod compile-operator ((op quil:simple-gate) qubits parameters)
   (assert (null parameters) (parameters) "Parameters don't make sense for a SIMPLE-GATE.")
-  (values 'compiled-matrix-gate-application
-          `(:source-gate ,op
-            :gate-matrix ,(magicl-matrix-to-quantum-operator
-                           (quil:gate-matrix op))
-            :apply-operator ,(find-or-make-apply-matrix-operator-function qubits))))
+  (let ((matrix (magicl-matrix-to-quantum-operator
+                 (quil:gate-matrix op))))
+    (if *inline-static-gates-during-compilation*
+        (values 'compiled-inlined-matrix-gate-application
+                `(:source-gate ,op
+                  :gate-matrix ,matrix
+                  :apply-operator ,(compile-lambda
+                                    (generate-gate-application-code-with-matrix qubits matrix))))
+        (values 'compiled-matrix-gate-application
+                `(:source-gate ,op
+                  :gate-matrix ,matrix
+                  :apply-operator ,(find-or-make-apply-matrix-operator-function qubits))))))
 
 (defmethod compile-operator ((op quil:parameterized-gate) qubits parameters)
-  (values 'compiled-matrix-gate-application
-          `(:source-gate ,op
-            :gate-matrix ,(magicl-matrix-to-quantum-operator
-                           (apply #'quil:gate-matrix op parameters))
-            :apply-operator ,(find-or-make-apply-matrix-operator-function qubits))))
+  ;; Here, we are guaranteed that all parameters are constant, due to
+  ;; the check in COMPILE-INSTRUCTION.
+  (let ((matrix (magicl-matrix-to-quantum-operator
+                 (apply #'quil:gate-matrix op parameters))))
+    (if *inline-static-gates-during-compilation*
+        (values 'compiled-inlined-matrix-gate-application
+                `(:source-gate ,op
+                  :gate-matrix ,matrix
+                  :apply-operator ,(compile-lambda
+                                    (generate-gate-application-code-with-matrix qubits matrix))))
+        (values 'compiled-matrix-gate-application
+                `(:source-gate ,op
+                  :gate-matrix ,matrix
+                  :apply-operator ,(find-or-make-apply-matrix-operator-function qubits))))))
 
 (defmethod compile-operator ((op quil:permutation-gate) qubits parameters)
   (assert (null parameters) (parameters) "Parameters don't make sense for a SIMPLE-GATE.")
