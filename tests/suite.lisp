@@ -10,6 +10,7 @@
   (setf fiasco::*test-run-standard-output* (make-broadcast-stream
                                             *standard-output*))
   (qvm:prepare-for-parallelization)
+  (qvm::enable-all-qvm-optimizations)
   (cond
     ((null headless)
      (run-package-tests :package ':qvm-tests
