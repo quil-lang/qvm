@@ -67,7 +67,7 @@
    #:memory-index-out-of-bounds         ; CONDITION
    #:classical-memory                   ; TYPE
    #:make-classical-memory              ; FUNCTION
-   #:classical-memory-size              ; FUNCTION
+   #:memory-size                        ; FUNCTION
    #:memory-bit-ref                     ; ACCESSOR
    #:memory-octet-ref                   ; ACCESSOR
    #:memory-integer-ref                 ; ACCESSOR
@@ -128,12 +128,9 @@
    #:run-program                        ; FUNCTION
    )
 
-  ;; gates.lisp
+  ;; apply-gate.lisp
   (:export
-   #:gate-operator                      ; GENERIC, METHOD
    #:apply-gate                         ; GENERIC, METHOD
-   #:operator-matrix-from-truth-table   ; FUNCTION
-   #:controlled                         ; FUNCTION
    )
 
   ;; depolarizing-noise.lisp
@@ -145,7 +142,7 @@
   (:export
    #:noisy-qvm                          ; CLASS
    #:make-pauli-noise-map               ; FUNCTION
-   #:set-noisy-gate                     ; FUNCTION
+   #:set-noisy-gate                     ; GENERIC, METHOD
    )
 
   ;; density-qvm
