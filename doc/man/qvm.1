@@ -1,4 +1,4 @@
-.TH QVM 1 "21 February 2019" "version 1.4.1 [c7a4ef9]" 
+.TH QVM 1 "25 July 2019" "version 1.9.0 [9adc853]"
 .SH NAME
 qvm \- a quantum virtual machine for executing Quil
 .SH SYNOPSIS
@@ -32,7 +32,8 @@ compiler. (Note that "compilation" here does not refer to the sense
 related to translation of gate sets, but rather translation to machine
 code for rapid execution.) Interpreted mode is enabled by default and
 works for all modes of operation. JIT compilation is enabled by
-supplying the --compile option.
+supplying the --compile option (with an optional level supplied by
+--optimization-level).
 
 By default, the QVM executes Quil by simulating a pure state quantum
 system. Alternative simulation methods (particularly, density matrix
@@ -93,7 +94,10 @@ timing and allocation.
 (Execute Mode) Print each basis state and corresponding amplitude of
 the evolved wavefunction.
 .IP "-c, --compile"
-JIT compile the Quil programs to make them run faster.
+JIT compile the Quil programs to make them run faster. Can be controlled
+with the -O option.
+.IP "--optimization-level <level>, -O <level>"
+Indicates an optimization level, which should be a non-negative integer.
 .IP "--safe-include-directory <dir>"
 Restrict the Quil INCLUDE directive exclusively to <dir>.
 .IP "--default-allocation" <alloc-kind>
@@ -330,9 +334,10 @@ qvm -S -p 1234
 Start a QVM server for use with PyQuil on port 1234.
 .RE
 
-qvm -c --benchmark 25 --benchmark-type qft
+qvm -c -O 3 --benchmark 25 --benchmark-type qft
 .RS
-Benchmark a 25-qubit quantum Fourier transform in compiled mode.
+Benchmark a 25-qubit quantum Fourier transform in compiled mode with maximum
+optimization settings.
 .RE
 .SH BUGS
 Shared memory mode does not work with QVMs executing noisy programs

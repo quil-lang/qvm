@@ -116,7 +116,12 @@
     (("compile" #\c)
      :type boolean
      :optional t
-     :documentation "pre-compile Quil programs before execution.")
+     :documentation "enable JIT compilation of Quil programs")
+
+    (("optimization-level" #\O)
+     :type integer
+     :optional t
+     :documentation "compilation level of Quil programs before execution")
 
     (("safe-include-directory")
      :type string
@@ -351,6 +356,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           benchmark
                           benchmark-type
                           compile
+                          optimization-level
                           shared
                           simulation-method
                           #-forest-sdk debug
@@ -433,11 +439,41 @@ Version ~A is available from https://www.rigetti.com/forest~%"
      (qvm:prepare-for-parallelization num-workers)
      (setf *num-workers* num-workers)))
 
-  (when compile
-    (setf qvm:*compile-before-running* t))
-
   ;; Show the welcome message.
   (unless quiet (show-welcome))
+
+  ;; Set up JIT compilation.
+  (cond
+    (compile
+     (when (null optimization-level)
+       (setf optimization-level 1))
+     (unless (and (integerp optimization-level)
+                  (not (minusp optimization-level)))
+       (format-log :warning "Invalid compilation level value: ~D. Setting to 1." optimization-level)
+       (setf optimization-level 1))
+
+     (format-log :info "Compilation level set to ~D" optimization-level)
+     (case optimization-level
+       ;; Disable compilation.
+       ((0)
+        (format-log :info "Compilation mode disabled.")
+        (setf qvm:*compile-before-running* nil))
+
+       ;; Enable light compilation.
+       ((1)
+        (format-log :info "Compilation mode enabled.")
+        (setf qvm:*compile-before-running* t))
+
+       ;; Enable the most aggressive compilation.
+       (otherwise
+        (format-log :info "Compilation mode enabled with maximum optimization settings.")
+        (setf qvm:*compile-before-running* t)
+        (qvm::enable-all-qvm-optimizations))))
+    (t
+     (format-log :info "Compilation mode disabled.")
+     (when optimization-level
+       (format-log :warning "Ignoring optimization level ~D because compilation mode is disabled."
+                   optimization-level))))
 
   ;; Start Swank if we were asked. Re-enable the debugger.
   #-forest-sdk

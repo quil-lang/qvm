@@ -20,8 +20,21 @@
 (defvar *compile-before-running* nil
   "Compile programs loaded into the QVM before running them.")
 
+(defvar *fuse-gates-during-compilation* nil
+  "Should gates be fused during compilation?")
+
 (defvar *inline-static-gates-during-compilation* nil
   "Inline the actual gate matrices into the compiled instructions.")
+
+(defvar *compile-measure-chains* nil
+  "Compile chains of measures into an efficient sampling.")
+
+(defun enable-all-qvm-optimizations ()
+  (setf *compile-before-running* t
+        *fuse-gates-during-compilation* t
+        *inline-static-gates-during-compilation* t
+        *compile-measure-chains* t)
+  nil)
 
 (defvar *optimize-dangerously-fast*
   '(optimize speed (safety 0) (debug 0) (space 0) (compilation-speed 0))
