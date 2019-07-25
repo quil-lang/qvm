@@ -100,8 +100,10 @@ ALLOCATION is an optional argument with the following behavior.
 (defmethod compile-loaded-program ((qvm pure-state-qvm))
   "Compile the loaded program on the QVM QVM."
   (unless (program-compiled-p qvm)
-    (setf (program qvm) (quil::fuse-gates-in-executable-code (program qvm)))
-    (setf (program qvm) (compile-measure-chains (program qvm) (number-of-qubits qvm)))
+    (when *fuse-gates-during-compilation*
+      (setf (program qvm) (quil::fuse-gates-in-executable-code (program qvm))))
+    (when *compile-measure-chains*
+      (setf (program qvm) (compile-measure-chains (program qvm) (number-of-qubits qvm))))
     (setf (program qvm)
           (map 'vector (lambda (isn) (compile-instruction qvm isn)) (program qvm)))
     (setf (program-compiled-p qvm) t))
@@ -141,4 +143,3 @@ If ERROR is T, then signal an error when the gate wasn't found."
   ;; shared.
   (bring-to-zero-state (amplitudes qvm))
   qvm)
-
