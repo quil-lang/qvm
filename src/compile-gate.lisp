@@ -113,11 +113,11 @@ GENERATE-EXTRACTIONS will enable or disable the generation of the values. Settin
 (defun generate-inner-matrix-multiply-code (n matrix column result)
   "Generate N x N matrix multiplication code.
 
-MATRIX should either:
+MATRIX should either be:
 
     - a symbol which should (eventually) be bound to a QUANTUM-OPERATOR object.
 
-    - a QUANTUM-OPERATOR
+    - a QUANTUM-OPERATOR.
 
 COLUMN should be a list of symbols all of which should (eventually) be bound to the vector being multiplied.
 
