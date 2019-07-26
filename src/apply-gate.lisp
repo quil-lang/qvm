@@ -45,6 +45,13 @@
      wavefunction
      qubits))
 
+  (:method ((gate quil:forked-gate) wavefunction qubits &rest parameters)
+    (apply-matrix-operator
+     (magicl-matrix-to-quantum-operator
+      (apply #'quil:gate-matrix gate parameters))
+     wavefunction
+     qubits))
+
   (:method ((gate quil:dagger-gate) wavefunction qubits &rest parameters)
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator
