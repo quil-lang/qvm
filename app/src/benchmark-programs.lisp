@@ -31,8 +31,8 @@
 ;;; Note that the original benchmark as stated requires 100 shots. It
 ;;; is not clear if the wavefunction can be sampled to do this, or
 ;;; whether the program must be run 100 times.
-(defun qualcs-program (n &key (rx-layers 10))
-  "The qualcs benchmark, specified to be 10 layers of random RX rotations interleaved with 9 layers of neighboring CNOTs, followed by measurement of all qubits.
+(defun qulacs-program (n &key (rx-layers 10))
+  "The qulacs benchmark, specified to be 10 layers of random RX rotations interleaved with 9 layers of neighboring CNOTs, followed by measurement of all qubits.
 
 We are assuming the CNOTs are dense on an even number of qubits."
   (assert (plusp rx-layers))
@@ -90,7 +90,7 @@ We are assuming the CNOTs are dense on an even number of qubits."
                 ("bell" (bell-program num-qubits))
                 ("qft"  (qft-program num-qubits))
                 ("hadamard" (hadamard-program num-qubits))
-                ("qualcs" (qualcs-program num-qubits))
+                ("qulacs" (qulacs-program num-qubits))
                 ("interleaved-measurements" (interleaved-measurements-program num-qubits))))
            (q (qvm:make-qvm num-qubits
                             :allocation (funcall **default-allocation** (expt 2 num-qubits))))
