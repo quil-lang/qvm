@@ -23,9 +23,9 @@
                 (round (* (/ 1000 internal-time-units-per-second)
                           (- (get-internal-real-time) start))))
         (let ((eliminated (- (nop-count (program qvm)) old-nop-count)))
-          (format *trace-output* "~&; Optimization eliminated ~D instruction~:P (~5F%)."
+          (format *trace-output* "~&; Optimization eliminated ~D instruction~:P (~5F%).~%"
                   eliminated
-                  (float (* 100 (/ eliminated (length (program qvm)))))))
+                  (float (* 100 (/ eliminated (max 1 (length (program qvm))))))))
         (finish-output *trace-output*)))))
 
 (defmethod run ((qvm classical-memory-mixin))
