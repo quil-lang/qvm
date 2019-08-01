@@ -26,10 +26,14 @@
 ;;; interface for updating these slots (through the SET-NOISY-GATE and
 ;;; SET-READOUT-POVM methods, respectively).
 
+(deftype density-operator-matrix-view ()
+  "The matrix view of a density operator."
+  `(and (array cflonum (* *))
+        (not simple-array)))
 
 (defclass density-qvm (pure-state-qvm)
   ((matrix-view :reader density-matrix-view
-                :initform nil
+                :type density-operator-matrix-view
                 :documentation "This is a 2D array displaced to the underlying QVM amplitudes.")
    (temporary-state :accessor temporary-state
                     :initform nil
@@ -75,7 +79,7 @@ recorded outcome j may be different."))
             (expt dim 2))
     (setf (slot-value qvm 'matrix-view)
           (make-array (list dim dim)
-                      :element-type (array-element-type (amplitudes qvm))
+                      :element-type 'cflonum ; guaranteed to be a QUANTUM-STATE
                       :displaced-to (amplitudes qvm)))))
 
 
@@ -291,19 +295,16 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
 ;;; force collapse when measurements are needed for classical control,
 ;;; and ii) it is what most people expect anyways.
 
-
 (defun density-qvm-qubit-probability (qvm qubit)
   "The probability that the physical qubit addressed by QUBIT is 1."
   (check-type qvm density-qvm)
-  (let ((vec-density (amplitudes qvm))
-        (dim (expt 2 (number-of-qubits qvm))))
+  (let ((rho (density-matrix-view qvm)))
+    (declare (type density-operator-matrix-view rho))
     ;; This is a sum along the diagonal of the DIM x DIM density matrix
     ;; Only indices with qubit in excited state contribute
-    (psum-dotimes (k (half dim))
+    (psum-dotimes (k (expt 2 (1- (number-of-qubits qvm))))
       (let ((i (index-to-address k qubit 1)))
-        (realpart
-         (aref vec-density (+ i (* i dim))) ; this is rho[i,i]
-         )))))
+        (realpart (aref rho i i))))))
 
 (defun density-qvm-measurement-probabilities (qvm)
   "Computes the probability distribution of measurement outcomes (a vector)
