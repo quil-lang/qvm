@@ -51,7 +51,6 @@
 
   ;; qam.lisp
   (:export
-   #:quantum-abstract-machine           ; CLASS
    #:run                                ; GENERIC
    #:measure                            ; GENERIC
    #:measure-all                        ; GENERIC

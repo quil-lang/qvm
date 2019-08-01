@@ -4,7 +4,7 @@
 
 (in-package #:qvm)
 
-(defclass pure-state-qvm (quantum-abstract-machine classical-memory-mixin)
+(defclass pure-state-qvm (classical-memory-mixin)
   (
    ;; --- Machine state
    (number-of-qubits :reader number-of-qubits
