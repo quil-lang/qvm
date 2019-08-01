@@ -4,6 +4,10 @@
 
 (in-package #:qvm)
 
+;;;; This file mostly deals with the manipulation of a
+;;;; wavefunction. This is a relatively barebones interface; the
+;;;; intention is that one uses QVM-like objects to do calculations.
+
 ;;; This is very dangerous, unfortunately. With safety > 0, we slow
 ;;; down 33%. With none of the optimizations in this file, we slow
 ;;; down >100%. It might be worth doing a finer-grained study of the
