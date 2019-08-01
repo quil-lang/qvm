@@ -125,19 +125,6 @@ ALLOCATION is an optional argument with the following behavior.
   (map nil f (amplitudes qvm))
   (values))
 
-(defun lookup-gate (qvm gate &key error)
-  "Look up the definition of the gate named GATE (a symbol or string) within the QVM. Return NIL if not found.
-
-If ERROR is T, then signal an error when the gate wasn't found."
-  (let ((name (etypecase gate
-                (symbol (symbol-name gate))
-                (string gate))))
-    (multiple-value-bind (found-gate found?)
-        (gethash name (gate-definitions qvm))
-      (when (and error (not found?))
-        (error "Failed to find the gate named ~S" name))
-      found-gate)))
-
 (defmethod reset-quantum-state ((qvm pure-state-qvm))
   ;; We don't reset the classical state because that memory could be
   ;; shared.

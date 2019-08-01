@@ -90,6 +90,19 @@ This will not clear previously installed gates from the QVM."
         :for gate := (quil:gate-definition-to-gate gate-def)
         :do (setf (gethash (quil:gate-name gate) gate-table) gate)))
 
+(defun lookup-gate (qvm gate &key error)
+  "Look up the definition of the gate named GATE (a symbol or string) within the QVM. Return NIL if not found.
+
+If ERROR is T, then signal an error when the gate wasn't found."
+  (let ((name (etypecase gate
+                (symbol (symbol-name gate))
+                (string gate))))
+    (multiple-value-bind (found-gate found?)
+        (gethash name (gate-definitions qvm))
+      (when (and error (not found?))
+        (error "Failed to find the gate named ~S" name))
+      found-gate)))
+
 (defun load-program (qvm program &key (supersede-memory-subsystem nil))
   "Load the program PROGRAM into the quantum virtual machine QVM. If SUPERSEDE-MEMORY-SUBSYSTEM is true (default: NIL), then the memory subsystem will be recomputed for the QVM based off of the program."
   (check-type program quil:parsed-program)
