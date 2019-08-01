@@ -91,6 +91,10 @@
    #:apply-operator                     ; FUNCTION
    #:apply-matrix-operator              ; FUNCTION
    #:normalize-wavefunction             ; FUNCTION
+   #:wavefunction-ground-state-probability
+                                        ; FUNCTION
+   #:wavefunction-excited-state-probability
+                                        ; FUNCTION
    )
 
   ;; compile-gate.lisp
@@ -110,7 +114,7 @@
 
   ;; measurement.lisp
   (:export
-   #:qubit-probability                  ; FUNCTION
+   #:qubit-probability                  ; DEPRECATED FUNCTION
    #:force-measurement                  ; FUNCTION
    )
 

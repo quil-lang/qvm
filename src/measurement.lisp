@@ -4,33 +4,6 @@
 
 (in-package #:qvm)
 
-(declaim (inline index-to-address))
-(defun index-to-address (index qubit state)
-  "Given an amplitude index INDEX, find the amplitude address for the INDEX'th basis state with QUBIT in the STATE state.
-
-Specifically, given an integer whose bit string is
-
-    INDEX = LLLLRRRR,
-
-compute the address
-
-    Result = LLLL{0,1}RRRR
-
-which is the index with a {1, 0} injected at the QUBIT'th position."
-  (declare (type nat-tuple-element qubit)
-           (type amplitude-address index)
-           (type bit state)
-           #.*optimize-dangerously-fast*)
-  (dpb state (byte 1 qubit) (inject-bit index qubit)))
-
-(defun qubit-probability (qvm qubit)
-  "The probability that the physical qubit addressed by QUBIT is 1."
-  (declare #.*optimize-dangerously-fast*
-           (inline wavefunction-excited-state-probability))
-  (let ((wavefunction (amplitudes qvm)))
-    (declare (type quantum-state wavefunction))
-    (wavefunction-excited-state-probability wavefunction qubit)))
-
 (defun force-measurement (measured-value qubit qvm excited-probability)
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly.
 
@@ -73,7 +46,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
           q
           (number-of-qubits qvm))
   (let* ((r (random 1.0d0))
-         (excited-probability (qubit-probability qvm q))
+         (excited-probability (wavefunction-excited-state-probability (amplitudes qvm) q))
          (cbit (if (<= r excited-probability)
                    1
                    0)))

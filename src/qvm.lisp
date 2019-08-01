@@ -130,3 +130,12 @@ ALLOCATION is an optional argument with the following behavior.
   ;; shared.
   (bring-to-zero-state (amplitudes qvm))
   qvm)
+
+
+;;; DEPRECATED:
+
+(defun qubit-probability (qvm qubit)
+  "DEPRECATED // The probability that the physical qubit addressed by QUBIT is 1."
+  (let ((wavefunction (amplitudes qvm)))
+    (declare (type quantum-state wavefunction))
+    (wavefunction-excited-state-probability wavefunction qubit)))

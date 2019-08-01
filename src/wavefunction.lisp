@@ -16,6 +16,25 @@
   "An address into an array of amplitudes."
   `(integer 0 (,(expt 2 +max-nat-tuple-cardinality+))))
 
+(declaim (inline index-to-address))
+(defun index-to-address (index qubit state)
+  "Given an amplitude index INDEX, find the amplitude address for the INDEX'th basis state with QUBIT in the STATE state.
+
+Specifically, given an integer whose bit string is
+
+    INDEX = LLLLRRRR,
+
+compute the address
+
+    Result = LLLL{0,1}RRRR
+
+which is the index with a {1, 0} injected at the QUBIT'th position."
+  (declare (type nat-tuple-element qubit)
+           (type amplitude-address index)
+           (type bit state)
+           #.*optimize-dangerously-fast*)
+  (dpb state (byte 1 qubit) (inject-bit index qubit)))
+
 (declaim (ftype (function (cflonum) flonum) probability)
          (inline probability))
 (defun probability (amplitude)
@@ -45,7 +64,6 @@
     (let ((address (index-to-address i qubit 1)))
       (declare (type amplitude-address address))
       (probability (aref wavefunction address)))))
-
 
 (declaim (ftype (function (quantum-state) nat-tuple-cardinality) wavefunction-qubits)
          (inline wavefunction-qubits))
