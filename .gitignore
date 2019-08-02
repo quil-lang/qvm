@@ -3,6 +3,7 @@
 build-output.log
 docker_qvm.tar
 qvm
+qaas
 quilbasic
 system-index.txt
 .idea/
