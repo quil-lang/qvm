@@ -162,6 +162,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                  (perform-probabilities *simulation-method* quil num-qubits
                                         :gate-noise gate-noise
                                         :measurement-noise measurement-noise)
+               (declare (ignore qvm))
                (with-timing (send-response-time)
                  (setf (tbnl:content-type*) "application/octet-stream")
                  (setf (tbnl:header-out ':ACCEPT) "application/octet-stream")
