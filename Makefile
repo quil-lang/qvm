@@ -38,6 +38,7 @@ system-index.txt: $(QUICKLISP_SETUP)
 		$(FOREST_SDK_FEATURE) \
 		--eval '(ql:quickload "cffi-grovel")' \
 		--eval '(ql:quickload "qvm-app")' \
+		--eval '(ql:quickload "qvm-app-ng")' \
 		--eval '(ql:write-asdf-manifest-file "system-index.txt")'
 
 ###############################################################################
@@ -66,6 +67,14 @@ qvm: system-index.txt
 		--eval '(push :drakma-no-ssl *features*)' \
 		--load build-app.lisp \
                 $(FOREST_SDK_OPTION)
+
+qvm-ng: system-index.txt
+	$(SBCL) $(FOREST_SDK_FEATURE) \
+		--eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
+		--eval '(push :hunchentoot-no-ssl *features*)' \
+		--eval '(push :drakma-no-ssl *features*)' \
+		--load build-app-ng.lisp \
+		$(FOREST_SDK_OPTION)
 
 qvm-sdk-base: FOREST_SDK_FEATURE=--eval '(pushnew :forest-sdk *features*)'
 qvm-sdk-base: QVM_WORKSPACE=10240
@@ -98,12 +107,14 @@ docker-sdk-barebones: docker
 ###############################################################################
 
  .PHONY: install
-install: qvm
+install: qvm qvm-ng
 	install qvm $(DESTDIR)$(PREFIX)/bin
+	install qvm-ng $(DESTDIR)$(PREFIX)/bin
 
  .PHONY: uninstall
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/qvm
+	rm -f $(DESTDIR)$(PREFIX)/bin/qvm-ng
 
 ###############################################################################
 # TEST
@@ -129,6 +140,11 @@ test-app:
 		 --eval '(ql:quickload :qvm-app-tests)' \
 		 --eval '(asdf:test-system :qvm-app)'
 
+test-app-ng:
+	$(QUICKLISP) \
+		--eval '(ql:quickload :qvm-app-ng-tests)' \
+		--eval '(asdf:test-system :qvm-app-ng)'
+
 test-ccl:
 	ccl --batch --eval '(ql:quickload :qvm)' --eval '(quit)'
 
@@ -141,7 +157,7 @@ coverage:
 
 # Clean the executables
 clean:
-	rm -f qvm build-output.log system-index.txt
+	rm -f qvm qvm-ng build-output.log system-index.txt
 
 # Clean the Lisp cache, reindex local projects.
 clean-cache:
