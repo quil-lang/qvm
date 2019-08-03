@@ -27,27 +27,29 @@
       (call-next-method)))
 
 (defmethod tbnl:acceptor-log-access ((acceptor vhost) &key return-code)
-  (cl-syslog:format-log *logger* ':info
-                        "~:[-~@[ (~A)~]~;~:*~A~@[ (~A)~]~] ~:[-~;~:*~A~] [~A] \"~A ~A~@[?~A~] ~
+  (with-locked-log ()
+    (cl-syslog:format-log *logger* ':info
+                          "~:[-~@[ (~A)~]~;~:*~A~@[ (~A)~]~] ~:[-~;~:*~A~] [~A] \"~A ~A~@[?~A~] ~
                           ~A\" ~D ~:[-~;~:*~D~] \"~:[-~;~:*~A~]\" \"~:[-~;~:*~A~]\"~%"
-                        (tbnl::remote-addr*)
-                        (tbnl::header-in* :x-forwarded-for)
-                        (tbnl::authorization)
-                        (tbnl::iso-time)
-                        (tbnl::request-method*)
-                        (tbnl::script-name*)
-                        (tbnl::query-string*)
-                        (tbnl::server-protocol*)
-                        return-code
-                        (tbnl::content-length*)
-                        (tbnl::referer)
-                        (tbnl::user-agent)))
+                          (tbnl::remote-addr*)
+                          (tbnl::header-in* :x-forwarded-for)
+                          (tbnl::authorization)
+                          (tbnl::iso-time)
+                          (tbnl::request-method*)
+                          (tbnl::script-name*)
+                          (tbnl::query-string*)
+                          (tbnl::server-protocol*)
+                          return-code
+                          (tbnl::content-length*)
+                          (tbnl::referer)
+                          (tbnl::user-agent))))
 
 (defmethod tbnl:acceptor-log-message ((acceptor vhost) log-level format-string &rest format-arguments)
-  (cl-syslog:format-log *logger* ':err
-                        "[~A~@[ [~A]~]] ~?~%"
-                        (tbnl::iso-time) log-level
-                        format-string format-arguments))
+  (with-locked-log ()
+    (cl-syslog:format-log *logger* ':err
+                          "[~A~@[ [~A]~]] ~?~%"
+                          (tbnl::iso-time) log-level
+                          format-string format-arguments)))
 
 (defun create-prefix/method-dispatcher (prefix method handler)
   "Creates a request dispatch function which will dispatch to the
