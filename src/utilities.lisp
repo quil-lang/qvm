@@ -64,6 +64,11 @@ ELT will be bound to the element itself."
              :do (progn
                    ,@body)))))
 
+(declaim (inline nat-tuple-position))
+(defun nat-tuple-position (nt elt)
+  "In what position is ELT in the nat-tuple NT?"
+  (position elt nt))
+
 (defun nat-tuple-complement (n nt)
   "Compute the complement of the nat tuple NT in a universe of (0 1 2 ... N-1)."
   (let* ((nt-len (nat-tuple-cardinality nt))
@@ -352,3 +357,8 @@ whether the number of iterations N exceeds the threshold set by
                      :do (lparallel:submit-task ,ch #',worker-function ,start ,end))
                (loop :repeat (length ,ranges)
                      :sum (the flonum (lparallel:receive-result ,ch)) :of-type flonum)))))))
+
+(defun power-of-two-p (n)
+  "Is N equal to some non-negative integer power of two?"
+  (check-type n unsigned-byte)
+  (and (plusp n) (zerop (logand n (1- n)))))

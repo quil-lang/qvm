@@ -47,6 +47,8 @@
    #:quantum-operator                   ; TYPE
    #:quantum-state                      ; TYPE
    #:octets-required-for-qubits         ; FUNCTION
+   #:make-matrix                        ; FUNCTION
+   #:magicl-matrix-to-quantum-operator  ; FUNCTION
    )
 
   ;; qam.lisp
@@ -86,6 +88,7 @@
 
   ;; wavefunction.lisp
   (:export
+   #:wf                                 ; FUNCTION
    #:copy-wavefunction                  ; FUNCTION
    #:probability                        ; FUNCTION
    #:apply-operator                     ; FUNCTION
