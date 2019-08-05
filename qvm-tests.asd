@@ -25,6 +25,7 @@
                (:file "linear-algebra-tests")
                (:file "classical-memory-tests")
                (:file "wavefunction-tests")
+               (:file "subsystem-tests")
                (:file "qvm-tests")
                (:file "measurement-tests")
                (:file "gate-tests")

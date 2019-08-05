@@ -60,6 +60,7 @@
                (:file "classical-memory")
                (:file "classical-memory-mixin")
                (:file "wavefunction")
+               (:file "subsystem")
                (:file "qvm")
                (:file "compile-gate")
                (:file "apply-gate")

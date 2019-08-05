@@ -348,14 +348,22 @@ If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH para
     (declare (type (flonum 0) inv-norm))
 
     ;; Normalize the wavefunction
-    (if (<= *qubits-required-for-parallelization* num-qubits)
-        (lparallel:pdotimes (i (length wavefunction))
-          (setf (aref wavefunction i) (* inv-norm (aref wavefunction i))))
-        (dotimes (i (length wavefunction))
-          (setf (aref wavefunction i) (* inv-norm (aref wavefunction i)))))
+    (pdotimes (i (length wavefunction) wavefunction)
+      (setf (aref wavefunction i) (* inv-norm (aref wavefunction i))))))
 
-    ;; Return the wavefunction.
-    wavefunction))
+;;; This is intended to be a shorthand for testing.
+(declaim (ftype (function (number &rest number) quantum-state) wf))
+(defun wf (elt &rest elts)
+  "Construct a wavefunction from the elements (ELT . ELTS)."
+  (declare (dynamic-extent elts))
+  (let ((n (1+ (length elts))))
+    (assert (power-of-two-p n) () "The number of elements supplied to WF must be a power of two.")
+    (let ((psi (make-lisp-cflonum-vector n)))
+      (setf (aref psi 0) (cflonum elt))
+      (loop :for i :from 1
+            :for elt :in elts
+            :do (setf (aref psi i) (cflonum elt))
+            :finally (return (normalize-wavefunction psi))))))
 
 (declaim (ftype (function (t) (simple-array flonum (*)))
                 cumulative-distribution-function))
