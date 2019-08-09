@@ -8,7 +8,7 @@
                                      :describe-failures t
                                      :interactive (not headless))))
     (if headless
-        (uiop:quit (if successp 0 1))
+        (quit-nicely successp)
         successp)))
 
 
