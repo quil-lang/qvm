@@ -128,7 +128,7 @@ testsafe:
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
-test: test-lib test-app
+test: test-lib test-app test-app-ng
 
 test-lib:
 	$(QUICKLISP) \
