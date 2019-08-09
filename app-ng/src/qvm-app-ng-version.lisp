@@ -32,39 +32,4 @@
   (alexandria:define-constant +GIT-HASH+
       (git-hash '#:qvm-app)
     :test #'string=
-    :documentation "The git hash of the QVM repo.")
-  )
-
-(defun latest-sdk-version (&key (proxy nil))
-  "Get the latest SDK qvm version, or NIL if unavailable."
-  (handler-case
-      (let* ((s (drakma:http-request "http://downloads.rigetti.com/qcs-sdk/version"
-                                     :want-stream t
-                                     :proxy proxy))
-             (p (yason:parse s)))
-        (multiple-value-bind (version success)
-            (gethash "qvm" p)
-          (when success
-            version)))
-    (usocket:ns-error (condition)
-      (with-locked-log ()
-        (cl-syslog:rfc-log (*logger* :warning "Encountered a name resolution error when fetching latest SDK version. (~A)" condition)
-          (:msgid "LOG0001")))
-      nil)
-    (usocket:socket-error (condition)
-      (with-locked-log ()
-        (cl-syslog:rfc-log (*logger* :warning "Encountered a socket error when fetching latest SDK version. (~A)" condition)
-          (:msgid "LOG0001")))
-      nil)
-    (sb-bsd-sockets:socket-error (condition)
-      (with-locked-log ()
-        (cl-syslog:rfc-log (*logger* :warning "Encountered a socket error when fetching latest SDK version. (~A)" condition)
-          (:msgid "LOG0001")))
-      nil)))
-
-(defun sdk-update-available-p (current-version &key (proxy nil))
-  "Test whether the current QVM version is the latest SDK
-version. Second value returned indicates the latest version."
-  (let ((latest (latest-sdk-version :proxy proxy)))
-    (values (and latest (uiop:version< current-version latest))
-            latest)))
+    :documentation "The git hash of the QVM repo."))

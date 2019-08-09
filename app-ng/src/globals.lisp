@@ -5,10 +5,9 @@
 
 (in-package #:qvm-app-ng)
 
-(defvar *num-workers* 1)
+(defvar *num-workers* nil)
 (defvar *debug* nil)
 (defvar *program-name* "qvm-ng")
-(defvar swank:*use-dedicated-output-stream*)
 
 (defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
                                 :app-name *program-name*
