@@ -140,7 +140,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
            *option-spec*
            'process-options
            :command-line argv
-           :name "qvm"
+           :name *program-name*
            :rest-arity nil))
       #+sbcl
       (sb-sys:interactive-interrupt (c)
