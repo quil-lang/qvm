@@ -7,17 +7,14 @@
   :author "Mike Appleby <mappleby@rigetti.com>"
   :license "GNU Affero General Public License v3.0 (See app/LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
-  :depends-on (
-               #:qvm-app-ng
+  :depends-on (#:qvm-app-ng
                #:qvm
                #:uiop
-               #:fiasco
-               )
+               #:fiasco)
   :perform (asdf:test-op (o s)
-                         (uiop:symbol-call ':qvm-app-ng-tests
-                                           '#:run-qvm-app-ng-tests))
+             (uiop:symbol-call ':qvm-app-ng-tests
+                               '#:run-qvm-app-ng-tests))
   :pathname "app-ng/tests/"
   :serial t
   :components ((:file "package")
-               (:file "suite")
-               (:file "test-options")))
+               (:file "suite")))
