@@ -32,12 +32,6 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           (or *num-workers* (max 1 (qvm:count-logical-cores))))
   nil)
 
-(defun quit-nicely (&optional (code 0))
-  #+sbcl
-  (sb-ext:exit :code code :abort nil)
-  #-sbcl
-  (uiop:quit code t))
-
 (defun process-options (&key
                           version
                           check-libraries
@@ -73,10 +67,10 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (quit-nicely))
 
   (when check-libraries
-    (quit-nicely (if (check-libraries) 0 1)))
+    (quit-nicely (check-libraries)))
 
   (when check-sdk-version
-    (quit-nicely (if (check-sdk-version :proxy proxy) 0 1)))
+    (quit-nicely (check-sdk-version :proxy proxy)))
 
   (when verbose
     (setf qvm:*transition-verbose* t))
@@ -152,7 +146,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
       (sb-sys:interactive-interrupt (c)
         (declare (ignore c))
         (format-log "Caught Control-C. Quitting.")
-        (quit-nicely))
+        (quit-nicely 0))
       (error (c)
         (format *error-output* "~&! ! ! Condition raised: ~A~%" c)
         (format-log :err "Error encountered, quitting.")

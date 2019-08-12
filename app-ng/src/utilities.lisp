@@ -114,3 +114,15 @@ Version ~A is available from https://www.rigetti.com/forest~%"
        (format stream "~F+~Fi" re im))
       (t                                ; equiv: (minusp im)
        (format stream "~F-~Fi" re (- im))))))
+
+(defun generalized-boolean-to-exit-code (successp)
+  (cond ((integerp successp) successp)
+        ((null successp) 1)
+        (t 0)))
+
+(defun quit-nicely (&optional (successp t)
+                    &aux (code (generalized-boolean-to-exit-code successp)))
+  #+sbcl
+  (sb-ext:exit :code code :abort nil)
+  #-sbcl
+  (uiop:quit code t))
