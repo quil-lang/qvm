@@ -34,8 +34,12 @@
   :entry-point "qvm-app-ng::asdf-entry-point"
   :components ((:file "package")
                (:file "globals")
-               (:file "utilities")
                (:file "qvm-app-ng-version")
+               (:file "utilities")
+               (:file "logging")
+               (:file "config")
+               (:file "batch")
+               (:file "server")
                (:file "impl/sbcl" :if-feature :sbcl)
                (:file "impl/clozure" :if-feature :clozure)
                (:file "entry-point")))

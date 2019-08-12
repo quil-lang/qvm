@@ -4,60 +4,6 @@
 
 (in-package #:qvm-app-ng)
 
-(defparameter *option-spec*
-  `((("help" #\h)
-     :type boolean
-     :optional t
-     :documentation "display help")
-
-    (("version" #\v)
-     :type boolean
-     :optional t
-     :documentation "display the versions of the app and underlying QVM")
-
-    (("verbose")
-     :type boolean
-     :optional t
-     :documentation "display verbose output")
-
-    (("num-workers" #\w)
-     :type integer
-     :initial-value 0
-     :documentation "workers to use in parallel (0 => maximum number)")
-
-    #-forest-sdk
-    (("swank-port")
-     :type integer
-     :optional t
-     :documentation "port to start a Swank server on")
-
-    #-forest-sdk
-    (("debug")
-     :type boolean
-     :optional t
-     :documentation "debug mode, specifically this causes the QVM to not automatically catch execution errors allowing interactive debugging via SWANK.")
-
-    (("check-sdk-version")
-     :type boolean
-     :initial-value nil
-     :documentation "Check for a new SDK version at launch.")
-
-    (("proxy")
-     :type string
-     :initial-value nil
-     :documentation "Proxy to use when checking for an SDK update.")
-
-    (("quiet")
-     :type boolean
-     :optional t
-     :documentation "Disable all non-essential printed output to stdout (banner, etc.).")
-
-    (("log-level")
-     :type string
-     :optional t
-     :initial-value "debug"
-     :documentation "maximum logging level (\"debug\", \"info\", \"notice\", \"warning\", \"err\", \"crit\", \"alert\", or \"emerg\")")))
-
 (defun show-help ()
   (format t "Usage:~%")
   (format t "    ~A [<options>...]~%~%" *program-name*)
@@ -86,32 +32,11 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           (or *num-workers* (max 1 (qvm:count-logical-cores))))
   nil)
 
-(defun check-libraries ()
-  "Check that the foreign libraries are adequate. Exits with status
-  0 if so, 1 if not."
-  #+sbcl
-  (format t "Loaded libraries:~%~{  ~A~%~}~%"
-          (mapcar 'sb-alien::shared-object-pathname sb-sys:*shared-objects*))
-  (unless (magicl.foreign-libraries:foreign-symbol-available-p "zuncsd_"
-                                                               'magicl.foreign-libraries:liblapack)
-    (format t "The loaded version of LAPACK is missing necessary functionality.~%")
-    (quit-nicely 1))
-  (format t "Library check passed.~%")
-  (quit-nicely 0))
-
 (defun quit-nicely (&optional (code 0))
   #+sbcl
   (sb-ext:exit :code code :abort nil)
   #-sbcl
   (uiop:quit code t))
-
-(defun log-level-string-to-symbol (log-level)
-  (let ((log-level-kw (assoc (intern (string-upcase log-level) 'keyword)
-                             cl-syslog::*priorities*)))
-    (unless log-level-kw
-      (error "Invalid logging level: ~a" log-level))
-
-    (car log-level-kw)))
 
 (defun process-options (&key
                           version
@@ -124,19 +49,21 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           check-sdk-version
                           proxy
                           quiet
-                          log-level)
+                          log-level
+                          (batch t)
+                          server
+                          simulation-method
+                          allocation-method
+                          memory-limit
+                          safe-include-directory
+                          qubits)
+  "Process all options, setting global variables, and process input or start server."
+  ;; Initialize global configuration first by loading the config file.
+  ;; TODO Specify the file on command line.
+  (load-config-file :reset t)
+  
+  (initialize-logger "qvm-app-ng" log-level)
 
-  (setf *logger* (make-instance 'cl-syslog:rfc5424-logger
-                                :app-name *program-name*
-                                :facility ':local0
-                                :maximum-priority (log-level-string-to-symbol log-level)
-                                :log-writer
-                                #+windows
-                                (cl-syslog:stream-log-writer)
-                                #-windows
-                                (cl-syslog:tee-to-stream
-                                 (cl-syslog:syslog-log-writer *program-name* :local0)
-                                 *error-output*)))
   (when help
     (show-help)
     (quit-nicely))
@@ -146,16 +73,10 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (quit-nicely))
 
   (when check-libraries
-    (check-libraries))
+    (quit-nicely (if (check-libraries) 0 1)))
 
   (when check-sdk-version
-    (multiple-value-bind (available-p version)
-        (sdk-update-available-p +QVM-VERSION+ :proxy proxy)
-      (when available-p
-        (format t "An update is available to the SDK. You have version ~A. ~
-Version ~A is available from https://www.rigetti.com/forest~%"
-                +QVM-VERSION+ version))
-      (uiop:quit (if (and available-p version) 0 1))))
+    (quit-nicely (if (check-sdk-version :proxy proxy) 0 1)))
 
   (when verbose
     (setf qvm:*transition-verbose* t))
@@ -165,11 +86,14 @@ Version ~A is available from https://www.rigetti.com/forest~%"
     (setf *debug* t))
 
   (cond
+    ((minusp num-workers)
+     (error "Cannot create a negative number (~D) of workers." num-workers))
     ((zerop num-workers)
-     (qvm:prepare-for-parallelization))
+     (qvm:prepare-for-parallelization)
+     (setf (gethash "num-workers" *config*) 0))
     (t
      (qvm:prepare-for-parallelization num-workers)
-     (setf *num-workers* num-workers)))
+     (setf (gethash "num-workers" *config*) num-workers)))
 
   ;; Show the welcome message.
   (unless quiet (show-welcome))
@@ -183,7 +107,20 @@ Version ~A is available from https://www.rigetti.com/forest~%"
     (swank:create-server :port swank-port
                          :dont-close t))
 
-  (quit-nicely))
+  (when safe-include-directory
+    (setf (gethash "safe-include-directory" *config*) safe-include-directory))
+  
+  (cond
+    (server
+     (start-server-mode :host host :port port :qubits qubits :memory-limit memory-limit))
+    ;; BATCH is by default T (see above). This is to facilitate testing
+    ;; PROCESS-OPTIONS by passing :BATCH nil and :SERVER nil. Maybe
+    ;; needs a better design, to separate "processing of options" from
+    ;; "acting on options".
+    (batch
+     (start-batch-mode :qubits qubits
+                       :simulation-method simulation-method
+                       :allocation-method allocation-method))))
 
 (defun command-line-debugger (condition previous-hook)
   (declare (ignore previous-hook))

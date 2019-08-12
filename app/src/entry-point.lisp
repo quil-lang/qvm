@@ -47,7 +47,7 @@
      :initial-value 5000
      :documentation "port to start the QVM server on")
 
-    (("qubits" #\q)
+    (("max-qubits" #\q)
      :type integer
      :optional t
      :documentation "Number of qubits to force to use.")
@@ -430,8 +430,7 @@ Version ~A is available from https://www.rigetti.com/forest~%"
            *safe-include-directory*))
 
   (setf *safe-include-directory* safe-include-directory)
-
-
+  
   (cond
     ((zerop num-workers)
      (qvm:prepare-for-parallelization))

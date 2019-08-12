@@ -9,6 +9,7 @@
   :version (:read-file-form "VERSION.txt")
   :depends-on (
                #:qvm-app-ng
+               #:qvm
                #:uiop
                #:fiasco
                )
@@ -18,4 +19,5 @@
   :pathname "app-ng/tests/"
   :serial t
   :components ((:file "package")
-               (:file "suite")))
+               (:file "suite")
+               (:file "test-options")))
