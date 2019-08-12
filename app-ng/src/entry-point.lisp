@@ -61,8 +61,8 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   ;; Initialize global configuration first by loading the config file.
   ;; TODO Specify the file on command line.
   (load-config-file :reset t)
-  
-  (initialize-logger "qvm-app-ng" log-level)
+
+  (initialize-logger *program-name* log-level)
 
   (when help
     (show-help)
@@ -90,10 +90,10 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
      (error "Cannot create a negative number (~D) of workers." num-workers))
     ((zerop num-workers)
      (qvm:prepare-for-parallelization)
-     (setf (gethash "num-workers" *config*) 0))
+     (setf (gethash "num-workers" **config**) 0))
     (t
      (qvm:prepare-for-parallelization num-workers)
-     (setf (gethash "num-workers" *config*) num-workers)))
+     (setf (gethash "num-workers" **config**) num-workers)))
 
   ;; Show the welcome message.
   (unless quiet (show-welcome))
@@ -108,7 +108,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                          :dont-close t))
 
   (when safe-include-directory
-    (setf (gethash "safe-include-directory" *config*) safe-include-directory))
+    (setf (gethash "safe-include-directory" **config**) safe-include-directory))
   
   (cond
     (server

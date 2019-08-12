@@ -1,6 +1,6 @@
 (in-package #:qvm-app-ng)
 
-(global-vars:define-global-var *logger*
+(global-vars:define-global-var **logger**
     (make-instance 'cl-syslog:rfc5424-logger
                    :app-name *program-name*
                    :facility ':local0
@@ -8,8 +8,8 @@
   "The CL-SYSLOG logger instance.")
 
 (defun initialize-logger (program-name log-level)
-  "Initialize the global *LOGGER* variable for the given PROGRAM-NAME and LOG-LEVEL."
-  (setf *logger* (make-instance 'cl-syslog:rfc5424-logger
+  "Initialize the global **LOGGER** variable for the given PROGRAM-NAME and LOG-LEVEL."
+  (setf **logger** (make-instance 'cl-syslog:rfc5424-logger
                                 :app-name program-name
                                 :facility ':local0
                                 :maximum-priority (log-level-string-to-symbol log-level)
@@ -37,14 +37,14 @@ string followed by optional args (as in FORMAT)."
   (if (keywordp level-or-fmt-string)
       `(with-locked-log ()
          (cl-syslog:format-log
-          *logger*
+          **logger**
           ',level-or-fmt-string
           "~A~@?"
           (session-info)
           ,@fmt-string-or-args))
       `(with-locked-log ()
          (cl-syslog:format-log
-          *logger*
+          **logger**
           ':debug
           "~A~@?"
           (session-info)

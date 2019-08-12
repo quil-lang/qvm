@@ -1,6 +1,6 @@
 (in-package #:qvm-app-ng)
 
-(global-vars:define-global-var *config*
+(global-vars:define-global-var **config**
     (make-hash-table :test #'equalp)
   "A hash-table holding global configuration values. See *OPTION-SPEC* for a list of those options.")
 
@@ -98,9 +98,9 @@
   (mapcar #'caar spec))
 
 (defun reset-config ()
-  (setf *config* (make-hash-table :test #'equalp)))
+  (setf **config** (make-hash-table :test #'equalp)))
 
-(defun load-options-spec (&optional (specs *option-spec*) (table *config*))
+(defun load-options-spec (&optional (specs *option-spec*) (table **config**))
   "Load configurables and their defaults from SPECS into TABLE."
   (reset-config)
   (dolist (spec specs)
@@ -113,7 +113,7 @@
       (when initial-value-p
         (setf (gethash name table) initial-value)))))
 
-(defun load-config-file (&key (file #P"~/.qvm_config") (spec *option-spec*) (table *config*) reset)
+(defun load-config-file (&key (file #P"~/.qvm_config") (spec *option-spec*) (table **config**) reset)
   "Load config items specified in SPEC from FILE, storing them in the hash-table TABLE. Returns TABLE."
   (when reset
     (reset-config)
@@ -125,5 +125,5 @@
       (loop :for option :in options
             :for (option-name value) := (assoc option forms :test #'equalp)
             :when option :do
-              (setf (gethash option *config*) value))))
+              (setf (gethash option **config**) value))))
   table)
