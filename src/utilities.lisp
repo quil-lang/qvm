@@ -135,20 +135,32 @@ NOTE: This will not copy any multiprocessing aspects."
      (defun ,name ,lambda-list ,@body)
      (declaim (notinline ,name))))
 
+(defun map-subdivisions (f total num-ranges)
+  "Call the function F on the endpoints of NUM-RANGES half-open (on the right) intervals whose union is [0, TOTAL). The signature of F should be
+
+    START * END -> NIL.
+"
+  (let ((size (floor total num-ranges)))
+    (if (zerop size)
+        (funcall f 0 total)
+        (loop :for worker :from 1 :to num-ranges
+              :for start :from 0 :by size
+              :if (= worker num-ranges)
+                :do (funcall f start total)
+              :else
+                :do (funcall f start (+ start size))))))
+
 (declaim (ftype (function (alexandria:non-negative-fixnum alexandria:non-negative-fixnum) list) subdivide))
 (defun subdivide (total num-ranges)
   "Subdivide TOTAL (probably representing a vector length) into NUM-RANGES as-equal-as-possible ranges.
 
 The result will be a list of cons cells representing half-open intervals (on the right) whose union is [0, total)."
-  (let ((size (floor total num-ranges)))
-    (if (zerop size)
-        (list (cons 0 total))
-        (loop :for worker :from 1 :to num-ranges
-              :for start :from 0 :by size
-              :if (= worker num-ranges)
-                :collect (cons start total)
-              :else
-                :collect (cons start (+ start size))))))
+  (let ((subdivisions nil))
+    (map-subdivisions (lambda (start end)
+                        (push (cons start end) subdivisions))
+                      total
+                      num-ranges)
+    (nreverse subdivisions)))
 
 (defmacro measuring-gc ((time-var bytes-var) &body body)
   "Execute BODY setting TIME-VAR to the number of milliseconds spent garbage collecting, and BYTES-VAR to roughly the number of bytes allocated."
@@ -311,6 +323,27 @@ state."
 
 
 ;;; Macros for parallel processing
+
+(defmacro with-parallel-subdivisions ((start end count) &body body)
+  (alexandria:with-gensyms (channel num-tasks-submitted)
+    (alexandria:once-only (count)
+      `(when (plusp ,count)
+         (flet ((compute-part (,start ,end)
+                  (declare (type fixnum start end))
+                  ,@body))
+           (declare (dynamic-extent #'compute-part))
+           (let ((,channel (lparallel:make-channel))
+                 (,num-tasks-submitted 0))
+             (declare (type (and fixnum unsigned-byte) ,num-tasks-submitted))
+             (map-subdivisions (lambda (,start ,end)
+                                 (declare (type fixnum ,start ,end))
+                                 (incf ,num-tasks-submitted)
+                                 (lparallel:submit-task ,channel #'compute-part ,start ,end))
+                               ,count
+                               (lparallel:kernel-worker-count))
+             (loop :repeat ,num-tasks-submitted
+                   :do (lparallel:receive-result ,channel))))))))
+
 
 (defmacro pdotimes ((i n &optional ret) &body body)
   "Selectively perform DOTIMES or LPARALLEL:DOTIMES, depending on
