@@ -57,9 +57,9 @@ Uses AVX2 features."
     (dotimes (i 2)
       (dotimes (j 2)
         (setf (aref mat i j) (complex (random 1d0) (random 1d0)))))
-    (print "Without AVX2:~%")
+    (format t "Without AVX2:~%")
     (time (loop :repeat 4 :do (matmul2-vector mat vec)))
-    (print "With AVX2:~%")
+    (format t "With AVX2:~%")
     (time (loop :repeat 4 :do (matmul2-vector-simd mat vec)))
     nil))
 
