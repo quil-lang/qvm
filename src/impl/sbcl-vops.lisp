@@ -1,6 +1,9 @@
 ;;;; sbcl-vops.lisp
 ;;;;
 ;;;; Author: Cole Scott
+;;;;         
+;;;; Collaborators: Jussi Kukkonen
+;;;;                Robert Smith
 
 (defpackage #:qvm-intrinsics
   (:use #:cl #:sb-ext #:sb-c))
