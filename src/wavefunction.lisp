@@ -74,7 +74,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 (defun wavefunction-qubits (wavefunction)
   "The number of qubits represented by the wavefunction WAVEFUNCTION."
   (declare (type quantum-state wavefunction))
-  (max 0 (1- (integer-length (length wavefunction)))))
+  (max 1 (1- (integer-length (length wavefunction)))))
 
 (declaim (ftype (function (quantum-state) quantum-state) bring-to-zero-state))
 (defun-inlinable bring-to-zero-state (v)
@@ -268,6 +268,34 @@ up to amplitude ordering."
 
              nil))))))
 
+#+(and sbcl avx2)
+(defun apply-1q-operator (matrix wavefunction qubits)
+  (declare (inline qvm-intrinsics::2x2matrix-to-simd
+                   qvm-intrinsics::matmul2-simd)
+           (type quantum-state wavefunction)
+           (type quantum-operator matrix)
+           (type nat-tuple qubits)
+           (optimize speed (safety 0) (debug 0) (space 0)))
+  (let ((n/2 (half (length wavefunction)))
+        (q   (aref qubits 0)))
+    ;; Load the matrix into registers.
+    (with-parallel-subdivisions (start end n/2)
+      (multiple-value-bind (vyr vyi xzr xzi)
+          (qvm-intrinsics::2x2matrix-to-simd (aref matrix 0 0)
+                                             (aref matrix 0 1)
+                                             (aref matrix 1 0)
+                                             (aref matrix 1 1))
+        (loop :for i :from start :below end :do
+          (let* ((ai (inject-bit i q))
+                 (bi (dpb 1 (byte 1 q) ai)))
+            (multiple-value-bind (p q)
+                (qvm-intrinsics::matmul2-simd vyr vyi xzr xzi
+                                              (aref wavefunction ai)
+                                              (aref wavefunction bi))
+              (setf (aref wavefunction ai) p
+                    (aref wavefunction bi) q))))
+        wavefunction))))
+
 (defun-inlinable apply-operator (operator wavefunction qubits)
   "Apply an operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits QUBITS. OPERATOR shall be a unary function taking a QUANTUM-STATE as an argument and modifying it."
   (declare (type quantum-state wavefunction)
@@ -310,11 +338,16 @@ up to amplitude ordering."
   (declare (type quantum-state wavefunction)
            (type quantum-operator matrix)
            (inline apply-operator))
-  (flet ((multiply-by-operator (column)
-           (matrix-multiply matrix column)))
-    (declare (dynamic-extent #'multiply-by-operator)
-             (inline multiply-by-operator))
-    (apply-operator #'multiply-by-operator wavefunction qubits)))
+  (case (nat-tuple-cardinality qubits)
+    #+(and sbcl avx2)
+    ((1)
+     (apply-1q-operator matrix wavefunction qubits))
+    (otherwise
+     (flet ((multiply-by-operator (column)
+              (matrix-multiply matrix column)))
+       (declare (dynamic-extent #'multiply-by-operator)
+                (inline multiply-by-operator))
+       (apply-operator #'multiply-by-operator wavefunction qubits)))))
 
 (declaim (ftype (function (quantum-state) (flonum 0)) %serial-norm))
 (defun-inlinable %serial-norm (wavefunction)
