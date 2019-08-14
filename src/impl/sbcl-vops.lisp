@@ -54,8 +54,7 @@
               (inst vinsertf128 bb b b #xFF)      ; Store b in bb twice [Br Bi Br Bi]
               (inst vpermpd aa-swzld aa #4r2301)  ; Store a in aa-swzld reversed twice [Ai Ar Ai Ar]
               (inst vpermpd bb-swzld bb #4r2301)  ; Store b in bb-swzld reversed twice [Bi Br Bi Br]
-              (inst vxorpd res res res)           ; Set res to zero
-              (inst vfmadd231pd res vyi aa-swzld) ; Multiply complex parts of a and add to res
+              (inst vmulpd res vyi aa-swzld)      ; Multiply complex parts of a and store in res
               (inst vfmadd231pd res xzi bb-swzld) ; Multiply complex parts of b and add to res
               (inst vfmaddsub231pd res vyr aa)    ; Multiply real parts of a and add to res, negating complex parts
               (inst vfmadd231pd res xzr bb)       ; Multiply real parts of b and add to res
