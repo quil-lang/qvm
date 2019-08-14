@@ -15,6 +15,9 @@
 (deftype cdf ()
   '(complex double-float))
 
+;;; Function stub definitions
+;;; This tells the compiler about the existance and properties of the VOPs as functions
+
 (defknown (%2x2matrix-to-simd) (cdf cdf cdf cdf)
     (values d4 d4 d4 d4)
     (movable flushable always-translatable)
@@ -24,6 +27,8 @@
     (values cdf cdf)
     (movable flushable always-translatable)
   :overwrite-fndb-silently t)
+
+;;; VOP definitions
 
 (in-package #:sb-vm)
 
@@ -47,17 +52,17 @@
   (:result-types complex-double-float complex-double-float)
   (:temporary (:sc double-avx2-reg) aa bb aa-swzld bb-swzld res)
   (:generator 4
-              (inst vinsertf128 aa a a #xFF) ; Store a in aa twice [Ar Ai Ar Ai]
-              (inst vinsertf128 bb b b #xFF) ; Store b in bb twice [Br Bi Br Bi]
-              (inst vpermpd aa-swzld aa #4r2301) ; Store a in aa-swzld reversed twice [Ai Ar Ai Ar]
-              (inst vpermpd bb-swzld bb #4r2301) ; Store b in bb-swzld reversed twice [Bi Br Bi Br]
-              (inst vxorpd res res res)
-              (inst vfmadd231pd res vyi aa-swzld)
-              (inst vfmadd231pd res xzi bb-swzld)
-              (inst vfmaddsub231pd res vyr aa)
-              (inst vfmadd231pd res xzr bb)
-              (inst vextractf128 p res #xFF)
-              (inst vextractf128 q res #x00)))
+              (inst vinsertf128 aa a a #xFF)      ; Store a in aa twice [Ar Ai Ar Ai]
+              (inst vinsertf128 bb b b #xFF)      ; Store b in bb twice [Br Bi Br Bi]
+              (inst vpermpd aa-swzld aa #4r2301)  ; Store a in aa-swzld reversed twice [Ai Ar Ai Ar]
+              (inst vpermpd bb-swzld bb #4r2301)  ; Store b in bb-swzld reversed twice [Bi Br Bi Br]
+              (inst vxorpd res res res)           ; Set res to zero
+              (inst vfmadd231pd res vyi aa-swzld) ; Multiply complex parts of a and add to res
+              (inst vfmadd231pd res xzi bb-swzld) ; Multiply complex parts of b and add to res
+              (inst vfmaddsub231pd res vyr aa)    ; Multiply real parts of a and add to res, negating complex parts
+              (inst vfmadd231pd res xzr bb)       ; Multiply real parts of b and add to res
+              (inst vextractf128 p res #xFF)      ; Copy the upper 2 doubles from res to p
+              (inst vextractf128 q res #x00)))    ; Copy the lower 2 doubles from res to q
 
 (define-vop (qvm-intrinsics::2x2matrix-to-simd)
   (:translate qvm-intrinsics::%2x2matrix-to-simd)
@@ -78,7 +83,7 @@
                  simd-pack-256-double
                  simd-pack-256-double
                  simd-pack-256-double)
-  (:temporary (:sc double-avx2-reg) vy xz) ; NOTE: Could probably be optimized
+  (:temporary (:sc double-avx2-reg) vy xz) ; NOTE: Could probably be changed to not use temp registers
   (:generator 4
               (inst vinsertf128 vy y v #xFF) ; vy = [Vr Vi Yr Yi]
               (inst vinsertf128 xz z x #xFF) ; xz = [Xr Xi Zr Zi]
