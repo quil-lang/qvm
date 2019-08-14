@@ -5,6 +5,14 @@
 (in-package #:qvm-intrinsics)
 (declaim (optimize speed))
 
+(declaim (inline 2x2matrix-to-simd))
+(defun 2x2matrix-to-simd (x y z w)
+  "Convert a 2x2 matrix of complex numbers into real/complex part combined registers. Takes in (v, x, y, z) and returns (vyr, vyi, xzr, xzi) for use in matmul2-simd.
+
+Uses AVX2 features."
+  (%2x2matrix-to-simd x y z w))
+(declaim (notinline 2x2matrix-to-simd))
+
 (declaim (inline matmul2-simd))
 (defun matmul2-simd (vyr vyi xzr xzi a b)
   "Multiply the matrix [[v x] [y z]] by vector [a b] using vyr, vyi, xzr, xzi from the output of 2x2matrix-to-simd and return the complex double-floats p and q.
@@ -13,13 +21,13 @@ Uses AVX2 features."
   (%matmul2-simd vyr vyi xzr xzi a b))
 (declaim (notinline matmul2-simd))
 
-(declaim (inline 2x2matrix-to-simd))
-(defun 2x2matrix-to-simd (x y z w)
-  "Convert a 2x2 matrix of complex numbers into real/complex part combined registers. Takes in (v, x, y, z) and returns (vyr, vyi, xzr, xzi) for use in matmul2-simd.
+(declaim (inline matmul2-simd-real))
+(defun matmul2-simd-real (vyr xzr a b)
+  "Multiply the real-only matrix [[v x] [y z]] by vector [a b] using vyr, vyi, xzr, xzi from the output of 2x2matrix-to-simd and return the complex double-floats p and q.
 
 Uses AVX2 features."
-  (%2x2matrix-to-simd x y z w))
-(declaim (notinline 2x2matrix-to-simd))
+  (%matmul2-simd-real vyr xzr a b))
+(declaim (notinline matmul2-simd-real))
 
 ;;; Test Functions & Examples
 
