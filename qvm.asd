@@ -50,6 +50,7 @@
                (:file "config")
                (:file "impl/clozure" :if-feature :clozure)
                (:file "impl/sbcl" :if-feature :sbcl)
+	       (:file "impl/sbcl-linear-algebra-intrinsics" :if-feature (:and :sbcl :avx2))
                (:file "impl/lispworks" :if-feature :lispworks)
                (:file "utilities")
                (:file "floats")
