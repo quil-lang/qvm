@@ -34,8 +34,8 @@
                   (multiple-value-bind (p q)
                       (matmul2-simd vyr vyi xzr xzi a b)
                     (setf (aref vec i) p)
-                    (setf (aref vec (1+ i)) q))))))
-  nil)
+                    (setf (aref vec (1+ i)) q)
+                    nil))))))
 
 (declaim (inline matmul2*))
 (defun matmul2* (v x y z a b)
@@ -63,8 +63,8 @@
                 (multiple-value-bind (p q)
                     (matmul2* v x y z a b)
                   (setf (aref vec i) p)
-                  (setf (aref vec (1+ i)) q))))
-    nil))
+                  (setf (aref vec (1+ i)) q)
+                  nil)))))
 
 (defun matmul2-bench (n)
   (sb-ext:gc :full t)
