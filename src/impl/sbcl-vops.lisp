@@ -26,40 +26,13 @@
     (values cdf cdf)
     (movable flushable always-translatable))
 
+(defknown (%matmul2-simd-real) (d4 d4 cdf cdf)
+    (values cdf cdf)
+    (movable flushable always-translatable))
+
 ;;; VOP definitions
 
 (in-package #:sb-vm)
-
-(define-vop (qvm-intrinsics::matmul2-simd)
-  (:translate qvm-intrinsics::%matmul2-simd)
-  (:policy :fast-safe)
-  (:args (vyr :scs (double-avx2-reg))
-         (vyi :scs (double-avx2-reg))
-         (xzr :scs (double-avx2-reg))
-         (xzi :scs (double-avx2-reg))
-         (a :scs (complex-double-reg) :target p)
-         (b :scs (complex-double-reg) :target q))
-  (:arg-types simd-pack-256-double
-              simd-pack-256-double
-              simd-pack-256-double
-              simd-pack-256-double
-              complex-double-float
-              complex-double-float)
-  (:results (p :scs (complex-double-reg))
-            (q :scs (complex-double-reg)))
-  (:result-types complex-double-float complex-double-float)
-  (:temporary (:sc double-avx2-reg) aa bb aa-swzld bb-swzld res)
-  (:generator 4
-              (inst vinsertf128 aa a a #xFF)      ; Store a in aa twice [Ar Ai Ar Ai]
-              (inst vinsertf128 bb b b #xFF)      ; Store b in bb twice [Br Bi Br Bi]
-              (inst vpermpd aa-swzld aa #4r2301)  ; Store a in aa-swzld reversed twice [Ai Ar Ai Ar]
-              (inst vpermpd bb-swzld bb #4r2301)  ; Store b in bb-swzld reversed twice [Bi Br Bi Br]
-              (inst vmulpd res vyi aa-swzld)      ; Multiply complex parts of a and store in res
-              (inst vfmadd231pd res xzi bb-swzld) ; Multiply complex parts of b and add to res
-              (inst vfmaddsub231pd res vyr aa)    ; Multiply real parts of a and add to res, negating complex parts
-              (inst vfmadd231pd res xzr bb)       ; Multiply real parts of b and add to res
-              (inst vextractf128 p res #xFF)      ; Copy the upper 2 doubles from res to p
-              (inst vextractf128 q res #x00)))    ; Copy the lower 2 doubles from res to q
 
 (define-vop (qvm-intrinsics::2x2matrix-to-simd)
   (:translate qvm-intrinsics::%2x2matrix-to-simd)
@@ -89,3 +62,61 @@
               (inst vpermpd xzr xz #4r2200)  ; xzr = [Xr Xr Zr Zr]
               (inst vpermpd xzi xz #4r3311)  ; xzr = [Xi Xi Zi Zi]
               ))
+
+(defun qvm-intrinsics::prepare-vector-inputs (a b aa bb aa-swzld bb-swzld)
+  (inst vinsertf128 aa a a #xFF)      ; Store a in aa twice [Ar Ai Ar Ai]
+  (inst vinsertf128 bb b b #xFF)      ; Store b in bb twice [Br Bi Br Bi]
+  (inst vpermpd aa-swzld aa #4r2301)  ; Store a in aa-swzld reversed twice [Ai Ar Ai Ar]
+  (inst vpermpd bb-swzld bb #4r2301)  ; Store b in bb-swzld reversed twice [Bi Br Bi Br]
+  )
+
+(define-vop (qvm-intrinsics::matmul2-simd)
+  (:translate qvm-intrinsics::%matmul2-simd)
+  (:policy :fast-safe)
+  (:args (vyr :scs (double-avx2-reg))
+         (vyi :scs (double-avx2-reg))
+         (xzr :scs (double-avx2-reg))
+         (xzi :scs (double-avx2-reg))
+         (a :scs (complex-double-reg) :target p)
+         (b :scs (complex-double-reg) :target q))
+  (:arg-types simd-pack-256-double
+              simd-pack-256-double
+              simd-pack-256-double
+              simd-pack-256-double
+              complex-double-float
+              complex-double-float)
+  (:results (p :scs (complex-double-reg))
+            (q :scs (complex-double-reg)))
+  (:result-types complex-double-float complex-double-float)
+  (:temporary (:sc double-avx2-reg) aa bb aa-swzld bb-swzld res)
+  (:generator 4
+              (qvm-intrinsics::prepare-vector-inputs a b aa bb aa-swzld bb-swzld)
+              (inst vmulpd res vyi aa-swzld)      ; Multiply complex parts of a and store in res
+              (inst vfmadd231pd res xzi bb-swzld) ; Multiply complex parts of b and add to res
+              (inst vfmaddsub231pd res vyr aa)    ; Multiply real parts of a and add to res, negating complex parts
+              (inst vfmadd231pd res xzr bb)       ; Multiply real parts of b and add to res
+              (inst vextractf128 p res #xFF)      ; Copy the upper 2 doubles from res to p
+              (inst vextractf128 q res #x00)))    ; Copy the lower 2 doubles from res to q
+
+(define-vop (qvm-intrinsics::matmul2-simd-real)
+  (:translate qvm-intrinsics::%matmul2-simd-real)
+  (:policy :fast-safe)
+  (:args (vyr :scs (double-avx2-reg))
+         (xzr :scs (double-avx2-reg))
+         (a :scs (complex-double-reg) :target p)
+         (b :scs (complex-double-reg) :target q))
+  (:arg-types simd-pack-256-double
+              simd-pack-256-double
+              complex-double-float
+              complex-double-float)
+  (:results (p :scs (complex-double-reg))
+            (q :scs (complex-double-reg)))
+  (:result-types complex-double-float complex-double-float)
+  (:temporary (:sc double-avx2-reg) aa bb aa-swzld bb-swzld res)
+  (:generator 4
+              (qvm-intrinsics::prepare-vector-inputs a b aa bb aa-swzld bb-swzld)
+              (inst vmulpd res vyr aa)            ; Multiply real parts of a and store in res
+              (inst vfmadd231pd res xzr bb)       ; Multiply real parts of b and add to res
+              (inst vextractf128 p res #xFF)      ; Copy the upper 2 doubles from res to p
+              (inst vextractf128 q res #x00)))    ; Copy the lower 2 doubles from res to q
+
