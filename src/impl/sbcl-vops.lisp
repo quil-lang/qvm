@@ -20,13 +20,11 @@
 
 (defknown (%2x2matrix-to-simd) (cdf cdf cdf cdf)
     (values d4 d4 d4 d4)
-    (movable flushable always-translatable)
-  :overwrite-fndb-silently t)
+    (movable flushable always-translatable))
 
 (defknown (%matmul2-simd) (d4 d4 d4 d4 cdf cdf)
     (values cdf cdf)
-    (movable flushable always-translatable)
-  :overwrite-fndb-silently t)
+    (movable flushable always-translatable))
 
 ;;; VOP definitions
 
