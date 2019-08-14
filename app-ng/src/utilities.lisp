@@ -4,10 +4,6 @@
 
 (in-package #:qvm-app-ng)
 
-(defun session-info ()
-  ;; Stub implementation for FORMAT-LOG, below. See app/src/utilities.lisp for the original.
-  "")
-
 (defun check-sdk-version (&key proxy)
   "Check whether the current QVM version is older than latest Forest SDK version."
   (multiple-value-bind (available-p version)
@@ -77,9 +73,9 @@ Version ~A is available from https://www.rigetti.com/forest~%"
          (error "INCLUDE requires a pathname to a file."))
        (when (contains-up filename)
          (error "INCLUDE can't refer to files above."))
-       (if (null (gethash "safe-include-directory" **config**))
+       (if (null (get-config "safe-include-directory"))
            filename
-           (merge-pathnames filename (gethash "safe-include-directory" **config**))))
+           (merge-pathnames filename (get-config "safe-include-directory"))))
 
       (t
        (error "Invalid pathname: ~S" filename)))))
@@ -91,7 +87,7 @@ Version ~A is available from https://www.rigetti.com/forest~%"
                   (parse-results
                     (quil:parse-quil string)))
              parse-results)))
-    (if (null (gethash "safe-include-directory" **config**))
+    (if (null (get-config "safe-include-directory"))
         (parse-it string)
         (let ((quil:*resolve-include-pathname* #'resolve-safely))
           (parse-it string)))))

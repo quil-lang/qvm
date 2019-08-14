@@ -10,6 +10,7 @@
   :depends-on (#:qvm-app-ng
                #:qvm
                #:uiop
+               #:uuid
                #:fiasco)
   :perform (asdf:test-op (o s)
              (uiop:symbol-call ':qvm-app-ng-tests
@@ -17,4 +18,5 @@
   :pathname "app-ng/tests/"
   :serial t
   :components ((:file "package")
+               (:file "config-tests")
                (:file "suite")))

@@ -21,6 +21,10 @@
                                  (cl-syslog:syslog-log-writer *program-name* :local0)
                                  *error-output*))))
 
+(defun session-info ()
+  ;; Stub implementation for FORMAT-LOG, below. See app/src/utilities.lisp for the original.
+  "")
+
 (global-vars:define-global-var **log-lock** (bt:make-lock "Log Lock"))
 (defmacro with-locked-log (() &body body)
   `(bt:with-lock-held (**log-lock**)
@@ -51,11 +55,21 @@ string followed by optional args (as in FORMAT)."
           ,level-or-fmt-string
           ,@fmt-string-or-args))))
 
+(alexandria:define-constant +valid-log-levels+
+    (mapcar #'car cl-syslog::*priorities*)
+  :test #'equal
+  :documentation "A list of valid log level keywords.")
+
+(defun canonicalize-log-level (log-level)
+  (etypecase log-level
+    (string (alexandria:make-keyword (string-upcase log-level)))
+    (keyword log-level)))
+
+(defun valid-log-level (log-level)
+  (first (member (canonicalize-log-level log-level) +valid-log-levels+)))
+
 (defun log-level-string-to-symbol (log-level)
   "Match the LOG-LEVEL string to one CL-SYSLOG's prority symbols."
-  (let ((log-level-kw (assoc (intern (string-upcase log-level) 'keyword)
-                             cl-syslog::*priorities*)))
-    (unless log-level-kw
-      (error "Invalid logging level: ~a" log-level))
-
-    (car log-level-kw)))
+  (check-type log-level string)
+  (or (valid-log-level log-level)
+      (error "Invalid logging level: ~S" log-level)))

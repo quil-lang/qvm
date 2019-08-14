@@ -8,7 +8,7 @@
   (format t "Usage:~%")
   (format t "    ~A [<options>...]~%~%" *program-name*)
   (format t "Options:~%")
-  (command-line-arguments:show-option-help *option-spec* :sort-names t))
+  (qvm-app-ng.config:show-option-help))
 
 (defun show-version ()
   (format t "~A [~A]~%" +QVM-VERSION+ +GIT-HASH+))
@@ -32,30 +32,55 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           (or *num-workers* (max 1 (qvm:count-logical-cores))))
   nil)
 
+(defun command-line-debugger (condition previous-hook)
+  (declare (ignore previous-hook))
+  (format *error-output* "~&Fatal ~A: ~%  ~A~%"
+          (type-of condition)
+          condition)
+  (force-output *error-output*)
+  (quit-nicely 1))
+
+(defun setup-debugger ()
+  #+forest-sdk
+  (setf *debugger-hook* 'command-line-debugger)
+  #-forest-sdk
+  (disable-debugger))
+
+(defun allocation-description-maker (kind)
+  "Return a function INTEGER -> ALLOCATION that takes a number of elements and returns a proper descriptor for the allocation."
+  (cond
+    ((string-equal kind "native")
+     (lambda (length)
+       (make-instance 'qvm:lisp-allocation :length length)))
+    ((string-equal kind "foreign")
+     (lambda (length)
+       (make-instance 'qvm:c-allocation :length length)))
+    (t
+     (error "Invalid kind of allocation ~S, wanted any of {~{~S~^, ~}"
+            kind
+            *available-allocation-kinds*))))
+
 (defun process-options (&key
-                          version
-                          check-libraries
-                          verbose
                           help
-                          #-forest-sdk swank-port
+                          version
+                          verbose
+                          server
+                          host
+                          port
+                          qubits
                           num-workers
+                          #-forest-sdk swank-port
                           #-forest-sdk debug
                           check-sdk-version
+                          check-libraries
                           proxy
                           quiet
                           log-level
-                          (batch t)
-                          server
-                          simulation-method
-                          allocation-method
+                          qubit-limit
                           memory-limit
                           safe-include-directory
-                          qubits)
-  "Process all options, setting global variables, and process input or start server."
-  ;; Initialize global configuration first by loading the config file.
-  ;; TODO Specify the file on command line.
-  (load-config-file :reset t)
-
+                          allocation-method
+                          simulation-method)
   (initialize-logger *program-name* log-level)
 
   (when help
@@ -75,22 +100,31 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (when verbose
     (setf qvm:*transition-verbose* t))
 
+  (when allocation-method
+    (setq **default-allocation** (allocation-description-maker allocation-method)))
+
+  (when qubit-limit
+    (setf *qubit-limit* qubit-limit))
+
+  (when memory-limit
+    (setf qvm::**classical-memory-size-limit** memory-limit))
+
   #-forest-sdk
   (when debug
     (setf *debug* t))
 
+  (when safe-include-directory
+    (setf *safe-include-directory* safe-include-directory))
+
   (cond
-    ((minusp num-workers)
-     (error "Cannot create a negative number (~D) of workers." num-workers))
     ((zerop num-workers)
-     (qvm:prepare-for-parallelization)
-     (setf (gethash "num-workers" **config**) 0))
+     (qvm:prepare-for-parallelization))
     (t
      (qvm:prepare-for-parallelization num-workers)
-     (setf (gethash "num-workers" **config**) num-workers)))
+     (setf *num-workers* num-workers)))
 
-  ;; Show the welcome message.
-  (unless quiet (show-welcome))
+  (unless quiet
+    (show-welcome))
 
   ;; Start Swank if we were asked. Re-enable the debugger.
   #-forest-sdk
@@ -101,34 +135,29 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (swank:create-server :port swank-port
                          :dont-close t))
 
-  (when safe-include-directory
-    (setf (gethash "safe-include-directory" **config**) safe-include-directory))
-  
+  (when (not (null simulation-method))
+    ;; Determine the simulation method, and set *SIMULATION-METHOD* appropriately
+    (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app-ng))
+    (when (and (eq *simulation-method* 'full-density-matrix)
+               (null qubits))
+      (format-log :err "Full density matrix simulation requires --qubits to be specified.")
+      (quit-nicely 1)))
+
   (cond
     (server
-     (start-server-mode :host host :port port :qubits qubits :memory-limit memory-limit))
-    ;; BATCH is by default T (see above). This is to facilitate testing
-    ;; PROCESS-OPTIONS by passing :BATCH nil and :SERVER nil. Maybe
-    ;; needs a better design, to separate "processing of options" from
-    ;; "acting on options".
-    (batch
+     (start-server-mode :host host
+                        :port port
+                        :qubits qubits
+                        :memory-limit memory-limit))
+    (t
      (start-batch-mode :qubits qubits
                        :simulation-method simulation-method
                        :allocation-method allocation-method))))
 
-(defun command-line-debugger (condition previous-hook)
-  (declare (ignore previous-hook))
-  (format *error-output* "~&Fatal ~A: ~%  ~A~%"
-          (type-of condition)
-          condition)
-  (force-output *error-output*)
-  (quit-nicely 1))
-
-(defun setup-debugger ()
-  #+forest-sdk
-  (setf *debugger-hook* 'command-line-debugger)
-  #-forest-sdk
-  (disable-debugger))
+(alexandria:define-constant +default-config-file-path+
+    (merge-pathnames ".qvm_config" (user-homedir-pathname))
+  :test #'equal
+  :documentation "Default path to the QVM config file.")
 
 (defun %main (argv)
   (setup-debugger)
@@ -136,12 +165,10 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (let ((*program-name* (pop argv)))
     (handler-case
         (handler-bind ((style-warning #'muffle-warning))
-          (command-line-arguments:handle-command-line
-           *option-spec*
-           'process-options
-           :command-line argv
-           :name *program-name*
-           :rest-arity nil))
+          (qvm-app-ng.config:handle-config argv
+                                           (and (uiop:file-exists-p +default-config-file-path+)
+                                                +default-config-file-path+)
+                                           #'process-options))
       #+sbcl
       (sb-sys:interactive-interrupt (c)
         (declare (ignore c))
