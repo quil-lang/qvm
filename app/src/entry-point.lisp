@@ -47,7 +47,7 @@
      :initial-value 5000
      :documentation "port to start the QVM server on")
 
-    (("max-qubits" #\q)
+    (("qubits" #\q)
      :type integer
      :optional t
      :documentation "Number of qubits to force to use.")
