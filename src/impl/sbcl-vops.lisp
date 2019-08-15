@@ -55,20 +55,25 @@
                  simd-pack-256-double)
   (:temporary (:sc double-avx2-reg) vy xz) ; NOTE: Could probably be changed to not use temp registers
   (:generator 4
-              (inst vinsertf128 vy y v #xFF) ; vy = [Vr Vi Yr Yi]
-              (inst vinsertf128 xz z x #xFF) ; xz = [Xr Xi Zr Zi]
-              (inst vpermpd vyr vy #4r2200)  ; vyr = [Vr Vr Yr Yr]
-              (inst vpermpd vyi vy #4r3311)  ; vyi = [Vi Vi Yi Yi]
-              (inst vpermpd xzr xz #4r2200)  ; xzr = [Xr Xr Zr Zr]
-              (inst vpermpd xzi xz #4r3311)  ; xzr = [Xi Xi Zi Zi]
-              ))
+              (inst vinsertf128 vy y v #xFF)  ; vy = [Vr Vi Yr Yi]
+              (inst vinsertf128 xz z x #xFF)  ; xz = [Xr Xi Zr Zi]
+              (inst vpermpd vyr vy #4r2200)   ; vyr = [Vr Vr Yr Yr]
+              (inst vpermpd vyi vy #4r3311)   ; vyi = [Vi Vi Yi Yi]
+              (inst vpermpd xzr xz #4r2200)   ; xzr = [Xr Xr Zr Zr]
+              (inst vpermpd xzi xz #4r3311))) ; xzr = [Xi Xi Zi Zi]
+
+(defun qvm-intrinsics::repeat-complex-registers (&rest args)
+  "Store a XMM register to upper and lower half of YMM register"
+  (loop :for arg :in args
+     :do (let ((dest (first arg))
+               (src (second arg)))
+           (inst vinsertf128 dest src src #xFF))))
 
 (defun qvm-intrinsics::prepare-vector-inputs (a b aa bb aa-swzld bb-swzld)
-  (inst vinsertf128 aa a a #xFF)      ; Store a in aa twice [Ar Ai Ar Ai]
-  (inst vinsertf128 bb b b #xFF)      ; Store b in bb twice [Br Bi Br Bi]
+  "Prepare complex vector inputs for matrix multiplication"
+  (qvm-intrinsics::repeat-complex-registers (list aa a) (list bb b))
   (inst vpermpd aa-swzld aa #4r2301)  ; Store a in aa-swzld reversed twice [Ai Ar Ai Ar]
-  (inst vpermpd bb-swzld bb #4r2301)  ; Store b in bb-swzld reversed twice [Bi Br Bi Br]
-  )
+  (inst vpermpd bb-swzld bb #4r2301)) ; Store b in bb-swzld reversed twice [Bi Br Bi Br]
 
 (define-vop (qvm-intrinsics::matmul2-simd)
   (:translate qvm-intrinsics::%matmul2-simd)
@@ -88,15 +93,16 @@
   (:results (p :scs (complex-double-reg))
             (q :scs (complex-double-reg)))
   (:result-types complex-double-float complex-double-float)
-  (:temporary (:sc double-avx2-reg) aa bb aa-swzld bb-swzld res)
+  (:temporary (:sc double-avx2-reg) aa bb aa-swzld bb-swzld)
   (:generator 4
-              (qvm-intrinsics::prepare-vector-inputs a b aa bb aa-swzld bb-swzld)
-              (inst vmulpd res vyi aa-swzld)      ; Multiply complex parts of a and store in res
-              (inst vfmadd231pd res xzi bb-swzld) ; Multiply complex parts of b and add to res
-              (inst vfmaddsub231pd res vyr aa)    ; Multiply real parts of a and add to res, negating complex parts
-              (inst vfmadd231pd res xzr bb)       ; Multiply real parts of b and add to res
-              (inst vextractf128 p res #xFF)      ; Copy the upper 2 doubles from res to p
-              (inst vextractf128 q res #x00)))    ; Copy the lower 2 doubles from res to q
+              (let ((acc aa-swzld))                 ; Save a register by using the first used temp to also store accumulator
+                (qvm-intrinsics::prepare-vector-inputs a b aa bb aa-swzld bb-swzld)
+                (inst vmulpd acc vyi aa-swzld)      ; Multiply complex parts of a and store in acc
+                (inst vfmadd231pd acc xzi bb-swzld) ; Multiply complex parts of b and add to acc
+                (inst vfmaddsub231pd acc vyr aa)    ; Multiply real parts of a and add to acc, negating complex parts
+                (inst vfmadd231pd acc xzr bb)       ; Multiply real parts of b and add to acc
+                (inst vextractf128 p acc #xFF)      ; Copy the upper 2 doubles from acc to p
+                (inst vextractf128 q acc #x00))))   ; Copy the lower 2 doubles from acc to q
 
 (define-vop (qvm-intrinsics::matmul2-simd-real)
   (:translate qvm-intrinsics::%matmul2-simd-real)
@@ -112,11 +118,12 @@
   (:results (p :scs (complex-double-reg))
             (q :scs (complex-double-reg)))
   (:result-types complex-double-float complex-double-float)
-  (:temporary (:sc double-avx2-reg) aa bb aa-swzld bb-swzld res)
+  (:temporary (:sc double-avx2-reg) aa bb)
   (:generator 4
-              (qvm-intrinsics::prepare-vector-inputs a b aa bb aa-swzld bb-swzld)
-              (inst vmulpd res vyr aa)            ; Multiply real parts of a and store in res
-              (inst vfmadd231pd res xzr bb)       ; Multiply real parts of b and add to res
-              (inst vextractf128 p res #xFF)      ; Copy the upper 2 doubles from res to p
-              (inst vextractf128 q res #x00)))    ; Copy the lower 2 doubles from res to q
+              (let ((acc aa))                     ; Save a register by using the first used temp to also store accumulator
+                (qvm-intrinsics::repeat-complex-registers (list aa a) (list bb b))
+                (inst vmulpd acc vyr aa)          ; Multiply real parts of a and store in acc
+                (inst vfmadd231pd acc xzr bb)     ; Multiply real parts of b and add to acc
+                (inst vextractf128 p acc #xFF)    ; Copy the upper 2 doubles from acc to p
+                (inst vextractf128 q acc #x00)))) ; Copy the lower 2 doubles from acc to q
 
