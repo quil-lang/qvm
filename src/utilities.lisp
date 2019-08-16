@@ -27,7 +27,9 @@
                  nat-tuple-cardinality))
 
 (deftype nat-tuple ()
-  "The NAT-TUPLE type. A \"nat tuple\" represents an ordered list of non-negative integer indexes."
+  "The NAT-TUPLE type. A \"nat tuple\" represents an ordered list of non-negative integer indexes.
+
+In the context of the QVM, this represents a particular Hilbert space."
   `(simple-array nat-tuple-element (*)))
 
 (declaim (ftype (function (nat-tuple-cardinality) nat-tuple) %make-nat-tuple))
@@ -64,9 +66,18 @@ ELT will be bound to the element itself."
              :do (progn
                    ,@body)))))
 
+(declaim (inline nat-tuple-ref))
+(defun nat-tuple-ref (nt i)
+  "Extract the Ith element of the nat-tuple NT."
+  (declare (type nat-tuple nt)
+           (type alexandria:non-negative-fixnum i))
+  (aref nt i))
+
 (declaim (inline nat-tuple-position))
 (defun nat-tuple-position (nt elt)
   "In what position is ELT in the nat-tuple NT?"
+  (declare (type nat-tuple nt)
+           (type nat-tuple-element elt))
   (position elt nt))
 
 (defun nat-tuple-complement (n nt)
