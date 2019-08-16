@@ -112,9 +112,9 @@ Version ~A is available from https://www.rigetti.com/forest~%"
        (format stream "~F-~Fi" re (- im))))))
 
 (defun generalized-boolean-to-exit-code (successp)
-  (cond ((integerp successp) successp)
-        ((null successp) 1)
-        (t 0)))
+  (if (integerp successp)
+      successp
+      (qvm::boolean-bit successp)))
 
 (defun quit-nicely (&optional (successp t)
                     &aux (code (generalized-boolean-to-exit-code successp)))
