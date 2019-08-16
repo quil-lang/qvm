@@ -100,9 +100,6 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (when verbose
     (setf qvm:*transition-verbose* t))
 
-  (when allocation-method
-    (setq **default-allocation** (allocation-description-maker allocation-method)))
-
   (when qubit-limit
     (setf *qubit-limit* qubit-limit))
 
@@ -135,13 +132,15 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (swank:create-server :port swank-port
                          :dont-close t))
 
-  (when (not (null simulation-method))
-    ;; Determine the simulation method, and set *SIMULATION-METHOD* appropriately
-    (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app-ng))
-    (when (and (eq *simulation-method* 'full-density-matrix)
-               (null qubits))
-      (format-log :err "Full density matrix simulation requires --qubits to be specified.")
-      (quit-nicely 1)))
+  (assert (not (null allocation-method)))
+  (setq **default-allocation** (allocation-description-maker allocation-method))
+
+  (assert (not (null simulation-method)))
+  (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app-ng))
+  (when (and (eq *simulation-method* 'full-density-matrix)
+             (null qubits))
+    (format-log :err "Full density matrix simulation requires --qubits to be specified.")
+    (quit-nicely 1))
 
   (cond
     (server

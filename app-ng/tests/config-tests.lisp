@@ -79,7 +79,8 @@
 (deftest test-config-simulation-method-validator ()
   (%do-validator-test ':simulation-method
                       qvm-app-ng::*available-simulation-methods*
-                      '("" "invalid" "purse-state oh no" 12)))
+                      '("" "invalid" "purse-state oh no" 12))
+  (signals error (load-config '() "(:simulation-method nil)")))
 
 (deftest test-config-invalid-options ()
   (signals error (load-config '("--bogus" "--bogus-with-arg" "hey") nil))
@@ -148,6 +149,33 @@
     (signals error (load-config '() "(:integer 4.0)"))
     (signals error (load-config '() "(:string  5)"))
     (signals error (load-config '() "(:string  t)"))))
+
+(deftest test-config-defaults ()
+  (let ((option-spec `((("host")
+                        :type string
+                        :optional t
+                        :initial-value "0.0.0.0"
+                        :documentation "some doc")
+                       (("simulation-method")
+                        :type string
+                        :optional t
+                        :initial-value "pure-state"
+                        :validator ,(lambda (name input)
+                                      (declare (ignore name input))))
+                       (("check-sdk-version")
+                        :type boolean
+                        :initial-value nil)
+                       (("no-default-int")
+                        :type integer)
+                       (("default-int")
+                        :type integer
+                        :initial-value 42))))
+    (not-signals error (load-config '() "" option-spec))
+    (is (string= "0.0.0.0" (get-config ':host)))
+    (is (string= "pure-state" (get-config ':simulation-method)))
+    (is (null (get-config ':check-sdk-version)))
+    (is (null (get-config ':no-default-int)))
+    (is (= 42 (get-config ':default-int)))))
 
 (deftest test-config-overrides ()
   "Test that option priority is command line > config file > defaults."

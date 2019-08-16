@@ -213,7 +213,7 @@
          :name option-name
          :input input
          :format-control format-control
-         :format-args format-arguments))
+         :format-arguments format-arguments))
 
 (defun check-port (option-name input)
   (unless (< 0 input 65536)
