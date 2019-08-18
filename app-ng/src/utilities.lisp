@@ -4,9 +4,8 @@
 
 (in-package #:qvm-app-ng)
 
-(defun session-info ()
-  ;; Stub implementation for FORMAT-LOG, below. See app/src/utilities.lisp for the original.
-  "")
+(defun keywordify (str)
+  (intern (string-upcase str) :keyword))
 
 (global-vars:define-global-var **log-lock** (bt:make-lock "Log Lock"))
 (defmacro with-locked-log (() &body body)

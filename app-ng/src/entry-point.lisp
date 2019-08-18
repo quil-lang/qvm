@@ -20,10 +20,33 @@
      :optional t
      :documentation "display verbose output")
 
+    (("server" #\S)
+     :type boolean
+     :optional t
+     :initial-value nil
+     :documentation "start a QVM server")
+
+    (("host")
+     :type string
+     :optional t
+     :initial-value ,+default-server-address+
+     :documentation "host on which to start the QVM server")
+
+    (("port" #\p)
+     :type integer
+     :optional t
+     :initial-value ,+default-server-port+
+     :documentation "port to start the QVM server on")
+
     (("num-workers" #\w)
      :type integer
      :initial-value 0
      :documentation "workers to use in parallel (0 => maximum number)")
+
+    (("qubit-limit")
+     :type integer
+     :initial-value 0
+     :documentation "maximum number of qubits allowed to be used in the server (0 => unlimited)")
 
     #-forest-sdk
     (("swank-port")
@@ -118,8 +141,12 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           check-libraries
                           verbose
                           help
+                          server
+                          host
+                          port
                           #-forest-sdk swank-port
                           num-workers
+                          qubit-limit
                           #-forest-sdk debug
                           check-sdk-version
                           proxy
@@ -164,6 +191,9 @@ Version ~A is available from https://www.rigetti.com/forest~%"
   (when debug
     (setf *debug* t))
 
+  (when (plusp qubit-limit)
+    (setf *qubit-limit* qubit-limit))
+
   (cond
     ((zerop num-workers)
      (qvm:prepare-for-parallelization))
@@ -182,6 +212,9 @@ Version ~A is available from https://www.rigetti.com/forest~%"
     (setf swank:*use-dedicated-output-stream* nil)
     (swank:create-server :port swank-port
                          :dont-close t))
+
+  (when server
+    (start-server-mode :host host :port port))
 
   (quit-nicely))
 
@@ -209,7 +242,7 @@ Version ~A is available from https://www.rigetti.com/forest~%"
            *option-spec*
            'process-options
            :command-line argv
-           :name "qvm"
+           :name *program-name*
            :rest-arity nil))
       #+sbcl
       (sb-sys:interactive-interrupt (c)

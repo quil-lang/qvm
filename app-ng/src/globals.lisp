@@ -5,7 +5,9 @@
 
 (in-package #:qvm-app-ng)
 
-(defvar *num-workers* 1)
+(defvar *app* nil)
+(defvar *num-workers* nil)
+(defvar *qubit-limit* nil)
 (defvar *debug* nil)
 (defvar *program-name* "qvm-ng")
 (defvar swank:*use-dedicated-output-stream*)
