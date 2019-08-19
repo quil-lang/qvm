@@ -10,6 +10,7 @@
 
 (in-package #:qvm-intrinsics)
 
+#+avx2
 (deftype d4 ()
   '(simd-pack-256 double-float))
 (deftype cdf ()
@@ -27,26 +28,31 @@
     (any always-translatable)
   :overwrite-fndb-silently t)
 
+#+avx2
 (defknown (%2x2matrix-to-simd) (cdf cdf cdf cdf)
     (values d4 d4 d4 d4)
     (movable flushable always-translatable)
   :overwrite-fndb-silently t)
 
+#+avx2
 (defknown (%2x4matrix-to-simd) (cdf cdf cdf cdf cdf cdf cdf cdf)
     (values d4 d4 d4 d4 d4 d4 d4 d4)
     (flushable always-translatable)
   :overwrite-fndb-silently t)
 
+#+avx2
 (defknown (%matmul2-simd) (d4 d4 d4 d4 cdf cdf)
     (values cdf cdf)
     (movable flushable always-translatable)
   :overwrite-fndb-silently t)
 
+#+avx2
 (defknown (%matmul2-simd-real) (d4 d4 cdf cdf)
     (values cdf cdf)
     (movable flushable always-translatable)
   :overwrite-fndb-silently t)
 
+#+avx2
 (defknown (%matmul4-simd-half) (d4 d4 d4 d4 d4 d4 d4 d4 cdf cdf cdf cdf)
     (values cdf cdf)
     (movable flushable always-translatable)
@@ -77,6 +83,7 @@
                                          (- n-fixnum-tag-bits))
                              :disp disp))))
 
+#+avx2
 (define-vop (qvm-intrinsics::2x2matrix-to-simd)
   (:translate qvm-intrinsics::%2x2matrix-to-simd)
   (:policy :fast-safe)
@@ -105,6 +112,7 @@
               (inst vpermpd m1r m1 #4r2200)
               (inst vpermpd m1i m1 #4r3311)))
 
+#+avx2
 (define-vop (qvm-intrinsics::2x4matrix-to-simd)
   (:translate qvm-intrinsics::%2x4matrix-to-simd)
   (:policy :fast-safe)
@@ -155,6 +163,7 @@
               (inst vpermpd m3r m3 #4r2200)
               (inst vpermpd m3i m3 #4r3311)))
 
+#+avx2
 (defun qvm-intrinsics::repeat-complex-registers (&rest args)
   "Store a XMM register to upper and lower half of YMM register"
   (loop :for arg :in args
@@ -162,6 +171,7 @@
                (src (second arg)))
            (inst vinsertf128 dest src src #xFF))))
 
+#+avx2
 (defun qvm-intrinsics::swizzle-complex-registers (&rest args)
   "Store a XMM register to upper and lower half of YMM register"
   (loop :for arg :in args
@@ -169,6 +179,7 @@
                (src (second arg)))
            (inst vpermpd dest src #4r0101))))
 
+#+avx2
 (define-vop (qvm-intrinsics::matmul2-simd)
   (:translate qvm-intrinsics::%matmul2-simd)
   (:policy :fast-safe)
@@ -200,6 +211,7 @@
                 (inst vextractf128 p acc #xFF)      ; Copy the upper 2 doubles from acc to p
                 (inst vextractf128 q acc #x00))))   ; Copy the lower 2 doubles from acc to q
 
+#+avx2
 (define-vop (qvm-intrinsics::matmul2-simd-real)
   (:translate qvm-intrinsics::%matmul2-simd-real)
   (:policy :fast-safe)
@@ -223,6 +235,7 @@
                 (inst vextractf128 p acc #xFF)    ; Copy the upper 2 doubles from acc to p
                 (inst vextractf128 q acc #x00)))) ; Copy the lower 2 doubles from acc to q
 
+#+avx2
 (define-vop (qvm-intrinsics::matmul4-simd-half)
   (:translate qvm-intrinsics::%matmul4-simd-half)
   (:policy :fast-safe)
