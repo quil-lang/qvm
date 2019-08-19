@@ -26,8 +26,14 @@
                (:file "globals")
                (:file "utilities")
                (:file "qvm-app-ng-version")
+               (:file "configure-qvm")
+               (:module "api"
+                :serial t
+                :components ((:file "common")
+                             (:file "trivial-handlers")
+                             (:file "multishot")))
                (:file "server")
-               (:file "handlers")
+               (:file "handle-request")
                (:file "impl/sbcl" :if-feature :sbcl)
                (:file "impl/clozure" :if-feature :clozure)
                (:file "entry-point")))

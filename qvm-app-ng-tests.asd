@@ -18,5 +18,6 @@
   :pathname "app-ng/tests/"
   :serial t
   :components ((:file "package")
+               (:file "utilities")
                (:file "test-rest-api")
                (:file "suite")))

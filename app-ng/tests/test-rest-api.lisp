@@ -22,35 +22,87 @@
     (alexandria:with-gensyms (app)
       `(let (,app)
          (unwind-protect
-              (progn
-                (setf ,app (qvm-app-ng::start-server ,host ,port))
-                (let ((,url-var (%url ,protocol ,host (tbnl:acceptor-port ,app))))
-                  ,@body))
+              ;; Ensure required special vars are bound. Maybe this should happen in START-SERVER.
+              (special-bindings-let* ((qvm-app-ng::*simulation-method*
+                                       (or qvm-app-ng::*simulation-method* 'qvm-app-ng::pure-state)))
+                ;; BT:*DEFAULT-SPECIAL-BINDINGS* isn't recursive by default. That is, any direct
+                ;; child threads spawned by the current thread will take them into account, threads
+                ;; spawned by *those* threads will not, unless you add BT:*DEFAULT-SPECIAL-BINDINGS*
+                ;; to BT:*DEFAULT-SPECIAL-BINDINGS*! This is required for bindings to be visible in
+                ;; the request-handling threads created by hunchentoot.
+                (special-bindings-let* ((bt:*default-special-bindings* bt:*default-special-bindings*))
+                  (setf ,app (qvm-app-ng::start-server ,host ,port))
+                  (let ((,url-var (%url ,protocol ,host (tbnl:acceptor-port ,app))))
+                    ,@body)))
            (tbnl:stop ,app))))))
 
-(defmacro check-request (request-form &key (status 200) content-re)
-  (alexandria:once-only (status content-re)
-    (alexandria:with-gensyms (body-or-stream status-code headers uri stream must-close reason-phrase)
-      `(multiple-value-bind (,body-or-stream ,status-code ,headers ,uri ,stream ,must-close ,reason-phrase)
+(defmacro check-request (request-form &key (status 200) response-re)
+  (alexandria:once-only (status response-re)
+    (alexandria:with-gensyms
+        (body-or-stream status-code headers uri stream must-close reason-phrase body-as-string)
+      `(multiple-value-bind
+             (,body-or-stream ,status-code ,headers ,uri ,stream ,must-close ,reason-phrase)
            ,request-form
          (declare (ignore ,headers ,uri ,must-close ,reason-phrase))
          (unwind-protect
               (progn
                 (is (= ,status ,status-code))
-                (when ,content-re
-                  (is (cl-ppcre:scan ,content-re
-                                     (if (streamp ,body-or-stream)
-                                         (alexandria:read-stream-content-into-string ,body-or-stream)
-                                         ,body-or-stream)))))
+                ,@(when response-re
+                    `((is (cl-ppcre:scan ,response-re
+                                         (if (streamp ,body-or-stream)
+                                             (alexandria:read-stream-content-into-string ,body-or-stream)
+                                             ,body-or-stream)))))
+                )
            (progn
              (close ,stream)
              (when (streamp ,body-or-stream)
                (close ,body-or-stream))))))))
 
-(defun simple-request (method path &rest json-plist)
+(defun http-request (&rest args)
+  "Make an HTTP-REQUEST via DRAKMA:HTTP-REQUEST and treat application/json responses as text."
+  (let ((drakma:*text-content-types* (append drakma:*text-content-types*
+                                             '(("application" . "json")))))
+    (apply #'drakma:http-request args)))
+
+(defun simple-request (host-url method path &rest json-plist)
+  "Make a METHOD request to HOST-URL/PATH. Any additional keyword args are collected in JSON-PLIST and converted to a JSON dict and sent as the request body."
+  (http-request (%request-url host-url path) :method method :content (plist->json json-plist)))
+
+(defun single-request (method path &rest json-plist)
+  "Like SIMPLE-REQUEST but wrapped in a WITH-REST-SERVER. Only a single request will be made against a freshly started server."
   (with-rest-server (host-url)
-    (drakma:http-request (%request-url host-url path) :method method :content (plist->json json-plist))))
+    (apply #'simple-request host-url method path json-plist)))
+
+(deftest test-rest-api-invalid-request ()
+  (with-rest-server (host-url)
+    (dolist (content '("" "{}" "not-a-json-dict"))
+      (check-request (http-request (%request-url host-url "/") :method ':POST :content content)
+                     :status 500
+                     :response-re "qvm_error"))))
 
 (deftest test-rest-api-version ()
-  (check-request (simple-request ':POST "/" :type "version")
-                 :content-re "\\A[0-9.]+ \\[[A-Fa-f0-9]+\\]\\z" ))
+  (check-request (single-request ':POST "/" :type "version")
+                 :response-re "\\A[0-9.]+ \\[[A-Fa-f0-9]+\\]\\z"))
+
+(deftest test-rest-api-multishot-trivial-requests ()
+  (with-rest-server (host-url)
+    (dolist (trivial-args `(;; trials = 0
+                            (:trials 0 :addresses ,(alexandria:plist-hash-table '("ro" t)))
+                            ;; null addresses index list
+                            (:trials 1 :addresses ,(alexandria:plist-hash-table '("ro" ())))
+                            ;; empty addresses table
+                            (:trials 1 :addresses ,(alexandria:plist-hash-table '()))))
+      (check-request (apply #'simple-request host-url ':POST "/"
+                            :type "multishot"
+                            :compiled-quil "H 0"
+                            trivial-args)
+                     :response-re "\\A{}\\z"))))
+
+(deftest test-rest-api-multishot-simple-request ()
+  (check-request (single-request ':POST "/"
+                                 :type "multishot"
+                                 :compiled-quil "DECLARE ro BIT[4]; X 0; MEASURE 0 ro[0]"
+                                 :addresses (alexandria:plist-hash-table '("ro" t))
+                                 :trials 1)
+                 ;; TODO: support for richer reponse matching than just regexes
+                 :response-re "\\A{\"ro\":\\[\\[1,0,0,0\\]\\]}\\z"))

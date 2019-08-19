@@ -30,7 +30,7 @@
     :documentation "The version of the QVM itself.")
 
   (alexandria:define-constant +GIT-HASH+
-      (git-hash '#:qvm-app)
+      (git-hash '#:qvm-app-ng)
     :test #'string=
     :documentation "The git hash of the QVM repo.")
   )

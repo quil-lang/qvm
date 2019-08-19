@@ -4,8 +4,19 @@
 
 (in-package #:qvm-app-ng)
 
+(defparameter *available-simulation-methods* '("pure-state" "full-density-matrix")
+  "List of available simulation methods.")
+
+(defparameter *available-allocation-kinds* '("native" "foreign")
+  "Kinds of allocations that are possible.")
+
 (defparameter *option-spec*
-  `((("help" #\h)
+  `((("default-allocation")
+     :type string
+     :initial-value "native"
+     :documentation "select where wavefunctions get allocated: \"native\" (default) for native allocation, \"foreign\" for C-compatible allocation")
+
+    (("help" #\h)
      :type boolean
      :optional t
      :documentation "display help")
@@ -38,15 +49,36 @@
      :initial-value ,+default-server-port+
      :documentation "port to start the QVM server on")
 
+    (("qubits" #\q)
+     :type integer
+     :optional t
+     :documentation "Number of qubits to force to use.")
+
     (("num-workers" #\w)
      :type integer
      :initial-value 0
      :documentation "workers to use in parallel (0 => maximum number)")
 
+    (("time-limit")
+     :type integer
+     :initial-value 0
+     :documentation "time limit for computations (0 => unlimited, ms)")
+
     (("qubit-limit")
      :type integer
      :initial-value 0
      :documentation "maximum number of qubits allowed to be used in the server (0 => unlimited)")
+
+    (("safe-include-directory")
+     :type string
+     :optional t
+     :documentation "allow INCLUDE only files in this directory")
+
+    (("simulation-method")
+     :type string
+     :initial-value "pure-state"
+     :documentation ,(format nil "the method of qvm simulation; includes {~{~S~^, ~}}. Note that FULL-DENSITY-MATRIX simulation requires that --qubits be specified."
+                             *available-simulation-methods*))
 
     #-forest-sdk
     (("swank-port")
@@ -128,6 +160,20 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   #-sbcl
   (uiop:quit code t))
 
+(defun allocation-description-maker (kind)
+  "Return a function INTEGER -> ALLOCATION that takes a number of elements and returns a proper descriptor for the allocation."
+  (cond
+    ((string-equal kind "native")
+     (lambda (length)
+       (make-instance 'qvm:lisp-allocation :length length)))
+    ((string-equal kind "foreign")
+     (lambda (length)
+       (make-instance 'qvm:c-allocation :length length)))
+    (t
+     (error "Invalid kind of allocation ~S, wanted any of {~{~S~^, ~}"
+            kind
+            *available-allocation-kinds*))))
+
 (defun log-level-string-to-symbol (log-level)
   (let ((log-level-kw (assoc (intern (string-upcase log-level) 'keyword)
                              cl-syslog::*priorities*)))
@@ -140,13 +186,18 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           version
                           check-libraries
                           verbose
+                          default-allocation
                           help
                           server
                           host
                           port
                           #-forest-sdk swank-port
                           num-workers
+                          time-limit
                           qubit-limit
+                          safe-include-directory
+                          qubits
+                          simulation-method
                           #-forest-sdk debug
                           check-sdk-version
                           proxy
@@ -191,8 +242,22 @@ Version ~A is available from https://www.rigetti.com/forest~%"
   (when debug
     (setf *debug* t))
 
+  (when default-allocation
+    (setq **default-allocation** (allocation-description-maker default-allocation)))
+
+  (when (plusp time-limit)
+    (setf *time-limit* (/ time-limit 1000.0d0)))
+
   (when (plusp qubit-limit)
     (setf *qubit-limit* qubit-limit))
+
+  (unless (or (null *safe-include-directory*)
+              (uiop:directory-pathname-p *safe-include-directory*))
+    (error "--safe-include-directory must point to a directory. Got ~S. Did you ~
+            forget a trailing slash?"
+           *safe-include-directory*))
+
+  (setf *safe-include-directory* safe-include-directory)
 
   (cond
     ((zerop num-workers)
@@ -212,6 +277,21 @@ Version ~A is available from https://www.rigetti.com/forest~%"
     (setf swank:*use-dedicated-output-stream* nil)
     (swank:create-server :port swank-port
                          :dont-close t))
+
+  (unless (or (null qubits) (not (minusp qubits)))
+    (error "--qubits must be a non-negative integer. Got ~A." qubits))
+
+  (unless (member simulation-method *available-simulation-methods* :test #'string-equal)
+    (error "Invalid simulation method: ~S" simulation-method))
+
+  ;; Determine the simulation method, and set *SIMULATION-METHOD* appropriately
+  (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app-ng))
+  (when (and (eq *simulation-method* 'full-density-matrix)
+             (null qubits))
+    (format-log :err "Full density matrix simulation requires --qubits to be specified.")
+    (quit-nicely 1))
+
+  (format-log "Selected simulation method: ~A" simulation-method)
 
   (when server
     (start-server-mode :host host :port port))
