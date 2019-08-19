@@ -78,14 +78,14 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
                                                    :initial-element p
                                                    :element-type 'flonum)))
 
-(declaim (ftype (function (non-negative-fixnum non-negative-fixnum) non-negative-fixnum) midpoint)
+(declaim (ftype (function (alexandria:non-negative-fixnum alexandria:non-negative-fixnum) alexandria:non-negative-fixnum) midpoint)
          (inline midpoint))
 (defun midpoint (a b)
   "Find the midpoint of two non-negative fixnums A and B where A <= B."
-  (declare (type non-negative-fixnum a b)
+  (declare (type alexandria:non-negative-fixnum a b)
            #.*optimize-dangerously-fast*)
   ;; avoid overflow by not doing (A+B)/2.
-  (+ a (floor (the non-negative-fixnum (- b a)) 2)))
+  (+ a (floor (the alexandria:non-negative-fixnum (- b a)) 2)))
 
 (defun sample-wavefunction-as-distribution-in-parallel-truly (wf p)
   "Sample the wavefunction as if it was a probability distribution.
@@ -98,7 +98,7 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
   (let ((min 0)
         (max (length wf))
         (sum< (flonum 0)))
-    (declare (type non-negative-fixnum min max)
+    (declare (type alexandria:non-negative-fixnum min max)
              (type flonum sum<))
     (assert (< min max))
     ;; Starting with the full range of indices we find the correct
@@ -118,10 +118,10 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
              (let* ((mid (midpoint min max))
                     ;; sum values in lower half of interval
                     (sum (+ sum<
-                            (psum-dotimes (i (the non-negative-fixnum (- mid min)))
-                              (let ((i (the non-negative-fixnum (+ i min))))
+                            (psum-dotimes (i (the alexandria:non-negative-fixnum (- mid min)))
+                              (let ((i (the alexandria:non-negative-fixnum (+ i min))))
                                 (probability (aref wf i)))))))
-               (declare (type non-negative-fixnum mid)
+               (declare (type alexandria:non-negative-fixnum mid)
                         (type flonum sum))
                (cond
                  ;; We didn't find it in the lower half
@@ -139,7 +139,7 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
   "Produce NUM-SAMPLES bitstring samples of the wavefunction WF according to its interpretation as a probability distribution."
   (declare #.*optimize-briskly*
            (type quantum-state wf)
-           (type non-negative-fixnum num-samples))
+           (type alexandria:non-negative-fixnum num-samples))
   (loop :with cdf := (cumulative-distribution-function wf)
         :with samples := (make-array num-samples :element-type 'amplitude-address
                                                  :initial-element 0)

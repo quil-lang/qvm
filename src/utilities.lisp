@@ -11,10 +11,6 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +max-nat-tuple-cardinality+ (integer-length most-positive-fixnum)))
 
-(deftype non-negative-fixnum ()
-  "A non-negative fixnum."
-  `(and fixnum unsigned-byte))
-
 (deftype nat-tuple-element ()
   "The set of valid elements in a nat tuple."
   `(integer 0 (#.+max-nat-tuple-cardinality+)))
@@ -139,7 +135,7 @@ NOTE: This will not copy any multiprocessing aspects."
      (defun ,name ,lambda-list ,@body)
      (declaim (notinline ,name))))
 
-(declaim (ftype (function (non-negative-fixnum non-negative-fixnum) list) subdivide))
+(declaim (ftype (function (alexandria:non-negative-fixnum alexandria:non-negative-fixnum) list) subdivide))
 (defun subdivide (total num-ranges)
   "Subdivide TOTAL (probably representing a vector length) into NUM-RANGES as-equal-as-possible ranges.
 
@@ -220,22 +216,22 @@ NOTE: This must be called before computations can be done.
     (INJECT-BIT #b1111 1) => #b11101
 "
   (declare #.*optimize-dangerously-fast*
-           (type non-negative-fixnum x)
+           (type alexandria:non-negative-fixnum x)
            (type nat-tuple-element n))
   (let ((left (ash (dpb 0 (byte n 0) x) 1))
         (right (ldb (byte n 0) x)))
-    (declare (type non-negative-fixnum left right))
-    (the non-negative-fixnum (logior left right))))
+    (declare (type alexandria:non-negative-fixnum left right))
+    (the alexandria:non-negative-fixnum (logior left right))))
 
 (defun inject-bit-code (n)
   (check-type n nat-tuple-element)
   `(lambda (x)
      (declare #.*optimize-dangerously-fast*
-              (type non-negative-fixnum x))
+              (type alexandria:non-negative-fixnum x))
      (let ((left (ash (dpb 0 (byte ,n 0) x) 1))
            (right (ldb (byte ,n 0) x)))
-       (declare (type non-negative-fixnum left right))
-       (the non-negative-fixnum (logior left right)))))
+       (declare (type alexandria:non-negative-fixnum left right))
+       (the alexandria:non-negative-fixnum (logior left right)))))
 
 (declaim (inline eject-bit))
 (defun eject-bit (x n)
@@ -244,22 +240,22 @@ NOTE: This must be called before computations can be done.
     (EJECT-BIT #b1101 1) => #b111
 "
   (declare #.*optimize-dangerously-fast*
-           (type non-negative-fixnum x)
+           (type alexandria:non-negative-fixnum x)
            (type nat-tuple-element n))
   (let ((left (dpb 0 (byte n 0) (ash x -1)))
         (right (ldb (byte n 0) x)))
-    (declare (type non-negative-fixnum left right))
-    (the non-negative-fixnum (logior left right))))
+    (declare (type alexandria:non-negative-fixnum left right))
+    (the alexandria:non-negative-fixnum (logior left right))))
 
 (defun eject-bit-code (n)
   (check-type n nat-tuple-element)
   `(lambda (x)
      (declare #.*optimize-dangerously-fast*
-              (type non-negative-fixnum x))
+              (type alexandria:non-negative-fixnum x))
      (let ((left (dpb 0 (byte ,n 0) (ash x -1)))
            (right (ldb (byte ,n 0) x)))
-       (declare (type non-negative-fixnum left right))
-       (the non-negative-fixnum (logior left right)))))
+       (declare (type alexandria:non-negative-fixnum left right))
+       (the alexandria:non-negative-fixnum (logior left right)))))
 
 (defun gray-encode (n)
   "Compute the Nth Gray code."
@@ -341,28 +337,28 @@ whether the number of iterations N exceeds the threshold set by
   "Compute the sum of BODY for I in ranging over 0 <= I < RANGE. RANGE must be a non-negative fixnum."
   (alexandria:with-gensyms (sum partial-sum start end ch num-tasks worker-function range-once ranges)
     `(let ((,range-once ,range))
-       (declare (type non-negative-fixnum ,range-once))
+       (declare (type alexandria:non-negative-fixnum ,range-once))
        (if (< ,range-once (expt 2 *qubits-required-for-parallelization*))
            (locally (declare #.*optimize-dangerously-fast*)
              (loop :with ,sum :of-type flonum := (flonum 0)
-                   :for ,i :of-type non-negative-fixnum :below ,range-once
+                   :for ,i :of-type alexandria:non-negative-fixnum :below ,range-once
                    :do (incf ,sum (the flonum (progn ,@body)))
                    :finally (return ,sum)))
            (flet ((,worker-function (,start ,end)
-                    (declare (type non-negative-fixnum ,start)
-                             (type non-negative-fixnum ,end))
+                    (declare (type alexandria:non-negative-fixnum ,start)
+                             (type alexandria:non-negative-fixnum ,end))
                     (locally (declare #.*optimize-dangerously-fast*)
                       (loop :with ,partial-sum :of-type flonum := (flonum 0)
-                            :for ,i :of-type non-negative-fixnum :from ,start :below ,end
+                            :for ,i :of-type alexandria:non-negative-fixnum :from ,start :below ,end
                             :do (incf ,partial-sum (the flonum (progn ,@body)))
                             :finally (return ,partial-sum)))))
              (declare (dynamic-extent #',worker-function)
-                      (ftype (function (non-negative-fixnum non-negative-fixnum) flonum) ,worker-function))
+                      (ftype (function (alexandria:non-negative-fixnum alexandria:non-negative-fixnum) flonum) ,worker-function))
              (let* ((,ch (lparallel:make-channel))
                     (,num-tasks (lparallel:kernel-worker-count))
                     (,ranges (subdivide ,range-once ,num-tasks)))
                (declare (type lparallel:channel ,ch)
-                        (type non-negative-fixnum ,num-tasks)
+                        (type alexandria:non-negative-fixnum ,num-tasks)
                         (type list ,ranges))
                (loop :for (,start . ,end) :in ,ranges
                      :do (lparallel:submit-task ,ch #',worker-function ,start ,end))

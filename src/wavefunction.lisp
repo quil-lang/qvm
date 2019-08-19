@@ -112,7 +112,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 (defun-inlinable set-qubit-components-of-amplitude-address (address flags qubits)
   "Set the amplitude address to the bits within the non-negative integer FLAGS for the corresponding tuple of qubit indices QUBITS. (Ordered LSB to MSB.)"
   (declare (type nat-tuple qubits)
-           (type non-negative-fixnum flags)
+           (type alexandria:non-negative-fixnum flags)
            (type amplitude-address address))
   (do-nat-tuple (qubit qubits)
     (if (logbitp 0 flags)
@@ -127,7 +127,7 @@ which is the index with a {1, 0} injected at the QUBIT'th position."
 
 FUNCTION should be a binary function, and will receive (1) an index running from 0 below 2^|qubits|, and (2) the varied amplitude address."
   (declare (type nat-tuple qubits)
-           (type (function (non-negative-fixnum non-negative-fixnum) *) function)
+           (type (function (alexandria:non-negative-fixnum alexandria:non-negative-fixnum) *) function)
            (inline set-qubit-components-of-amplitude-address))
   (let ((number-of-iterations (expt 2 (nat-tuple-cardinality qubits))))
     (dotimes (combo number-of-iterations)
@@ -138,7 +138,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 (defun-inlinable map-reordered-amplitudes-in-parallel-truly (starting-address function qubits)
   "Parallel version of #'MAP-REORDERED-AMPLITUDES."
   (declare (type nat-tuple qubits)
-           (type (function (non-negative-fixnum non-negative-fixnum) *) function)
+           (type (function (alexandria:non-negative-fixnum alexandria:non-negative-fixnum) *) function)
            (inline set-qubit-components-of-amplitude-address))
   (let ((number-of-iterations (expt 2 (nat-tuple-cardinality qubits))))
     (lparallel:pdotimes (combo number-of-iterations)
@@ -159,16 +159,16 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 
 up to amplitude ordering."
   (declare (type nat-tuple qubits)
-           (type (function (non-negative-fixnum amplitude-address) *) function)
+           (type (function (alexandria:non-negative-fixnum amplitude-address) *) function)
            (type (and (integer 1) nat-tuple-cardinality) n))
   (let ((complement-size (- n (nat-tuple-cardinality qubits))))
     (declare (type nat-tuple-cardinality complement-size))
     (let ((qubits-list (sort (copy-seq qubits) #'<)))
       (declare (type nat-tuple qubits-list))
       (dotimes (i (expt 2 complement-size))
-        (declare (type non-negative-fixnum i))
+        (declare (type alexandria:non-negative-fixnum i))
         (let ((j i))
-          (declare (type non-negative-fixnum j))
+          (declare (type alexandria:non-negative-fixnum j))
           (do-nat-tuple (q qubits-list)
             ;; (declare (type nat-tuple-element q))
             (setf j (inject-bit j q)))
@@ -177,16 +177,16 @@ up to amplitude ordering."
 (defun-inlinable map-complement-in-parallel-truly (function n qubits)
   "A parallel version of #'MAP-COMPLEMENT."
   (declare (type nat-tuple qubits)
-           (type (function (non-negative-fixnum amplitude-address) *) function)
+           (type (function (alexandria:non-negative-fixnum amplitude-address) *) function)
            (type (and (integer 1) nat-tuple-cardinality) n))
   (let ((complement-size (- n (nat-tuple-cardinality qubits))))
     (declare (type nat-tuple-cardinality complement-size))
     (let ((qubits-list (sort (copy-seq qubits) #'<)))
       (declare (type nat-tuple qubits-list))
       (lparallel:pdotimes (i (expt 2 complement-size))
-        (declare (type non-negative-fixnum i))
+        (declare (type alexandria:non-negative-fixnum i))
         (let ((j i))
-          (declare (type non-negative-fixnum j))
+          (declare (type alexandria:non-negative-fixnum j))
           (do-nat-tuple (q qubits-list)
             ;; (declare (type nat-tuple-element q))
             (setf j (inject-bit j q)))
@@ -195,7 +195,7 @@ up to amplitude ordering."
 (defun-inlinable map-complement-in-parallel (function n qubits)
   "A parallel version of #'MAP-COMPLEMENT, when the number of qubits is large enough."
   (declare (type nat-tuple qubits)
-           (type (function (non-negative-fixnum amplitude-address) *) function)
+           (type (function (alexandria:non-negative-fixnum amplitude-address) *) function)
            (type (and (integer 1) nat-tuple-cardinality) n))
   (if (<= *qubits-required-for-parallelization* n)
       (map-complement-in-parallel-truly function n qubits)
@@ -374,7 +374,7 @@ If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH para
          (cdf (make-array (length state) :element-type 'flonum
                                          :initial-element (flonum 0))))
     (declare #.*optimize-dangerously-fast*
-             (type non-negative-fixnum n)
+             (type alexandria:non-negative-fixnum n)
              (type (simple-array flonum (*)) cdf))
     (loop :with s :of-type flonum := (flonum 0)
           :for i :of-type amplitude-address :below n

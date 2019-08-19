@@ -57,7 +57,7 @@ NOTE: Note that the finalizer may close over the allocated vector."))
 ;;; clobbered. We put this type here anyway, albeit commented out, so
 ;;; you know what the *real* type of this function should be.
 #+#:ignore
-(declaim (ftype (function (t) non-negative-fixnum) allocation-length))
+(declaim (ftype (function (t) alexandria:non-negative-fixnum) allocation-length))
 (defgeneric allocation-length (description)
   (:documentation "The length of memory to be allocated, measured in the element type of the vector."))
 

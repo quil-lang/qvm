@@ -9,7 +9,7 @@
    ;; --- Machine state
    (number-of-qubits :reader number-of-qubits
                      :initarg :number-of-qubits
-                     :type non-negative-fixnum
+                     :type alexandria:non-negative-fixnum
                      :initform (error ":NUMBER-OF-QUBITS is a required initarg ~
                                        to PURE-STATE-QVM")
                      :documentation "Number of qubits being simulated.")
