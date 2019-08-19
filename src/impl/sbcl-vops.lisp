@@ -18,29 +18,64 @@
 ;;; Function stub definitions
 ;;; This tells the compiler about the existance and properties of the VOPs as functions
 
+(defknown %prefetch ((member :nta :t0 :t1 :t2)
+                     sb-sys:system-area-pointer
+                     sb-vm:signed-word
+                     (member 2 4 8 16)
+                     fixnum)
+    (values &optional)
+    (any always-translatable)
+  :overwrite-fndb-silently t)
+
 (defknown (%2x2matrix-to-simd) (cdf cdf cdf cdf)
     (values d4 d4 d4 d4)
-    (movable flushable always-translatable))
+    (movable flushable always-translatable)
+  :overwrite-fndb-silently t)
 
 (defknown (%2x4matrix-to-simd) (cdf cdf cdf cdf cdf cdf cdf cdf)
     (values d4 d4 d4 d4 d4 d4 d4 d4)
-    (flushable always-translatable))
+    (flushable always-translatable)
+  :overwrite-fndb-silently t)
 
 (defknown (%matmul2-simd) (d4 d4 d4 d4 cdf cdf)
     (values cdf cdf)
-    (movable flushable always-translatable))
+    (movable flushable always-translatable)
+  :overwrite-fndb-silently t)
 
 (defknown (%matmul2-simd-real) (d4 d4 cdf cdf)
     (values cdf cdf)
-    (movable flushable always-translatable))
+    (movable flushable always-translatable)
+  :overwrite-fndb-silently t)
 
 (defknown (%matmul4-simd-half) (d4 d4 d4 d4 d4 d4 d4 d4 cdf cdf cdf cdf)
     (values cdf cdf)
-    (movable flushable always-translatable))
+    (movable flushable always-translatable)
+  :overwrite-fndb-silently t)
 
 ;;; VOP definitions
 
 (in-package #:sb-vm)
+
+(define-vop (qvm-intrinsics::%prefetch)
+  (:translate qvm-intrinsics::%prefetch)
+  (:policy :fast-safe)
+  (:args (base :scs (sap-reg))
+         (index :scs (any-reg)))
+  (:arg-types (:constant (member :nta :t0 :t1 :t2))
+              system-area-pointer
+              (:constant signed-word)
+              (:constant (member . #.(loop :for i :below 4
+                                           :collect (ash 1 (+ i n-fixnum-tag-bits)))))
+              fixnum)
+  (:results)
+  (:info type disp stride)
+  (:generator 1
+              (inst prefetch type
+                    (make-ea :byte :base base
+                             :index index
+                             :scale (ash stride
+                                         (- n-fixnum-tag-bits))
+                             :disp disp))))
 
 (define-vop (qvm-intrinsics::2x2matrix-to-simd)
   (:translate qvm-intrinsics::%2x2matrix-to-simd)
