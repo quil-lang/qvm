@@ -48,6 +48,43 @@
            addresses)
   results)
 
+(defun perform-multishot-on-qvm (qvm quil addresses num-trials)
+  (check-type quil quil:parsed-program)
+  (check-type addresses hash-table)
+  (check-type num-trials (integer 0))
+  (assert (valid-address-query-p addresses) ()
+          "Detected invalid address query in multishot experiment. The ~
+           requested addresses should be a JSON object whose keys are ~
+           DECLAREd memory names, and whose values are either the true ~
+           value to request all memory, or a list of non-negative integer ~
+           indexes to request some memory.")
+  (let ((trial-results (make-hash-table :test 'equal :size (hash-table-count addresses)))
+        timing)
+    (qvm:load-program qvm quil :supersede-memory-subsystem t)
+    (format-log "Running experiment with ~D trial~:P on ~A" num-trials (class-name (class-of qvm)))
+    (with-timing (timing)
+      (dotimes (trial num-trials)
+        ;; Reset the program counter.
+        (setf (qvm::pc qvm) 0)
+
+        ;; Reset the amplitudes, but only if running more than one trial.
+        (unless (= 1 num-trials)
+          ;; Reset the amplitudes.
+          (qvm::reset-quantum-state qvm))
+
+        ;; Run the program.
+        (with-timeout (qvm:run qvm))
+
+        ;; Collect all of the memory that the user requests.
+        (collect-result-data qvm addresses trial-results)))
+
+    (format-log "Finished in ~D ms" timing)
+    ;; We collected everything in reverse. So, reverse that.
+    (maphash (lambda (k v)
+               (setf (gethash k trial-results) (nreverse v)))
+             trial-results)
+    trial-results))
+
 (defun %perform-multishot (simulation-method quil num-qubits addresses num-trials gate-noise measurement-noise)
   (check-type simulation-method simulation-method)
   (check-type quil quil:parsed-program)
@@ -76,30 +113,8 @@
                   :always (null v)))
     (return-from %perform-multishot (load-time-value (make-hash-table) t)))
 
-  (let ((qvm (make-appropriate-qvm simulation-method quil num-qubits gate-noise measurement-noise))
-        (trial-results (make-hash-table :test 'equal :size (hash-table-count addresses)))
-        timing)
-    (qvm:load-program qvm quil :supersede-memory-subsystem t)
-    (format-log "Running experiment with ~D trial~:P on ~A" num-trials (class-name (class-of qvm)))
-    (with-timing (timing)
-      (dotimes (trial num-trials)
-        ;; Reset the program counter.
-        (setf (qvm::pc qvm) 0)
-
-        ;; Reset the amplitudes, but only if running more than one trial.
-        (unless (= 1 num-trials)
-          ;; Reset the amplitudes.
-          (qvm::reset-quantum-state qvm))
-
-        ;; Run the program.
-        (with-timeout (qvm:run qvm))
-
-        ;; Collect all of the memory that the user requests.
-        (collect-result-data qvm addresses trial-results)))
-
-    (format-log "Finished in ~D ms" timing)
-    ;; We collected everything in reverse. So, reverse that.
-    (maphash (lambda (k v)
-               (setf (gethash k trial-results) (nreverse v)))
-             trial-results)
-    trial-results))
+  (perform-multishot-on-qvm
+   (make-appropriate-qvm simulation-method quil num-qubits gate-noise measurement-noise)
+   quil
+   addresses
+   num-trials))

@@ -41,6 +41,10 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
   (unless (get-quil-instrs-field hash-table)
     (error "Expected a QUIL-INSTRUCTIONS type field to exist.")))
 
+(defun check-persistent-qvm-token (token)
+  (unless (typep token 'persistent-qvm-token)
+    (error "Expected PERSISTENT-QVM-TOKEN. Got ~A" token)))
+
 (defun handle-post-request (request)
   (when (null tbnl:*session*)
     (tbnl:start-session))
@@ -64,12 +68,13 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
 
         ((:delete-persistent-qvm)
          (check-required-fields js "persistent-qvm-token")
+         (check-persistent-qvm-token (gethash "persistent-qvm-token" js))
          (handle-delete-persistent-qvm (gethash "persistent-qvm-token" js)))
 
         ((:make-persistent-qvm)
          (check-required-fields js "simulation-method" "number-of-qubits")
          (check-type (gethash "simulation-method" js) string)
-         (check-type (gethash "number-of-qubits" js) qvm::non-negative-fixnum)
+         (check-type (gethash "number-of-qubits" js) alexandria:non-negative-fixnum)
          (let* ((simulation-method (parse-simulation-method (gethash "simulation-method" js)))
                 (num-qubits (gethash "number-of-qubits" js))
                 ;; TODO:(appleby) Pass an empty quil program to appease MAKE-APPROPRIATE-QVM so that
@@ -84,6 +89,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
 
         ((:persistent-qvm-info)
          (check-required-fields js "persistent-qvm-token")
+         (check-persistent-qvm-token (gethash "persistent-qvm-token" js))
          (handle-persistent-qvm-info (gethash "persistent-qvm-token" js)))
 
         ((:multishot)
@@ -92,12 +98,20 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
          (let* ((addresses (gethash "addresses" js))
                 (num-trials (gethash "trials" js))
                 (isns (get-quil-instrs-field js))
+                (persistent-qvm-token (gethash "persistent-qvm-token" js))
                 (quil (let ((quil::*allow-unresolved-applications* t))
                         (process-quil (safely-parse-quil-string isns))))
                 (num-qubits (cl-quil:qubits-needed quil))
-                (results (perform-multishot *simulation-method* quil num-qubits addresses num-trials
-                                            :gate-noise gate-noise
-                                            :measurement-noise measurement-noise)))
+                results)
+           (cond ((null persistent-qvm-token)
+                  (setf results (perform-multishot *simulation-method* quil num-qubits addresses num-trials
+                                                   :gate-noise gate-noise
+                                                   :measurement-noise measurement-noise)))
+                 (t
+                  (check-persistent-qvm-token persistent-qvm-token)
+                  (with-persistent-qvm (qvm) persistent-qvm-token
+                    ;; TODO:(appleby) do we want :supersede-memory-subsystem here?
+                    (setf results (perform-multishot-on-qvm qvm quil addresses num-trials)))))
            (check-type results hash-table)
            (with-output-to-string (s)
              (yason:encode results s))))))))

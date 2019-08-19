@@ -4,6 +4,8 @@
 
 (in-package :qvm-app-ng)
 
+(deftype persistent-qvm-token () 'fixnum)
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-empty-persistent-qvms-db ()
     (make-hash-table)))
