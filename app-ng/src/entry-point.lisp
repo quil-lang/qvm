@@ -281,11 +281,8 @@ Version ~A is available from https://www.rigetti.com/forest~%"
   (unless (or (null qubits) (not (minusp qubits)))
     (error "--qubits must be a non-negative integer. Got ~A." qubits))
 
-  (unless (member simulation-method *available-simulation-methods* :test #'string-equal)
-    (error "Invalid simulation method: ~S" simulation-method))
-
   ;; Determine the simulation method, and set *SIMULATION-METHOD* appropriately
-  (setf *simulation-method* (intern (string-upcase simulation-method) :qvm-app-ng))
+  (setf *simulation-method* (parse-simulation-method simulation-method))
   (when (and (eq *simulation-method* 'full-density-matrix)
              (null qubits))
     (format-log :err "Full density matrix simulation requires --qubits to be specified.")

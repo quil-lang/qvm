@@ -30,8 +30,9 @@
                (:module "api"
                 :serial t
                 :components ((:file "common")
-                             (:file "trivial-handlers")
-                             (:file "multishot")))
+                             (:file "multishot")
+                             (:file "persistent-qvm")
+                             (:file "trivial-handlers")))
                (:file "server")
                (:file "handle-request")
                (:file "impl/sbcl" :if-feature :sbcl)

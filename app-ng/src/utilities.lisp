@@ -58,6 +58,11 @@
         (let ((quil:*resolve-include-pathname* #'resolve-safely))
           (parse-it string)))))
 
+(defun parse-simulation-method (simulation-method)
+  (unless (member simulation-method *available-simulation-methods* :test #'string-equal)
+    (error "Invalid simulation method: ~S" simulation-method))
+  (intern (string-upcase simulation-method) :qvm-app-ng))
+
 (global-vars:define-global-var **log-lock** (bt:make-lock "Log Lock"))
 (defmacro with-locked-log (() &body body)
   `(bt:with-lock-held (**log-lock**)

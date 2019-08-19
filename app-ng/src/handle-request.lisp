@@ -62,6 +62,30 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
         ((:version)
          (handle-version))
 
+        ((:delete-persistent-qvm)
+         (check-required-fields js "persistent-qvm-token")
+         (handle-delete-persistent-qvm (gethash "persistent-qvm-token" js)))
+
+        ((:make-persistent-qvm)
+         (check-required-fields js "simulation-method" "number-of-qubits")
+         (check-type (gethash "simulation-method" js) string)
+         (check-type (gethash "number-of-qubits" js) qvm::non-negative-fixnum)
+         (let* ((simulation-method (parse-simulation-method (gethash "simulation-method" js)))
+                (num-qubits (gethash "number-of-qubits" js))
+                ;; TODO:(appleby) Pass an empty quil program to appease MAKE-APPROPRIATE-QVM so that
+                ;; testing can move forward. Ultimately, noise models need to be configurable.
+                (quil (quil:parse-quil ""))
+                (results (handle-make-persistent-qvm simulation-method quil num-qubits
+                                                     :gate-noise gate-noise
+                                                     :measurement-noise measurement-noise)))
+           (check-type results hash-table)
+           (with-output-to-string (s)
+             (yason:encode results s))))
+
+        ((:persistent-qvm-info)
+         (check-required-fields js "persistent-qvm-token")
+         (handle-persistent-qvm-info (gethash "persistent-qvm-token" js)))
+
         ((:multishot)
          (check-required-fields js "addresses" "trials")
          (check-for-quil-instrs-field js)

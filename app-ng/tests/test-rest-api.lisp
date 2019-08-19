@@ -36,7 +36,7 @@
                     ,@body)))
            (tbnl:stop ,app))))))
 
-(defmacro check-request (request-form &key (status 200) response-re)
+(defmacro check-request (request-form &key (status 200) (response-re nil response-re-p))
   (alexandria:once-only (status response-re)
     (alexandria:with-gensyms
         (body-or-stream status-code headers uri stream must-close reason-phrase body-as-string)
@@ -47,12 +47,13 @@
          (unwind-protect
               (progn
                 (is (= ,status ,status-code))
-                ,@(when response-re
-                    `((is (cl-ppcre:scan ,response-re
-                                         (if (streamp ,body-or-stream)
-                                             (alexandria:read-stream-content-into-string ,body-or-stream)
-                                             ,body-or-stream)))))
-                )
+                (let ((,body-as-string (if (streamp ,body-or-stream)
+                                           (alexandria:read-stream-content-into-string ,body-or-stream)
+                                           ,body-or-stream)))
+                  ,@(when response-re-p
+                      `((is (cl-ppcre:scan ,response-re ,body-as-string))))
+
+                  ,body-as-string))
            (progn
              (close ,stream)
              (when (streamp ,body-or-stream)
@@ -106,3 +107,46 @@
                                  :trials 1)
                  ;; TODO: support for richer reponse matching than just regexes
                  :response-re "\\A{\"ro\":\\[\\[1,0,0,0\\]\\]}\\z"))
+
+(deftest test-rest-api-persistent-qvm-info ()
+  (with-rest-server (host-url)
+    (let* ((response (check-request (simple-request host-url ':POST "/"
+                                                    :type "make-persistent-qvm"
+                                                    :simulation-method "pure-state"
+                                                    :number-of-qubits 1)
+                                    :response-re "\\A{\"token\":\\d+}\\z"))
+           (token (gethash "token" (yason:parse response))))
+      (is (integerp token))
+
+      ;; info on non-existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "persistent-qvm-info"
+                                     :persistent-qvm-token (1- token))
+                     :status 500
+                     :response-re "Failed to find persistent QVM")
+
+      ;; delete on non-existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "delete-persistent-qvm"
+                                     :persistent-qvm-token (1- token))
+                     :status 500
+                     :response-re "Failed to find persistent QVM")
+
+      ;; info on existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "persistent-qvm-info"
+                                     :persistent-qvm-token token)
+                     :response-re "qvm_type")
+
+      ;; delete on existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "delete-persistent-qvm"
+                                     :persistent-qvm-token token)
+                     :response-re "Deleted persistent QVM")
+
+      ;; info on deleted token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "persistent-qvm-info"
+                                     :persistent-qvm-token token)
+                     :status 500
+                     :response-re "Failed to find persistent QVM"))))
