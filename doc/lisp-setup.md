@@ -92,7 +92,7 @@ respectively can be done via:
 2. Update all QL software: `(ql:update-all-dists)`
 
 **N.B.**: Once you have installed all of the Rigetti source code (QVM,
-ALEXA, ...), you can update by just doing `make deps`.
+...), you can update by just doing `make deps`.
 
 #### Step 3: Telling Quicklisp Where Your Code Is
 

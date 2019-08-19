@@ -31,11 +31,11 @@ DOTIMES-ITERATOR specifies the DOTIMES-like macro that is used for iteration."
   (check-type body-gen function)
   (check-type dotimes-iterator symbol)
   (let ((addr (alexandria:format-symbol nil "ADDR")))
-    `(,dotimes-iterator (i (the non-negative-fixnum
+    `(,dotimes-iterator (i (the alexandria:non-negative-fixnum
                                 (expt 2 (the nat-tuple-cardinality
                                              (- (wavefunction-qubits ,wavefunction)
                                                 ,(nat-tuple-cardinality qubits))))))
-       (declare (type non-negative-fixnum i))
+       (declare (type alexandria:non-negative-fixnum i))
        (let ((,addr i))
          (declare (type amplitude-address ,addr))
          ;; Prepare the complement address. Make sure to inject bits
@@ -53,7 +53,7 @@ DOTIMES-ITERATOR specifies the DOTIMES-like macro that is used for iteration."
 
 This function is similar to the function SET-QUBIT-COMPONENTS-OF-AMPLITUDE-ADDRESS. See its documentation for details."
   (check-type address symbol)
-  (check-type flags non-negative-fixnum)
+  (check-type flags alexandria:non-negative-fixnum)
   (check-type qubits nat-tuple)
   (loop :with mask := #b0
         :for i :from 0
@@ -90,7 +90,7 @@ GENERATE-EXTRACTIONS will enable or disable the generation of the values. Settin
                       :collect `(aref ,wavefunction ,index))))
     `(let ,(loop :for i :below operator-size
                  :for index :in indexes
-                 :collect `(,index (the non-negative-fixnum
+                 :collect `(,index (the alexandria:non-negative-fixnum
                                         ,(generate-amplitude-address-code complement-address
                                                                           i
                                                                           qubits))))
@@ -122,7 +122,7 @@ MATRIX should either be:
 COLUMN should be a list of symbols all of which should (eventually) be bound to the vector being multiplied.
 
 RESULT should be a list of SETF-able forms to which the result will be assigned."
-  (check-type n non-negative-fixnum)
+  (check-type n alexandria:non-negative-fixnum)
   (check-type column alexandria:proper-list)
   (check-type result alexandria:proper-list)
   (assert (= n (length column) (length result)))
@@ -230,7 +230,7 @@ DOTIMES-ITERATOR controls which style of DOTIMES is used."
                 (notinline random))
        (let* ((,size (length ,wavefunction))
               (,zero-probability (wavefunction-ground-state-probability ,wavefunction ,qubit)))
-         (declare (type non-negative-fixnum ,size)
+         (declare (type alexandria:non-negative-fixnum ,size)
                   (type flonum ,zero-probability))
          ;; Who do we spare?
          (let* ((,keep-zero (< (the flonum (random (flonum 1))) ,zero-probability))
@@ -245,7 +245,7 @@ DOTIMES-ITERATOR controls which style of DOTIMES is used."
            ;; measurement result. Annihilate the unworthy in this
            ;; loop.
            (,dotimes-iterator (,address ,size ,keep-zero-bit)
-             (declare (type non-negative-fixnum ,address))
+             (declare (type alexandria:non-negative-fixnum ,address))
              (let* ((,address-bit (ldb (byte 1 ,qubit) ,address))
                     (,annihilation-factor (* ,inv-norm (flonum (bit= ,keep-zero-bit ,address-bit)))))
                (declare (type bit ,address-bit)

@@ -48,7 +48,7 @@
                              (:copier nil))
   "A representation of a chunk of allocated classical memory."
   ;; SIZE here is measured in OCTETS!
-  (size    0                   :read-only t :type non-negative-fixnum)
+  (size    0                   :read-only t :type alexandria:non-negative-fixnum)
   (pointer (cffi:null-pointer) :read-only t :type cffi:foreign-pointer))
 
 (define-condition memory-index-out-of-bounds (error)
