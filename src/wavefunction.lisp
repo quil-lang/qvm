@@ -268,7 +268,7 @@ up to amplitude ordering."
 
              nil))))))
 
-#+(and sbcl avx2)
+#+(and qvm-intrinsics avx2)
 (defun apply-1q-operator (matrix wavefunction qubits)
   (declare (inline qvm-intrinsics::2x2matrix-to-simd
                    qvm-intrinsics::matmul2-simd)
@@ -296,7 +296,7 @@ up to amplitude ordering."
                     (aref wavefunction bi) q))))
         wavefunction))))
 
-#+(and sbcl avx2)
+#+(and qvm-intrinsics avx2)
 (defun apply-2q-operator (matrix wavefunction qubits)
   (declare (inline qvm-intrinsics::2x4matrix-to-simd
                    qvm-intrinsics::matmul4-simd-half)
@@ -398,10 +398,10 @@ up to amplitude ordering."
            (type quantum-operator matrix)
            (inline apply-operator))
   (case (nat-tuple-cardinality qubits)
-    #+(and sbcl avx2)
+    #+(and qvm-intrinsics avx2)
     ((1)
      (apply-1q-operator matrix wavefunction qubits))
-    #+(and sbcl avx2)
+    #+(and qvm-intrinsics avx2)
     ((2)
      (apply-2q-operator matrix wavefunction qubits))
     (otherwise
