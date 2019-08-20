@@ -105,10 +105,10 @@
                  simd-pack-256-double)
   (:temporary (:sc double-avx2-reg) m0 m1)
   (:generator 4
-              (inst vinsertf128 m0 m10 m00 #xFF)
+              (inst vinsertf128 m0 m10 m00 #xFF) ; Pack complex registers into YMM register
               (inst vinsertf128 m1 m11 m01 #xFF)
-              (inst vpermpd m0r m0 #4r2200)
-              (inst vpermpd m0i m0 #4r3311)
+              (inst vpermpd m0r m0 #4r2200) ; Create real register by permuting on packed registers
+              (inst vpermpd m0i m0 #4r3311) ; Create imaginary register by permuting on packed registers
               (inst vpermpd m1r m1 #4r2200)
               (inst vpermpd m1i m1 #4r3311)))
 
@@ -150,12 +150,12 @@
                  simd-pack-256-double)
   (:temporary (:sc double-avx2-reg) m0 m1 m2 m3)
   (:generator 4
-              (inst vinsertf128 m0 m10 m00 #xFF)
+              (inst vinsertf128 m0 m10 m00 #xFF) ; Pack complex registers into YMM register
               (inst vinsertf128 m1 m11 m01 #xFF)
               (inst vinsertf128 m2 m12 m02 #xFF)
               (inst vinsertf128 m3 m13 m03 #xFF)
-              (inst vpermpd m0r m0 #4r2200)
-              (inst vpermpd m0i m0 #4r3311)
+              (inst vpermpd m0r m0 #4r2200) ; Create real register by permuting on packed registers
+              (inst vpermpd m0i m0 #4r3311) ; Create imaginary register by permuting on packed registers
               (inst vpermpd m1r m1 #4r2200)
               (inst vpermpd m1i m1 #4r3311)
               (inst vpermpd m2r m2 #4r2200)
@@ -173,7 +173,7 @@
 
 #+avx2
 (defun qvm-intrinsics::swizzle-complex-registers (&rest args)
-  "Store a XMM register to upper and lower half of YMM register"
+  "Store a XMM register to upper and lower half of YMM register, interchanging real and imaginary parts"
   (loop :for arg :in args
      :do (let ((dest (first arg))
                (src (second arg)))
@@ -200,13 +200,13 @@
   (:result-types complex-double-float complex-double-float)
   (:temporary (:sc double-avx2-reg) aa bb acc)
   (:generator 4
-              (let ((aa-swzld aa)
-                    (bb-swzld bb)) ; Save a register by using the first used temp to also store accumulator
+              (let ((aa-swzld aa) ; Save 2 registers by storing swizzled values in same register
+                    (bb-swzld bb))
                 (qvm-intrinsics::swizzle-complex-registers (list aa-swzld a) (list bb-swzld b))
-                (inst vmulpd acc vyi aa-swzld)      ; Multiply complex parts of a and store in acc
-                (inst vfmadd231pd acc xzi bb-swzld) ; Multiply complex parts of b and add to acc
+                (inst vmulpd acc vyi aa-swzld)      ; Multiply imaginary parts of a and store in acc
+                (inst vfmadd231pd acc xzi bb-swzld) ; Multiply imaginary parts of b and add to acc
                 (qvm-intrinsics::repeat-complex-registers (list aa a) (list bb b))
-                (inst vfmaddsub231pd acc vyr aa)    ; Multiply real parts of a and add to acc, negating complex parts
+                (inst vfmaddsub231pd acc vyr aa)    ; Multiply real parts of a and add to acc, negating imaginary parts
                 (inst vfmadd231pd acc xzr bb)       ; Multiply real parts of b and add to acc
                 (inst vextractf128 p acc #xFF)      ; Copy the upper 2 doubles from acc to p
                 (inst vextractf128 q acc #x00))))   ; Copy the lower 2 doubles from acc to q
@@ -268,25 +268,25 @@
   (:result-types complex-double-float complex-double-float)
   (:temporary (:sc double-avx2-reg) aa0 aa1 acc)
   (:generator 4
-              (let* ((aa2 aa0)          ; Save registers by reusing same old ones
+              (let* ((aa2 aa0)          ; Save registers by reusing some old ones
                      (aa3 aa1)
                      (aa0-swzld aa0)
                      (aa1-swzld aa1)
                      (aa2-swzld aa2)
                      (aa3-swzld aa3))
                 (qvm-intrinsics::swizzle-complex-registers (list aa0-swzld a0) (list aa1-swzld a1))
-                (inst vmulpd acc m0i aa0-swzld)
-                (inst vfmadd231pd acc m1i aa1-swzld)
+                (inst vmulpd acc m0i aa0-swzld)      ; Multiply imaginary parts of a0 and store in acc
+                (inst vfmadd231pd acc m1i aa1-swzld) ; Multiply imaginary parts of a1 and store in acc
                 (qvm-intrinsics::swizzle-complex-registers (list aa2-swzld a2) (list aa3-swzld a3))
-                (inst vfmadd231pd acc m2i aa2-swzld)
-                (inst vfmadd231pd acc m3i aa3-swzld)
+                (inst vfmadd231pd acc m2i aa2-swzld) ; Multiply imaginary parts of a2 and store in acc
+                (inst vfmadd231pd acc m3i aa3-swzld) ; Multiply imaginary parts of a3 and store in acc
                 (qvm-intrinsics::repeat-complex-registers (list aa0 a0) (list aa1 a1))
-                (inst vfmaddsub231pd acc m0r aa0)
-                (inst vfmadd231pd acc m1r aa1)
+                (inst vfmaddsub231pd acc m0r aa0)    ; Multiply real parts of a0 and add to acc, negating imaginary parts
+                (inst vfmadd231pd acc m1r aa1)       ; Multiply real parts of a1 and add to acc
                 (qvm-intrinsics::repeat-complex-registers (list aa2 a2) (list aa3 a3))
-                (inst vfmadd231pd acc m2r aa2)
-                (inst vfmadd231pd acc m3r aa3)
-                (inst vextractf128 p acc #xFF)
-                (inst vextractf128 q acc #x00))))
+                (inst vfmadd231pd acc m2r aa2)       ; Multiply real parts of a2 and add to acc
+                (inst vfmadd231pd acc m3r aa3)       ; Multiply real parts of a3 and add to acc
+                (inst vextractf128 p acc #xFF)       ; Copy the upper 2 doubles from acc to p
+                (inst vextractf128 q acc #x00))))    ; Copy the lower 2 doubles from acc to q
 
 
