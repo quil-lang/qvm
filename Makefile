@@ -138,6 +138,7 @@ test-lib:
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
+test-app: QVM_FEATURES=qvm-intrinsics
 test-app:
 	$(QUICKLISP) \
 		 --eval '(ql:quickload :qvm-app-tests)' \

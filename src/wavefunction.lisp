@@ -297,7 +297,7 @@ up to amplitude ordering."
         wavefunction))))
 
 #+(and qvm-intrinsics avx2)
-(defun apply-2q-operator (matrix wavefunction q0 q1)
+(defun apply-2q-operator (operator wavefunction q0 q1)
   "Apply the matrix operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits Q0 and Q1."
   (declare (inline qvm-intrinsics::2x4matrix-to-simd
                    qvm-intrinsics::matmul4-simd-half)
