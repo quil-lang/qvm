@@ -199,12 +199,21 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
              you agree to the End User License Agreement (EULA) supplied~%~
              with this program. If you did not receive the EULA, please~%~
              contact <support@rigetti.com>.~2%")
-  (format t "(Configured with ~A MiB of workspace and ~D worker~:P.)~2%"
+  (format t "(Configured with ~A MiB of workspace and ~D worker~:P.)~%"
           #+sbcl
           (floor (sb-ext:dynamic-space-size) (expt 1024 2))
           #-sbcl
           "many many"
-          (or *num-workers* (max 1 (qvm:count-logical-cores))))
+          (or *num-workers* (max 1 (qvm:count-logical-cores)))
+          )
+  (let ((qvm-features
+         (list                         ; List of features
+          #+qvm-intrinsics
+          "qvm-intrinsics"
+          #+(and qvm-intrinsics avx2)
+          "avx2")))
+    (format t "(Features enabled: ~{~a~^, ~})~2%"
+            (or qvm-features (list "none"))))
   nil)
 
 (defun start-server-app (host port)
