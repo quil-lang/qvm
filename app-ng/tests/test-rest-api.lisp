@@ -105,13 +105,17 @@
                      :response-re "\\A{}\\z"))))
 
 (deftest test-rest-api-multishot-simple-request ()
-  (check-request (single-request ':POST "/"
-                                 :type "multishot"
-                                 :compiled-quil "DECLARE ro BIT[4]; X 0; MEASURE 0 ro[0]"
-                                 :addresses (alexandria:plist-hash-table '("ro" t))
-                                 :trials 1)
-                 ;; TODO: support for richer reponse matching than just regexes
-                 :response-re "\\A{\"ro\":\\[\\[1,0,0,0\\]\\]}\\z"))
+  (with-rest-server (host-url)
+    (dolist (trials '(1 2 10))
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "multishot"
+                                     :compiled-quil "DECLARE ro BIT[4]; X 0; MEASURE 0 ro[0]"
+                                     :addresses (alexandria:plist-hash-table '("ro" t))
+                                     :trials trials)
+                     ;; TODO: support for richer reponse matching than just regexes
+                     :response-re (format nil
+                                          "\\A{\"ro\":\\[\\[1,0,0,0\\](,\\[1,0,0,0\\]){~D}\\]}\\z"
+                                          (1- trials))))))
 
 (deftest test-rest-api-persistent-qvm-info ()
   (with-rest-server (host-url)
