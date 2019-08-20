@@ -31,39 +31,37 @@
     (is (every #'cflonum= vec res))))
 
 (deftest test-avx2-matmul2-random ()
-  "Test avx version of matmul4 by comparing to normal one ten times"
+  "Test avx version of matmul4 by comparing to normal one 100 times"
   (let ((mat (make-array '(2 2) :element-type '(complex double-float)))
         (vec1 (make-array '(2) :element-type '(complex double-float)))
         (vec2 (make-array '(2) :element-type '(complex double-float))))
-    (loop :repeat 10
-       :do
-         (dotimes (i 2)
-           (let ((num (complex (random 1d0) (random 1d0))))
-             (setf (aref vec1 i) num
-                   (aref vec2 i) num)))
-         (dotimes (i 2)
-           (dotimes (j 2)
-             (setf (aref mat i j) (complex (random 1d0) (random 1d0)))))
-         (qvm::matmul2 mat vec1 vec2)
-         (qvm-intrinsics::matmul2-vector-simd mat vec1)
-         (is (every #'cflonum= vec1 vec2))))
+    (loop :repeat 100 :do
+      (dotimes (i 2)
+        (let ((num (complex (random 1d0) (random 1d0))))
+          (setf (aref vec1 i) num
+                (aref vec2 i) num)))
+      (dotimes (i 2)
+        (dotimes (j 2)
+          (setf (aref mat i j) (complex (random 1d0) (random 1d0)))))
+      (qvm::matmul2 mat vec1 vec2)
+      (qvm-intrinsics::matmul2-vector-simd mat vec1)
+      (is (every #'cflonum= vec1 vec2))))
   nil)
 
 (deftest test-avx2-matmul4-random ()
-  "Test avx version of matmul4 by comparing to normal one ten times"
+  "Test avx version of matmul4 by comparing to normal one 100 times"
   (let ((mat (make-array '(4 4) :element-type '(complex double-float)))
         (vec1 (make-array '(4) :element-type '(complex double-float)))
         (vec2 (make-array '(4) :element-type '(complex double-float))))
-    (loop :repeat 10
-       :do
-         (dotimes (i 4)
-           (let ((num (complex (random 1d0) (random 1d0))))
-             (setf (aref vec1 i) num
-                   (aref vec2 i) num)))
-         (dotimes (i 4)
-           (dotimes (j 4)
-             (setf (aref mat i j) (complex (random 1d0) (random 1d0)))))
-         (qvm::matmul4 mat vec1 vec2)
-         (qvm-intrinsics::matmul4-vector-simd mat vec1)
-         (is (every #'cflonum= vec1 vec2))))
+    (loop :repeat 100 :do
+      (dotimes (i 4)
+        (let ((num (complex (random 1d0) (random 1d0))))
+          (setf (aref vec1 i) num
+                (aref vec2 i) num)))
+      (dotimes (i 4)
+        (dotimes (j 4)
+          (setf (aref mat i j) (complex (random 1d0) (random 1d0)))))
+      (qvm::matmul4 mat vec1 vec2)
+      (qvm-intrinsics::matmul4-vector-simd mat vec1)
+      (is (every #'cflonum= vec1 vec2))))
   nil)
