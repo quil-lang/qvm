@@ -129,6 +129,7 @@ test: test-lib test-app test-app-ng
 
 test-lib:
 	$(QUICKLISP) \
+                 --eval '(push :qvm-intrinsics *features*)' \
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
