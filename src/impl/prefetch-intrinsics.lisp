@@ -3,7 +3,6 @@
 ;;;; Author: Cole Scott
 
 (in-package #:qvm-intrinsics)
-(declaim (optimize speed))
 
 (defmacro define-prefetch (name num)
   (check-type name symbol)

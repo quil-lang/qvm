@@ -3,7 +3,6 @@
 ;;;; Author: Cole Scott
 
 (in-package #:qvm-intrinsics)
-(declaim (optimize speed))
 
 (declaim (inline 2x2matrix-to-simd))
 (defun 2x2matrix-to-simd (x y z w)
