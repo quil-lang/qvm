@@ -337,3 +337,24 @@ assigned host port. You can then inspect the mapping using `docker port CONTAINE
 4. Publish a [release](https://github.com/rigetti/qvm/releases) using the tag as the name.
 5. Close the [milestone](https://github.com/rigetti/qvm/milestones) associated with this release,
    and migrate incomplete issues to the next one.
+
+# Feature Flags
+
+The QVM library and application can be built with support for optional
+features specified by the `*features*` flag in lisp.
+
+## Available Flags
+
+| Feature Flag      | Description                                                                                                                                      |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `qvm-intrinsics` | Enable assembly intrinsics in the build, enabling optimized functions based on processor support. Currently supports AVX2 matrix multiplication. |
+
+## Building QVM with Feature Flags
+
+To build with specific flags enabled, set the `QVM_FEATURES` variable while building:
+
+```
+$ make QVM_FEATURES='FEATURES' qvm
+```
+
+Note: Cache needs to be cleaned when adding new feature flags to ensure libraries compile with correct flags.

@@ -2,6 +2,9 @@
 QVM_WORKSPACE ?= 2048
 LISP_CACHE ?= `sbcl --noinform --non-interactive --eval '(princ asdf:*user-cache*)'`
 
+# QVM feature flags (in QVM_FEATURES)
+QVM_FEATURE_FLAGS=$(foreach feature,$(QVM_FEATURES),--eval '(pushnew :$(feature) *features*)')
+
 COMMIT_HASH=$(shell git rev-parse --short HEAD)
 RIGETTI_LISP_LIBRARY_HOME=../
 
@@ -14,7 +17,8 @@ QUICKLISP=$(SBCL) --load $(QUICKLISP_HOME)/setup.lisp \
 	--eval '(push (truename ".") asdf:*central-registry*)' \
 	--eval '(push :hunchentoot-no-ssl *features*)' \
 	--eval '(push :drakma-no-ssl *features*)' \
-	--eval "(push (truename \"$(RIGETTI_LISP_LIBRARY_HOME)\") ql:*local-project-directories*)"
+	--eval "(push (truename \"$(RIGETTI_LISP_LIBRARY_HOME)\") ql:*local-project-directories*)" \
+	$(QVM_FEATURE_FLAGS)
 
 QUICKLISP_BOOTSTRAP_URL=https://beta.quicklisp.org/quicklisp.lisp
 
@@ -64,6 +68,7 @@ qvm: system-index.txt
 	        --eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
 		--eval '(push :hunchentoot-no-ssl *features*)' \
 		--eval '(push :drakma-no-ssl *features*)' \
+		$(QVM_FEATURE_FLAGS) \
 		--load build-app.lisp \
                 $(FOREST_SDK_OPTION)
 
