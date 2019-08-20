@@ -132,9 +132,9 @@ testsafe:
 
 test: test-lib test-app test-app-ng
 
+test-lib: QVM_FEATURES=qvm-intrinsics
 test-lib:
 	$(QUICKLISP) \
-                 --eval '(push :qvm-intrinsics *features*)' \
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
@@ -151,8 +151,9 @@ test-app-ng:
 test-ccl:
 	ccl --batch --eval '(ql:quickload :qvm)' --eval '(quit)'
 
+coverage: QVM_FEATURES=qvm-intrinsics
 coverage:
-	sbcl --noinform --non-interactive --load coverage-report/coverage-report.lisp
+	$(QUICKLISP) --load coverage-report/coverage-report.lisp
 
 ###############################################################################
 # CLEAN
