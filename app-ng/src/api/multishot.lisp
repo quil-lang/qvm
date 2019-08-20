@@ -15,18 +15,21 @@
 (defmethod perform-multishot ((simulation-method (eql 'full-density-matrix)) quil num-qubits addresses num-trials &key gate-noise measurement-noise)
   (%perform-multishot simulation-method quil num-qubits addresses num-trials gate-noise measurement-noise))
 
-(defun valid-address-query-p (addresses)
+(defun valid-address-query-p (addresses quil)
   (cond
     ((not (hash-table-p addresses)) nil)
     (t
-     (maphash (lambda (k v)
-                (unless (and (stringp k)
-                             (or (eq t v)
-                                 (and (alexandria:proper-list-p v)
-                                      (every #'integerp v)
-                                      (notany #'minusp v))))
-                  (return-from valid-address-query-p nil)))
-              addresses)
+     (let ((valid-memory-regions (mapcar #'quil:memory-descriptor-name
+                                         (quil:parsed-program-memory-definitions quil))))
+       (maphash (lambda (k v)
+                  (unless (and (stringp k)
+                               (member k valid-memory-regions :test #'string=)
+                               (or (eq t v)
+                                   (and (alexandria:proper-list-p v)
+                                        (every #'integerp v)
+                                        (notany #'minusp v))))
+                    (return-from valid-address-query-p nil)))
+                addresses))
      t)))
 
 (defun collect-result-data (qvm addresses results)
@@ -52,12 +55,20 @@
   (check-type quil quil:parsed-program)
   (check-type addresses hash-table)
   (check-type num-trials (integer 0))
-  (assert (valid-address-query-p addresses) ()
+  (assert (valid-address-query-p addresses quil) ()
           "Detected invalid address query in multishot experiment. The ~
            requested addresses should be a JSON object whose keys are ~
            DECLAREd memory names, and whose values are either the true ~
            value to request all memory, or a list of non-negative integer ~
            indexes to request some memory.")
+
+  ;; Bail out early if there's no work to actually do.
+  (when (or (zerop (hash-table-count addresses))
+            (zerop num-trials)
+            (loop :for v :being :the :hash-values :of addresses
+                  :always (null v)))
+    (return-from perform-multishot-on-qvm (load-time-value (make-hash-table) t)))
+
   (let ((trial-results (make-hash-table :test 'equal :size (hash-table-count addresses)))
         timing)
     (qvm:load-program qvm quil :supersede-memory-subsystem t)
@@ -89,29 +100,15 @@
   (check-type simulation-method simulation-method)
   (check-type quil quil:parsed-program)
   (check-type num-qubits (integer 0))
-  (check-type num-trials (integer 0))
-  (check-type addresses hash-table)
   (check-type gate-noise (or null alexandria:proper-list))
   (check-type measurement-noise (or null alexandria:proper-list))
-  (assert (valid-address-query-p addresses) ()
-          "Detected invalid address query in multishot experiment. The ~
-           requested addresses should be a JSON object whose keys are ~
-           DECLAREd memory names, and whose values are either the true ~
-           value to request all memory, or a list of non-negative integer ~
-           indexes to request some memory.")
+
   (assert (and (or (null gate-noise)
                    (= 3 (length gate-noise)))
                (every #'realp gate-noise)))
   (assert (and (or (null measurement-noise)
                    (= 3 (length measurement-noise)))
                (every #'realp measurement-noise)))
-
-  ;; Bail out early if there's no work to actually do.
-  (when (or (zerop (hash-table-count addresses))
-            (zerop num-trials)
-            (loop :for v :being :the :hash-values :of addresses
-                  :always (null v)))
-    (return-from %perform-multishot (load-time-value (make-hash-table) t)))
 
   (perform-multishot-on-qvm
    (make-appropriate-qvm simulation-method quil num-qubits gate-noise measurement-noise)

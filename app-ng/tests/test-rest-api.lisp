@@ -100,7 +100,7 @@
                             (:trials 1 :addresses ,(alexandria:plist-hash-table '()))))
       (check-request (apply #'simple-request host-url ':POST "/"
                             :type "multishot"
-                            :compiled-quil "H 0"
+                            :compiled-quil "DECLARE ro BIT; H 0"
                             trivial-args)
                      :response-re "\\A{}\\z"))))
 
@@ -111,13 +111,56 @@
       (dolist (trials '(1 2 10))
         (check-request (simple-request host-url ':POST "/"
                                        :type "multishot"
-                                       :compiled-quil "DECLARE ro BIT[4]; X 0; MEASURE 0 ro[0]"
+                                       :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
                                        :addresses (alexandria:plist-hash-table '("ro" t))
                                        :trials trials)
                        ;; TODO: support for richer reponse matching than just regexes
                        :response-re (format nil
-                                            "\\A{\"ro\":\\[\\[1,0,0,0\\](,\\[1,0,0,0\\]){~D}\\]}\\z"
+                                            "\\A{\"ro\":\\[\\[1,0\\](,\\[1,0\\]){~D}\\]}\\z"
                                             (1- trials)))))))
+
+(deftest test-rest-api-multishot-addresses ()
+  (with-rest-server (host-url)
+    ;; addresses t
+    (check-request
+     (simple-request host-url ':POST "/"
+                     :type "multishot"
+                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                     :addresses (alexandria:plist-hash-table '("ro" t))
+                     :trials 1)
+     ;; TODO: support for richer reponse matching than just regexes
+     :response-re "\\A{\"ro\":\\[\\[1,0\\]\\]}\\z")
+
+    ;; explicit index list
+    (check-request
+     (simple-request host-url ':POST "/"
+                     :type "multishot"
+                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                     :addresses (alexandria:plist-hash-table '("ro" (0)))
+                     :trials 1)
+     ;; TODO: support for richer reponse matching than just regexes
+     :response-re "\\A{\"ro\":\\[\\[1\\]\\]}\\z")
+
+    ;; non-consecutive indices + "non ro" named register
+    (check-request
+     (simple-request host-url ':POST "/"
+                     :type "multishot"
+                     :compiled-quil "DECLARE mem BIT[3]; X 3; MEASURE 0 mem[0]; MEASURE 3 mem[2]"
+                     :addresses (alexandria:plist-hash-table '("mem" (0 2)))
+                     :trials 1)
+     ;; TODO: support for richer reponse matching than just regexes
+     :response-re "\\A{\"mem\":\\[\\[0,1\\]\\]}\\z")
+
+    ;; non-existent named register
+    (check-request
+     (simple-request host-url ':POST "/"
+                     :type "multishot"
+                     :compiled-quil "DECLARE ro BIT; I 0"
+                     :addresses (alexandria:plist-hash-table '("zonk" t))
+                     :trials 1)
+     :status 500
+     ;; TODO: support for richer reponse matching than just regexes
+     :response-re "Detected invalid address query in multishot experiment")))
 
 (deftest test-rest-api-persistent-qvm-info ()
   (with-rest-server (host-url)
