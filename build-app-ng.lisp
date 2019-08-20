@@ -20,7 +20,7 @@
       (toplevel (lambda ()
                   (with-simple-restart (abort "Abort")
                     (funcall (read-from-string "qvm-app-ng::%main")
-                             sb-ext:*posix-argv*)))))
+                             (rest sb-ext:*posix-argv*))))))
   (labels ((load-systems-table ()
              (unless (probe-file "system-index.txt")
                (error "Generate system-index.txt with 'make system-index.txt' first."))

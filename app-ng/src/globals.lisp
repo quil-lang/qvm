@@ -5,12 +5,8 @@
 
 (in-package #:qvm-app-ng)
 
-(defvar *num-workers* nil)
-(defvar *debug* nil)
-(defvar *program-name* "qvm-ng")
-
 (defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
-                                :app-name *program-name*
+                                :app-name "qvm-ng"
                                 :facility ':local0
                                 :log-writer (cl-syslog:null-log-writer))
   "The CL-SYSLOG logger instance.")
