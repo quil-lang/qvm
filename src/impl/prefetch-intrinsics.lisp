@@ -5,24 +5,6 @@
 (in-package #:qvm-intrinsics)
 (declaim (optimize speed))
 
-(defun prefetch (type base displacement stride index)
-  (declare (ignore type)  ;; always do t0
-           (type sb-sys:system-area-pointer base)
-           ;(type (signed-byte #.sb-vm:n-word-bits) displacement)
-           (type (integer 0 0) displacement)
-           (ignore displacement)
-           (type (member 2 4 8 16) stride)
-           (type fixnum index))
-  (case stride
-    (2
-     (%prefetch :t0 base 0 2 index))
-    (4
-     (%prefetch :t0 base 0 4 index))
-    (8
-     (%prefetch :t0 base 0 8 index))
-    (16
-     (%prefetch :t0 base 0 16 index))))
-
 (defmacro define-prefetch (name num)
   (check-type name symbol)
   (check-type num unsigned-byte)
