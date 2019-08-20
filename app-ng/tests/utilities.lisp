@@ -7,6 +7,6 @@
                   :collect `(,name ,value))
           (bordeaux-threads:*default-special-bindings*
             (list* ,@(loop :for (name value) :in let-defs
-                           :collect ``(,',name . ',,name))
+                           :collect `(cons ',name (list 'quote ,name)))
                    bordeaux-threads:*default-special-bindings*)))
      ,@body))
