@@ -83,7 +83,7 @@ Uses AVX2 features."
            (dynamic-extent mat))
   (let ((mat (sb-ext:array-storage-vector mat))
         (a (make-array 4 :element-type '(complex double-float))))
-    (declare (type (simple-array (complex double-float) (4)))
+    (declare (type (simple-array (complex double-float) (4)) a)
              (type (simple-array (complex double-float) (16)))
              (dynamic-extent a))
     (symbol-macrolet ((a0 (aref a 0))

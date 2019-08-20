@@ -37,4 +37,4 @@
                (:file "path-simulate-tests")
                (:file "stabilizer-qvm-tests")
                (:file "parallel-tests")
-               (:file "sbcl-intrinsics" :if-feature (:and :sbcl :avx2))))
+               (:file "qvm-intrinsics")))
