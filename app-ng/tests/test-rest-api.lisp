@@ -20,6 +20,14 @@
     (:pure-state 'qvm:pure-state-qvm)
     (:full-density-matrix 'qvm:density-qvm)))
 
+(defun %response-json-fields-checker (fields)
+  (lambda (response-string)
+    (let ((json-data (yason:parse response-string)))
+      (mapc (lambda (spec)
+              (destructuring-bind (field value &key (test 'equal)) spec
+                (is (funcall (alexandria:ensure-function test) (gethash field json-data) value))))
+            fields))))
+
 (defmacro with-rest-server
     ((url-var &key (protocol "http") (host "127.0.0.1") (port 0)) &body body)
   (check-type url-var symbol)
@@ -41,8 +49,11 @@
                     ,@body)))
            (tbnl:stop ,app))))))
 
-(defmacro check-request (request-form &key (status 200) (response-re nil response-re-p))
-  (alexandria:once-only (status response-re)
+(defmacro check-request (request-form
+                         &key (status 200)
+                              (response-re nil response-re-p)
+                              (response-callback nil response-callback-p))
+  (alexandria:once-only (status)
     (alexandria:with-gensyms
         (body-or-stream status-code headers uri stream must-close reason-phrase body-as-string)
       `(multiple-value-bind
@@ -57,6 +68,8 @@
                                            ,body-or-stream)))
                   ,@(when response-re-p
                       `((is (cl-ppcre:scan ,response-re ,body-as-string))))
+                  ,@(when response-callback-p
+                      `((funcall (alexandria:ensure-function ,response-callback) ,body-as-string)))
 
                   ,body-as-string))
            (progn
@@ -114,10 +127,8 @@
                                        :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
                                        :addresses (alexandria:plist-hash-table '("ro" t))
                                        :trials trials)
-                       ;; TODO: support for richer reponse matching than just regexes
-                       :response-re (format nil
-                                            "\\A{\"ro\":\\[\\[1,0\\](,\\[1,0\\]){~D}\\]}\\z"
-                                            (1- trials)))))))
+                       :response-callback (%response-json-fields-checker
+                                           `(("ro" ,(loop :repeat trials :collect '(1 0))))))))))
 
 (deftest test-rest-api-multishot-addresses ()
   (with-rest-server (host-url)
@@ -128,8 +139,7 @@
                      :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
                      :addresses (alexandria:plist-hash-table '("ro" t))
                      :trials 1)
-     ;; TODO: support for richer reponse matching than just regexes
-     :response-re "\\A{\"ro\":\\[\\[1,0\\]\\]}\\z")
+     :response-callback (%response-json-fields-checker `(("ro" ((1 0))))))
 
     ;; explicit index list
     (check-request
@@ -138,8 +148,7 @@
                      :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
                      :addresses (alexandria:plist-hash-table '("ro" (0)))
                      :trials 1)
-     ;; TODO: support for richer reponse matching than just regexes
-     :response-re "\\A{\"ro\":\\[\\[1\\]\\]}\\z")
+     :response-callback (%response-json-fields-checker `(("ro" ((1))))))
 
     ;; non-consecutive indices + "non ro" named register
     (check-request
@@ -148,8 +157,7 @@
                      :compiled-quil "DECLARE mem BIT[3]; X 3; MEASURE 0 mem[0]; MEASURE 3 mem[2]"
                      :addresses (alexandria:plist-hash-table '("mem" (0 2)))
                      :trials 1)
-     ;; TODO: support for richer reponse matching than just regexes
-     :response-re "\\A{\"mem\":\\[\\[0,1\\]\\]}\\z")
+     :response-callback (%response-json-fields-checker `(("mem" ((0 1))))))
 
     ;; non-existent named register
     (check-request
@@ -159,54 +167,79 @@
                      :addresses (alexandria:plist-hash-table '("zonk" t))
                      :trials 1)
      :status 500
-     ;; TODO: support for richer reponse matching than just regexes
      :response-re "Detected invalid address query in multishot experiment")))
 
 (deftest test-rest-api-persistent-qvm-info ()
   (with-rest-server (host-url)
+    (let* ((response (check-request (simple-request host-url ':POST "/"
+                                                    :type "make-persistent-qvm"
+                                                    :simulation-method "pure-state"
+                                                    :number-of-qubits 1)
+                                    :response-re "\\A{\"token\":\\d+}\\z"))
+           (token (gethash "token" (yason:parse response))))
+      (is (integerp token))
+
+      ;; info on non-existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "persistent-qvm-info"
+                                     :persistent-qvm-token (1- token))
+                     :status 500
+                     :response-re "Failed to find persistent QVM")
+
+      ;; delete on non-existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "delete-persistent-qvm"
+                                     :persistent-qvm-token (1- token))
+                     :status 500
+                     :response-re "Failed to find persistent QVM")
+
+      ;; info on existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "persistent-qvm-info"
+                                     :persistent-qvm-token token)
+                     :response-re "PURE-STATE-QVM")
+
+      ;; delete on existing token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "delete-persistent-qvm"
+                                     :persistent-qvm-token token)
+                     :response-re "Deleted persistent QVM")
+
+      ;; info on deleted token
+      (check-request (simple-request host-url ':POST "/"
+                                     :type "persistent-qvm-info"
+                                     :persistent-qvm-token token)
+                     :status 500
+                     :response-re "Failed to find persistent QVM"))))
+
+(deftest test-rest-api-make-persistent-qvm ()
+  (with-rest-server (host-url)
     ;; Intentionally do not bind qvm-app-ng::*simulation-method* here, to ensure that the persistent
-    ;; QVM is respecting the simulation-method request parameter.
+    ;; QVM is really respecting the simulation-method request parameter and not *simulation-method*.
     (dolist (simulation-method qvm-app-ng::*available-simulation-methods*)
-      (let* ((response (check-request (simple-request host-url ':POST "/"
-                                                      :type "make-persistent-qvm"
-                                                      :simulation-method simulation-method
-                                                      :number-of-qubits 1)
-                                      :response-re "\\A{\"token\":\\d+}\\z"))
-             (token (gethash "token" (yason:parse response))))
-        (is (integerp token))
+      (dolist (num-qubits '(0 1 4))
+        (let* ((response (check-request (simple-request host-url ':POST "/"
+                                                        :type "make-persistent-qvm"
+                                                        :simulation-method simulation-method
+                                                        :number-of-qubits num-qubits)
+                                        :response-re "\\A{\"token\":\\d+}\\z"))
+               (token (gethash "token" (yason:parse response))))
+          (is (integerp token))
 
-        ;; info on non-existing token
-        (check-request (simple-request host-url ':POST "/"
-                                       :type "persistent-qvm-info"
-                                       :persistent-qvm-token (1- token))
-                       :status 500
-                       :response-re "Failed to find persistent QVM")
+          ;; check that info reports expected values for qvm_type and number_of_qubits
+          (check-request
+           (simple-request host-url ':POST "/"
+                           :type "persistent-qvm-info"
+                           :persistent-qvm-token token)
+           :response-callback (%response-json-fields-checker
+                               `(("qvm_type" ,(string (%simulation-method->qvm-type simulation-method)))
+                                 ("number_of_qubits" ,num-qubits))))
 
-        ;; delete on non-existing token
-        (check-request (simple-request host-url ':POST "/"
-                                       :type "delete-persistent-qvm"
-                                       :persistent-qvm-token (1- token))
-                       :status 500
-                       :response-re "Failed to find persistent QVM")
-
-        ;; info on existing token
-        (check-request (simple-request host-url ':POST "/"
-                                       :type "persistent-qvm-info"
-                                       :persistent-qvm-token token)
-                       :response-re (string (%simulation-method->qvm-type simulation-method)))
-
-        ;; delete on existing token
-        (check-request (simple-request host-url ':POST "/"
-                                       :type "delete-persistent-qvm"
-                                       :persistent-qvm-token token)
-                       :response-re "Deleted persistent QVM")
-
-        ;; info on deleted token
-        (check-request (simple-request host-url ':POST "/"
-                                       :type "persistent-qvm-info"
-                                       :persistent-qvm-token token)
-                       :status 500
-                       :response-re "Failed to find persistent QVM")))))
+          ;; cleanup
+          (check-request (simple-request host-url ':POST "/"
+                                         :type "delete-persistent-qvm"
+                                         :persistent-qvm-token token)
+                         :response-re "Deleted persistent QVM"))))))
 
 (deftest test-rest-api-persistent-qvm-multishot ()
   (with-rest-server (host-url)
@@ -226,8 +259,7 @@
                                        :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
                                        :addresses (alexandria:plist-hash-table '("ro" t))
                                        :trials 1)
-                       ;; TODO: support for richer reponse matching than just regexes
-                       :response-re "\\A{\"ro\":\\[\\[1,0\\]\\]}\\z")
+                       :response-callback (%response-json-fields-checker `(("ro" ((1 0))))))
 
         ;; I 0: qubit 0 remains in excited state
         (check-request (simple-request host-url ':POST "/"
@@ -236,8 +268,7 @@
                                        :compiled-quil "DECLARE ro BIT[2]; I 0; MEASURE 0 ro[0]"
                                        :addresses (alexandria:plist-hash-table '("ro" t))
                                        :trials 1)
-                       ;; TODO: support for richer reponse matching than just regexes
-                       :response-re "\\A{\"ro\":\\[\\[1,0\\]\\]}\\z")
+                       :response-callback (%response-json-fields-checker `(("ro" ((1 0))))))
 
         ;; X 0: flips qubit 0 back to ground state
         (check-request (simple-request host-url ':POST "/"
@@ -246,8 +277,7 @@
                                        :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
                                        :addresses (alexandria:plist-hash-table '("ro" t))
                                        :trials 1)
-                       ;; TODO: support for richer reponse matching than just regexes
-                       :response-re "\\A{\"ro\":\\[\\[0,0\\]\\]}\\z")
+                       :response-callback (%response-json-fields-checker `(("ro" ((0 0))))))
 
         ;; multishot on non-existent token
         (check-request (simple-request host-url ':POST "/"
