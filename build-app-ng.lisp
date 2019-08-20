@@ -6,9 +6,6 @@
 (unless *load-truename*
   (error "This file is meant to be loaded."))
 
-(pushnew :hunchentoot-no-ssl *features*)
-(pushnew :drakma-no-ssl *features*)
-
 (require 'asdf)
 
 (let ((*default-pathname-defaults* (make-pathname :type nil

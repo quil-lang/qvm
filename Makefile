@@ -71,8 +71,6 @@ qvm: system-index.txt
 qvm-ng: system-index.txt
 	$(SBCL) $(FOREST_SDK_FEATURE) \
 		--eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
-		--eval '(push :hunchentoot-no-ssl *features*)' \
-		--eval '(push :drakma-no-ssl *features*)' \
 		--load build-app-ng.lisp \
 		$(FOREST_SDK_OPTION)
 
