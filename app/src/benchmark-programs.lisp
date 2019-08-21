@@ -26,6 +26,25 @@
      (dotimes (i n)
        (format t "MEASURE ~D ro[~D]~%" i i)))))
 
+(defun nop-loop (num-loops num-nops)
+  "Create a loop that has NUM-LOOPS iterations and NUM-NOPS NOP instructions per iteration."
+  (check-type num-loops unsigned-byte)
+  (check-type num-nops unsigned-byte)
+  (safely-parse-quil-string
+   (with-output-to-string (*standard-output*)
+     (write-line "DECLARE counter INTEGER")
+     (write-line "DECLARE done BIT")
+     (format t   "MOVE counter ~D~%" num-loops)
+     (write-line "LABEL @start")
+     (write-line "EQ done counter 0")
+     (write-line "JUMP-WHEN @end done")
+     (loop :repeat num-nops
+           :do (write-line "NOP"))
+     (write-line "SUB counter 1")
+     (write-line "JUMP @start")
+     (write-line "LABEL @end")
+     (write-line "HALT"))))
+
 ;;; Benchmark from https://github.com/qulacs/qulacs
 ;;;
 ;;; Note that the original benchmark as stated requires 100 shots. It
@@ -91,7 +110,8 @@ We are assuming the CNOTs are dense on an even number of qubits."
                 ("qft"  (qft-program num-qubits))
                 ("hadamard" (hadamard-program num-qubits))
                 ("qulacs" (qulacs-program num-qubits))
-                ("interleaved-measurements" (interleaved-measurements-program num-qubits))))
+                ("interleaved-measurements" (interleaved-measurements-program num-qubits))
+                ("nop-loop" (nop-loop 100000 250))))
            (q (qvm:make-qvm num-qubits
                             :allocation (funcall **default-allocation** (expt 2 num-qubits))))
            timing)
