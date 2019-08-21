@@ -1,0 +1,43 @@
+#!/bin/sh
+
+if [ $# -lt 2 ]; then
+    echo "Usage: `basename $0` NUM-PROCESSES QUIL-FILE"
+    exit 1
+fi
+
+num_proc=$1
+quil_file=$2
+tmpfile1=`mktemp -t dqvm2.XXXXXXXX` || exit 1
+tmpfile2=`mktemp -t dqvm2.XXXXXXXX` || exit 1
+trap "rm -f -- $tmpfile1 $tmpfile2" EXIT
+trap "trap - EXIT; rm -f -- $tmpfile1 $tmpfile2" HUP INT QUIT TERM
+
+echo "Writing logs to ${tmpfile1} and error logs to ${tmpfile2}"
+
+bin/dqvm2-sbcl --eval '(asdf:load-system :dqvm2)' --eval '(quit)'
+if [ $? -ne 0 ]; then
+    echo "Something went wrong while recompiling DQVM2."
+    exit 1
+fi
+
+mpiexec --oversubscribe -n $num_proc \
+        bin/dqvm2-sbcl \
+        --eval '(ql:quickload :dqvm2)' \
+        --eval '(dqvm2::entry-point (list "dqvm2" "'${quil_file}'"))' >$tmpfile1 2>$tmpfile2
+status=$?
+if [ $status -ne 0 ]; then
+    echo "ERROR: DQVM2 execution failed."
+else
+    [ -x `which lnav` ] && lnav $tmpfile2 || less $tmpfile2
+fi
+[ -e $tmpfile2 ] && cat $tmpfile2
+[ -e $tmpfile1 ] && cat $tmpfile1
+
+echo "====================================================="
+echo "Quil program: $quil_file"
+echo "-----------------------------------------------------"
+cat $quil_file
+echo "====================================================="
+echo
+
+exit $status

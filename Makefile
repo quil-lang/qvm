@@ -144,6 +144,7 @@ test-app:
 		 --eval '(ql:quickload :qvm-app-tests)' \
 		 --eval '(asdf:test-system :qvm-app)'
 
+test-app-ng: QVM_FEATURES=qvm-intrinsics
 test-app-ng:
 	$(QUICKLISP) \
 		--eval '(ql:quickload :qvm-app-ng-tests)' \
