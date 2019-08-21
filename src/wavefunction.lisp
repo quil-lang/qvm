@@ -436,8 +436,7 @@ If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH para
            (type (or null real) length)
            (inline norm))
   ;; Mutate the wavefunction.
-  (let ((num-qubits (wavefunction-qubits wavefunction))
-        (inv-norm (if (null length)
+  (let ((inv-norm (if (null length)
                       (/ (norm wavefunction))
                       (/ (flonum length)))))
     (declare (type (flonum 0) inv-norm))
