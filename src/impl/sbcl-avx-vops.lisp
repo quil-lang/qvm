@@ -22,7 +22,7 @@
 
 (defknown (%2x4matrix-to-simd) (cdf cdf cdf cdf cdf cdf cdf cdf)
     (values d4 d4 d4 d4 d4 d4 d4 d4)
-    (flushable always-translatable)
+    (movable flushable always-translatable)
   :overwrite-fndb-silently t)
 
 (defknown (%matmul2-simd) (d4 d4 d4 d4 cdf cdf)
