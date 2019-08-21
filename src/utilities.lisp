@@ -324,25 +324,31 @@ state."
 
 ;;; Macros for parallel processing
 
-(defmacro with-parallel-subdivisions ((start end count) &body body)
+(defmacro with-parallel-subdivisions ((start end count &optional num-divisions) &body body)
   (alexandria:with-gensyms (channel num-tasks-submitted)
-    (alexandria:once-only (count)
+    (alexandria:once-only (count num-divisions)
       `(when (plusp ,count)
          (flet ((compute-part (,start ,end)
                   (declare (type fixnum start end))
                   ,@body))
            (declare (dynamic-extent #'compute-part))
-           (let ((,channel (lparallel:make-channel))
-                 (,num-tasks-submitted 0))
-             (declare (type (and fixnum unsigned-byte) ,num-tasks-submitted))
-             (map-subdivisions (lambda (,start ,end)
-                                 (declare (type fixnum ,start ,end))
-                                 (incf ,num-tasks-submitted)
-                                 (lparallel:submit-task ,channel #'compute-part ,start ,end))
-                               ,count
-                               (lparallel:kernel-worker-count))
-             (loop :repeat ,num-tasks-submitted
-                   :do (lparallel:receive-result ,channel))))))))
+           (cond
+             ;; Do we want to parallelize? Maybe not...
+             ((< ,count (expt 2 *qubits-required-for-parallelization*))
+              (compute-part 0 ,count))
+             ;; Fire on all cylinders.
+             (t
+              (let ((,channel (lparallel:make-channel))
+                    (,num-tasks-submitted 0))
+                (declare (type (and fixnum unsigned-byte) ,num-tasks-submitted))
+                (map-subdivisions (lambda (,start ,end)
+                                    (declare (type fixnum ,start ,end))
+                                    (incf ,num-tasks-submitted)
+                                    (lparallel:submit-task ,channel #'compute-part ,start ,end))
+                                  ,count
+                                  (or ,num-divisions (lparallel:kernel-worker-count)))
+                (loop :repeat ,num-tasks-submitted
+                      :do (lparallel:receive-result ,channel))))))))))
 
 
 (defmacro pdotimes ((i n &optional ret) &body body)
