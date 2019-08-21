@@ -120,6 +120,7 @@
            num-elements element-type
            (lisp-implementation-type)))
 
+  #+(or sbcl ccl)
   (shm-vector-allocation-size num-elements element-type))
 
 (defun make-vector-from-pointer (pointer num-elements element-type)
@@ -128,6 +129,7 @@
     (error "MAKE-VECTOR-FROM-POINTER unsupported on ~A"
            (lisp-implementation-type)))
 
+  #+(or sbcl ccl)
   (shm-vector-from-pointer pointer num-elements element-type))
 
 ;;; General POSIX routines.

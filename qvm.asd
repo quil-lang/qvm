@@ -48,6 +48,7 @@
                (:cffi-grovel-file "grovel-system-constants" :if-feature :unix)
                (:cffi-grovel-file "grovel-shared-memory" :if-feature :unix)
                (:file "config")
+               (:file "impl/allegro" :if-feature :allegro)
                (:file "impl/clozure" :if-feature :clozure)
                (:file "impl/sbcl" :if-feature :sbcl)
                (:file "impl/sbcl-intrinsics" :if-feature (:and :sbcl :qvm-intrinsics))
