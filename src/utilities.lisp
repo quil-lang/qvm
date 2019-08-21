@@ -324,7 +324,7 @@ state."
 
 ;;; Macros for parallel processing
 
-(defmacro with-parallel-subdivisions ((start end count &optional num-divisions) &body body)
+(defmacro with-parallel-subdivisions ((start end count &key num-divisions) &body body)
   (alexandria:with-gensyms (channel num-tasks-submitted)
     (alexandria:once-only (count num-divisions)
       `(when (plusp ,count)
@@ -348,7 +348,8 @@ state."
                                   ,count
                                   (or ,num-divisions (lparallel:kernel-worker-count)))
                 (loop :repeat ,num-tasks-submitted
-                      :do (lparallel:receive-result ,channel))))))))))
+                      :do (lparallel:receive-result ,channel)))))
+           nil)))))
 
 
 (defmacro pdotimes ((i n &optional ret) &body body)
