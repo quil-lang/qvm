@@ -42,17 +42,7 @@ ql-dist::(ensure-installed (release "fiasco"))
   (let ((interesting-files (system-lisp-files *system*))
         (base (asdf:system-relative-pathname *system*
                                              "coverage-report/html/")))
-    ;; SB-COVER:REPORT will happily report on everything it has
-    ;; compiled with the code coverage declaration. This maphash will
-    ;; restrict it to only the files in *SYSTEM*. Beware:
-    ;; SB-C:*CODE-COVERAGE-INFO* is not part of the public API; switch
-    ;; to :IF-MATCHES report option in the future.
-    (maphash (lambda (file data)
-               (declare (ignore data))
-               (unless (member file interesting-files :test 'string=)
-                 (remhash file sb-c:*code-coverage-info*)))
-             sb-c:*code-coverage-info*)
-    (sb-cover:report base)
+    (sb-cover:report base :if-matches (lambda (file) (member file interesting-files :test 'string=)))
     (let* ((cover (merge-pathnames "cover-index.html" base))
            (index (merge-pathnames "index.html" base)))
       (rename-file cover index)
