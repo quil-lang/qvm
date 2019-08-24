@@ -5,8 +5,5 @@
 
 (in-package #:qvm-app-ng)
 
-(defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
-                                :app-name "qvm-ng"
-                                :facility ':local0
-                                :log-writer (cl-syslog:null-log-writer))
-  "The CL-SYSLOG logger instance.")
+(global-vars:define-global-var **available-simulation-methods** '("pure-state" "full-density-matrix")
+  "List of available simulation methods.")

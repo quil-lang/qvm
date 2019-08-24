@@ -45,6 +45,8 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (handler-case
       (progn
         (show-welcome)
+        (setf *logger* (make-logger "qvm-ng" ':debug))
+        (start-server-mode :host +default-server-address+ :port +default-server-port+)
         (quit-nicely 0))
     #+sbcl
     (sb-sys:interactive-interrupt (c)
