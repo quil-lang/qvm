@@ -8,12 +8,18 @@
   :license "GNU Affero General Public License v3.0 (See app-ng/LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
   :depends-on ((:version #:cl-quil "1.10.4")
-               #:command-line-arguments
-               #:uiop
                #:qvm
                #:alexandria
+               #:bordeaux-threads
+               #:cl-ppcre
                #:cl-syslog
-               #:trivial-features)
+               #:command-line-arguments
+               #:global-vars
+               #:hunchentoot
+               #:trivial-features
+               #:uiop
+               #:uuid
+               #:yason)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-app-ng-tests)))
   :pathname "app-ng/src/"
   :serial t
@@ -21,6 +27,12 @@
   :components ((:file "package")
                (:file "globals")
                (:file "utilities")
+               (:file "logging")
+               (:file "validators")
+               (:file "make-qvm")
+               (:file "persistent-qvm")
+               (:file "handlers")
+               (:file "server")
                (:file "qvm-app-ng-version")
                (:file "impl/sbcl" :if-feature :sbcl)
                (:file "entry-point")))
