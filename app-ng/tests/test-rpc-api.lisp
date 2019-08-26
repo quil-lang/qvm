@@ -1,5 +1,17 @@
 (in-package :qvm-app-ng-tests)
 
+(alexandria:define-constant +generic-x-0-quil-program+
+  "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+  :test #'string=)
+
+(alexandria:define-constant +all-ro-addresses+
+    (alexandria:plist-hash-table '("ro" t) :test #'equal)
+  :test #'equalp)
+
+(alexandria:define-constant +empty-hash-table+
+    (make-hash-table)
+  :test #'equalp)
+
 (defun plist-lowercase-keys (plist)
   (assert (evenp (length plist)))
   (loop :for (k v) :on plist :by #'cddr
@@ -100,16 +112,16 @@
       (check-request (simple-request url
                                      :type "run-program"
                                      :simulation-method simulation-method
-                                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                     :addresses (alexandria:plist-hash-table '("ro" t)))
+                                     :compiled-quil +generic-x-0-quil-program+
+                                     :addresses +all-ro-addresses+)
                      :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
 
       (check-request (simple-request url
                                      :type "run-program"
                                      :qvm-token ()
                                      :simulation-method simulation-method
-                                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                     :addresses (alexandria:plist-hash-table '("ro" t)))
+                                     :compiled-quil +generic-x-0-quil-program+
+                                     :addresses +all-ro-addresses+)
                      :response-callback (response-json-fields-checker '(("ro" ((1 0)))))))))
 
 (deftest test-rpc-api-run-program-invalid-requests ()
@@ -119,31 +131,31 @@
                                    :type "run-program"
                                    :qvm-token (qvm-app-ng::make-persistent-qvm-token)
                                    :simulation-method "pure-state"
-                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                   :addresses (make-hash-table))
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
                    :status 500)
 
     ;; specify neither qvm-token nor simulation-method
     (check-request (simple-request url
                                    :type "run-program"
-                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                   :addresses (make-hash-table))
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
                    :status 500)
 
     ;; invalid qvm-token
     (check-request (simple-request url
                                    :type "run-program"
                                    :qvm-token "123345"
-                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                   :addresses (make-hash-table))
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
                    :status 500)
 
     ;; invalid simulation-method
     (check-request (simple-request url
                                    :type "run-program"
                                    :simulation-method "super-fast"
-                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                   :addresses (make-hash-table))
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
                    :status 500)
 
     ;; invalid compiled-quil
@@ -151,7 +163,7 @@
                                    :type "run-program"
                                    :simulation-method "pure-state"
                                    :compiled-quil "(defgate FOO (:as :permutation) #(0 2 3 1))"
-                                   :addresses (make-hash-table))
+                                   :addresses +empty-hash-table+)
                    :status 500)))
 
 (deftest test-rpc-api-run-program-addresses ()
@@ -161,8 +173,8 @@
      (simple-request url
                      :type "run-program"
                      :simulation-method "pure-state"
-                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                     :addresses (make-hash-table))
+                     :compiled-quil +generic-x-0-quil-program+
+                     :addresses +empty-hash-table+)
      :response-re "{}")
 
     ;; addresses t
@@ -170,8 +182,8 @@
      (simple-request url
                      :type "run-program"
                      :simulation-method "pure-state"
-                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                     :addresses (alexandria:plist-hash-table '("ro" t)))
+                     :compiled-quil +generic-x-0-quil-program+
+                     :addresses +all-ro-addresses+)
      :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
 
     ;; explicit index list
@@ -179,7 +191,7 @@
      (simple-request url
                      :type "run-program"
                      :simulation-method "pure-state"
-                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                     :compiled-quil +generic-x-0-quil-program+
                      :addresses (alexandria:plist-hash-table '("ro" (0))))
      :response-callback (response-json-fields-checker `(("ro" ((1))))))
 
@@ -302,8 +314,8 @@
         (check-request (simple-request url
                                        :type "run-program"
                                        :qvm-token token
-                                       :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                       :addresses (alexandria:plist-hash-table '("ro" t)))
+                                       :compiled-quil +generic-x-0-quil-program+
+                                       :addresses +all-ro-addresses+)
                        :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
 
         ;; I 0: qubit 0 remains in excited state
@@ -311,23 +323,23 @@
                                        :type "run-program"
                                        :qvm-token token
                                        :compiled-quil "DECLARE ro BIT[2]; I 0; MEASURE 0 ro[0]"
-                                       :addresses (alexandria:plist-hash-table '("ro" t)))
+                                       :addresses +all-ro-addresses+)
                        :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
 
         ;; X 0: flips qubit 0 back to ground state
         (check-request (simple-request url
                                        :type "run-program"
                                        :qvm-token token
-                                       :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
-                                       :addresses (alexandria:plist-hash-table '("ro" t)))
+                                       :compiled-quil +generic-x-0-quil-program+
+                                       :addresses +all-ro-addresses+)
                        :response-callback (response-json-fields-checker `(("ro" ((0 0))))))
 
         ;; run-program on non-existent token
         (check-request (simple-request url
                                        :type "run-program"
                                        :qvm-token (invalidate-token token)
-                                       :compiled-quil ""
-                                       :addresses (make-hash-table))
+                                       :compiled-quil +generic-x-0-quil-program+
+                                       :addresses +empty-hash-table+)
                        :status 500
                        :response-re "Failed to find persistent QVM")
 
