@@ -84,8 +84,8 @@
 (defun persistent-qvm-info (token)
   (alexandria:plist-hash-table
    (with-persistent-qvm (qvm metadata) token
-     (list "qvm_type" (symbol-name (type-of qvm))
-           "number_of_qubits" (qvm:number-of-qubits qvm)
+     (list "qvm-type" (symbol-name (type-of qvm))
+           "num-qubits" (qvm:number-of-qubits qvm)
            "metadata" metadata))
    :test 'equal))
 

@@ -193,12 +193,12 @@
                (token (gethash "token" (yason:parse response))))
           (not-signals error (qvm-app-ng::check-qvm-token token))
 
-          ;; check that info reports expected values for qvm_type and number_of_qubits
+          ;; check that info reports expected values for qvm-type and num-qubits
           (check-request (simple-request url :type "qvm-info" :qvm-token token)
                          :response-callback
                          (response-json-fields-checker
-                          `(("qvm_type" ,(simulation-method->qvm-type simulation-method))
-                            ("number_of_qubits" ,num-qubits))))
+                          `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
+                            ("num-qubits" ,num-qubits))))
 
           ;; cleanup
           (check-request (simple-request url :type "delete-qvm" :qvm-token token)
