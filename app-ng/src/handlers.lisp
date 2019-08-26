@@ -44,7 +44,8 @@
         ,@(when docstring (list docstring))
         (let (,@(mapcar #'make-parsed-binding lambda-list))
           ,@(when declarations declarations)
-          ,@body-forms)))))
+          (qvm:with-random-state ((get-random-state (and *request-json* (json-parameter "rng-seed"))))
+              ,@body-forms))))))
 
 (defun collect-memory-registers (qvm addresses)
   (let ((results (make-hash-table :test 'equal)))
