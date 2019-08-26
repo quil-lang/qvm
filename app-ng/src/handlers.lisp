@@ -84,7 +84,7 @@
 (define-rpc-handler (handle-run-program "run-program")
                     ((qvm-token #'parse-optional-qvm-token)
                      (simulation-method #'parse-optional-simulation-method)
-                     (compiled-quil #'safely-parse-quil-string)
+                     (compiled-quil #'parse-quil-string)
                      (addresses #'parse-addresses))
   "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD."
   (assert (or (null qvm-token) (null simulation-method)) ()

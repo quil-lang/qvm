@@ -54,3 +54,11 @@
            whose keys are DECLAREd memory names, and whose values are either the true value to ~
            request all memory, or a list of non-negative integer indexes to request some memory.")
   addresses)
+
+(defun parse-quil-string (string)
+  "Safely parse a Quil string STRING."
+  (flet ((no-includes (path)
+           (error "INCLUDE is disabled. Refusing to include ~A" path)))
+    (let ((quil:*resolve-include-pathname* #'no-includes)
+          (quil::*allow-unresolved-applications* t))
+      (quil:parse-quil string))))
