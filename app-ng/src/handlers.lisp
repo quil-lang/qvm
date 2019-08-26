@@ -34,13 +34,17 @@
   (check-type handler-name symbol)
   (check-type rpc-method string)
   (assert (valid-rpc-handler-lambda-list lambda-list))
-  `(progn
-     (setf *rpc-handlers* (acons ,rpc-method ',handler-name
-                                 (remove-existing-rpc-handlers ,rpc-method ',handler-name)))
-     (defun ,handler-name (&key ,@(mapcar (alexandria:compose #'make-json-parameter #'first)
-                                          lambda-list))
-       (let (,@(mapcar #'make-parsed-binding lambda-list))
-         ,@body))))
+  (multiple-value-bind (body-forms declarations docstring)
+      (alexandria:parse-body body :documentation t)
+   `(progn
+      (setf *rpc-handlers* (acons ,rpc-method ',handler-name
+                                  (remove-existing-rpc-handlers ,rpc-method ',handler-name)))
+      (defun ,handler-name (&key ,@(mapcar (alexandria:compose #'make-json-parameter #'first)
+                                           lambda-list))
+        ,@(when docstring (list docstring))
+        (let (,@(mapcar #'make-parsed-binding lambda-list))
+          ,@(when declarations declarations)
+          ,@body-forms)))))
 
 (defun collect-memory-registers (qvm addresses)
   (let ((results (make-hash-table :test 'equal)))
@@ -64,10 +68,12 @@
 
 (define-rpc-handler (handle-create-qvm "create-qvm") ((simulation-method #'parse-simulation-method)
                                                       (num-qubits #'parse-num-qubits))
+  "Create the requested persistent QVM."
   (encode-json (alexandria:plist-hash-table
                 (list "token" (allocate-persistent-qvm simulation-method num-qubits)))))
 
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
+  "Delete a persistent QVM."
   (delete-persistent-qvm qvm-token)
   (encode-json (format nil "Deleted persistent QVM ~D" qvm-token)))
 
@@ -79,6 +85,7 @@
                      (simulation-method #'parse-optional-simulation-method)
                      (compiled-quil #'safely-parse-quil-string)
                      (addresses #'parse-addresses))
+  "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD."
   (assert (or (null qvm-token) (null simulation-method)) ()
           "QVM-TOKEN and SIMULATION-METHOD cannot both be present in the JSON request parameters.")
   (encode-json
