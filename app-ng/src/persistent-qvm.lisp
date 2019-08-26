@@ -64,7 +64,7 @@
 (defun %mark-for-deletion (metadata)
   (setf (gethash "delete-pending" metadata) t))
 
-(defun %persistent-qvm-token ()
+(defun make-persistent-qvm-token ()
   (princ-to-string (uuid:make-v4-uuid)))
 
 (defun make-persistent-qvm (simulation-method num-qubits)
@@ -74,7 +74,7 @@
 
 (defun allocate-persistent-qvm (simulation-method num-qubits)
   (let ((persistent-qvm (make-persistent-qvm simulation-method num-qubits))
-        (token (%persistent-qvm-token)))
+        (token (make-persistent-qvm-token)))
     (bt:with-lock-held (**persistent-qvms-lock**)
       (cond ((not (null (%lookup-persistent-qvm-locked token)))
              (error "Token collision while attempting to allocate persistent QVM"))

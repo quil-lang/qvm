@@ -102,10 +102,69 @@
                                      :simulation-method simulation-method
                                      :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
                                      :addresses (alexandria:plist-hash-table '("ro" t)))
+                     :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
+
+      (check-request (simple-request url
+                                     :type "run-program"
+                                     :qvm-token ()
+                                     :simulation-method simulation-method
+                                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                                     :addresses (alexandria:plist-hash-table '("ro" t)))
                      :response-callback (response-json-fields-checker '(("ro" ((1 0)))))))))
+
+(deftest test-rpc-api-run-program-invalid-requests ()
+  (with-rpc-server (url)
+    ;; specify both qvm-token and simulation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :qvm-token (qvm-app-ng::make-persistent-qvm-token)
+                                   :simulation-method "pure-state"
+                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                                   :addresses (make-hash-table))
+                   :status 500)
+
+    ;; specify neither qvm-token nor simulation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                                   :addresses (make-hash-table))
+                   :status 500)
+
+    ;; invalid qvm-token
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :qvm-token "123345"
+                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                                   :addresses (make-hash-table))
+                   :status 500)
+
+    ;; invalid simulation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :simulation-method "super-fast"
+                                   :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                                   :addresses (make-hash-table))
+                   :status 500)
+
+    ;; invalid compiled-quil
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil "(defgate FOO (:as :permutation) #(0 2 3 1))"
+                                   :addresses (make-hash-table))
+                   :status 500)))
 
 (deftest test-rpc-api-run-program-addresses ()
   (with-rpc-server (url)
+    ;; empty addresses
+    (check-request
+     (simple-request url
+                     :type "run-program"
+                     :simulation-method "pure-state"
+                     :compiled-quil "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"
+                     :addresses (make-hash-table))
+     :response-re "{}")
+
     ;; addresses t
     (check-request
      (simple-request url
@@ -148,6 +207,53 @@
      "\\A{\"token\":\"[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-4[A-Fa-f0-9]{3}-[89ABab][A-Fa-f0-9]{3}-[A-Fa-f0-9]{12}\"}\\z"
      :case-insensitive-mode t))
 
+(deftest test-rpc-api-create-qvm ()
+  (with-rpc-server (url)
+    (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
+      (dolist (num-qubits '(0 1 4))
+        (let* ((response (check-request (simple-request url
+                                                        :type "create-qvm"
+                                                        :simulation-method simulation-method
+                                                        :num-qubits num-qubits)
+                                        :response-re **rpc-response-token-scanner**))
+               (token (gethash "token" (yason:parse response))))
+          (not-signals error (qvm-app-ng::check-qvm-token token))
+
+          ;; check that info reports expected values for qvm-type and num-qubits
+          (check-request (simple-request url :type "qvm-info" :qvm-token token)
+                         :response-callback
+                         (response-json-fields-checker
+                          `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
+                            ("num-qubits" ,num-qubits))))
+
+          ;; cleanup
+          (check-request (simple-request url :type "delete-qvm" :qvm-token token)
+                         :response-re "Deleted persistent QVM"))))))
+
+(deftest test-rpc-api-create-qvm-invalid-requests ()
+  (with-rpc-server (url)
+    ;; invalid simulation-method
+    (check-request (simple-request url
+                                   :type "create-qvm"
+                                   :simulation-method "super-fast"
+                                   :num-qubits 0)
+                   :status 500)
+
+    ;; no simulation method
+    (check-request (simple-request url :type "create-qvm" :num-qubits 0)
+                   :status 500)
+
+    ;; invalid num-qubits
+    (check-request (simple-request url
+                                   :type "create-qvm"
+                                   :simulation-method "pure-state"
+                                   :num-qubits -1)
+                   :status 500)
+
+    ;; no num-qubits
+    (check-request (simple-request url :type "create-qvm" :simulation-method "pure-state")
+                   :status 500)))
+
 (deftest test-rpc-api-qvm-info ()
   (with-rpc-server (url)
     (let* ((response (check-request (simple-request url
@@ -180,29 +286,6 @@
       (check-request (simple-request url :type "qvm-info" :qvm-token token)
                      :status 500
                      :response-re "Failed to find persistent QVM"))))
-
-(deftest test-rpc-api-create-qvm ()
-  (with-rpc-server (url)
-    (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
-      (dolist (num-qubits '(0 1 4))
-        (let* ((response (check-request (simple-request url
-                                                        :type "create-qvm"
-                                                        :simulation-method simulation-method
-                                                        :num-qubits num-qubits)
-                                        :response-re **rpc-response-token-scanner**))
-               (token (gethash "token" (yason:parse response))))
-          (not-signals error (qvm-app-ng::check-qvm-token token))
-
-          ;; check that info reports expected values for qvm-type and num-qubits
-          (check-request (simple-request url :type "qvm-info" :qvm-token token)
-                         :response-callback
-                         (response-json-fields-checker
-                          `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
-                            ("num-qubits" ,num-qubits))))
-
-          ;; cleanup
-          (check-request (simple-request url :type "delete-qvm" :qvm-token token)
-                         :response-re "Deleted persistent QVM"))))))
 
 (deftest test-rpc-api-persistent-qvm-run-program ()
   (with-rpc-server (url)
