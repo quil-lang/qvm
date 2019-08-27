@@ -6,7 +6,7 @@
   (loop :for (rpc-method . handler) :in *rpc-handlers*
         :when (and (eq ':POST (tbnl:request-method request))
                    (string= "/" (tbnl:script-name request))
-                   *request-json*
+                   (boundp '*request-json*)
                    (string= rpc-method (gethash "type" *request-json*)))
           :do (return-from dispatch-rpc-handlers handler)))
 
@@ -18,7 +18,7 @@
                *rpc-handlers*))
 
   (defun make-json-parameter (var)
-    `(,var (and *request-json* (json-parameter ,(string-downcase (symbol-name var))))))
+    `(,var (and (boundp '*request-json*) (json-parameter ,(string-downcase (symbol-name var))))))
 
   (defun make-parsed-binding (parameter-spec)
     (destructuring-bind (var parse-function) parameter-spec
@@ -44,7 +44,8 @@
         ,@(when docstring (list docstring))
         (let (,@(mapcar #'make-parsed-binding lambda-list))
           ,@(when declarations declarations)
-          (qvm:with-random-state ((get-random-state (and *request-json* (json-parameter "rng-seed"))))
+          (qvm:with-random-state ((get-random-state (and (boundp '*request-json*)
+                                                         (json-parameter "rng-seed"))))
               ,@body-forms))))))
 
 (defun collect-memory-registers (qvm addresses)

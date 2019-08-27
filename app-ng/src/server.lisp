@@ -99,9 +99,14 @@
                           (tbnl::iso-time) log-level
                           format-string format-arguments)))
 
-(defvar *request-json* nil)
+(defvar *request-json*)
+(setf (documentation '*request-json* 'variable)
+      "The parsed JSON request body while in the context of a request. Guaranteed to be HASH-TABLE when bound. Use the function JSON-PARAMETER to access parameter values.")
 
 (defun json-parameter (parameter-name &optional (request-json *request-json*))
+  "Return the value for PARAMETER-NAME in the REQUEST-JSON table.
+
+REQUEST-JSON defaults to the JSON object parsed from the request body in *REQUEST-JSON*."
   (gethash parameter-name request-json))
 
 (defun parse-request-json-or-lose (request)
