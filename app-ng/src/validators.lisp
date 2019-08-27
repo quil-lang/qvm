@@ -12,13 +12,8 @@
     (rpc-parameter-parse-error "Invalid input parameter. Expected a non-negative integer. Got ~S"
                                n)))
 
-(global-vars:define-global-var **qvm-token-scanner**
-  (cl-ppcre:create-scanner "\\A[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-4[A-Fa-f0-9]{3}-[89ABab][A-Fa-f0-9]{3}-[A-Fa-f0-9]{12}\\z"
-                           :case-insensitive-mode t))
-
 (defun check-qvm-token (token)
-  (unless (and (typep token 'persistent-qvm-token)
-               (cl-ppcre:scan **qvm-token-scanner** token))
+  (unless (valid-persistent-qvm-token-p token)
     (rpc-parameter-parse-error "Invalid persistent QVM token. Expected a v4 UUID. Got ~S"
                                token)))
 
