@@ -64,10 +64,20 @@
 (defun %mark-for-deletion (metadata)
   (setf (gethash "delete-pending" metadata) t))
 
+(defun canonicalize-persitent-qvm-token (token)
+  "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
+  ;; Standardize on the more common (and more readable) lowercase UUID string, even though
+  ;; UUID:PRINT-OBJECT and UUID:PRINT-BYTES print them in uppercase.
+  (string-downcase token))
+
 (defun make-persistent-qvm-token ()
-  (princ-to-string (uuid:make-v4-uuid)))
+  "Return a new persitent QVM token."
+  (canonicalize-persitent-qvm-token (princ-to-string (uuid:make-v4-uuid))))
 
 (defun valid-persistent-qvm-token-p (token)
+  "True if TOKEN is a valid string representation of a v4 UUID.
+
+Note that this function requires that any hexadecimal digits in TOKEN are lowercased."
   ;; See RFC 4122 for UUID format.
   ;; https://tools.ietf.org/html/rfc4122#section-4.1
   ;;
@@ -81,11 +91,11 @@
        (eq (aref token 18) #\-)
        ;; https://tools.ietf.org/html/rfc4122#section-4.4
        ;; The two most-significant bits of the clock sequence field are 10b, meaning the
-       ;; resulting hex digit of the most-significant byte is one of 8, 9, A, or B.
+       ;; resulting hex digit of the most-significant byte is one of 8, 9, a, or b.
        (or (eq (aref token 19) #\8)
            (eq (aref token 19) #\9)
-           (eq (aref token 19) #\A)
-           (eq (aref token 19) #\B))
+           (eq (aref token 19) #\a)
+           (eq (aref token 19) #\b))
        (eq (aref token 23) #\-)
        (every #'hex-char-p (remove #\- token))))
 

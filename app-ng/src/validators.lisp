@@ -39,8 +39,15 @@
       memory, or a list of non-negative integer indexes to request some memory.")))
 
 (defun parse-qvm-token (qvm-token)
-  (check-qvm-token qvm-token)
-  qvm-token)
+  ;; Ensure it's a STRING before attempting to canonicalize the case. Otherwise, we'll get a
+  ;; not-so-helpful error message.
+  (unless (typep qvm-token 'string)
+    (rpc-parameter-parse-error "Invalid persistent QVM token. Expected a v4 UUID string. Got ~S"
+                               qvm-token))
+
+  (let ((canonicalized-token (canonicalize-persitent-qvm-token qvm-token)))
+    (check-qvm-token canonicalized-token)
+    canonicalized-token))
 
 (defun parse-optional-qvm-token (qvm-token)
   (and qvm-token (parse-qvm-token qvm-token)))
