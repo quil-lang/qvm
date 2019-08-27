@@ -28,6 +28,7 @@
                (:file "globals")
                (:file "utilities")
                (:file "logging")
+               (:file "errors")
                (:file "validators")
                (:file "make-qvm")
                (:file "persistent-qvm")

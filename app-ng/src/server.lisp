@@ -63,12 +63,15 @@
   (with-output-to-string (s)
     (yason:encode object s)))
 
+(defun error-response (message)
+  (encode-json
+   (alexandria:plist-hash-table
+    (list "error_type" "qvm_error"
+          "status" message))))
+
 (defmethod tbnl:acceptor-status-message ((acceptor rpc-acceptor) http-status-code &key error &allow-other-keys)
   (if (eql http-status-code tbnl:+http-internal-server-error+)
-      (encode-json
-       (alexandria:plist-hash-table
-        (list "error_type" "qvm_error"
-              "status" error)))
+      (error-response error)
       (call-next-method)))
 
 (defmethod tbnl:acceptor-log-access ((acceptor rpc-acceptor) &key return-code)
@@ -104,9 +107,13 @@
 (defun parse-request-json-or-lose (request)
   (let ((json (ignore-errors (yason:parse (tbnl:raw-post-data :request request :force-text t)))))
     (unless (hash-table-p json)
-      (error "Invalid request."))
+      (rpc-bad-request-error "Failed to parse JSON object from request body"))
     json))
 
 (defmethod tbnl:acceptor-dispatch-request ((acceptor rpc-acceptor) request)
-  (let ((*request-json* (parse-request-json-or-lose request)))
-    (call-next-method)))
+  (handler-case
+      (let ((*request-json* (parse-request-json-or-lose request)))
+        (call-next-method))
+    (rpc-error (c)
+      (setf (tbnl:return-code*) (rpc-error-http-status c))
+      (tbnl:abort-request-handler (error-response (princ-to-string c))))))

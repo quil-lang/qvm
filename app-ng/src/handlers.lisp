@@ -87,8 +87,9 @@
                      (compiled-quil #'parse-quil-string)
                      (addresses #'parse-addresses))
   "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD."
-  (assert (or (null qvm-token) (null simulation-method)) ()
-          "QVM-TOKEN and SIMULATION-METHOD cannot both be present in the JSON request parameters.")
+  (unless (alexandria:xor (null qvm-token) (null simulation-method))
+    (rpc-parameter-parse-error
+     "Exactly one of QVM-TOKEN and SIMULATION-METHOD must be present in the JSON request parameters."))
   (encode-json
    (collect-memory-registers
     (if qvm-token

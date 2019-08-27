@@ -96,8 +96,8 @@
   (with-rpc-server (url)
     (dolist (content '("" "not-a-json-dict"))
       (check-request (http-request url :method ':POST :content content)
-                     :status 500
-                     :response-re "qvm_error"))))
+                     :status 400
+                     :response-re "Bad Request"))))
 
 (deftest test-rpc-api-404 ()
   (with-rpc-server (url)
@@ -133,14 +133,14 @@
                                    :simulation-method "pure-state"
                                    :compiled-quil +generic-x-0-quil-program+
                                    :addresses +empty-hash-table+)
-                   :status 500)
+                   :status 400)
 
     ;; specify neither qvm-token nor simulation-method
     (check-request (simple-request url
                                    :type "run-program"
                                    :compiled-quil +generic-x-0-quil-program+
                                    :addresses +empty-hash-table+)
-                   :status 500)
+                   :status 400)
 
     ;; invalid qvm-token
     (check-request (simple-request url
@@ -148,7 +148,7 @@
                                    :qvm-token "123345"
                                    :compiled-quil +generic-x-0-quil-program+
                                    :addresses +empty-hash-table+)
-                   :status 500)
+                   :status 400)
 
     ;; invalid simulation-method
     (check-request (simple-request url
@@ -156,7 +156,7 @@
                                    :simulation-method "super-fast"
                                    :compiled-quil +generic-x-0-quil-program+
                                    :addresses +empty-hash-table+)
-                   :status 500)
+                   :status 400)
 
     ;; invalid compiled-quil
     (check-request (simple-request url
@@ -249,25 +249,39 @@
                                    :type "create-qvm"
                                    :simulation-method "super-fast"
                                    :num-qubits 0)
-                   :status 500)
+                   :status 400)
 
     ;; no simulation method
     (check-request (simple-request url :type "create-qvm" :num-qubits 0)
-                   :status 500)
+                   :status 400)
 
     ;; invalid num-qubits
     (check-request (simple-request url
                                    :type "create-qvm"
                                    :simulation-method "pure-state"
                                    :num-qubits -1)
-                   :status 500)
+                   :status 400)
 
     ;; no num-qubits
     (check-request (simple-request url :type "create-qvm" :simulation-method "pure-state")
-                   :status 500)))
+                   :status 400)))
 
 (deftest test-rpc-api-qvm-info ()
   (with-rpc-server (url)
+    ;; info on non-existing token
+    (check-request (simple-request url
+                                   :type "qvm-info"
+                                   :qvm-token (qvm-app-ng::make-persistent-qvm-token))
+                   :status 500
+                   :response-re "Failed to find persistent QVM")
+
+    ;; delete on non-existing token
+    (check-request (simple-request url
+                                   :type "delete-qvm"
+                                   :qvm-token (qvm-app-ng::make-persistent-qvm-token))
+                   :status 500
+                   :response-re "Failed to find persistent QVM")
+
     (let* ((response (check-request (simple-request url
                                                     :type "create-qvm"
                                                     :simulation-method "pure-state"
@@ -276,19 +290,14 @@
            (token (gethash "token" (yason:parse response))))
       (not-signals error (qvm-app-ng::check-qvm-token token))
 
-      ;; info on non-existing token
+      ;; info on invalid token
       (check-request (simple-request url :type "qvm-info" :qvm-token (invalidate-token token))
-                     :status 500
-                     :response-re "Failed to find persistent QVM")
+                     :status 400
+                     :response-re "Invalid persistent QVM token.")
 
       ;; info on existing token
       (check-request (simple-request url :type "qvm-info" :qvm-token token)
                      :response-re "PURE-STATE-QVM")
-
-      ;; delete on non-existing token
-      (check-request (simple-request url :type "delete-qvm" :qvm-token (invalidate-token token))
-                     :status 500
-                     :response-re "Failed to find persistent QVM")
 
       ;; delete on existing token
       (check-request (simple-request url :type "delete-qvm" :qvm-token token)
@@ -302,6 +311,16 @@
 (deftest test-rpc-api-persistent-qvm-run-program ()
   (with-rpc-server (url)
     (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
+
+      ;; run-program on non-existent token
+      (check-request (simple-request url
+                                     :type "run-program"
+                                     :qvm-token (qvm-app-ng::make-persistent-qvm-token)
+                                     :compiled-quil +generic-x-0-quil-program+
+                                     :addresses +empty-hash-table+)
+                     :status 500
+                     :response-re "Failed to find persistent QVM")
+
       (let* ((response (check-request (simple-request url
                                                       :type "create-qvm"
                                                       :simulation-method simulation-method
@@ -334,14 +353,6 @@
                                        :addresses +all-ro-addresses+)
                        :response-callback (response-json-fields-checker `(("ro" ((0 0))))))
 
-        ;; run-program on non-existent token
-        (check-request (simple-request url
-                                       :type "run-program"
-                                       :qvm-token (invalidate-token token)
-                                       :compiled-quil +generic-x-0-quil-program+
-                                       :addresses +empty-hash-table+)
-                       :status 500
-                       :response-re "Failed to find persistent QVM")
-
+        ;; cleanup
         (check-request (simple-request url :type "delete-qvm" :qvm-token token)
                        :response-re "Deleted persistent QVM")))))
