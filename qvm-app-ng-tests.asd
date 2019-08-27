@@ -17,6 +17,7 @@
   :pathname "app-ng/tests/"
   :serial t
   :components ((:file "package")
+               (:file "test-validators")
                (:file "test-rpc-api")
                (:file "test-handlers")
                (:file "suite")))

@@ -216,8 +216,7 @@
 
 (global-vars:define-global-var **rpc-response-token-scanner**
     (cl-ppcre:create-scanner
-     "\\A{\"token\":\"[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-4[A-Fa-f0-9]{3}-[89ABab][A-Fa-f0-9]{3}-[A-Fa-f0-9]{12}\"}\\z"
-     :case-insensitive-mode t))
+     "\\A{\"token\":\"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\"}\\z"))
 
 (deftest test-rpc-api-create-qvm ()
   (with-rpc-server (url)
@@ -297,6 +296,10 @@
 
       ;; info on existing token
       (check-request (simple-request url :type "qvm-info" :qvm-token token)
+                     :response-re "PURE-STATE-QVM")
+
+      ;; upper case token also accepted
+      (check-request (simple-request url :type "qvm-info" :qvm-token (string-upcase token))
                      :response-re "PURE-STATE-QVM")
 
       ;; delete on existing token
