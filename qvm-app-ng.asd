@@ -11,7 +11,6 @@
                #:qvm
                #:alexandria
                #:bordeaux-threads
-               #:cl-ppcre
                #:cl-syslog
                #:command-line-arguments
                #:global-vars

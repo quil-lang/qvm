@@ -67,6 +67,28 @@
 (defun make-persistent-qvm-token ()
   (princ-to-string (uuid:make-v4-uuid)))
 
+(defun valid-persistent-qvm-token-p (token)
+  ;; See RFC 4122 for UUID format.
+  ;; https://tools.ietf.org/html/rfc4122#section-4.1
+  ;;
+  ;; We validate that token is a valid v4 UUID in printed string format. That is, as a string of
+  ;; hexadecimal digits (with certain restrictions) separated by hyphens in the expected places.
+  (and (typep token 'persistent-qvm-token)
+       (= (length token) 36)
+       (eq (aref token  8) #\-)
+       (eq (aref token 13) #\-)
+       (eq (aref token 14) #\4) ; version
+       (eq (aref token 18) #\-)
+       ;; https://tools.ietf.org/html/rfc4122#section-4.4
+       ;; The two most-significant bits of the clock sequence field are 10b, meaning the
+       ;; resulting hex digit of the most-significant byte is one of 8, 9, A, or B.
+       (or (eq (aref token 19) #\8)
+           (eq (aref token 19) #\9)
+           (eq (aref token 19) #\A)
+           (eq (aref token 19) #\B))
+       (eq (aref token 23) #\-)
+       (every #'hex-char-p (remove #\- token))))
+
 (defun make-persistent-qvm (simulation-method num-qubits)
   (list (make-requested-qvm simulation-method num-qubits)
         (bt:make-lock (format nil "PQVM Lock"))
