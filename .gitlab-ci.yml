@@ -5,7 +5,7 @@ include:
 variables:
   IMAGE: rigetti/qvm
 
-test-qvm-lib:
+.test:
   stage: test
   tags:
     - github
@@ -14,6 +14,9 @@ test-qvm-lib:
     - branches
   image:
     name: docker:stable
+
+test-qvm-lib:
+  extends: .test
   script:
     - docker build -t rigetti/qvm:${CI_COMMIT_SHORT_SHA} .
     - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
@@ -21,14 +24,7 @@ test-qvm-lib:
     - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
 
 test-qvm-app:
-  stage: test
-  tags:
-    - github
-    - dockerd
-  only:
-    - branches
-  image:
-    name: docker:stable
+  extends: .test
   script:
     - docker build -t rigetti/qvm:${CI_COMMIT_SHORT_SHA} .
     - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
