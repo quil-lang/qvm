@@ -9,24 +9,28 @@ test-qvm-lib:
   stage: test
   tags:
     - github
+    - dockerd
   only:
     - branches
   image:
-    name: rigetti/quilc
-    entrypoint: [""]
+    name: docker:stable
   script:
-    - make dump-version-info
-    - make test-lib DISABLE_SHARED_MEMORY_QVM_TESTS=1 RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker build -t rigetti/qvm:${CI_COMMIT_SHORT_SHA} .
+    - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+      test-lib DISABLE_SHARED_MEMORY_QVM_TESTS=1 RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
 
 test-qvm-app:
   stage: test
   tags:
     - github
+    - dockerd
   only:
     - branches
   image:
-    name: rigetti/quilc
-    entrypoint: [""]
+    name: docker:stable
   script:
-    - make dump-version-info
-    - make test-app RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker build -t rigetti/qvm:${CI_COMMIT_SHORT_SHA} .
+    - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+      test-app RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
