@@ -1,4 +1,13 @@
-FROM rigetti/quilc
+# specify the dependency versions (can be overriden with --build_arg)
+ARG quilc_version=1.11.1
+ARG quicklisp_version=2019-07-11
+
+# use multi-stage builds to independently pull dependency versions
+FROM rigetti/quilc:$quilc_version as quilc
+FROM rigetti/lisp:$quicklisp_version
+
+# copy over quilc source from the first build stage
+COPY --from=quilc /src/quilc /src/quilc
 
 ARG build_target
 
