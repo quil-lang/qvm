@@ -30,3 +30,23 @@ test-qvm-app:
     - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
       test-app RIGETTI_LISP_LIBRARY_HOME=/src
     - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+
+# same as test-qvm-lib but builds off of quilc master, and we allow failure
+test-qvm-lib-edge:
+  extends: .test
+  allow_failure: true
+  script:
+    - docker build -t rigetti/qvm:${CI_COMMIT_SHORT_SHA} --build-arg quilc_version=edge .
+    - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+      test-lib DISABLE_SHARED_MEMORY_QVM_TESTS=1 RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+
+# same as test-qvm-app but builds off of quilc master, and we allow failure
+test-qvm-app-edge:
+  extends: .test
+  allow_failure: true
+  script:
+    - docker build -t rigetti/qvm:${CI_COMMIT_SHORT_SHA} --build-arg quilc_version=edge .
+    - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+      test-app RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
