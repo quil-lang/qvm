@@ -7,3 +7,5 @@ qvm-ng
 quilbasic
 system-index.txt
 .idea/
+*.#*
+*.gitignore
