@@ -76,6 +76,7 @@
                (:file "depolarizing-noise")
                (:file "noisy-qvm")
                (:file "density-qvm")
+               (:file "pulse-tracing-qvm")
                (:file "stabilizer-qvm")
                (:file "execution")
                (:file "path-simulate")

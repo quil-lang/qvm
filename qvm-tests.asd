@@ -33,6 +33,7 @@
                (:file "modifier-tests")
                (:file "noisy-qvm-tests")
                (:file "density-qvm-tests")
+               (:file "pulse-tracing-qvm-tests")
                (:file "stress-tests")
                (:file "path-simulate-tests")
                (:file "stabilizer-qvm-tests")
