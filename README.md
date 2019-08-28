@@ -303,6 +303,14 @@ To get the latest stable version of `qvm`, run `docker pull rigetti/qvm`.
 To instead pull a specific version of the QVM, run `docker pull rigetti/qvm:VERSION`,
 where `VERSION` is something like `1.10.0`.
 
+Additionally, all branches and commits for the QVM repository have corresponding
+image tags. For example, the image that contains the HEAD of branch "qvm-fixes"
+can be pulled with `docker pull rigetti/qvm:qvm-fixes` (NOTE: some characters are
+invalid in Docker image tags, and are rewritten according to the description of
+[`CI_COMMIT_REF_SLUG`](https://docs.gitlab.com/ee/ci/variables/predefined_variables.html)).
+The image built from the commit with first eight characters `abcd1234` can be
+pulled with `docker pull rigetti/qvm:abcd1234`.
+
 The Dockerfile for qvm builds from two parent Docker images:
 
 1. [`rigetti/lisp`](https://hub.docker.com/r/rigetti/lisp): Contains SBCL, Quicklisp, and
