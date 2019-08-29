@@ -10,6 +10,7 @@
   :depends-on (#:qvm-app-ng
                #:drakma
                #:fiasco
+               #:lparallel
                #:uiop)
   :perform (asdf:test-op (o s)
                          (uiop:symbol-call ':qvm-app-ng-tests
