@@ -20,4 +20,5 @@
                (:file "test-validators")
                (:file "test-rpc-api")
                (:file "test-handlers")
+               (:file "test-concurrency")
                (:file "suite")))

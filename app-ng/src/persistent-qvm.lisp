@@ -10,13 +10,18 @@
   (defun make-empty-persistent-qvms-db ()
     (make-hash-table :test 'equal)))
 
-(defun reset-persistent-qvms-db ()
-  (setf **persistent-qvms** (make-empty-persistent-qvms-db)))
-
 (global-vars:define-global-var **persistent-qvms** (make-empty-persistent-qvms-db)
   "The database of persistent QVMs. The keys are integers and the values are lists of (QVM LOCK METADATA) triples.")
 
 (global-vars:define-global-var **persistent-qvms-lock** (bt:make-lock "Persistent QVMs DB Lock"))
+
+(defun reset-persistent-qvms-db ()
+  (bt:with-lock-held (**persistent-qvms-lock**)
+    (setf **persistent-qvms** (make-empty-persistent-qvms-db))))
+
+(defun persistent-qvms-count ()
+  (bt:with-lock-held (**persistent-qvms-lock**)
+    (hash-table-count **persistent-qvms**)))
 
 (defmacro with-persistent-qvm ((qvm &optional metadata) token &body body)
   (check-type qvm symbol)
@@ -70,9 +75,25 @@
   ;; UUID:PRINT-OBJECT and UUID:PRINT-BYTES print them in uppercase.
   (string-downcase token))
 
+(defun %uuid->persistent-qvm-token (uuid)
+  (canonicalize-persitent-qvm-token (princ-to-string uuid)))
+
 (defun make-persistent-qvm-token ()
   "Return a new persitent QVM token."
-  (canonicalize-persitent-qvm-token (princ-to-string (uuid:make-v4-uuid))))
+  (%uuid->persistent-qvm-token
+   (bt:with-lock-held (**persistent-qvms-lock**)
+     ;; UUID:MAKE-V4-UUID is not thread safe. If you call it without locking, you get collisions. We
+     ;; reuse **PERSISTENT-QVMS-LOCK** here to avoid needing to acquire two separate locks in order
+     ;; to allocate a new persistent QVM. We could potentially avoid locking by always creating a
+     ;; thread-local binding for UUID:*UUID-RANDOM-STATE*, but since we only ever generate a new
+     ;; token at allocation time when we already hold the **PERSISTENT-QVMS-LOCK**, it's convenient
+     ;; to reuse it. In fact, at allocation time we call %MAKE-PERSISTENT-QVM-TOKEN-LOCKED. This
+     ;; locking version is provided for external code (like tests) that want to safely generate a
+     ;; valid persistent token without foisting the burden of thread-safe access on the caller.
+     (uuid:make-v4-uuid))))
+
+(defun %make-persistent-qvm-token-locked ()
+  (%uuid->persistent-qvm-token (uuid:make-v4-uuid)))
 
 (defun valid-persistent-qvm-token-p (token)
   "True if TOKEN is a valid string representation of a v4 UUID.
@@ -105,13 +126,13 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
         (make-hash-table :test 'equal)))
 
 (defun allocate-persistent-qvm (simulation-method num-qubits)
-  (let ((persistent-qvm (make-persistent-qvm simulation-method num-qubits))
-        (token (make-persistent-qvm-token)))
+  (let ((persistent-qvm (make-persistent-qvm simulation-method num-qubits)))
     (bt:with-lock-held (**persistent-qvms-lock**)
-      (cond ((not (null (%lookup-persistent-qvm-locked token)))
-             (error "Token collision while attempting to allocate persistent QVM"))
-            (t (%insert-persistent-qvm-locked token persistent-qvm)
-               (values token persistent-qvm))))))
+      (let ((token (%make-persistent-qvm-token-locked)))
+        (cond ((not (null (%lookup-persistent-qvm-locked token)))
+               (error "Token collision while attempting to allocate persistent QVM: ~S" token))
+              (t (%insert-persistent-qvm-locked token persistent-qvm)
+                 (values token persistent-qvm)))))))
 
 (defun persistent-qvm-info (token)
   (alexandria:plist-hash-table
