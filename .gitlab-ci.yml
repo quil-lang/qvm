@@ -50,3 +50,12 @@ test-qvm-app-edge:
     - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
       test-app RIGETTI_LISP_LIBRARY_HOME=/src
     - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+
+test-qvm-app-ng-edge:
+  extends: .test
+  allow_failure: true
+  script:
+    - docker build -t rigetti/qvm:${CI_COMMIT_SHORT_SHA} --build-arg quilc_version=edge .
+    - docker run --rm --entrypoint=make rigetti/qvm:${CI_COMMIT_SHORT_SHA}
+      test-app-ng RIGETTI_LISP_LIBRARY_HOME=/src
+    - docker rmi rigetti/qvm:${CI_COMMIT_SHORT_SHA}
