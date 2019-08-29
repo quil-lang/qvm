@@ -19,7 +19,8 @@
    :error-template-directory nil
    :persistent-connections-p t))
 
-(defvar *rpc-acceptor* nil)
+(defvar *rpc-acceptor* nil
+  "*RPC-ACCEPTOR* holds a reference to the RPC-ACCEPTOR instance created by last invocation of START-SERVER.")
 
 (defun start-server-mode (&key host port)
   (check-type host string)
@@ -58,16 +59,44 @@
               (tbnl:session-id tbnl:*session*))))
 
 (defun encode-json (object)
+  "Encode OBJECT to a JSON string."
   (when (boundp 'tbnl:*reply*)
     (setf (tbnl:content-type*) "application/json; charset=utf-8"))
   (with-output-to-string (s)
     (yason:encode object s)))
 
 (defun error-response (message)
+  "Return a JSON string of structured error MESSAGE of type qvm_error."
   (encode-json
    (alexandria:plist-hash-table
     (list "error_type" "qvm_error"
           "status" message))))
+
+(defvar *request-json*)
+(setf (documentation '*request-json* 'variable)
+      "The parsed JSON request body while in the context of a request. Guaranteed to be HASH-TABLE when bound. Use the function JSON-PARAMETER to access parameter values.")
+
+(defun json-parameter (parameter-name &optional (request-json *request-json*))
+  "Return the value for PARAMETER-NAME in the REQUEST-JSON table.
+
+REQUEST-JSON defaults to the JSON object parsed from the request body in *REQUEST-JSON*.
+
+This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-PARAMETER."
+  (gethash parameter-name request-json))
+
+(defun parse-request-json-or-lose (request)
+  (let ((json (ignore-errors (yason:parse (tbnl:raw-post-data :request request :force-text t)))))
+    (unless (hash-table-p json)
+      (rpc-bad-request-error "Failed to parse JSON object from request body"))
+    json))
+
+(defmethod tbnl:acceptor-dispatch-request ((acceptor rpc-acceptor) request)
+  (handler-case
+      (let ((*request-json* (parse-request-json-or-lose request)))
+        (call-next-method))
+    (rpc-error (c)
+      (setf (tbnl:return-code*) (rpc-error-http-status c))
+      (tbnl:abort-request-handler (error-response (princ-to-string c))))))
 
 (defmethod tbnl:acceptor-status-message ((acceptor rpc-acceptor) http-status-code &key error &allow-other-keys)
   (if (eql http-status-code tbnl:+http-internal-server-error+)
@@ -98,27 +127,3 @@
                           "[~A~@[ [~A]~]] ~?~%"
                           (tbnl::iso-time) log-level
                           format-string format-arguments)))
-
-(defvar *request-json*)
-(setf (documentation '*request-json* 'variable)
-      "The parsed JSON request body while in the context of a request. Guaranteed to be HASH-TABLE when bound. Use the function JSON-PARAMETER to access parameter values.")
-
-(defun json-parameter (parameter-name &optional (request-json *request-json*))
-  "Return the value for PARAMETER-NAME in the REQUEST-JSON table.
-
-REQUEST-JSON defaults to the JSON object parsed from the request body in *REQUEST-JSON*."
-  (gethash parameter-name request-json))
-
-(defun parse-request-json-or-lose (request)
-  (let ((json (ignore-errors (yason:parse (tbnl:raw-post-data :request request :force-text t)))))
-    (unless (hash-table-p json)
-      (rpc-bad-request-error "Failed to parse JSON object from request body"))
-    json))
-
-(defmethod tbnl:acceptor-dispatch-request ((acceptor rpc-acceptor) request)
-  (handler-case
-      (let ((*request-json* (parse-request-json-or-lose request)))
-        (call-next-method))
-    (rpc-error (c)
-      (setf (tbnl:return-code*) (rpc-error-http-status c))
-      (tbnl:abort-request-handler (error-response (princ-to-string c))))))

@@ -1,8 +1,10 @@
 (in-package :qvm-app-ng)
 
-(defvar *rpc-handlers* '())
+(defvar *rpc-handlers* '()
+  "An alist of (rpc-method-name . handler-function) conses defined by DEFINE-RPC-HANDLER.")
 
 (defun dispatch-rpc-handlers (request)
+  "Called by TBNL:ACCEPTOR-DISPATCH-REQUEST to determine if any of the handlers in *RPC-HANDLERS* should handle the given REQUEST."
   (loop :for (rpc-method . handler) :in *rpc-handlers*
         :when (and (eq ':POST (tbnl:request-method request))
                    (string= "/" (tbnl:script-name request))
@@ -24,7 +26,7 @@
     (destructuring-bind (var parse-function) parameter-spec
       `(,var (funcall (alexandria:ensure-function ,parse-function) ,var))))
 
-  (defun valid-rpc-handler-lambda-list (lambda-list)
+  (defun valid-rpc-handler-lambda-list-p (lambda-list)
     (every (lambda (parameter-spec)
              (and (= 2 (length parameter-spec))
                   (symbolp (first parameter-spec))))
@@ -33,7 +35,7 @@
 (defmacro define-rpc-handler ((handler-name rpc-method) lambda-list &body body)
   (check-type handler-name symbol)
   (check-type rpc-method string)
-  (assert (valid-rpc-handler-lambda-list lambda-list))
+  (assert (valid-rpc-handler-lambda-list-p lambda-list))
   (multiple-value-bind (body-forms declarations docstring)
       (alexandria:parse-body body :documentation t)
    `(progn
@@ -49,6 +51,9 @@
               ,@body-forms))))))
 
 (defun collect-memory-registers (qvm addresses)
+  "Return a HASH-TABLE of exactly the QVM memory registers requested in ADDRESSES.
+
+ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register."
   (let ((results (make-hash-table :test 'equal)))
     (maphash (lambda (name indexes)
                (cond
@@ -70,16 +75,25 @@
 
 (define-rpc-handler (handle-create-qvm "create-qvm") ((simulation-method #'parse-simulation-method)
                                                       (num-qubits #'parse-num-qubits))
-  "Create the requested persistent QVM."
+  "Create the requested persistent QVM.
+
+SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
+
+NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM."
   (encode-json (alexandria:plist-hash-table
                 (list "token" (allocate-persistent-qvm simulation-method num-qubits)))))
 
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
-  "Delete a persistent QVM."
+  "Delete a persistent QVM.
+
+QVM-TOKEN is a valid persistent QVM token such as one returned by the CREATE-QVM RPC call."
   (delete-persistent-qvm qvm-token)
   (encode-json (format nil "Deleted persistent QVM ~D" qvm-token)))
 
 (define-rpc-handler (handle-qvm-info "qvm-info") ((qvm-token #'parse-qvm-token))
+  "Return some basic bookkeeping info about the specified QVM.
+
+QVM-TOKEN is a valid persistent QVM token such as one returned by the CREATE-QVM RPC call."
   (encode-json (persistent-qvm-info qvm-token)))
 
 (define-rpc-handler (handle-run-program "run-program")
@@ -87,7 +101,17 @@
                      (simulation-method #'parse-optional-simulation-method)
                      (compiled-quil #'parse-quil-string)
                      (addresses #'parse-addresses))
-  "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD."
+  "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD.
+
+QVM-TOKEN is a valid persistent QVM token as returned by the CREATE-QVM RPC call.
+
+SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
+
+COMPILED-QUIL is a STRING containing a valid Quil program.
+
+ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
+
+The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
   (unless (alexandria:xor (null qvm-token) (null simulation-method))
     (rpc-parameter-parse-error
      "Exactly one of QVM-TOKEN and SIMULATION-METHOD must be present in the JSON request parameters."))
