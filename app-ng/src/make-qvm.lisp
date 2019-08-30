@@ -10,7 +10,7 @@
   (qvm:run qvm))
 
 (defun make-requested-qvm (simulation-method num-qubits)
-  (check-non-negative num-qubits)
+  (check-type num-qubits (integer 0))
   (ecase simulation-method
     (pure-state
      (qvm:make-qvm num-qubits))
