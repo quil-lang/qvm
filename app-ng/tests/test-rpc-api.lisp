@@ -32,6 +32,14 @@
 (defun invalidate-token (qvm-token)
   (substitute #\5 #\4 qvm-token))
 
+(defun extract-token (response)
+  (gethash "token" (yason:parse response)))
+
+(defun extract-and-validate-token (response)
+  (let ((token (extract-token response)))
+    (is (qvm-app-ng::valid-persistent-qvm-token-p token))
+    token))
+
 (defun simulation-method->qvm-type (simulation-method)
   (alexandria:eswitch (simulation-method :test #'string=)
     ("pure-state" "PURE-STATE-QVM")
@@ -227,8 +235,7 @@
                                                         :simulation-method simulation-method
                                                         :num-qubits num-qubits)
                                         :response-re **rpc-response-token-scanner**))
-               (token (gethash "token" (yason:parse response))))
-          (not-signals error (qvm-app-ng::check-qvm-token token))
+               (token (extract-and-validate-token response)))
 
           ;; check that info reports expected values for qvm-type and num-qubits
           (check-request (simple-request url :type "qvm-info" :qvm-token token)
@@ -286,8 +293,7 @@
                                                     :simulation-method "pure-state"
                                                     :num-qubits 1)
                                     :response-re **rpc-response-token-scanner**))
-           (token (gethash "token" (yason:parse response))))
-      (not-signals error (qvm-app-ng::check-qvm-token token))
+           (token (extract-and-validate-token response)))
 
       ;; info on invalid token
       (check-request (simple-request url :type "qvm-info" :qvm-token (invalidate-token token))
@@ -329,8 +335,7 @@
                                                       :simulation-method simulation-method
                                                       :num-qubits 2)
                                       :response-re **rpc-response-token-scanner**))
-             (token (gethash "token" (yason:parse response))))
-        (not-signals error (qvm-app-ng::check-qvm-token token))
+             (token (extract-and-validate-token response)))
 
         ;; run-program on existing token
         (check-request (simple-request url
