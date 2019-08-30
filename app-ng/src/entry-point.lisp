@@ -42,6 +42,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (uiop:quit code t))
 
 (defun %main (argv)
+  (declare (ignore argv))
   (handler-case
       (progn
         (show-welcome)
