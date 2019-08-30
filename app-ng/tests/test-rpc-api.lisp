@@ -48,16 +48,18 @@
 (defun %make-url (protocol host port &optional (path "/"))
   (format nil "~A://~A:~D~A" protocol host port path))
 
-(defmacro with-rpc-server
-    ((url-var &key (protocol "http") (host "127.0.0.1") (port 0)) &body body)
+(defmacro with-rpc-server ((url-var &key (host "127.0.0.1") (port 0)) &body body)
+  "Execute BODY with URL-VAR bound the URL of a new RPC server started on HOST and PORT.
+
+HOST defaults to 127.0.0.1 and PORT defaults to a randomly assigned port."
   (check-type url-var symbol)
-  (alexandria:once-only (protocol host port)
+  (alexandria:once-only (host port)
     (alexandria:with-gensyms (app)
       `(let (,app)
          (unwind-protect
               (progn
                 (setf ,app (qvm-app-ng::start-server ,host ,port))
-                (let ((,url-var (%make-url ,protocol ,host (tbnl:acceptor-port ,app))))
+                (let ((,url-var (%make-url "http" ,host (tbnl:acceptor-port ,app))))
                   ,@body))
            (qvm-app-ng::stop-server ,app)
            (qvm-app-ng::reset-persistent-qvms-db))))))
@@ -66,6 +68,9 @@
                          &key (status 200)
                               (response-re nil response-re-p)
                               (response-callback nil response-callback-p))
+  "Evaluate a REQUEST-FORM that makes an HTTP request and check that the response status is STATUS and that the response body conforms to RESPONSE-RE and/or RESPONSE-CALLBACK.
+
+REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, namely (VALUES RESPONSE STATUS-CODE HEADERS URI STREAM MUST-CLOSE REASON-PHRASE)."
   (alexandria:once-only (status)
     (alexandria:with-gensyms
         (body-or-stream status-code headers uri stream must-close reason-phrase body-as-string)
@@ -101,6 +106,7 @@
   (http-request url :method ':POST :content (plist->json json-plist)))
 
 (deftest test-rpc-api-invalid-request ()
+  "Requests without a valid JSON request body return 400 Bad Request."
   (with-rpc-server (url)
     (dolist (content '("" "not-a-json-dict"))
       (check-request (http-request url :method ':POST :content content)
@@ -108,6 +114,7 @@
                      :response-re "Bad Request"))))
 
 (deftest test-rpc-api-404 ()
+  "Requests for URIs other than \"/\" or for non-existent RPC methods return 404 Not Found."
   (with-rpc-server (url)
     (check-request (simple-request url)
                    :status 404)
@@ -115,6 +122,7 @@
                    :status 404)))
 
 (deftest test-rpc-api-run-program-simple-request ()
+  "Simple run-program calls on emphemeral QVMs return the expected results."
   (with-rpc-server (url)
     (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
       (check-request (simple-request url
@@ -133,6 +141,7 @@
                      :response-callback (response-json-fields-checker '(("ro" ((1 0)))))))))
 
 (deftest test-rpc-api-run-program-invalid-requests ()
+  "Test input validation for the run-program call."
   (with-rpc-server (url)
     ;; specify both qvm-token and simulation-method
     (check-request (simple-request url
@@ -175,6 +184,7 @@
                    :status 500)))
 
 (deftest test-rpc-api-run-program-addresses ()
+  "Test variations of the ADDRESSES parameter for the run-program call."
   (with-rpc-server (url)
     ;; empty addresses
     (check-request
@@ -227,6 +237,7 @@
      "\\A{\"token\":\"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\"}\\z"))
 
 (deftest test-rpc-api-create-qvm ()
+  "Test create-qvm for various combinations of SIMULATION-METHOD and NUM-QUBITS."
   (with-rpc-server (url)
     (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
       (dolist (num-qubits '(0 1 4))
@@ -249,6 +260,7 @@
                          :response-re "Deleted persistent QVM"))))))
 
 (deftest test-rpc-api-create-qvm-invalid-requests ()
+  "Test input validate for the create-qvm call."
   (with-rpc-server (url)
     ;; invalid simulation-method
     (check-request (simple-request url
@@ -273,6 +285,7 @@
                    :status 400)))
 
 (deftest test-rpc-api-qvm-info ()
+  "Test that qvm-info returns the expected results."
   (with-rpc-server (url)
     ;; info on non-existing token
     (check-request (simple-request url
@@ -318,6 +331,7 @@
                      :response-re "Failed to find persistent QVM"))))
 
 (deftest test-rpc-api-persistent-qvm-run-program ()
+  "Test run-program calls on a persistent QVM."
   (with-rpc-server (url)
     (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
 
