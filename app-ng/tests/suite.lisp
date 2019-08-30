@@ -8,7 +8,7 @@
                                      :describe-failures t
                                      :interactive (not headless))))
     (if headless
-        (quit-nicely successp)
+        (qvm-app-ng::quit-nicely successp)
         successp)))
 
 
