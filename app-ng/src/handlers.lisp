@@ -33,6 +33,38 @@
            lambda-list)))
 
 (defmacro define-rpc-handler ((handler-name rpc-method) lambda-list &body body)
+  "Define an RPC handler named HANDLER-NAME for the RPC method RPC-METHOD.
+
+DEFINE-RPC-HANDLER is like TBNL:DEFINE-EASY-HANDLER, but modified to dispatch on the RPC-METHOD name rather than URI path and to default parameters in LAMBDA-LIST based on JSON parameters rather than GET/POST parameters.
+
+HANDLER-NAME is a SYMBOL and becomes the name of the FUNCTION that gets defined.
+
+RPC-METHOD is a STRING that defines the RPC method name that is used to call this handler. DISPATCH-RPC-HANDLERS will check the caller-provided JSON request body and dispatch to this handler if the \"type\" field is STRING= to RPC-METHOD.
+
+LAMBDA-LIST is a LIST of (VAR-NAME PARSE-FUNCTION) pairs. Each VAR-NAME will expand to an &KEY parameter in the lambda-list of HANDLER-NAME, and will be bound to the caller-provided JSON request parameters with the corresponding name. The JSON parameter name is derived by converting VAR-NAME to a lowercase string. So, e.g., if VAR-NAME is FOO-BAR, then FOO-BAR is bound in BODY to the value of (JSON-PARAMETER \"foo-bar\"). This defaulting of VAR-NAME only occurs in contexts where *REQUEST-JSON* is bound; otherwise, the value of VAR-NAME defaults to NIL. Parameter defaulting is done in this way to allow HANDLER-NAME to be conveniently called outside the server context with the caller providing the values of the keyword arguments directly.
+
+Additionally, the specified PARSE-FUNCTION will be called to parse and validate the caller-provided value. PARSE-FUNCTION should raise an ERROR for invalid inputs, and should return a parsed value of whatever type is required in the BODY of the function. Note that PARSE-FUNCTION is called both for defaulted and non-defaulted arguments. The intention is to reduce argument unpacking/validation boilerplate in BODY and to make it difficult to forget to validate user input.
+
+EXAMPLE:
+
+    (define-rpc-handler (handle-frobnicate \"frobnicate\") ((number-of-times parse-non-negative))
+      (frob-vigorously number-of-times))
+
+defines a function named HANDLE-FROBNICATE that accepts a single keyword argument :NUMBER-OF-TIMES and registers it to be dispatched by DISPATCH-RPC-HANDLERS whenever a request is made to call the \"frobnicate\" RPC method. That is, when an HTTP request like the following is received:
+
+    POST / HTTP/1.1
+    Content-Type: application/json
+    Host: 127.0.0.1:5000
+
+    {
+        \"type\": \"frobnicate\"
+        \"number-of-times\": 42,
+    }
+
+Alternatively, the handler function can be called from lisp like so
+
+    (handle-frobnicate :number-of-times 11)
+"
   (check-type handler-name symbol)
   (check-type rpc-method string)
   (assert (valid-rpc-handler-lambda-list-p lambda-list))
