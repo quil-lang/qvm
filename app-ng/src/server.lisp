@@ -23,6 +23,7 @@
   "*RPC-ACCEPTOR* holds a reference to the RPC-ACCEPTOR instance created by last invocation of START-SERVER.")
 
 (defun start-server-mode (&key host port)
+  "Start the HTTP server on the indicated HOST and PORT. Does not return."
   (check-type host string)
   ;; A PORT of 0 tells hunchentoot to pick a random port.
   (check-type port (or null (integer 0 65535)) "The port must be between 0 and 65535.")
@@ -31,6 +32,11 @@
   (loop (sleep 60)))
 
 (defun start-server (host port &optional debug)
+  "Start the HTTP server on the indicated HOST and PORT.
+
+If the optional DEBUG is non-NIL, show additional debug info and enter the debugger on error.
+
+Returns the newly created and running RPC-ACCEPTOR, which is also saved in *RPC-ACCEPTOR* for REPL-debugging convenience."
   (setf tbnl:*log-lisp-backtraces-p* debug
         tbnl:*log-lisp-errors-p* debug
         tbnl:*show-lisp-errors-p* debug
