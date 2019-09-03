@@ -1,0 +1,11 @@
+(in-package :qvm-app-ng-tests)
+
+(deftest test-jobs ()
+  (let ((job (make-job (lambda () (sleep 2) 10))))
+    (is (eql (job-status job) job-status-fresh))
+    (job-start job)
+    (is (eql (job-status job) job-status-running))
+    (is (= (job-result job) 10))
+    (is (adt:match job-status (job-status job)
+          ((job-status-finished result) result)
+          (_ nil)))))

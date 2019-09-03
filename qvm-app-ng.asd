@@ -11,6 +11,7 @@
                #:qvm
                #:alexandria
                #:bordeaux-threads
+               #:cl-algebraic-data-type
                #:cl-syslog
                #:command-line-arguments
                #:global-vars
@@ -43,4 +44,5 @@
                (:file "handlers")
                (:file "qvm-app-ng-version")
                (:file "impl/sbcl" :if-feature :sbcl)
-               (:file "entry-point")))
+               (:file "entry-point")
+               (:file "job")))
