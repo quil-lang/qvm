@@ -37,6 +37,7 @@
                #+sbcl #:sb-introspect
                ;; Portable *features*
                #:trivial-features
+               #:uuid
                )
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :around-compile (lambda (compile)
@@ -79,4 +80,5 @@
                (:file "stabilizer-qvm")
                (:file "execution")
                (:file "path-simulate")
-               (:file "misc")))
+               (:file "misc")
+               (:file "job")))
