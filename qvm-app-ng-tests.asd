@@ -26,4 +26,5 @@
                (:file "test-handlers")
                (:file "test-concurrency")
                (:file "test-safety-hash")
+               (:file "test-job")
                (:file "suite")))
