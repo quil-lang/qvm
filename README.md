@@ -295,13 +295,41 @@ make cleanall
 
 This will delete any built executables as well.
 
-## Automated Packaging with Docker
+## Automated Build, Test, and Release with Docker
 
 The CI pipeline for `qvm` produces a Docker image, available at
 [`rigetti/qvm`](https://hub.docker.com/r/rigetti/qvm).
+To get the latest stable version of `qvm`, run `docker pull rigetti/qvm`.
+To instead pull a specific version of the QVM, run `docker pull rigetti/qvm:VERSION`,
+where `VERSION` is something like `1.10.0`.
 
-To get the latest stable
-version of `qvm`, run `docker pull rigetti/qvm`.
+Additionally, all branches and commits for the QVM repository have corresponding
+image tags. For example, the image that contains the HEAD of branch "qvm-fixes"
+can be pulled with `docker pull rigetti/qvm:qvm-fixes` (NOTE: some characters are
+invalid in Docker image tags, and are rewritten according to the description of
+[`CI_COMMIT_REF_SLUG`](https://docs.gitlab.com/ee/ci/variables/predefined_variables.html)).
+The image built from the commit with first eight characters `abcd1234` can be
+pulled with `docker pull rigetti/qvm:abcd1234`.
+
+The Dockerfile for qvm builds from two parent Docker images:
+
+1. [`rigetti/lisp`](https://hub.docker.com/r/rigetti/lisp): Contains SBCL, Quicklisp, and
+   third-party libraries.
+2. [`rigetti/quilc`](https://hub.docker.com/r/rigetti/quilc): Contains the Quil Compiler.
+
+The Dockerfile for qvm intentionally pins the versions of these two images,
+which means that the version numbers must be actively incremented as necessary.
+If the build for qvm is failing, this is probably the place to look, because
+the unit tests are run inside of a freshly-built qvm Docker image as part of
+the GitLab CI pipeline.
+
+However, because the development workflow for the QVM often involves having
+a locally cloned copy of quilc master, there are two additional CI jobs that
+override the version of quilc and instead build off of `rigetti/quilc:edge`,
+which corresponds to the HEAD of master. These jobs are optional, meaning that
+if they fail the overall CI pipeline will not be marked as a failure, but they
+provide additional useful information to those that develop quilc and the QVM
+in unison.
 
 ## Running the QVM with Docker
 
@@ -331,12 +359,24 @@ assigned host port. You can then inspect the mapping using `docker port CONTAINE
 
 ## Release Process
 
-1. Update `VERSION.txt` and dependency versions (if applicable) and push the commit to `master`.
+1. Update `VERSION.txt` and push the commit to `master`.
 2. Push a git tag `vX.Y.Z` that contains the same version number as in `VERSION.txt`.
 3. Verify that the resulting build (triggered by pushing the tag) completes successfully.
 4. Publish a [release](https://github.com/rigetti/qvm/releases) using the tag as the name.
 5. Close the [milestone](https://github.com/rigetti/qvm/milestones) associated with this release,
    and migrate incomplete issues to the next one.
+6. Update the qvm version of downstream dependencies (if applicable, see next section).
+
+## Downstream Dependencies
+
+Currently, there are a couple different components of the Forest SDK that depend on the QVM:
+
+1. [pyquil](https://github.com/rigetti/pyquil)
+2. [forest-benchmarking](https://github.com/rigetti/forest-benchmarking)
+
+It is the responsibility of the releaser to verify that the latest QVM release does not
+break the test suites of these downstream dependencies. All of these repositories pull the
+latest released version of the QVM as part of their CI pipelines.
 
 # Feature Flags
 
