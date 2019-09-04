@@ -4,8 +4,6 @@
 
 (in-package #:dqvm2)
 
-(declaim (optimize (debug 3) (safety 3)))
-
 (defclass distributed-qvm (qvm:classical-memory-mixin)
   ((addresses
     :accessor addresses
@@ -16,11 +14,13 @@
    (amplitudes
     :accessor amplitudes
     :initarg :amplitudes
-    :documentation "The components of the (permuted) wave function.")
+    :type (or null (simple-array qvm:cflonum))
+    :documentation "The components of the (possibly permuted) wave function.")
    (scratch
     :accessor scratch
     :initarg :scratch
-    :documentation "Temporary memory to store amplitudes."))
+    :type (or null (simple-array qvm:cflonum))
+    :documentation "Temporary memory."))
 
   (:default-initargs
    :amplitudes nil
@@ -34,26 +34,13 @@
 (defmethod initialize-instance :after ((qvm distributed-qvm) &rest initargs)
   (declare (ignore initargs))
 
-  (reset-wavefunction qvm))
-
-(defmethod qvm:number-of-qubits ((qvm distributed-qvm))
-  (number-of-qubits (addresses qvm)))
-
-(defmethod rank ((qvm distributed-qvm))
-  (rank (addresses qvm)))
-
-(defmethod number-of-processes ((qvm distributed-qvm))
-  (number-of-processes (addresses qvm)))
-
-(defmethod reset-wavefunction ((qvm distributed-qvm) &optional (address 0))
-  "Initialize the wavefunction in QVM with a delta distribution concentrated at ADDRESS, which is the zero ket by default."
   (let* ((rank (rank qvm))
          (number-of-processes (number-of-processes qvm))
          (number-of-qubits (number-of-qubits qvm))
          (maximum-arity (get-maximum-arity (qvm::program qvm)))
          (block-size (if (plusp maximum-arity)
                          (* 2 maximum-arity)
-                         *default-block-size*))
+                         (block-size (addresses qvm))))
          (global-addresses (make-instance 'global-addresses :number-of-processes number-of-processes
                                                             :number-of-qubits number-of-qubits
                                                             :block-size block-size))
@@ -70,43 +57,50 @@
           (qvm:allocate-vector allocation)
 
         (setf (slot-value qvm 'amplitudes) buf)
-        (trivial-garbage:finalize qvm fin)
+        (trivial-garbage:finalize qvm fin))
 
-        (when (address-member address addresses)
-          (setf (aref (amplitudes qvm) (offset addresses address))
-                (qvm:cflonum 1))))
-
-      ;; Initialize temporary memory.
       (multiple-value-bind (buf fin)
           (qvm:allocate-vector allocation)
 
         (setf (slot-value qvm 'scratch) buf)
-        (trivial-garbage:finalize qvm fin))))
+        (trivial-garbage:finalize qvm fin)))
 
+    ;; XXX Don't forget about get-maximum-arity and load-program. Perhaps
+    ;; keep that in mind in reinitialize-instance?
+
+    (reset-wavefunction qvm)))
+
+(defmethod reset-wavefunction ((qvm distributed-qvm) &optional (address 0))
+  "Initialize the wavefunction in QVM with a delta distribution concentrated at ADDRESS, which is the zero ket by default."
+  (let ((addresses (addresses qvm)))
+    (when (address-member address addresses)
+      (setf (aref (amplitudes qvm) (offset addresses address))
+            (qvm:cflonum 1))))
   qvm)
 
 (defmethod reset-wavefunction-debug ((qvm distributed-qvm))
-  (let ((amplitudes (amplitudes qvm))
-        (addresses (addresses qvm)))
-    (do-addresses (address addresses)
-      (setf (aref amplitudes (offset addresses address))
-            (qvm:cflonum address)))))
+  (loop :with addresses := (addresses qvm)
+        :with amplitudes := (amplitudes qvm)
+        :for offset :from 0 :below (number-of-addresses addresses)
+        :for address := (get-address-by-offset addresses offset)
+        :do (setf (aref amplitudes offset) (qvm:cflonum address))
+        :finally (return qvm)))
 
-(defun load-instructions (qvm instructions)
-  "Load the code vector INSTRUCTIONS into QVM."
-  ;; XXX ensure the qubits needed match the current qvm qubit count.
-  (setf (qvm::program qvm) instructions)
-  (reset-wavefunction qvm)
-  qvm)
+(defmethod qvm:number-of-qubits ((qvm distributed-qvm))
+  (number-of-qubits (addresses qvm)))
+
+(defmethod rank ((qvm distributed-qvm))
+  (rank (addresses qvm)))
+
+(defmethod number-of-processes ((qvm distributed-qvm))
+  (number-of-processes (addresses qvm)))
 
 (defmethod print-object ((qvm distributed-qvm) stream)
   (let ((*print-readably* nil)
         (*print-pretty* nil))
     (print-unreadable-object (qvm stream :type t :identity t)
-      (format stream "~{~A ~A~^ ~}"
-              (list (prin1-to-string :addresses) (addresses qvm)
-                    (prin1-to-string :amplitudes) (amplitudes qvm)
-                    (prin1-to-string :scratch) (scratch qvm))))))
+      (format stream "~@{~S ~S~^ ~}" :addresses (addresses qvm)
+                                     :amplitudes (amplitudes qvm)))))
 
 (defun qubit-permutation (instruction)
   "Return an association list representing the qubits we must transpose to execute INSTRUCTION."
@@ -118,12 +112,8 @@
         ;; ordering of the standard gates.
         :for qubit :in (reverse (quil::arguments instruction))
         :unless (= i (quil:qubit-index qubit)) :do
-          (pushnew (cons i (quil:qubit-index qubit)) transpositions
-                   :test (lambda (x y)
-                           (or (equal x y)
-                               (and (= (car x) (cdr y))
-                                    (= (cdr x) (car y))))))
-        :finally (return (reverse transpositions))))
+          (pushnew (cons i (quil:qubit-index qubit)) transpositions)
+        :finally (return (make-permutation transpositions))))
 
 (defmethod save-wavefunction ((qvm distributed-qvm) filename)
   "Save wavefunction in QVM to FILENAME in parallel.

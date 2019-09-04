@@ -13,9 +13,20 @@
       (uiop:quit -1)))
 
   (let (qvm)
+    (labels ((make-parsed-program-from-code-vector (code-vector)
+               "Create a parsed program from an array of gate applications."
+               (make-instance 'quil:parsed-program :executable-code code-vector))
 
-    (flet ((make-parsed-program-from-code-vector (code-vector)
-             (make-instance 'quil:parsed-program :executable-code code-vector)))
+             (make-dqvm (number-of-qubits code-vector)
+               "Instantiate a DISTRIBUTED-QVM object, load the program given by CODE-VECTOR, and set up its thread pools."
+               (let ((qvm (make-distributed-qvm :number-of-qubits number-of-qubits
+                                                :block-size (expt 2 (get-maximum-arity code-vector)))))
+                 (qvm:load-program qvm (make-parsed-program-from-code-vector code-vector))
+                 (qvm:prepare-for-parallelization)
+                 qvm)))
+
+      (declare (inline make-parsed-program-from-code-vector make-dqvm))
+
       (cond
         ((zerop +rank+)
          (let ((filename (second argv)))
@@ -30,47 +41,20 @@
                          (map 'list #'instruction->string
                               (quil:parsed-program-executable-code program)))
 
-             (bcast :value number-of-qubits)
-
-             (setf qvm (make-distributed-qvm :number-of-qubits number-of-qubits))
-             (let ((code-vector (bcast-instructions program)))
-               (qvm:load-program qvm (make-parsed-program-from-code-vector code-vector))))))
+             (setf qvm (make-dqvm (bcast :value number-of-qubits) (bcast-instructions program))))))
 
         (t
          (format-log :info "Waiting for instructions")
+         (setf qvm (make-dqvm (bcast) (bcast-instructions))))))
 
-         (let ((number-of-qubits (bcast))
-               (code-vector (bcast-instructions)))
-           (setf qvm (make-distributed-qvm :number-of-qubits number-of-qubits))
-           (qvm:load-program qvm (make-parsed-program-from-code-vector code-vector))))))
-
-    (reset-wavefunction qvm)
     ;; (reset-wavefunction-debug qvm)
 
-    (let ((seed (+ (nth-value 1 (sb-ext:get-time-of-day)) ; XXX SBCLism.
-                   +rank+)))
-      (qvm:with-random-state ((qvm:seeded-random-state seed))
-        (qvm:run qvm)))
+    (qvm:with-random-state ((qvm:seeded-random-state (get-random-seed)))
+      (qvm:run qvm))
 
     (save-wavefunction qvm "wavefunction.dat")
 
     (format-log :info "Finished program execution.")))
-
-(defun print-reference-result (filename)
-  (when (zerop +rank+)
-    (let* ((qvm:*transition-verbose* nil)
-           (matrix (qvm:program-matrix (quil:read-quil-file filename)))
-           (m (magicl:matrix-cols matrix))
-           (components (loop :for i :from 0 :below m
-                             ;; :collect (qvm:cflonum i)
-                             :collect (if (zerop i)
-                                          (qvm:cflonum 1)
-                                          (qvm:cflonum 0))))
-           (initial-wavefunction (magicl:make-complex-matrix m 1 components))
-           (wavefunction (magicl:multiply-complex-matrices matrix initial-wavefunction)))
-
-      (format-log :info "Expected wavefunction:~%~{~A~%~}"
-                  (coerce (magicl::matrix-data wavefunction) 'list)))))
 
 (defun entry-point (argv)
   (let (;; (*print-pretty* t)

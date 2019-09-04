@@ -12,4 +12,8 @@
                                            '#:run-dqvm2-tests))
   :pathname "tests/"
   :components ((:file "package")
-               (:file "suite")))
+               (:file "suite")
+               (:file "permutation-tests")
+               (:file "addresses-tests")
+               (:file "distributed-qvm-tests")
+               (:file "program-tests")))

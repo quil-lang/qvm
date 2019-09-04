@@ -4,7 +4,7 @@
 
 (in-package #:dqvm2)
 
-(defparameter *default-blocks-per-chunk* (expt 2 16)
+(defvar *default-blocks-per-chunk* (expt 2 16)
   "Number of blocks for the ranks to collectively work on during a single step within APPLY-DISTRIBUTED-GATE.")
 
 (defun apply-distributed-gate (qvm instr &key (blocks-per-chunk *default-blocks-per-chunk*))
@@ -48,7 +48,7 @@
                        block-size)))
 
     (flet ((make-empty-array ()
-             (make-array dimension :element-type '(unsigned-byte 32) :fill-pointer 0)))
+             (make-array dimension :element-type '(unsigned-byte 32) :fill-pointer 0 :adjustable nil)))
 
       (make-array number-of-processes
                   :initial-contents (loop :repeat number-of-processes :collect (make-empty-array))))))
@@ -64,7 +64,7 @@
 
     (when (< start-offset (number-of-addresses addresses))
 
-      (loop :with next-addresses := (make-addresses-like addresses :rank (rank addresses) :permutation next-permutation)
+      (loop :with next-addresses := (make-addresses-like addresses :permutation next-permutation)
             :for offset :from start-offset :below end-offset :do
 
               (let ((next-address (get-address-by-offset next-addresses offset)))

@@ -13,7 +13,7 @@
                #:cl-mpi
                #:cl-mpi-extensions
                ;; Quil parsing
-               (:version #:cl-quil "1.10.0")
+               (:version #:cl-quil "1.11.0")
                ;; Logging
                #:cl-syslog
                ;; Command line argument parsing
@@ -36,7 +36,7 @@
   :serial t
   :components ((:file "package")
                (:file "utils")
-               (:file "permutations")
+               (:file "permutation")
                (:file "mpi")
                (:file "logging")
                (:file "global-addresses")

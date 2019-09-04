@@ -92,6 +92,7 @@
 
   ;; wavefunction.lisp
   (:export
+   #:amplitude-address                  ; TYPE
    #:wf                                 ; FUNCTION
    #:copy-wavefunction                  ; FUNCTION
    #:probability                        ; FUNCTION

@@ -116,7 +116,7 @@
       (make-instance 'addresses :rank rank
                                 :global-addresses (apply #'make-instance 'global-addresses args)))))
 
-(defmethod make-addresses-like ((addresses addresses) &key rank (permutation nil permutation-p))
+(defmethod make-addresses-like ((addresses addresses) &key (rank nil rank-p) (permutation nil permutation-p))
   "Create a copy of ADDRESSES with rank equal to RANK and, possibly permutation set to PERMUTATION."
   (let ((global-addresses (if permutation-p
                               (let ((global-addresses (copy-global-addresses (global-addresses addresses))))
@@ -124,7 +124,9 @@
                                 global-addresses)
                               (global-addresses addresses))))
 
-    (make-instance 'addresses :rank rank
+    (make-instance 'addresses :rank (if rank-p
+                                        rank
+                                        (rank addresses))
                               :global-addresses global-addresses)))
 
 (defmethod number-of-qubits ((addresses addresses))
@@ -142,10 +144,6 @@
 (defmethod remainder-blocks ((addresses addresses))
   (remainder-blocks (global-addresses addresses)))
 
-(defmethod number-of-blocks ((addresses addresses))
-  ;; XXX change the semantics to give the true number of blocks.
-  (number-of-blocks (global-addresses addresses)))
-
 (defmethod permutation ((addresses addresses))
   (permutation (global-addresses addresses)))
 
@@ -157,13 +155,16 @@
   "Get the next permutation needed to apply PERMUTATION on ADDRESSES.
 
 Returns the effective permutation (i.e., π₂ ∘ π₁⁻¹) as well as the next permutation (i.e., π₂). These permutations are in a format ready to be passed to APPLY-QUBIT-PERMUTATION."
-  (revappend (permutation addresses) next-permutation))
+  (compose-permutations next-permutation (inverse-permutation (permutation addresses))))
+
+(defmethod number-of-blocks ((addresses addresses))
+  "Number of addresses handled by the table ADDRESSES."
+  (+ (blocks-per-process addresses)
+     (boolean-bit (< (rank addresses) (remainder-blocks addresses)))))
 
 (defmethod %number-of-addresses ((addresses addresses))
   "Number of addresses handled by the table ADDRESSES."
-  (* (block-size addresses)
-     (+ (blocks-per-process addresses)
-        (boolean-bit (< (rank addresses) (remainder-blocks addresses))))))
+  (* (block-size addresses) (number-of-blocks addresses)))
 
 (defmethod address-member (address (addresses addresses))
   "Return T if ADDRESS is in the table ADDRESSES, NIL otherwise."
@@ -268,15 +269,14 @@ The addresses are generated on the fly based on the rank of ADDRESSES and the pe
 
     (print-unreadable-object (addresses stream :type t :identity t)
 
-      (format stream "~{~A ~A~^ ~}"
-              (list (prin1-to-string :rank) (rank addresses)
-                    (prin1-to-string :global-addresses) (global-addresses addresses)))
+      (format stream "~@{~S ~S~^ ~}"
+              :rank (rank addresses)
+              :global-addresses (global-addresses addresses))
 
       (when *print-addresses*
         (let (address-list)
           (do-addresses (address addresses)
             (push address address-list))
           (when address-list
-            (format stream " ~A (~{~D~^ ~})"
-                    (prin1-to-string :addresses)
-                    (nreverse address-list))))))))
+            (format stream " ~S (~{~D~^ ~})"
+                    :addresses (nreverse address-list))))))))

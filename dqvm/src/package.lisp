@@ -17,11 +17,14 @@
            #:address-member
            #:addresses
            #:amplitudes
+           #:apply-inverse-permutation
            #:apply-inverse-qubit-permutation
+           #:apply-permutation
            #:apply-qubit-permutation
            #:block-member
            #:block-size
            #:blocks-per-process
+           #:compose-permutations
            #:copy-global-addresses
            #:distributed-qvm
            #:do-addresses
@@ -34,9 +37,12 @@
            #:get-rank-by-block
            #:global-addresses
            #:global-addresses=
+           #:inverse-permutation
+           #:is-identity-permutation-p
            #:make-addresses
            #:make-addresses-like
            #:make-distributed-qvm
+           #:make-permutation
            #:number-of-addresses
            #:number-of-blocks
            #:number-of-processes
@@ -50,6 +56,7 @@
            #:reset-wavefunction
            #:save-wavefunction
            #:scratch
+           #:transposition
            #:update-permutation
            ))
 

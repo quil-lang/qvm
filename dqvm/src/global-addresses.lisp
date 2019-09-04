@@ -4,8 +4,7 @@
 
 (in-package #:dqvm2)
 
-(defparameter *default-block-size* 4
-  "Default block size for address tables.")
+(defparameter *default-block-size* 4 "Default block size for address tables.")
 
 (defclass global-addresses ()
   ((number-of-qubits
@@ -27,7 +26,7 @@
     :reader permutation
     :writer update-permutation
     :initarg :permutation
-    :type permutation
+    :type (or null permutation)
     :documentation "Last qubit permutation evaluated, stored in a format suitable for use by APPLY-QUBIT-PERMUTATION.")
 
    ;; The following attributes are calculated during instantiation.
@@ -57,6 +56,9 @@
   (assert (plusp (number-of-processes global-addresses)))
   (assert (evenp (block-size global-addresses)))
 
+  (setf (slot-value global-addresses 'block-size)
+        (min (block-size global-addresses) (number-of-addresses global-addresses)))
+
   (multiple-value-bind (bpp rem) (%blocks-per-process global-addresses)
     (setf (slot-value global-addresses 'number-of-blocks) (%number-of-blocks global-addresses)
           (slot-value global-addresses 'blocks-per-process) bpp
@@ -68,11 +70,11 @@
 
     (print-unreadable-object (global-addresses stream :type t :identity t)
 
-      (format stream "~{~A ~A~^ ~}"
-              (list (prin1-to-string :number-of-qubits) (number-of-qubits global-addresses)
-                    (prin1-to-string :number-of-processes) (number-of-processes global-addresses)
-                    (prin1-to-string :block-size) (block-size global-addresses)
-                    (prin1-to-string :permutation) (permutation global-addresses))))))
+      (format stream "~@{~S ~S~^ ~}"
+              :number-of-qubits (number-of-qubits global-addresses)
+              :number-of-processes (number-of-processes global-addresses)
+              :block-size (block-size global-addresses)
+              :permutation (permutation global-addresses)))))
 
 (defmethod copy-global-addresses ((global-addresses global-addresses))
   (let ((number-of-qubits (number-of-qubits global-addresses))
