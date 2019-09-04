@@ -9,15 +9,16 @@
   %result                               ; I define this accessor below.
   (status 'fresh :type job-status))
 
+(defmethod print-object ((job job) stream)
+  (print-unreadable-object (job stream :type nil :identity t)
+    (format stream "QVM Job")))
+
 (defun job-running-p (job)
   (eq (job-status job) 'running))
 (defun job-interrupted-p (job)
   (eq (job-status job) 'interrupted))
 (defun job-finished-p (job)
   (eq (job-status job) 'finished))
-
-(defmethod print-object ((job job) stream)
-  (format stream "job id ~A" (job-id job)))
 
 (defun make-job (fn)
   "Make a JOB object which will, under JOB-START, run FN in a thread."
