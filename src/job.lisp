@@ -1,12 +1,9 @@
 (in-package #:qvm)
 
-(defparameter **jobs** (make-hash-table :test 'equal)
-  "Table mapping a job ID to a job instance.")
 (deftype job-status ()
   '(member fresh running finished interrupted))
 
 (defstruct (job (:constructor %make-job))
-  id
   threader
   thread
   %result                               ; I define this accessor below.
@@ -24,7 +21,7 @@
 
 (defun make-job (fn)
   "Make a JOB object which will, under JOB-START, run FN in a thread."
-  (let* ((job (%make-job :id (princ-to-string (uuid:make-v4-uuid))))
+  (let* ((job (%make-job))
          (thr-fn (lambda ()
                    (setf (job-thread job)
                          (bt:make-thread (lambda ()
@@ -33,7 +30,6 @@
                                                  (funcall fn))
                                            (setf (job-status job) 'finished)))))))
     (setf (job-threader job) thr-fn)
-    (setf (gethash (job-id job) **jobs**) job)
     job))
 
 ;;; CUSTODIAL
@@ -47,12 +43,6 @@
   (when (job-running-p job)
     (bt:destroy-thread (job-thread job))
     (setf (job-status job) 'interrupted)))
-
-(defun clean-finished-jobs ()
-  (loop :for job-id :being :the :hash-keys :of **jobs**
-        :when (member (job-status (gethash job-id **jobs**))
-                      '(finished interrupted)) :do
-          (remhash job-id **jobs**)))
 
 ;;; sync/async
 
