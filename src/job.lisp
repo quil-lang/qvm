@@ -2,16 +2,15 @@
 
 (defparameter **jobs** (make-hash-table :test 'equal)
   "Table mapping a job ID to a job instance.")
-
 (deftype job-status ()
-  '(member nil running finished interrupted))
+  '(member fresh running finished interrupted))
 
 (defstruct (job (:constructor %make-job))
   id
   threader
   thread
   %result                               ; I define this accessor below.
-  (status nil :type job-status))
+  (status 'fresh :type job-status))
 
 (defun job-running-p (job)
   (eq (job-status job) 'running))
