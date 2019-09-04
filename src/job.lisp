@@ -45,9 +45,9 @@
 
 (defun job-stop (job)
   "Forcefully stop JOB if running. Does not block."
-  (if (job-running-p job)
-      (bt:destroy-thread (job-thread job))
-      nil))
+  (when (job-running-p job)
+    (bt:destroy-thread (job-thread job))
+    (setf (job-status job) 'interrupted)))
 
 (defun clean-finished-jobs ()
   (loop :for job-id :being :the :hash-keys :of **jobs**
