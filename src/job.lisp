@@ -36,7 +36,10 @@
 
 (defun job-start (job)
   "Start the JOB."
-  (funcall (job-threader job)))
+  ;; TODO Should this raise an error/warning if the job is already
+  ;; running?
+  (unless (job-running-p job)
+    (funcall (job-threader job))))
 
 (defun job-stop (job)
   "Forcefully stop JOB if running. Does not block."
