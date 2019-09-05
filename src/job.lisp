@@ -42,11 +42,12 @@
   (unless (job-running-p job)
     (funcall (job-threader job))))
 
-(defun job-stop (job)
+(defun job-stop (job &key (status 'interrupted))
+  (check-type status job-status)
   "Forcefully stop JOB if running. Does not block."
   (when (job-running-p job)
     (bt:destroy-thread (job-thread job))
-    (setf (job-status job) 'interrupted)))
+    (setf (job-status job) status)))
 
 ;;; sync/async
 
