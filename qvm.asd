@@ -80,5 +80,4 @@
                (:file "stabilizer-qvm")
                (:file "execution")
                (:file "path-simulate")
-               (:file "misc")
-               (:file "job")))
+               (:file "misc")))

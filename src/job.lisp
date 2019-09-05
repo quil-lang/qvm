@@ -1,4 +1,4 @@
-(in-package #:qvm)
+(in-package #:qvm-app)
 
 (deftype job-status ()
   '(member fresh running finished interrupted error))
