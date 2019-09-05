@@ -1,13 +1,14 @@
 (in-package #:qvm)
 
 (deftype job-status ()
-  '(member fresh running finished interrupted))
+  '(member fresh running finished interrupted error))
 
 (defstruct (job (:constructor %make-job))
   threader
   thread
-  %result                               ; I define this accessor below.
-  (status 'fresh :type job-status))
+  %result                              ; I define this accessor below.
+  (status 'fresh :type job-status)
+  error)
 
 (defmethod print-object ((job job) stream)
   (print-unreadable-object (job stream :type nil :identity t)
@@ -25,11 +26,18 @@
   (let* ((job (%make-job))
          (thr-fn (lambda ()
                    (setf (job-thread job)
-                         (bt:make-thread (lambda ()
-                                           (setf (job-status job) 'running)
-                                           (setf (job-%result job)
-                                                 (funcall fn))
-                                           (setf (job-status job) 'finished)))))))
+                         (bt:make-thread
+                          (lambda ()
+                            (handler-case
+                                (progn
+                                  (setf (job-status job) 'running)
+                                  (setf (job-%result job) (funcall fn))
+                                  (setf (job-status job) 'finished))
+                              (error (c)
+                                ;; TODO What happens to a thread when
+                                ;; there is an error in it?
+                                (setf (job-error job) c)
+                                (setf (job-status job) 'error)))))))))
     (setf (job-threader job) thr-fn)
     job))
 
