@@ -7,7 +7,7 @@
     (rpc-parameter-parse-error "Invalid persistent QVM token. Expected a v4 UUID string. Got ~S"
                                qvm-token))
 
-  (let ((canonicalized-token (canonicalize-persitent-qvm-token qvm-token)))
+  (let ((canonicalized-token (canonicalize-persistent-qvm-token qvm-token)))
     (unless (valid-persistent-qvm-token-p canonicalized-token)
       (rpc-parameter-parse-error "Invalid persistent QVM token. Expected a v4 UUID. Got ~S"
                                  qvm-token))

@@ -69,17 +69,17 @@
 (defun %mark-for-deletion (metadata)
   (setf (gethash "delete-pending" metadata) t))
 
-(defun canonicalize-persitent-qvm-token (token)
+(defun canonicalize-persistent-qvm-token (token)
   "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
   ;; Standardize on the more common (and more readable) lowercase UUID string, even though
   ;; UUID:PRINT-OBJECT and UUID:PRINT-BYTES print them in uppercase.
   (string-downcase token))
 
 (defun %uuid->persistent-qvm-token (uuid)
-  (canonicalize-persitent-qvm-token (princ-to-string uuid)))
+  (canonicalize-persistent-qvm-token (princ-to-string uuid)))
 
 (defun make-persistent-qvm-token ()
-  "Return a new persitent QVM token."
+  "Return a new persistent QVM token."
   (%uuid->persistent-qvm-token
    (bt:with-lock-held (**persistent-qvms-lock**)
      ;; UUID:MAKE-V4-UUID is not thread safe. If you call it without locking, you get collisions. We
