@@ -26,6 +26,8 @@
                (:version #:static-vectors "1.8.3")
                ;; Finalizers and portable GC calls
                #:trivial-garbage
+               #+sbcl
+               #:sb-sprof
                )
   :defsystem-depends-on (#:cl-mpi-asdf-integration)
   :class :mpi-program
