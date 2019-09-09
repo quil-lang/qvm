@@ -11,6 +11,62 @@
 ;;; can determine which addresses are held by any other MPI rank with a
 ;;; minimal memory footprint.
 ;;;
+;;; Motivation:
+;;;
+;;;     Let I and X be the Pauli gates with matrix representations:
+;;;
+;;;             [ 1  0 ]              [ 0  1 ]
+;;;         I = [      ],   and   X = [      ]
+;;;             [ 0  1 ]              [ 1  0 ]
+;;;
+;;;     Now consider a quantum computer with two qubits indexed by 0 and
+;;;     1. The corresponding wavefunction is:
+;;;
+;;;        ψ = [ a₀ a₁ a₂ a₃ ]ᵀ = a₀ |00> + a₁ |01> + a₂ |10> + a₃ |11>
+;;;
+;;;     Suppose we want to execute the instruction X on qubit 0. This amounts
+;;;     to evaluating ψ′ = (I ⊗ X) ψ, where ⊗ denotes the Kronecker product.
+;;;     The matrix I ⊗ X is:
+;;;
+;;;                     [ 0  1  0  0 ]
+;;;                     [            ]
+;;;        [ X  0 ]     [ 1  0  0  0 ]
+;;;        [      ]  =  [            ]
+;;;        [ 0  X ]     [ 0  0  0  1 ]
+;;;                     [            ]
+;;;                     [ 0  0  1  0 ]
+;;;
+;;;     Notice that the matrix I ⊗ X is block-diagonal, and ψ′ becomes:
+;;;
+;;;             [ X ϕ₀ ]
+;;;        ψ′ = [      ], where ϕ₀ = [ ψ₀ ψ₁ ]ᵀ and ϕ₁ = [ ψ₂ ψ₃ ]ᵀ.
+;;;             [ X ϕ₁ ]
+;;;
+;;;     In other words, we split the wave function into blocks and then we
+;;;     apply X to each block. This means that if we have two MPI ranks, the
+;;;     first one can receive ϕ₀ and compute X ϕ₀ while the second receives
+;;;     ϕ₁ and computes X ϕ₁. At this point, the resulting wavefunction ψ′ is
+;;;     distributed among the two MPI ranks. Note that the block-diagonal
+;;;     structure of I ⊗ X above allowed us to compute the result with
+;;;     minimal communication among the ranks.
+;;;
+;;;     Now we would like to execute X on qubit 1 but the corresponding
+;;;     Kronecker product does not have the same block-diagonal structure
+;;;     that we exploited in the previous case. This implies that, in
+;;;     general, we have to let the MPI ranks communicate more data during a
+;;;     gate application (this would be perhaps more apparent had we
+;;;     considered a Hadamard gate instead of X). However, we can compute a
+;;;     transposition matrix P associated to the permutation π = (1 0) that
+;;;     maps qubit 1 to qubit 0 and write
+;;;
+;;;        ψ′ = (X ⊗ I) ψ = Pᵀ (I ⊗ X) P ψ.
+;;;
+;;;     The above can be interpreted as meaning that, after a permutation,
+;;;     all gate matrices are block-diagonal. In this case, P coincides with
+;;;     the representation of the SWAP operator and it is straight-forward to
+;;;     see that the above identity holds. A worked out example is shown at
+;;;     the end of this comment.
+;;;
 ;;; To illustrate the mechanism used to manage addresses in local and remote
 ;;; ranks, we consider the following example program:
 ;;;
@@ -49,6 +105,16 @@
 ;;; where πₖ is the permutation associated with the k-th instruction and π₀
 ;;; is the identity.
 ;;;
+;;; Remark:
+;;;
+;;;     Note that the permutations considered above are independent of the
+;;;     gate being executed. It does not matter whether the gate is I, X, Y,
+;;;     Z, CNOT, etc. What matters is that if U is an arbitrary instruction
+;;;     of arity m operating on qubits (q₀, ..., q_{m-1}) then the
+;;;     permutation π associated to it will be of the form
+;;;         π = (q₀ 0) (q₁ 1) ... (q_{m-1} m-1).
+;;;     See the section titled Motivation above for further details.
+;;;
 ;;; To see where addresses 0, 2, 1, and 3 are migrating to, we compute
 ;;;
 ;;;   π₂⁻¹(0, 2, 1, 3) = (0, 2, 4, 6) = (0, 0, 1, 1) mod 2³/2
@@ -71,6 +137,30 @@
 ;;;
 ;;; tells us that addresses 4 and 6 will come from rank #1 (and in which
 ;;; order).
+;;;
+;;; Example:
+;;;
+;;;     We are going to compute X 1 step by step on the wavefunction:
+;;;
+;;;       ψ = a₀ |00> + a₁ |01> + a₂ |10> + a₃ |11>
+;;;
+;;;     The permutation π = (1 0) brings qubit 1 to qubit 0, and so
+;;;
+;;;       P ψ = a₀ |00> + a₂ |01> + a₁ |10> + a₃ |11>,
+;;;
+;;;     where P is the permutation matrix associated to π. Now,
+;;;
+;;;       (I ⊗ X) P ψ = a₂ |00> + a₀ |01> + a₃ |10> + a₁ |11>,
+;;;
+;;;     The advantage of the previous computation is that we were able to
+;;;     apply the same 2×2 matrix X in parallel to the vectors:
+;;;
+;;;       [ a₀ a₂ ]ᵀ   and   [ a₁ a₃ ]ᵀ.
+;;;
+;;;     Finally, we undo the permutation π by multiplying the previous result
+;;;     by Pᵀ to get:
+;;;
+;;;       ψ′ = a₂ |00> + a₃ |01> + a₀ |10> + a₁ |11>.
 
 (defvar *print-addresses* nil
   "Print address numbers when printing objects of class ADDRESSES.")
