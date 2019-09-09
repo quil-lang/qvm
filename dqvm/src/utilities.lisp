@@ -50,3 +50,23 @@
                 quality, consider passing a suitable seed via the command line."
                 random-seed)
     random-seed))
+
+(defvar *default-number-of-profiling-samples* 10000
+  "Default number of samples to draw during statistical profiling.")
+
+(defmacro with-profiling-maybe ((&rest package-names) &body body)
+  "Run BODY under the statistical profiler if the environment variable DQVM_PROFILE has been set to a valid profiling mode (cpu, time, or alloc). Call counts to functions in PACKAGE-NAMES are explicitly reported."
+  #+sbcl
+  (let ((profile (gensym "PROFILE-"))
+        (mode (gensym "MODE-")))
+    `(alexandria:if-let ((,profile (uiop:getenv "DQVM_PROFILE")))
+       (let ((,mode (alexandria:make-keyword (string-upcase ,profile))))
+         (with-open-file (stream (format nil "prof-~a-~2,'0d-~2,'0d.log" ,mode (mpi-comm-rank) (mpi-comm-size))
+                                 :direction :output :if-exists :supersede)
+           (funcall #'sb-sprof:profile-call-counts ,@package-names)
+           (sb-sprof:with-profiling (:max-samples ,*default-number-of-profiling-samples* :mode ,mode :threads :all)
+             ,@body)
+           (sb-sprof:report :type :graph :stream stream)))
+       (progn ,@body)))
+  #-sbcl
+  `(progn ,@body))

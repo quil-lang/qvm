@@ -55,9 +55,9 @@
 ;;;     that we exploited in the previous case. This implies that, in
 ;;;     general, we have to let the MPI ranks communicate more data during a
 ;;;     gate application (this would be perhaps more apparent had we
-;;;     considered a Hadamard gate instead of X). However, we can compute a
-;;;     transposition matrix P associated to the permutation π = (1 0) that
-;;;     maps qubit 1 to qubit 0 and write
+;;;     considered a Hadamard gate instead of X). However, we can obtain the
+;;;     matrix P associated to the permutation π = (1 0) that maps qubit 1 to
+;;;     qubit 0 and write
 ;;;
 ;;;        ψ′ = (X ⊗ I) ψ = Pᵀ (I ⊗ X) P ψ.
 ;;;

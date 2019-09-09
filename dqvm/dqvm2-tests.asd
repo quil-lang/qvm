@@ -15,5 +15,6 @@
                (:file "suite")
                (:file "permutation-tests")
                (:file "addresses-tests")
+               (:file "offset-arrays-tests")
                (:file "distributed-qvm-tests")
                (:file "program-tests")))
