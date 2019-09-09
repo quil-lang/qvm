@@ -35,7 +35,7 @@
   :pathname "src/"
   :serial t
   :components ((:file "package")
-               (:file "utils")
+               (:file "utilities")
                (:file "permutation")
                (:file "mpi")
                (:file "logging")
