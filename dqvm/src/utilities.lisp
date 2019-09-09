@@ -56,6 +56,7 @@
 
 (defmacro with-profiling-maybe ((&rest package-names) &body body)
   "Run BODY under the statistical profiler if the environment variable DQVM_PROFILE has been set to a valid profiling mode (cpu, time, or alloc). Call counts to functions in PACKAGE-NAMES are explicitly reported."
+  #+sbcl
   (let ((profile (gensym "PROFILE-"))
         (mode (gensym "MODE-")))
     `(alexandria:if-let ((,profile (uiop:getenv "DQVM_PROFILE")))
@@ -67,4 +68,6 @@
            (sb-sprof:with-profiling (:max-samples ,*default-number-of-profiling-samples* :mode ,mode :threads :all)
              ,@body)
            (sb-sprof:report :type :graph :stream stream)))
-       (progn ,@body))))
+       (progn ,@body)))
+  #-sbcl
+  `(progn ,@body))
