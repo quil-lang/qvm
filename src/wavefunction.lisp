@@ -155,7 +155,7 @@ FUNCTION should be a binary function, and will receive (1) an index running from
 (defun-inlinable map-complement (function n qubits)
   "An optimized call to
 
-    (MAP-REORDERED-AMPLITUDES 0 FUNCTION (NAT-TUPLE-COMPLEMENT QUBITS))
+    (MAP-REORDERED-AMPLITUDES 0 FUNCTION (NAT-TUPLE-COMPLEMENT N QUBITS))
 
 up to amplitude ordering."
   (declare (type nat-tuple qubits)

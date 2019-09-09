@@ -1,56 +1,67 @@
-;;;; package.lisp
+;;;; src/package.lisp
 ;;;;
-;;;; Author: Robert Smith
-;;;;         Lauren Capelluto
+;;;; Author: Juan M. Bello-Rivas
 
-;;; Here we set up a tree of packages so as to separate the master and
-;;; worker nodes sufficiently.
+(defpackage #:dqvm2
+  (:use #:common-lisp
+        #:cl-mpi
+        #:cl-mpi-extensions
+        #:static-vectors)
+  (:import-from #:qvm
+                #:boolean-bit
+                #:defun-inlinable
+                #:number-of-qubits
+                #:transition)
+  (:export #:*default-block-size*
+           #:*print-addresses*
+           #:address-member
+           #:addresses
+           #:amplitudes
+           #:apply-inverse-permutation
+           #:apply-inverse-qubit-permutation
+           #:apply-permutation
+           #:apply-qubit-permutation
+           #:block-member
+           #:block-size
+           #:blocks-per-process
+           #:compose-permutations
+           #:copy-global-addresses
+           #:distributed-qvm
+           #:do-addresses
+           #:do-addresses-in-block
+           #:get-address-by-offset
+           #:get-block-by-address
+           #:get-effective-permutation
+           #:get-initial-address
+           #:get-rank-by-address
+           #:get-rank-by-block
+           #:global-addresses
+           #:global-addresses=
+           #:inverse-permutation
+           #:is-identity-permutation-p
+           #:make-addresses
+           #:make-addresses-like
+           #:make-distributed-qvm
+           #:make-permutation
+           #:number-of-addresses
+           #:number-of-blocks
+           #:number-of-processes
+           #:number-of-qubits
+           #:offset
+           #:permutation
+           #:print-qubit-permutation
+           #:qubit-permutation
+           #:rank
+           #:remainder-blocks
+           #:reset-wavefunction
+           #:save-wavefunction
+           #:scratch
+           #:transposition
+           #:update-permutation
+           ))
 
-(defpackage #:dqvm.common
-  (:documentation "The package containing symbols useful to both the master and the worker. These symbols should have the *same* meaning in both processes.")
-  (:use #:cl)
-  (:export #:+master-rank+              ; FUNCTION
-           #:+my-rank+                  ; SYMBOL MACRO
-           #:+worker-count+             ; SYMBOL MACRO
-           #:master-node-p              ; FUNCTION
-           #:worker-node-p              ; FUNCTION
-           #:power-of-two-p             ; FUNCTION
-           #:with-total-readability     ; MACRO
-           #:with-sane-read-settings    ; MACRO
-           #:with-raw-vector            ; MACRO
-           #:cluster                    ; STRUCTURE
-           #:make-cluster               ; FUNCTION
-           #:copy-cluster               ; FUNCTION
-           #:clusterp                   ; FUNCTION
-           #:qubit-count                ; STRUCTURE ACCESSOR
-           #:ordering                   ; STRUCTURE ACCESSOR
-           #:operating-qubits           ; STRUCTURE ACCESSOR
-           #:current-instruction        ; STRUCTURE ACCESSOR
-           #:**cluster**                ; STATIC GLOBAL
-           #:serialize-cluster          ; FUNCTION
-           #:deserialize-cluster        ; FUNCTION
-           #:instruction->string        ; FUNCTION
-           #:string->instruction        ; FUNCTION
-           #:format-locked              ; FUNCTION
-           #:call-with-probed-size      ; FUNCTION
-           #:receive-string             ; FUNCTION
-           #:everybody-synchronize      ; FUNCTION
-           #:with-errors-printed-verbosely
-                                        ; MACRO
-           )
-  )
-
-(defpackage #:dqvm.master
-  (:documentation "The package containing symbols useful to the master.")
-  (:use #:cl #:dqvm.common)
-  (:export #:%main-master))
-
-(defpackage #:dqvm.worker
-  (:documentation "The package containing symbols useful to the worker.")
-  (:use #:cl #:dqvm.common)
-  (:export #:%main-worker))
-
-(defpackage #:dqvm
-  (:documentation "The public distributed QVM package.")
-  (:use #:cl #:dqvm.common)
-  (:export #:%main))
+(defpackage #:dqvm2-user
+  (:use #:common-lisp
+        #:cl-mpi
+        #:cl-mpi-extensions
+        #:dqvm2))

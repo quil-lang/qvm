@@ -1,0 +1,5 @@
+#!/bin/sh
+
+sbcl --eval "(ql:quickload '(:alexandria :cl-mpi :cl-mpi-extensions :cl-quil :cl-syslog :command-line-arguments :magicl :qvm :static-vectors :trivial-garbage))" \
+     --eval "(require :sb-sprof)" \
+     --eval "(save-lisp-and-die \"dqvm2-sbcl\" :executable t :compression t)"
