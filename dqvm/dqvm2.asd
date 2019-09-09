@@ -45,6 +45,7 @@
                (:file "addresses")
                (:file "distributed-qvm")
                (:file "linear-algebra")
+               (:file "offset-arrays")
                (:file "sendrecv")
                (:file "measurement")
                (:file "apply-distributed-gate")

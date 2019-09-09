@@ -203,8 +203,8 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
                                               (stream *standard-output*))
   "Print the address permutation induced by PERMUTATION (possibly using up to NUMBER-OF-QUBITS) in STREAM."
   (let* ((n (or number-of-qubits
-                (1+ (loop :for transposition :in (permutation-transpositions permutation)
-                          :maximizing (max transposition)))))
+                (1+ (loop :for (a . b) :in (permutation-transpositions permutation)
+                          :maximizing (max a b)))))
          (max-value (expt 2 n))
          (aux-control-string (format nil "~~~DD |~~~D,'0B>"
                                      (ceiling (log max-value 10)) n))

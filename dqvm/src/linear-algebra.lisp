@@ -4,13 +4,14 @@
 
 (in-package #:dqvm2)
 
-(ecase qvm::+octets-per-flonum+
-  (4
-   (defconstant +foreign-flonum+ :float)
-   (defconstant +gemm+ #'magicl.blas-cffi::%%cgemm))
-  (8
-   (defconstant +foreign-flonum+ :double)
-   (defconstant +gemm+ #'magicl.blas-cffi::%%zgemm)))
+(eval-when (:compile-toplevel :load-toplevel)
+  (ecase qvm::+octets-per-flonum+
+    (4
+     (defconstant +foreign-flonum+ :float)
+     (defconstant +gemm+ #'magicl.blas-cffi::%%cgemm))
+    (8
+     (defconstant +foreign-flonum+ :double)
+     (defconstant +gemm+ #'magicl.blas-cffi::%%zgemm))))
 
 (defun compute-matrix-vector-products (matrix input-array output-array start-offset end-offset)
   (magicl.cffi-types:with-array-pointers ((ptr-a (magicl::matrix-data matrix)))
