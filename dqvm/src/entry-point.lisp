@@ -75,6 +75,7 @@
 
     (setup-logger "Welcome to the Rigetti Distributed Quantum Virtual Machine")
     (unwind-protect
-         (%main argv)
+         (with-profiling-maybe ("DQVM2" "QVM" "QUIL" "MPI" "CFFI")
+           (%main argv))
       (mpi-finalize)
       (uiop:quit))))
