@@ -115,7 +115,7 @@ SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILAB
 NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM."
   (encode-json (alexandria:plist-hash-table
                 `("token" ,(allocate-persistent-qvm
-                            (make-requested-qvm allocation-method simulation-method num-qubits)
+                            (make-requested-qvm simulation-method allocation-method num-qubits)
                             allocation-method)))))
 
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
@@ -157,8 +157,8 @@ The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
    (collect-memory-registers
     (if qvm-token
         (run-program-on-persistent-qvm qvm-token compiled-quil)
-        (run-program-on-qvm (make-requested-qvm allocation-method
-                                                simulation-method
+        (run-program-on-qvm (make-requested-qvm simulation-method
+                                                allocation-method
                                                 (quil:qubits-needed compiled-quil))
                             compiled-quil))
     addresses)))
