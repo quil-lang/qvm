@@ -27,6 +27,17 @@
 (defun parse-optional-simulation-method (simulation-method)
   (and simulation-method (parse-simulation-method simulation-method)))
 
+(defun parse-allocation-method (allocation-method)
+  (unless (and (typep allocation-method 'string)
+               (member allocation-method **available-allocation-methods** :test #'string=))
+    (rpc-parameter-parse-error "Invalid ALLOCATION-METHOD. Expected one of: ~{~S~^, ~}. Got ~S"
+                               **available-allocation-methods**
+                               allocation-method))
+  (intern (string-upcase allocation-method) :qvm-app-ng))
+
+(defun parse-optional-allocation-method (allocation-method)
+  (and allocation-method (parse-allocation-method allocation-method)))
+
 (defun parse-num-qubits (num-qubits)
   (unless (typep num-qubits `(integer 0))
     (rpc-parameter-parse-error "Invalid NUM-QUBITS. Expected a non-negative integer. Got ~S"
