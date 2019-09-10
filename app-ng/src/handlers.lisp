@@ -105,7 +105,8 @@ ADDRESSES is a HASH-TABLE where the keys are mem register names and the values a
              addresses)
     results))
 
-(define-rpc-handler (handle-create-qvm "create-qvm") ((simulation-method #'parse-simulation-method)
+(define-rpc-handler (handle-create-qvm "create-qvm") ((allocation-method #'parse-allocation-method)
+                                                      (simulation-method #'parse-simulation-method)
                                                       (num-qubits #'parse-num-qubits))
   "Create the requested persistent QVM.
 
@@ -113,7 +114,9 @@ SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILAB
 
 NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM."
   (encode-json (alexandria:plist-hash-table
-                (list "token" (allocate-persistent-qvm simulation-method num-qubits)))))
+                `("token" ,(allocate-persistent-qvm
+                            (make-requested-qvm allocation-method simulation-method num-qubits)
+                            allocation-method)))))
 
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
   "Delete a persistent QVM.
@@ -130,6 +133,7 @@ QVM-TOKEN is a valid persistent QVM token such as one returned by the CREATE-QVM
 
 (define-rpc-handler (handle-run-program "run-program")
                     ((qvm-token #'parse-optional-qvm-token)
+                     (allocation-method #'parse-optional-allocation-method)
                      (simulation-method #'parse-optional-simulation-method)
                      (compiled-quil #'parse-quil-string)
                      (addresses #'parse-addresses))
@@ -144,13 +148,17 @@ COMPILED-QUIL is a STRING containing a valid Quil program.
 ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
 
 The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
-  (unless (alexandria:xor (null qvm-token) (null simulation-method))
+  (unless (or (and (null qvm-token)
+                   (and allocation-method simulation-method))
+              (and qvm-token (null allocation-method) (null simulation-method)))
     (rpc-parameter-parse-error
-     "Exactly one of QVM-TOKEN and SIMULATION-METHOD must be present in the JSON request parameters."))
+     "Either QVM-TOKEN or both ALLOCATION-METHOD and SIMULATION-METHOD must be present in the JSON request parameters."))
   (encode-json
    (collect-memory-registers
     (if qvm-token
         (run-program-on-persistent-qvm qvm-token compiled-quil)
-        (run-program-on-qvm (make-requested-qvm simulation-method (quil:qubits-needed compiled-quil))
+        (run-program-on-qvm (make-requested-qvm allocation-method
+                                                simulation-method
+                                                (quil:qubits-needed compiled-quil))
                             compiled-quil))
     addresses)))

@@ -29,6 +29,14 @@
                 (is (funcall (alexandria:ensure-function test) (gethash field json-data) value))))
             fields))))
 
+(defun plist-downcase-keys (plist)
+  (assert (evenp (length plist)))
+  (loop :for (key value) :on plist :by #'cddr
+        :nconc (list (string-downcase key) value)))
+
+(defun keywords->hash-table (&rest plist)
+  (alexandria:plist-hash-table (plist-downcase-keys plist) :test 'equal))
+
 (defun invalidate-token (qvm-token)
   (substitute #\5 #\4 qvm-token))
 
@@ -124,21 +132,24 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 (deftest test-rpc-api-run-program-simple-request ()
   "Simple run-program calls on emphemeral QVMs return the expected results."
   (with-rpc-server (url)
-    (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
-      (check-request (simple-request url
-                                     :type "run-program"
-                                     :simulation-method simulation-method
-                                     :compiled-quil +generic-x-0-quil-program+
-                                     :addresses +all-ro-addresses+)
-                     :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
+    (dolist (allocation-method qvm-app-ng::**available-allocation-methods**)
+      (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
+        (check-request (simple-request url
+                                       :type "run-program"
+                                       :allocation-method allocation-method
+                                       :simulation-method simulation-method
+                                       :compiled-quil +generic-x-0-quil-program+
+                                       :addresses +all-ro-addresses+)
+                       :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
 
-      (check-request (simple-request url
-                                     :type "run-program"
-                                     :qvm-token ()
-                                     :simulation-method simulation-method
-                                     :compiled-quil +generic-x-0-quil-program+
-                                     :addresses +all-ro-addresses+)
-                     :response-callback (response-json-fields-checker '(("ro" ((1 0)))))))))
+        (check-request (simple-request url
+                                       :type "run-program"
+                                       :qvm-token ()
+                                       :allocation-method allocation-method
+                                       :simulation-method simulation-method
+                                       :compiled-quil +generic-x-0-quil-program+
+                                       :addresses +all-ro-addresses+)
+                       :response-callback (response-json-fields-checker '(("ro" ((1 0))))))))))
 
 (deftest test-rpc-api-run-program-invalid-requests ()
   "Test input validation for the run-program call."
@@ -152,7 +163,32 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                    :addresses +empty-hash-table+)
                    :status 400)
 
-    ;; specify neither qvm-token nor simulation-method
+    ;; specify both qvm-token and allocation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :qvm-token (qvm-app-ng::make-persistent-qvm-token)
+                                   :allocation-method "native"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
+                   :status 400)
+
+    ;; specify simulation-method without allocation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
+                   :status 400)
+
+    ;; specify allocation-method without simulation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
+                   :status 400)
+
+    ;; specify neither qvm-token nor simulation-method nor allocation-method
     (check-request (simple-request url
                                    :type "run-program"
                                    :compiled-quil +generic-x-0-quil-program+
@@ -170,7 +206,17 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     ;; invalid simulation-method
     (check-request (simple-request url
                                    :type "run-program"
+                                   :allocation-method "native"
                                    :simulation-method "super-fast"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+)
+                   :status 400)
+
+    ;; invalid allocation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "super-fast"
+                                   :simulation-method "pure-state"
                                    :compiled-quil +generic-x-0-quil-program+
                                    :addresses +empty-hash-table+)
                    :status 400)
@@ -178,6 +224,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     ;; invalid compiled-quil
     (check-request (simple-request url
                                    :type "run-program"
+                                   :allocation-method "native"
                                    :simulation-method "pure-state"
                                    :compiled-quil "(defgate FOO (:as :permutation) #(0 2 3 1))"
                                    :addresses +empty-hash-table+)
@@ -190,6 +237,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (check-request
      (simple-request url
                      :type "run-program"
+                     :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
                      :addresses +empty-hash-table+)
@@ -199,6 +247,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (check-request
      (simple-request url
                      :type "run-program"
+                     :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
                      :addresses +all-ro-addresses+)
@@ -208,6 +257,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (check-request
      (simple-request url
                      :type "run-program"
+                     :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
                      :addresses (alexandria:plist-hash-table '("ro" (0))))
@@ -217,6 +267,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (check-request
      (simple-request url
                      :type "run-program"
+                     :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil "DECLARE mem BIT[3]; X 3; MEASURE 0 mem[0]; MEASURE 3 mem[2]"
                      :addresses (alexandria:plist-hash-table '("mem" (0 2))))
@@ -226,6 +277,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (check-request
      (simple-request url
                      :type "run-program"
+                     :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil "DECLARE ro BIT; I 0"
                      :addresses (alexandria:plist-hash-table '("zonk" t)))
@@ -239,25 +291,30 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 (deftest test-rpc-api-create-qvm ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and NUM-QUBITS."
   (with-rpc-server (url)
-    (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
-      (dolist (num-qubits '(0 1 4))
-        (let* ((response (check-request (simple-request url
-                                                        :type "create-qvm"
-                                                        :simulation-method simulation-method
-                                                        :num-qubits num-qubits)
-                                        :response-re **rpc-response-token-scanner**))
-               (token (extract-and-validate-token response)))
+    (dolist (allocation-method qvm-app-ng::**available-allocation-methods**)
+      (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
+        (dolist (num-qubits '(0 1 4))
+          (let* ((response (check-request (simple-request url
+                                                          :type "create-qvm"
+                                                          :allocation-method allocation-method
+                                                          :simulation-method simulation-method
+                                                          :num-qubits num-qubits)
+                                          :response-re **rpc-response-token-scanner**))
+                 (token (extract-and-validate-token response)))
 
-          ;; check that info reports expected values for qvm-type and num-qubits
-          (check-request (simple-request url :type "qvm-info" :qvm-token token)
-                         :response-callback
-                         (response-json-fields-checker
-                          `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
-                            ("num-qubits" ,num-qubits))))
+            ;; check that info reports expected values for qvm-type and num-qubits
+            (check-request (simple-request url :type "qvm-info" :qvm-token token)
+                           :response-callback
+                           (response-json-fields-checker
+                            `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
+                              ("num-qubits" ,num-qubits)
+                              ("metadata" ,(keywords->hash-table
+                                            :allocation-method allocation-method)
+                                          :test equalp))))
 
-          ;; cleanup
-          (check-request (simple-request url :type "delete-qvm" :qvm-token token)
-                         :response-re "Deleted persistent QVM"))))))
+            ;; cleanup
+            (check-request (simple-request url :type "delete-qvm" :qvm-token token)
+                           :response-re "Deleted persistent QVM")))))))
 
 (deftest test-rpc-api-create-qvm-invalid-requests ()
   "Test input validate for the create-qvm call."
@@ -265,23 +322,49 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     ;; invalid simulation-method
     (check-request (simple-request url
                                    :type "create-qvm"
+                                   :allocation-method "native"
                                    :simulation-method "super-fast"
                                    :num-qubits 0)
                    :status 400)
 
     ;; no simulation method
-    (check-request (simple-request url :type "create-qvm" :num-qubits 0)
+    (check-request (simple-request url :type "create-qvm" :allocation-method "native" :num-qubits 0)
+                   :status 400)
+
+    ;; invalid simulation method
+    (check-request (simple-request url
+                                   :type "create-qvm"
+                                   :simulation-method "super-fast"
+                                   :allocation-method "native"
+                                   :num-qubits 0)
+                   :status 400)
+
+    ;; no allocation method
+    (check-request (simple-request url :type "create-qvm"
+                                       :simulation-method "pure-state"
+                                       :num-qubits 0)
+                   :status 400)
+
+    ;; invalid allocation method
+    (check-request (simple-request url
+                                   :type "create-qvm"
+                                   :simulation-method "pure-state"
+                                   :allocation-method "super-fast"
+                                   :num-qubits 0)
                    :status 400)
 
     ;; invalid num-qubits
     (check-request (simple-request url
                                    :type "create-qvm"
+                                   :allocation-method "native"
                                    :simulation-method "pure-state"
                                    :num-qubits -1)
                    :status 400)
 
     ;; no num-qubits
-    (check-request (simple-request url :type "create-qvm" :simulation-method "pure-state")
+    (check-request (simple-request url :type "create-qvm"
+                                       :allocation-method "native"
+                                       :simulation-method "pure-state")
                    :status 400)))
 
 (deftest test-rpc-api-qvm-info ()
@@ -303,6 +386,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 
     (let* ((response (check-request (simple-request url
                                                     :type "create-qvm"
+                                                    :allocation-method "native"
                                                     :simulation-method "pure-state"
                                                     :num-qubits 1)
                                     :response-re **rpc-response-token-scanner**))
@@ -315,7 +399,12 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 
       ;; info on existing token
       (check-request (simple-request url :type "qvm-info" :qvm-token token)
-                     :response-re "PURE-STATE-QVM")
+                     :response-callback
+                     (response-json-fields-checker
+                      `(("qvm-type" "PURE-STATE-QVM")
+                        ("num-qubits" 1)
+                        ("metadata" ,(keywords->hash-table :allocation-method "NATIVE")
+                                    :test equalp))))
 
       ;; upper case token also accepted
       (check-request (simple-request url :type "qvm-info" :qvm-token (string-upcase token))
@@ -346,6 +435,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 
       (let* ((response (check-request (simple-request url
                                                       :type "create-qvm"
+                                                      :allocation-method "native"
                                                       :simulation-method simulation-method
                                                       :num-qubits 2)
                                       :response-re **rpc-response-token-scanner**))

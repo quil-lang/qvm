@@ -6,7 +6,10 @@
   (let ((num-tasks (* 2 (lparallel:kernel-worker-count)))
         (channel (lparallel:make-channel)))
     (labels ((create-qvm ()
-               (let* ((response (qvm-app-ng::handle-create-qvm :simulation-method "pure-state" :num-qubits 1))
+               (let* ((response (qvm-app-ng::handle-create-qvm
+                                 :allocation-method "native"
+                                 :simulation-method "pure-state"
+                                 :num-qubits 1))
                       (token (extract-token response)))
                  (lparallel:submit-task channel #'qvm-info token)))
              (qvm-info (token)
@@ -36,7 +39,10 @@
   (let ((num-tasks (* 10 (lparallel:kernel-worker-count)))
         (channel (lparallel:make-channel)))
     (labels ((create-qvm ()
-               (let* ((response (qvm-app-ng::handle-create-qvm :simulation-method "pure-state" :num-qubits 1))
+               (let* ((response (qvm-app-ng::handle-create-qvm
+                                 :allocation-method "native"
+                                 :simulation-method "pure-state"
+                                 :num-qubits 1))
                       (token (extract-token response)))
                  (lparallel:submit-task channel #'delete-qvm token)))
              (delete-qvm (token)
@@ -55,7 +61,9 @@
   (qvm:prepare-for-parallelization)
   (let* ((num-tasks (* 2 (lparallel:kernel-worker-count)))
          (channel (lparallel:make-channel))
-         (response (qvm-app-ng::handle-create-qvm :simulation-method "pure-state" :num-qubits 1))
+         (response (qvm-app-ng::handle-create-qvm :allocation-method "native"
+                                                  :simulation-method "pure-state"
+                                                  :num-qubits 1))
          (token (extract-token response)))
     (unwind-protect
          (lparallel:task-handler-bind ((error  #'lparallel:invoke-transfer-error))

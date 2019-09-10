@@ -120,13 +120,17 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
        (eq (aref token 23) #\-)
        (every #'hex-char-p (remove #\- token))))
 
-(defun make-persistent-qvm (simulation-method num-qubits)
-  (list (make-requested-qvm simulation-method num-qubits)
-        (bt:make-lock (format nil "PQVM Lock"))
-        (make-hash-table :test 'equal)))
+(defun %make-persistent-qvm-metadata (allocation-method)
+  (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method))
+                               :test 'equal))
 
-(defun allocate-persistent-qvm (simulation-method num-qubits)
-  (let ((persistent-qvm (make-persistent-qvm simulation-method num-qubits)))
+(defun make-persistent-qvm (qvm allocation-method)
+  (list qvm
+        (bt:make-lock (format nil "PQVM Lock"))
+        (%make-persistent-qvm-metadata allocation-method)))
+
+(defun allocate-persistent-qvm (qvm allocation-method)
+  (let ((persistent-qvm (make-persistent-qvm qvm allocation-method)))
     (bt:with-lock-held (**persistent-qvms-lock**)
       (let ((token (%make-persistent-qvm-token-locked)))
         (cond ((not (null (%lookup-persistent-qvm-locked token)))
