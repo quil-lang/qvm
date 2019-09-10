@@ -14,16 +14,19 @@
     (native  (make-instance 'qvm:lisp-allocation :length length))
     (foreign (make-instance 'qvm:c-allocation :length length))))
 
-(defun make-requested-qvm (allocation-method simulation-method num-qubits)
-  (check-type num-qubits (integer 0))
-  (ecase simulation-method
-    (pure-state
-     (qvm:make-qvm num-qubits
-                   :allocation (make-requested-allocation-descriptor
-                                allocation-method
-                                (expt 2 num-qubits))))
-    (full-density-matrix
-     (qvm:make-density-qvm num-qubits
-                           :allocation (make-requested-allocation-descriptor
+(defgeneric make-requested-qvm (simulation-method allocation-method num-qubits)
+  (:documentation "Create and return a QVM instance of the requested type."))
+
+(defmethod make-requested-qvm ((simulation-method (eql 'pure-state))
+                               allocation-method
+                               num-qubits)
+  (qvm:make-qvm num-qubits :allocation (make-requested-allocation-descriptor
                                         allocation-method
-                                        (expt 2 (* 2 num-qubits)))))))
+                                        (expt 2 num-qubits))))
+
+(defmethod make-requested-qvm ((simulation-method (eql 'full-density-matrix))
+                               allocation-method
+                               num-qubits)
+  (qvm:make-density-qvm num-qubits :allocation (make-requested-allocation-descriptor
+                                                allocation-method
+                                                (expt 2 (* 2 num-qubits)))))
