@@ -59,21 +59,22 @@
 (defun %make-url (protocol host port &optional (path "/"))
   (format nil "~A://~A:~D~A" protocol host port path))
 
+(defun call-with-rpc-server (host port function)
+  (let (rpc-acceptor)
+    (unwind-protect
+         (progn
+           (setf rpc-acceptor (qvm-app-ng::start-server host port))
+           (funcall function (%make-url "http" host (tbnl:acceptor-port rpc-acceptor))))
+      (qvm-app-ng::stop-server rpc-acceptor)
+      (qvm-app-ng::reset-persistent-qvms-db))))
+
 (defmacro with-rpc-server ((url-var &key (host "127.0.0.1") (port 0)) &body body)
   "Execute BODY with URL-VAR bound the URL of a new RPC server started on HOST and PORT.
 
 HOST defaults to 127.0.0.1 and PORT defaults to a randomly assigned port."
   (check-type url-var symbol)
   (alexandria:once-only (host port)
-    (alexandria:with-gensyms (app)
-      `(let (,app)
-         (unwind-protect
-              (progn
-                (setf ,app (qvm-app-ng::start-server ,host ,port))
-                (let ((,url-var (%make-url "http" ,host (tbnl:acceptor-port ,app))))
-                  ,@body))
-           (qvm-app-ng::stop-server ,app)
-           (qvm-app-ng::reset-persistent-qvms-db))))))
+    `(call-with-rpc-server ,host ,port (lambda (,url-var) ,@body))))
 
 (defmacro check-request (request-form
                          &key (status 200)
