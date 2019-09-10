@@ -21,21 +21,24 @@
   (with-output-to-string (*standard-output*)
     (yason:encode-plist (plist-lowercase-keys plist))))
 
+(defun hash-table-fields-checker (fields)
+  (lambda (json-data)
+    (mapc (lambda (spec)
+            (destructuring-bind (field value &key (test 'equal)) spec
+              (if (functionp value)
+                  (is (funcall value (gethash field json-data)))
+                  (is (funcall (alexandria:ensure-function test) (gethash field json-data) value)))))
+          fields)))
+
 (defun response-json-fields-checker (fields)
   (lambda (response-string)
-    (let ((json-data (yason:parse response-string)))
-      (mapc (lambda (spec)
-              (destructuring-bind (field value &key (test 'equal)) spec
-                (is (funcall (alexandria:ensure-function test) (gethash field json-data) value))))
-            fields))))
+    (funcall (hash-table-fields-checker fields)
+             (yason:parse response-string))))
 
 (defun plist-downcase-keys (plist)
   (assert (evenp (length plist)))
   (loop :for (key value) :on plist :by #'cddr
         :nconc (list (string-downcase key) value)))
-
-(defun keywords->hash-table (&rest plist)
-  (alexandria:plist-hash-table (plist-downcase-keys plist) :test 'equal))
 
 (defun invalidate-token (qvm-token)
   (substitute #\5 #\4 qvm-token))
@@ -288,6 +291,10 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (cl-ppcre:create-scanner
      "\\A{\"token\":\"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\"}\\z"))
 
+(global-vars:define-global-var **iso-time-scanner**
+    (cl-ppcre:create-scanner
+     "\\A\\d{4}-(?:1[0-2]|0[1-9])-(?:3[0-1]|[1-2][0-9]|0[0-9]) (?:2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9]\\z"))
+
 (deftest test-rpc-api-create-qvm ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and NUM-QUBITS."
   (with-rpc-server (url)
@@ -308,9 +315,10 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                            (response-json-fields-checker
                             `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
                               ("num-qubits" ,num-qubits)
-                              ("metadata" ,(keywords->hash-table
-                                            :allocation-method allocation-method)
-                                          :test equalp))))
+                              ("metadata" ,(hash-table-fields-checker
+                                            `(("allocation-method" ,(string-upcase allocation-method))
+                                              ("created" ,(lambda (s)
+                                                            (cl-ppcre:scan **iso-time-scanner** s)))))))))
 
             ;; cleanup
             (check-request (simple-request url :type "delete-qvm" :qvm-token token)
@@ -403,8 +411,10 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                      (response-json-fields-checker
                       `(("qvm-type" "PURE-STATE-QVM")
                         ("num-qubits" 1)
-                        ("metadata" ,(keywords->hash-table :allocation-method "NATIVE")
-                                    :test equalp))))
+                        ("metadata" ,(hash-table-fields-checker
+                                      `(("allocation-method" "NATIVE")
+                                        ("created" ,(lambda (s)
+                                                      (cl-ppcre:scan **iso-time-scanner** s)))))))))
 
       ;; upper case token also accepted
       (check-request (simple-request url :type "qvm-info" :qvm-token (string-upcase token))
