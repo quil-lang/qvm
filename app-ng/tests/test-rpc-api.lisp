@@ -12,6 +12,14 @@
     (make-hash-table)
   :test #'equalp)
 
+(alexandria:define-constant +allocation-method-strings+
+    (mapcar #'string-downcase qvm-app-ng::**available-allocation-methods**)
+  :test #'equal)
+
+(alexandria:define-constant +simulation-method-strings+
+    (mapcar #'string-downcase qvm-app-ng::**available-simulation-methods**)
+  :test #'equal)
+
 (defun plist-lowercase-keys (plist)
   (assert (evenp (length plist)))
   (loop :for (k v) :on plist :by #'cddr
@@ -52,7 +60,7 @@
     token))
 
 (defun simulation-method->qvm-type (simulation-method)
-  (alexandria:eswitch (simulation-method :test #'string=)
+  (alexandria:eswitch ((string-downcase simulation-method) :test #'string=)
     ("pure-state" "PURE-STATE-QVM")
     ("full-density-matrix" "DENSITY-QVM")))
 
@@ -139,8 +147,8 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 (deftest test-rpc-api-run-program-simple-request ()
   "Simple run-program calls on emphemeral QVMs return the expected results."
   (with-rpc-server (url)
-    (dolist (allocation-method qvm-app-ng::**available-allocation-methods**)
-      (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
+    (dolist (allocation-method +allocation-method-strings+)
+      (dolist (simulation-method +simulation-method-strings+)
         (check-request (simple-request url
                                        :type "run-program"
                                        :allocation-method allocation-method
@@ -302,8 +310,8 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 (deftest test-rpc-api-create-qvm ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and NUM-QUBITS."
   (with-rpc-server (url)
-    (dolist (allocation-method qvm-app-ng::**available-allocation-methods**)
-      (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
+    (dolist (allocation-method +allocation-method-strings+)
+      (dolist (simulation-method +simulation-method-strings+)
         (dolist (num-qubits '(0 1 4))
           (let* ((response (check-request (simple-request url
                                                           :type "create-qvm"
@@ -436,7 +444,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 (deftest test-rpc-api-persistent-qvm-run-program ()
   "Test run-program calls on a persistent QVM."
   (with-rpc-server (url)
-    (dolist (simulation-method qvm-app-ng::**available-simulation-methods**)
+    (dolist (simulation-method +simulation-method-strings+)
 
       ;; run-program on non-existent token
       (check-request (simple-request url

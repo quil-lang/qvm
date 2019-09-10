@@ -16,24 +16,31 @@
 (defun parse-optional-qvm-token (qvm-token)
   (and qvm-token (parse-qvm-token qvm-token)))
 
+(defun %parse-string-to-known-symbol (parameter-name parameter-string known-symbols)
+  (flet ((%error ()
+           (rpc-parameter-parse-error "Invalid ~A. Expected one of: ~{~S~^, ~}. Got ~S"
+                                      parameter-name
+                                      (mapcar #'string-downcase known-symbols)
+                                      parameter-string)))
+    (unless (typep parameter-string 'string)
+      (%error))
+    (let ((symbol (find-symbol (string-upcase parameter-string) 'qvm-app-ng)))
+      (unless (and symbol (member symbol known-symbols))
+        (%error))
+      symbol)))
+
 (defun parse-simulation-method (simulation-method)
-  (unless (and (typep simulation-method 'string)
-               (member simulation-method **available-simulation-methods** :test #'string=))
-    (rpc-parameter-parse-error "Invalid SIMULATION-METHOD. Expected one of: ~{~S~^, ~}. Got ~S"
-                               **available-simulation-methods**
-                               simulation-method))
-  (intern (string-upcase simulation-method) :qvm-app-ng))
+  (%parse-string-to-known-symbol "simulation-method"
+                                 simulation-method
+                                 **available-simulation-methods**))
 
 (defun parse-optional-simulation-method (simulation-method)
   (and simulation-method (parse-simulation-method simulation-method)))
 
 (defun parse-allocation-method (allocation-method)
-  (unless (and (typep allocation-method 'string)
-               (member allocation-method **available-allocation-methods** :test #'string=))
-    (rpc-parameter-parse-error "Invalid ALLOCATION-METHOD. Expected one of: ~{~S~^, ~}. Got ~S"
-                               **available-allocation-methods**
-                               allocation-method))
-  (intern (string-upcase allocation-method) :qvm-app-ng))
+  (%parse-string-to-known-symbol "allocation-method"
+                                 allocation-method
+                                 **available-allocation-methods**))
 
 (defun parse-optional-allocation-method (allocation-method)
   (and allocation-method (parse-allocation-method allocation-method)))
