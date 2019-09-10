@@ -76,6 +76,15 @@ HOST defaults to 127.0.0.1 and PORT defaults to a randomly assigned port."
   (alexandria:once-only (host port)
     `(call-with-rpc-server ,host ,port (lambda (,url-var) ,@body))))
 
+
+(defun call-with-drakma-request (body-or-stream status-code headers uri stream must-close reason-phrase function)
+  (unwind-protect
+       (funcall function body-or-stream status-code headers uri stream must-close reason-phrase)
+    (progn
+      (close stream)
+      (when (streamp body-or-stream)
+        (close body-or-stream)))))
+
 (defmacro check-request (request-form
                          &key (status 200)
                               (response-re nil response-re-p)
@@ -86,26 +95,20 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
   (alexandria:once-only (status)
     (alexandria:with-gensyms
         (body-or-stream status-code headers uri stream must-close reason-phrase body-as-string)
-      `(multiple-value-bind
-             (,body-or-stream ,status-code ,headers ,uri ,stream ,must-close ,reason-phrase)
-           ,request-form
-         (declare (ignore ,headers ,uri ,must-close ,reason-phrase))
-         (unwind-protect
-              (progn
-                (is (= ,status ,status-code))
-                (let ((,body-as-string (if (streamp ,body-or-stream)
-                                           (alexandria:read-stream-content-into-string ,body-or-stream)
-                                           ,body-or-stream)))
-                  ,@(when response-re-p
-                      `((is (cl-ppcre:scan ,response-re ,body-as-string))))
-                  ,@(when response-callback-p
-                      `((funcall (alexandria:ensure-function ,response-callback) ,body-as-string)))
+      `(multiple-value-call #'call-with-drakma-request
+         ,request-form
+         (lambda (,body-or-stream ,status-code ,headers ,uri ,stream ,must-close ,reason-phrase)
+           (declare (ignore ,headers ,uri ,must-close ,reason-phrase))
+           (is (= ,status ,status-code))
+           (let ((,body-as-string (if (streamp ,body-or-stream)
+                                      (alexandria:read-stream-content-into-string ,body-or-stream)
+                                      ,body-or-stream)))
+             ,@(when response-re-p
+                 `((is (cl-ppcre:scan ,response-re ,body-as-string))))
+             ,@(when response-callback-p
+                 `((funcall (alexandria:ensure-function ,response-callback) ,body-as-string)))
 
-                  ,body-as-string))
-           (progn
-             (close ,stream)
-             (when (streamp ,body-or-stream)
-               (close ,body-or-stream))))))))
+             ,body-as-string))))))
 
 (defun http-request (&rest args)
   "Make an HTTP-REQUEST via DRAKMA:HTTP-REQUEST and treat application/json responses as text."
