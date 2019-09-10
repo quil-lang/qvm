@@ -7,7 +7,7 @@
   threader
   thread
   %result                              ; I define this accessor below.
-  (status 'fresh :type job-status)
+  (status 'fraiche :type job-status)
   error)
 
 (defmethod print-object ((job job) stream)
