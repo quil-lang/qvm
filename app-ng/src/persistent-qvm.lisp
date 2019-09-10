@@ -121,7 +121,8 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
        (every #'hex-char-p (remove #\- token))))
 
 (defun %make-persistent-qvm-metadata (allocation-method)
-  (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method))
+  (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method)
+                                     "created" (iso-time))
                                :test 'equal))
 
 (defun make-persistent-qvm (qvm allocation-method)

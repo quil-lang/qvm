@@ -13,3 +13,11 @@
   (case (if case-sensitive-p char (char-downcase char))
     ((#\a #\b #\c #\d #\e #\f #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
      t)))
+
+;; Stolen from HUNCHENTOOT::ISO-TIME
+(defun iso-time (&optional (time (get-universal-time)))
+  "Returns the universal time TIME as a string in full ISO format."
+  (multiple-value-bind (second minute hour date month year)
+      (decode-universal-time time)
+    (format nil "~4,'0d-~2,'0d-~2,'0d ~2,'0d:~2,'0d:~2,'0d"
+            year month date hour minute second)))
