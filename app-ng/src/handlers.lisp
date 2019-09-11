@@ -107,7 +107,9 @@ ADDRESSES is a HASH-TABLE where the keys are mem register names and the values a
 
 (define-rpc-handler (handle-create-qvm "create-qvm") ((allocation-method #'parse-allocation-method)
                                                       (simulation-method #'parse-simulation-method)
-                                                      (num-qubits #'parse-num-qubits))
+                                                      (num-qubits #'parse-num-qubits)
+                                                      (gate-noise #'parse-optional-pauli-noise)
+                                                      (measurement-noise #'parse-optional-pauli-noise))
   "Create the requested persistent QVM.
 
 SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
@@ -115,7 +117,11 @@ SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILAB
 NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM."
   (encode-json (alexandria:plist-hash-table
                 `("token" ,(allocate-persistent-qvm
-                            (make-requested-qvm simulation-method allocation-method num-qubits)
+                            (make-requested-qvm simulation-method
+                                                allocation-method
+                                                num-qubits
+                                                gate-noise
+                                                measurement-noise)
                             allocation-method)))))
 
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
@@ -136,7 +142,9 @@ QVM-TOKEN is a valid persistent QVM token such as one returned by the CREATE-QVM
                      (allocation-method #'parse-optional-allocation-method)
                      (simulation-method #'parse-optional-simulation-method)
                      (compiled-quil #'parse-quil-string)
-                     (addresses #'parse-addresses))
+                     (addresses #'parse-addresses)
+                     (gate-noise #'parse-optional-pauli-noise)
+                     (measurement-noise #'parse-optional-pauli-noise))
   "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD.
 
 QVM-TOKEN is a valid persistent QVM token as returned by the CREATE-QVM RPC call.
@@ -148,17 +156,24 @@ COMPILED-QUIL is a STRING containing a valid Quil program.
 ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
 
 The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
-  (unless (or (and (null qvm-token)
-                   (and allocation-method simulation-method))
-              (and qvm-token (null allocation-method) (null simulation-method)))
+  (when (and (null qvm-token)
+             (not (and allocation-method simulation-method)))
     (rpc-parameter-parse-error
      "Either QVM-TOKEN or both ALLOCATION-METHOD and SIMULATION-METHOD must be present in the JSON request parameters."))
+  (when (and qvm-token (or allocation-method
+                           simulation-method
+                           gate-noise
+                           measurement-noise))
+    (rpc-parameter-parse-error
+     "QVM-TOKEN is incompatible with any of the following parameters: ALLOCATION-METHOD, SIMULATION-METHOD, GATE-NOISE, MEASUREMENT-NOISE."))
   (encode-json
    (collect-memory-registers
     (if qvm-token
         (run-program-on-persistent-qvm qvm-token compiled-quil)
         (run-program-on-qvm (make-requested-qvm simulation-method
                                                 allocation-method
-                                                (quil:qubits-needed compiled-quil))
+                                                (quil:qubits-needed compiled-quil)
+                                                gate-noise
+                                                measurement-noise)
                             compiled-quil))
     addresses)))

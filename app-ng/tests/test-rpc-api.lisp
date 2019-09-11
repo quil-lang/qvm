@@ -59,10 +59,13 @@
     (is (qvm-app-ng::valid-persistent-qvm-token-p token))
     token))
 
-(defun simulation-method->qvm-type (simulation-method)
+(defun simulation-method->qvm-type (simulation-method &key pauli-noise-p)
   (alexandria:eswitch ((string-downcase simulation-method) :test #'string=)
-    ("pure-state" "PURE-STATE-QVM")
-    ("full-density-matrix" "DENSITY-QVM")))
+    ("pure-state" (if pauli-noise-p
+                      "DEPOLARIZING-QVM"
+                      "PURE-STATE-QVM"))
+    ("full-density-matrix" (progn (assert (not pauli-noise-p))
+                                  "DENSITY-QVM"))))
 
 (defun %make-url (protocol host port &optional (path "/"))
   (format nil "~A://~A:~D~A" protocol host port path))
@@ -154,16 +157,63 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                        :simulation-method simulation-method
                                        :compiled-quil +generic-x-0-quil-program+
                                        :addresses +all-ro-addresses+)
-                       :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
-
-        (check-request (simple-request url
-                                       :type "run-program"
-                                       :qvm-token ()
-                                       :allocation-method allocation-method
-                                       :simulation-method simulation-method
-                                       :compiled-quil +generic-x-0-quil-program+
-                                       :addresses +all-ro-addresses+)
                        :response-callback (response-json-fields-checker '(("ro" ((1 0))))))))))
+
+(deftest test-rpc-api-run-program-with-pauli-noise ()
+  "Test run-program calls on emphemeral QVMs with Pauli channel noise."
+  (with-rpc-server (url)
+    ;; gate and measurement all zeros
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +all-ro-addresses+
+                                   :gate-noise '(0.0 0.0 0.0)
+                                   :measurement-noise '(0.0 0.0 0.0))
+                   :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
+
+    ;; gate only, P(X) = 1.0 flips the bit in the result
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +all-ro-addresses+
+                                   :gate-noise '(1.0 0.0 0.0))
+                   :response-callback (response-json-fields-checker '(("ro" ((0 0))))))
+
+    ;; measurement only, P(Y) = 1.0 flips the bit in the result
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +all-ro-addresses+
+                                   :gate-noise '(0.0 0.0 0.0)
+                                   :measurement-noise '(0.0 1.0 0.0))
+                   :response-callback (response-json-fields-checker '(("ro" ((0 0))))))
+
+    ;; gate and measurement errors cancel out
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +all-ro-addresses+
+                                   :gate-noise '(1.0 0.0 0.0)
+                                   :measurement-noise '(0.0 1.0 0.0))
+                   :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
+
+    ;; Pauli noise is incompatible with the full-density-matrix simulation-method
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "full-density-matrix"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +all-ro-addresses+
+                                   :gate-noise '(0.0 0.0 0.0))
+                   :status 500)))
 
 (deftest test-rpc-api-run-program-invalid-requests ()
   "Test input validation for the run-program call."
@@ -184,6 +234,24 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                    :allocation-method "native"
                                    :compiled-quil +generic-x-0-quil-program+
                                    :addresses +empty-hash-table+)
+                   :status 400)
+
+    ;; specify both qvm-token and gate-noise
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :qvm-token (qvm-app-ng::make-persistent-qvm-token)
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :gate-noise '(0.0 0.0 0.0))
+                   :status 400)
+
+    ;; specify both qvm-token and measurement-noise
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :qvm-token (qvm-app-ng::make-persistent-qvm-token)
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :measurement-noise '(0.0 0.0 0.0))
                    :status 400)
 
     ;; specify simulation-method without allocation-method
@@ -242,7 +310,48 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                    :simulation-method "pure-state"
                                    :compiled-quil "(defgate FOO (:as :permutation) #(0 2 3 1))"
                                    :addresses +empty-hash-table+)
-                   :status 500)))
+                   :status 500)
+
+    ;; NB: the :ADDRESSES parameter is complicated enough that it gets a separate test in
+    ;; TEST-RPC-API-RUN-PROGRAM-ADDRESSES.
+
+    ;; invalid gate-noise
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :gate-noise 0.0)
+                   :status 400)
+
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :gate-noise '(0.0 0.0))
+                   :status 400)
+
+    ;; invalid measurement-noise
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :measurement-noise 0.0)
+                   :status 400)
+
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :measurement-noise '(0.0 0.0))
+                   :status 400)))
 
 (deftest test-rpc-api-run-program-addresses ()
   "Test variations of the ADDRESSES parameter for the run-program call."
@@ -335,6 +444,43 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
             (check-request (simple-request url :type "delete-qvm" :qvm-token token)
                            :response-re "Deleted persistent QVM")))))))
 
+(deftest test-rpc-api-create-qvm-with-pauli-noise ()
+  "Test create-qvm for various combinations of SIMULATION-METHOD and Pauli noise parameters.."
+  (with-rpc-server (url)
+    ;; Pauli noise is incompatible with the full-density-matrix simulation-method
+    (check-request (simple-request url
+                                   :type "create-qvm"
+                                   :allocation-method "native"
+                                   :simulation-method "full-density-matrix"
+                                   :num-qubits 1
+                                   :gate-noise '(1.0 0.0 0.0)
+                                   :measurement-noise '(0.0 0.0 0.0))
+                   :status 500)
+
+    (dolist (gate-noise '(nil (1.0 0.0 0.0)))
+      (dolist (measurement-noise '(nil (0.0 1.0 0.0)))
+        (let* ((response (check-request (simple-request url
+                                                        :type "create-qvm"
+                                                        :allocation-method "native"
+                                                        :simulation-method "pure-state"
+                                                        :num-qubits 1
+                                                        :gate-noise gate-noise
+                                                        :measurement-noise measurement-noise)
+                                        :response-re **rpc-response-token-scanner**))
+               (token (extract-and-validate-token response)))
+
+          ;; check that info reports expected values for qvm-type
+          (check-request (simple-request url :type "qvm-info" :qvm-token token)
+                         :response-callback
+                         (response-json-fields-checker
+                          `(("qvm-type" ,(simulation-method->qvm-type
+                                          "pure-state"
+                                          :pauli-noise-p (or gate-noise measurement-noise))))))
+
+          ;; cleanup
+          (check-request (simple-request url :type "delete-qvm" :qvm-token token)
+                         :response-re "Deleted persistent QVM"))))))
+
 (deftest test-rpc-api-create-qvm-invalid-requests ()
   "Test input validate for the create-qvm call."
   (with-rpc-server (url)
@@ -384,6 +530,44 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (check-request (simple-request url :type "create-qvm"
                                        :allocation-method "native"
                                        :simulation-method "pure-state")
+                   :status 400)
+
+    ;; invalid gate-noise
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :gate-noise 0.0)
+                   :status 400)
+
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :gate-noise '(0.0 0.0))
+                   :status 400)
+
+    ;; invalid measurement-noise
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :measurement-noise 0.0)
+                   :status 400)
+
+    (check-request (simple-request url
+                                   :type "run-program"
+                                   :allocation-method "native"
+                                   :simulation-method "pure-state"
+                                   :compiled-quil +generic-x-0-quil-program+
+                                   :addresses +empty-hash-table+
+                                   :measurement-noise '(0.0 0.0))
                    :status 400)))
 
 (deftest test-rpc-api-qvm-info ()

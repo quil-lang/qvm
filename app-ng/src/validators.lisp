@@ -81,3 +81,13 @@
     (let ((quil:*resolve-include-pathname* #'no-includes)
           (quil::*allow-unresolved-applications* t))
       (quil:parse-quil string))))
+
+(defun parse-pauli-noise (noise)
+  (unless (and (alexandria:proper-list-p noise)
+               (= 3 (length noise))
+               (every #'floatp noise))
+    (rpc-parameter-parse-error "Invalid Pauli noise. Expected a LIST of three FLOATs. Got ~S" noise))
+  noise)
+
+(defun parse-optional-pauli-noise (noise)
+  (and noise (parse-pauli-noise noise)))
