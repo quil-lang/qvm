@@ -21,3 +21,10 @@
       (decode-universal-time time)
     (format nil "~4,'0d-~2,'0d-~2,'0d ~2,'0d:~2,'0d:~2,'0d"
             year month date hour minute second)))
+
+(defun run-program-on-qvm (qvm parsed-program)
+  "Load and run PARSED-PROGRAM on the given QVM."
+  (qvm:load-program qvm parsed-program :supersede-memory-subsystem t)
+  (qvm:run qvm))
+
+
