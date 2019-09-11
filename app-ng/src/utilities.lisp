@@ -9,11 +9,6 @@
     (null (qvm:seeded-random-state nil))
     (unsigned-byte (qvm:seeded-random-state arg))))
 
-(defun hex-char-p (char &key (case-sensitive-p t))
-  (case (if case-sensitive-p char (char-downcase char))
-    ((#\a #\b #\c #\d #\e #\f #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
-     t)))
-
 ;; Stolen from HUNCHENTOOT::ISO-TIME
 (defun iso-time (&optional (time (get-universal-time)))
   "Returns the universal time TIME as a string in full ISO format."
