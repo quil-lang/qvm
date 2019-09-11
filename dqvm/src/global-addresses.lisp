@@ -26,7 +26,7 @@
     :reader permutation
     :writer update-permutation
     :initarg :permutation
-    :type (or null permutation)
+    :type (or null permutation permutation-transposition permutation-general)
     :documentation "Last qubit permutation evaluated, stored in a format suitable for use by APPLY-QUBIT-PERMUTATION.")
 
    ;; The following attributes are calculated during instantiation.

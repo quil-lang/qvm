@@ -26,6 +26,13 @@
     (is (= (apply-inverse-permutation permutation 1) 1))
     (is (= (apply-inverse-permutation permutation 2) 2)))
 
+  (let ((permutation (make-permutation '((2 . 1)))))
+    (is (eq (type-of permutation) 'dqvm2::permutation-general)))
+
+  (let ((permutation (make-permutation '((2 . 0)))))
+    (is (eq (type-of permutation) 'dqvm2::permutation-transposition))
+    (is (eq permutation (inverse-permutation permutation))))
+
   (let ((permutation (make-permutation '((2 . 1) (1 . 0)))))
     (is (not (is-identity-permutation-p permutation)))
 
@@ -72,3 +79,47 @@
     (is (= (apply-permutation composition 0) 2))
     (is (= (apply-permutation composition 1) 1))
     (is (= (apply-permutation composition 2) 0))))
+
+(deftest benchmark-apply-qubit-permutation ()
+  (labels ((get-elapsed-time-in-seconds (start stop)
+             "Compute elapsed time in seconds between START and STOP."
+             (float (/ (- stop start) internal-time-units-per-second)))
+
+           (time-apply-qubit-permutation (permutation number-of-qubits)
+             "Measure the time taken by calls to APPLY-QUBIT-PERMUTATION on addresses from 0 to 2^NUMBER-OF-QUBITS."
+             (let ((start (get-internal-real-time)))
+               (dotimes (x (expt 2 number-of-qubits))
+                 (let ((y (apply-qubit-permutation permutation x)))
+                   (values x y)))
+               (get-elapsed-time-in-seconds start (get-internal-real-time))))
+
+           ;; (time-map-reordered-amplitudes (permutation number-of-qubits)
+           ;;   "Measure the time taken by calls to MAP-REORDERED-AMPLITUDES on addresses from 0 to 2^NUMBER-OF-QUBITS."
+           ;;   (let ((nat-tuple (apply #'qvm::nat-tuple
+           ;;                           (mapcar (lambda (x)
+           ;;                                     (apply-permutation permutation x))
+           ;;                                   (loop :for i :below number-of-qubits :collect i))))
+           ;;         (start (get-internal-real-time)))
+           ;;     (qvm::map-reordered-amplitudes 0 (lambda (x y) (values x y)) nat-tuple)
+           ;;     (get-elapsed-time-in-seconds start (get-internal-real-time))))
+           )
+
+    (let* ((tau 4)
+           (number-of-qubits 24)
+           (permutation-0 (make-instance 'dqvm2::permutation-transposition :tau tau))
+           (permutation-1 (make-instance 'dqvm2::permutation-general
+                                         :number-of-transpositions 2
+                                         :transpositions (list (cons 0 tau) (cons tau 0)))))
+
+      (loop :for x :below (expt 2 (1+ tau)) :do
+        (is (= (apply-qubit-permutation permutation-0 x)
+               (apply-qubit-permutation permutation-1 x))))
+
+      (is (> (/ (time-apply-qubit-permutation permutation-1 number-of-qubits)
+                (time-apply-qubit-permutation permutation-0 number-of-qubits))
+             3))
+
+      ;; (is (> (/ (time-map-reordered-amplitudes permutation-0 number-of-qubits)
+      ;;           (time-apply-qubit-permutation permutation-0 number-of-qubits))
+      ;;        7))
+      )))

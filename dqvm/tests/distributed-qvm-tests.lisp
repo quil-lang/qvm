@@ -25,8 +25,6 @@
   "Find amplitude addresses to exchange when applying NEXT-PERMUTATION and the rank where the amplitudes are located.
 
 Returns four sequences: current addresses, new addresses, and the source and target addresses."
-  (check-type next-permutation permutation)
-
   (let ((permutation (permutation addresses))
         (effective-permutation
           (dqvm2::get-effective-permutation addresses next-permutation))
