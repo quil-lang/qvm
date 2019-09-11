@@ -32,7 +32,7 @@
 (defun parse-simulation-method (simulation-method)
   (%parse-string-to-known-symbol "simulation-method"
                                  simulation-method
-                                 **available-simulation-methods**))
+                                 +available-simulation-methods+))
 
 (defun parse-optional-simulation-method (simulation-method)
   (and simulation-method (parse-simulation-method simulation-method)))
@@ -40,7 +40,7 @@
 (defun parse-allocation-method (allocation-method)
   (%parse-string-to-known-symbol "allocation-method"
                                  allocation-method
-                                 **available-allocation-methods**))
+                                 +available-allocation-methods+))
 
 (defun parse-optional-allocation-method (allocation-method)
   (and allocation-method (parse-allocation-method allocation-method)))

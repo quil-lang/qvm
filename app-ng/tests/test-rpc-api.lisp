@@ -13,12 +13,20 @@
   :test #'equalp)
 
 (alexandria:define-constant +allocation-method-strings+
-    (mapcar #'string-downcase qvm-app-ng::**available-allocation-methods**)
+    (mapcar #'string-downcase qvm-app-ng::+available-allocation-methods+)
   :test #'equal)
 
 (alexandria:define-constant +simulation-method-strings+
-    (mapcar #'string-downcase qvm-app-ng::**available-simulation-methods**)
+    (mapcar #'string-downcase qvm-app-ng::+available-simulation-methods+)
   :test #'equal)
+
+(global-vars:define-global-var +rpc-response-token-scanner+
+    (cl-ppcre:create-scanner
+     "\\A{\"token\":\"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\"}\\z"))
+
+(global-vars:define-global-var +iso-time-scanner+
+    (cl-ppcre:create-scanner
+     "\\A\\d{4}-(?:1[0-2]|0[1-9])-(?:3[0-1]|[1-2][0-9]|0[0-9]) (?:2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9]\\z"))
 
 (defun plist-lowercase-keys (plist)
   (assert (evenp (length plist)))
@@ -407,14 +415,6 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
      :status 500
      :response-re "qvm_error")))
 
-(global-vars:define-global-var **rpc-response-token-scanner**
-    (cl-ppcre:create-scanner
-     "\\A{\"token\":\"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\"}\\z"))
-
-(global-vars:define-global-var **iso-time-scanner**
-    (cl-ppcre:create-scanner
-     "\\A\\d{4}-(?:1[0-2]|0[1-9])-(?:3[0-1]|[1-2][0-9]|0[0-9]) (?:2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9]\\z"))
-
 (deftest test-rpc-api-create-qvm ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and NUM-QUBITS."
   (with-rpc-server (url)
@@ -426,7 +426,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                                           :allocation-method allocation-method
                                                           :simulation-method simulation-method
                                                           :num-qubits num-qubits)
-                                          :response-re **rpc-response-token-scanner**))
+                                          :response-re +rpc-response-token-scanner+))
                  (token (extract-and-validate-token response)))
 
             ;; check that info reports expected values for qvm-type and num-qubits
@@ -438,7 +438,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                               ("metadata" ,(hash-table-fields-checker
                                             `(("allocation-method" ,(string-upcase allocation-method))
                                               ("created" ,(lambda (s)
-                                                            (cl-ppcre:scan **iso-time-scanner** s)))))))))
+                                                            (cl-ppcre:scan +iso-time-scanner+ s)))))))))
 
             ;; cleanup
             (check-request (simple-request url :type "delete-qvm" :qvm-token token)
@@ -466,7 +466,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                                         :num-qubits 1
                                                         :gate-noise gate-noise
                                                         :measurement-noise measurement-noise)
-                                        :response-re **rpc-response-token-scanner**))
+                                        :response-re +rpc-response-token-scanner+))
                (token (extract-and-validate-token response)))
 
           ;; check that info reports expected values for qvm-type
@@ -592,7 +592,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                                     :allocation-method "native"
                                                     :simulation-method "pure-state"
                                                     :num-qubits 1)
-                                    :response-re **rpc-response-token-scanner**))
+                                    :response-re +rpc-response-token-scanner+))
            (token (extract-and-validate-token response)))
 
       ;; info on invalid token
@@ -609,7 +609,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                         ("metadata" ,(hash-table-fields-checker
                                       `(("allocation-method" "NATIVE")
                                         ("created" ,(lambda (s)
-                                                      (cl-ppcre:scan **iso-time-scanner** s)))))))))
+                                                      (cl-ppcre:scan +iso-time-scanner+ s)))))))))
 
       ;; upper case token also accepted
       (check-request (simple-request url :type "qvm-info" :qvm-token (string-upcase token))
@@ -643,7 +643,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                                        :allocation-method allocation-method
                                                        :simulation-method simulation-method
                                                        :num-qubits 2)
-                                       :response-re **rpc-response-token-scanner**))
+                                       :response-re +rpc-response-token-scanner+))
               (token (extract-and-validate-token response)))
 
          ;; run-program on existing token
