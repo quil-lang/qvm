@@ -106,18 +106,15 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
   ;; hexadecimal digits (with certain restrictions) separated by hyphens in the expected places.
   (and (typep token 'persistent-qvm-token)
        (= (length token) 36)
-       (eq (aref token  8) #\-)
-       (eq (aref token 13) #\-)
-       (eq (aref token 14) #\4) ; version
-       (eq (aref token 18) #\-)
+       (eql (aref token  8) #\-)
+       (eql (aref token 13) #\-)
+       (eql (aref token 14) #\4) ; version
+       (eql (aref token 18) #\-)
        ;; https://tools.ietf.org/html/rfc4122#section-4.4
-       ;; The two most-significant bits of the clock sequence field are 10b, meaning the
+       ;; The two most-significant bits of the clock sequence field are #b10, meaning the
        ;; resulting hex digit of the most-significant byte is one of 8, 9, a, or b.
-       (or (eq (aref token 19) #\8)
-           (eq (aref token 19) #\9)
-           (eq (aref token 19) #\a)
-           (eq (aref token 19) #\b))
-       (eq (aref token 23) #\-)
+       (find (aref token 19) "89ab")
+       (eql (aref token 23) #\-)
        (every #'hex-char-p (remove #\- token))))
 
 (defun %make-persistent-qvm-metadata (allocation-method)
@@ -127,7 +124,7 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 
 (defun make-persistent-qvm (qvm allocation-method)
   (list qvm
-        (bt:make-lock (format nil "PQVM Lock"))
+        (bt:make-lock "PQVM Lock")
         (%make-persistent-qvm-metadata allocation-method)))
 
 (defun allocate-persistent-qvm (qvm allocation-method)
