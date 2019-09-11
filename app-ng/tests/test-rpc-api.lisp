@@ -84,7 +84,6 @@ HOST defaults to 127.0.0.1 and PORT defaults to a randomly assigned port."
   (alexandria:once-only (host port)
     `(call-with-rpc-server ,host ,port (lambda (,url-var) ,@body))))
 
-
 (defun call-with-drakma-request (body-or-stream status-code headers uri stream must-close reason-phrase function)
   (unwind-protect
        (funcall function body-or-stream status-code headers uri stream must-close reason-phrase)
@@ -444,49 +443,49 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 (deftest test-rpc-api-persistent-qvm-run-program ()
   "Test run-program calls on a persistent QVM."
   (with-rpc-server (url)
-    (dolist (simulation-method +simulation-method-strings+)
+    (dolist (allocation-method +allocation-method-strings+)
+      (dolist (simulation-method +simulation-method-strings+)
+        ;; run-program on non-existent token
+       (check-request (simple-request url
+                                      :type "run-program"
+                                      :qvm-token (qvm-app-ng::make-persistent-qvm-token)
+                                      :compiled-quil +generic-x-0-quil-program+
+                                      :addresses +empty-hash-table+)
+                      :status 500
+                      :response-re "Failed to find persistent QVM")
 
-      ;; run-program on non-existent token
-      (check-request (simple-request url
-                                     :type "run-program"
-                                     :qvm-token (qvm-app-ng::make-persistent-qvm-token)
-                                     :compiled-quil +generic-x-0-quil-program+
-                                     :addresses +empty-hash-table+)
-                     :status 500
-                     :response-re "Failed to find persistent QVM")
+       (let* ((response (check-request (simple-request url
+                                                       :type "create-qvm"
+                                                       :allocation-method allocation-method
+                                                       :simulation-method simulation-method
+                                                       :num-qubits 2)
+                                       :response-re **rpc-response-token-scanner**))
+              (token (extract-and-validate-token response)))
 
-      (let* ((response (check-request (simple-request url
-                                                      :type "create-qvm"
-                                                      :allocation-method "native"
-                                                      :simulation-method simulation-method
-                                                      :num-qubits 2)
-                                      :response-re **rpc-response-token-scanner**))
-             (token (extract-and-validate-token response)))
+         ;; run-program on existing token
+         (check-request (simple-request url
+                                        :type "run-program"
+                                        :qvm-token token
+                                        :compiled-quil +generic-x-0-quil-program+
+                                        :addresses +all-ro-addresses+)
+                        :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
 
-        ;; run-program on existing token
-        (check-request (simple-request url
-                                       :type "run-program"
-                                       :qvm-token token
-                                       :compiled-quil +generic-x-0-quil-program+
-                                       :addresses +all-ro-addresses+)
-                       :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
+         ;; I 0: qubit 0 remains in excited state
+         (check-request (simple-request url
+                                        :type "run-program"
+                                        :qvm-token token
+                                        :compiled-quil "DECLARE ro BIT[2]; I 0; MEASURE 0 ro[0]"
+                                        :addresses +all-ro-addresses+)
+                        :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
 
-        ;; I 0: qubit 0 remains in excited state
-        (check-request (simple-request url
-                                       :type "run-program"
-                                       :qvm-token token
-                                       :compiled-quil "DECLARE ro BIT[2]; I 0; MEASURE 0 ro[0]"
-                                       :addresses +all-ro-addresses+)
-                       :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
+         ;; X 0: flips qubit 0 back to ground state
+         (check-request (simple-request url
+                                        :type "run-program"
+                                        :qvm-token token
+                                        :compiled-quil +generic-x-0-quil-program+
+                                        :addresses +all-ro-addresses+)
+                        :response-callback (response-json-fields-checker `(("ro" ((0 0))))))
 
-        ;; X 0: flips qubit 0 back to ground state
-        (check-request (simple-request url
-                                       :type "run-program"
-                                       :qvm-token token
-                                       :compiled-quil +generic-x-0-quil-program+
-                                       :addresses +all-ro-addresses+)
-                       :response-callback (response-json-fields-checker `(("ro" ((0 0))))))
-
-        ;; cleanup
-        (check-request (simple-request url :type "delete-qvm" :qvm-token token)
-                       :response-re "Deleted persistent QVM")))))
+         ;; cleanup
+         (check-request (simple-request url :type "delete-qvm" :qvm-token token)
+                        :response-re "Deleted persistent QVM"))))))
