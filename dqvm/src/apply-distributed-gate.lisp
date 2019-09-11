@@ -48,22 +48,18 @@
 The arguments START-OFFSET and END-OFFSET specify the offsets within the local portion of the wavefunction that will be inspected during this call.
 The parameter ALL-RECV-OFFSETS is the instance of OFFSET-ARRAYS which will hold the relevant offsets where data should be received.
 Finally, REQUESTS is an instance of the REQUESTS class that keeps track of MPI_Request objects."
-  (let* ((addresses (addresses qvm))
-         (global-addresses (global-addresses addresses)))
+  ;; XXX simplify this by foregoing the use of MPI_Datatypes for data reception as much as possible.
+  (loop :with addresses := (addresses qvm)
+        :with global-addresses := (global-addresses addresses)
+        :with next-addresses := (make-addresses-like addresses :permutation next-permutation)
+        :with effective-end-offset := (min end-offset (* (block-size addresses) (number-of-blocks addresses)))
 
-    (when (< start-offset (number-of-addresses addresses))
+        :for offset :from start-offset :below effective-end-offset
+        :for next-address := (get-address-by-offset next-addresses offset)
+        :for source-rank := (get-rank-by-address global-addresses next-address) :do
+          (offset-arrays-push offset source-rank all-recv-offsets)
 
-      (loop :with next-addresses := (make-addresses-like addresses :permutation next-permutation)
-            :for offset :from start-offset :below end-offset :do
-
-              (let ((next-address (get-address-by-offset next-addresses offset)))
-                (unless next-address
-                  (return))
-
-                (let ((source-rank (get-rank-by-address global-addresses next-address)))
-                  (offset-arrays-push offset source-rank all-recv-offsets))))
-
-      (post-mpi-irecv qvm all-recv-offsets requests))))
+        :finally (post-mpi-irecv qvm all-recv-offsets requests)))
 
 (defun non-blocking-send (qvm next-permutation start-offset end-offset all-send-offsets requests)
   "Iterate over all ranks and find which addresses within the current rank are needed by another rank. Aggregate that information, then start sending amplitudes.
@@ -78,13 +74,11 @@ Finally, REQUESTS is an instance of the REQUESTS class that keeps track of MPI_R
         :for target-rank := (mod (+ count (rank qvm)) number-of-processes)
         :for target-addresses := (make-addresses-like addresses :rank target-rank :permutation next-permutation) :do
 
-          (loop :for target-offset :from start-offset :below end-offset :do
+          (loop :for target-offset :from start-offset :below end-offset
+                :for target-address := (get-address-by-offset target-addresses target-offset)
+                :while target-address :do
 
-            (let ((target-address (get-address-by-offset target-addresses target-offset)))
-              (unless target-address
-                (return))
-
-              (alexandria:when-let ((source-offset (offset addresses target-address)))
-                (offset-arrays-push source-offset target-rank all-send-offsets))))
+            (alexandria:when-let ((source-offset (offset addresses target-address)))
+              (offset-arrays-push source-offset target-rank all-send-offsets)))
 
         :finally (post-mpi-isend qvm all-send-offsets requests)))
