@@ -1,3 +1,7 @@
+;;;; tests/offset-arrays-tests.lisp
+;;;;
+;;;; Author: Juan M. Bello-Rivas
+
 (in-package #:dqvm2-tests)
 
 (deftest test-offset-arrays ()

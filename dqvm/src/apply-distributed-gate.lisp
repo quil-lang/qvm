@@ -31,8 +31,8 @@
 
             (reset-offset-arrays all-recv-offsets all-send-offsets)
 
-            (non-blocking-receive qvm next-permutation all-recv-offsets start-offset end-offset requests)
-            (non-blocking-send qvm next-permutation all-send-offsets start-offset end-offset requests)
+            (non-blocking-receive qvm next-permutation start-offset end-offset all-recv-offsets requests)
+            (non-blocking-send qvm next-permutation start-offset end-offset all-send-offsets requests)
 
             (wait-all requests))
 
@@ -42,8 +42,12 @@
 
     qvm))
 
-(defun non-blocking-receive (qvm next-permutation all-recv-offsets start-offset end-offset requests)
-  "Iterate over the addresses that should be in the current chunk after applying the next instruction. Start requests to receive the required amplitudes from the ranks where they are currently stored."
+(defun non-blocking-receive (qvm next-permutation start-offset end-offset all-recv-offsets requests)
+  "Iterate over the addresses that should be in the current chunk after applying the next instruction. Start requests to receive the required amplitudes from the ranks where they are currently stored.
+
+The arguments START-OFFSET and END-OFFSET specify the offsets within the local portion of the wavefunction that will be inspected during this call.
+The parameter ALL-RECV-OFFSETS is the instance of OFFSET-ARRAYS which will hold the relevant offsets where data should be received.
+Finally, REQUESTS is an instance of the REQUESTS class that keeps track of MPI_Request objects."
   (let* ((addresses (addresses qvm))
          (global-addresses (global-addresses addresses)))
 
@@ -61,8 +65,12 @@
 
       (post-mpi-irecv qvm all-recv-offsets requests))))
 
-(defun non-blocking-send (qvm next-permutation all-send-offsets start-offset end-offset requests)
-  "Iterate over all ranks and find which addresses within the current rank are needed by another rank. Aggregate that information, then start sending amplitudes."
+(defun non-blocking-send (qvm next-permutation start-offset end-offset all-send-offsets requests)
+  "Iterate over all ranks and find which addresses within the current rank are needed by another rank. Aggregate that information, then start sending amplitudes.
+
+The arguments START-OFFSET and END-OFFSET specify the offsets within the local portion of the wavefunction that will be inspected during this call.
+The parameter ALL-SEND-OFFSETS is the instance of OFFSET-ARRAYS which will hold the relevant offsets of data that should be sent elsewhere.
+Finally, REQUESTS is an instance of the REQUESTS class that keeps track of MPI_Request objects."
   (loop :with addresses := (addresses qvm)
         :with number-of-processes := (number-of-processes addresses)
 
