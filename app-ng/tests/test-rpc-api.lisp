@@ -105,7 +105,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
       `(multiple-value-call #'call-with-drakma-request
          ,request-form
          (lambda (,body-or-stream ,status-code ,headers ,uri ,stream ,must-close ,reason-phrase)
-           (declare (ignore ,headers ,uri ,must-close ,reason-phrase))
+           (declare (ignore ,headers ,uri ,stream ,must-close ,reason-phrase))
            (is (= ,status ,status-code))
            (let ((,body-as-string (if (streamp ,body-or-stream)
                                       (alexandria:read-stream-content-into-string ,body-or-stream)
