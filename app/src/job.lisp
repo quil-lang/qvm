@@ -1,7 +1,7 @@
 (in-package #:qvm-app)
 
 (deftype job-status ()
-  '(member fresh running finished interrupted error))
+  '(member fraiche running finished interrupted error))
 
 (defstruct (job (:constructor %make-job))
   threader
