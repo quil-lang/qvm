@@ -115,7 +115,9 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
        ;; resulting hex digit of the most-significant byte is one of 8, 9, a, or b.
        (find (aref token 19) "89ab")
        (eql (aref token 23) #\-)
-       (every #'hex-char-p (remove #\- token))))
+       (every (lambda (c)
+                (find c "-0123456789abcdef"))
+              token)))
 
 (defun %make-persistent-qvm-metadata (allocation-method)
   (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method)
