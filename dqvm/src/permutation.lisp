@@ -90,7 +90,7 @@ Note that in the example above, the transposition (0 2) was automatically added.
 
       (declare (inline check-transposition))
 
-      (loop :for (a . b) :in transpositions :do
+      (loop :for (a . b) :of-type alexandria:non-negative-fixnum :in transpositions :do
         (check-transposition a b)
         (unless (= a b)
           (pushnew (cons a b) transpositions*)
@@ -204,10 +204,11 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
   (let ((tau (slot-value permutation 'tau)))
     (declare (type (unsigned-byte 6) tau))
 
-    (rotatef (ldb (byte 1 0) address) (ldb (byte 1 tau) address))
-    address))
+    ;; Swap bits 0 and TAU in ADDRESS.
+    (let ((x (logxor (logand address 1) (logand (ash address (- tau)) 1))))
+      (logxor address (logior x (ash x tau))))))
 
-(defmethod apply-qubit-permutation ((permutation permutation) address)
+(defmethod apply-qubit-permutation ((permutation permutation-general) address)
   ;; Alternatively, in-place permutations could be implemented following:
   ;;
   ;; F. Fich, J. Munro, and P. Poblete, “Permuting in Place,” SIAM
@@ -226,7 +227,7 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
              (dynamic-extent bit-vector))
 
     (loop :for index :from 0
-          :for transposition :in transpositions :do
+          :for transposition :of-type transposition :in transpositions :do
             (setf (bit bit-vector index) (ldb (byte 1 (first transposition))
                                               address)))
 
@@ -238,6 +239,55 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
                                     ;; (byte 1 (rest transposition))
                                     address)))
           :finally (return address))))
+
+(defgeneric generate-qubit-permutation-code (permutation)
+  (:documentation "Generate lambda function equivalent to APPLY-QUBIT-PERMUTATION suitable to be compiled.")
+  (declare #.qvm::*optimize-dangerously-fast*))
+
+(defmethod generate-qubit-permutation-code ((permutation (eql nil)))
+  (let ((address (gensym "ADDRESS-")))
+    `(lambda (,address)
+       (declare #.qvm::*optimize-dangerously-fast*)
+       ,address)))
+
+(defmethod generate-qubit-permutation-code ((permutation permutation-transposition))
+  (let* ((address (gensym "ADDRESS-"))
+         (tau (slot-value permutation 'tau))
+         (minus-tau (- tau)))
+    `(lambda (,address)
+       (declare #.qvm::*optimize-dangerously-fast*
+                (type (unsigned-byte 64) ,address) ; Imposed maximum number of qubits.
+                (values qvm:amplitude-address))
+
+       ;; Swap bits 0 and TAU in ADDRESS.
+       (let ((x (logxor (logand ,address 1) (logand (ash ,address ,minus-tau) 1))))
+         (logxor ,address (logior x (ash x ,tau)))))))
+
+(defmethod generate-qubit-permutation-code ((permutation permutation-general))
+  (let ((address (gensym "ADDRESS-"))
+        (transpositions (slot-value permutation 'transpositions))
+        (number-of-transpositions (slot-value permutation 'number-of-transpositions)))
+    `(lambda (,address)
+       (declare #.qvm::*optimize-dangerously-fast*
+                (type (or null permutation) permutation)
+                (type (unsigned-byte 64) ,address)
+                (values qvm:amplitude-address))
+
+       (let ((bit-vector (make-array ,number-of-transpositions :element-type 'bit)))
+         (declare (dynamic-extent bit-vector))
+
+         ,@(loop :for index :from 0
+                 :for transposition :of-type transposition :in transpositions
+                 :collect `(setf (bit bit-vector ,index) (ldb (byte 1 ,(first transposition))
+                                                              ,address)))
+
+         ,@(loop :for index :from 0
+                 :for transposition :of-type transposition :in transpositions
+                 :collect `(setf ,address (the qvm:amplitude-address
+                                               (dpb (bit bit-vector ,index)
+                                                    (byte 1 (the (unsigned-byte 6) ,(rest transposition)))
+                                                    ,address))))
+         ,address))))
 
 (defun-inlinable apply-inverse-qubit-permutation (permutation address)
   (apply-qubit-permutation (inverse-permutation permutation) address))
