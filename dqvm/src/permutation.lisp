@@ -29,11 +29,7 @@
 (deftype transposition ()
   '(or null (cons qubit-index qubit-index)))
 
-(defclass permutation ()
-  ()
-  (:documentation "Base class for permutations."))
-
-(defclass permutation-general (permutation)
+(defclass permutation-general ()
   ((number-of-transpositions
     :type alexandria:non-negative-integer
     :initarg :number-of-transpositions
@@ -47,13 +43,16 @@
    :transpositions nil)
   (:documentation "Arbitrary permutation acting on sets of qubit indices."))
 
-(defclass permutation-transposition (permutation)
+(defclass permutation-transposition ()
   ((tau
     :type qubit-index
     :initarg :tau
     :initform (error-missing-initform :tau)
     :documentation "Positive value of τ in π = (0 τ)."))
   (:documentation "Specialized permutation involving a single transposition of the form π = (0 τ) where τ ≠ 0."))
+
+(deftype permutation ()
+  '(or null permutation-general permutation-transposition))
 
 (defmethod permutation-transpositions ((permutation permutation-transposition))
   (let ((tau (slot-value permutation 'tau)))
@@ -120,8 +119,8 @@ Note that in the example above, the transposition (0 2) was automatically added.
                                 (the qvm:amplitude-address (first codomain)))))
       ((and (= 2 (length domain))
             (null (set-difference domain codomain))
-            (zerop (the qvm:amplitude-address (apply #'min domain))))
-       (make-instance 'permutation-transposition :tau (apply #'max domain)))
+            (zerop (the qvm:amplitude-address (alexandria:extremum domain #'<))))
+       (make-instance 'permutation-transposition :tau (alexandria:extremum domain #'>)))
       (t
        (make-instance 'permutation-general :number-of-transpositions (length transpositions*)
                                            :transpositions (sort transpositions* #'< :key #'first))))))
@@ -130,7 +129,7 @@ Note that in the example above, the transposition (0 2) was automatically added.
   (:documentation "Return the inverse of PERMUTATION.")
   (declare #.qvm::*optimize-dangerously-fast*))
 
-(defmethod inverse-permutation ((permutation (eql nil)))
+(defmethod inverse-permutation ((permutation null))
   nil)
 
 (defmethod inverse-permutation ((permutation permutation-transposition))
@@ -141,16 +140,16 @@ Note that in the example above, the transposition (0 2) was automatically added.
                  :transpositions (loop :for (a . b) :in (permutation-transpositions permutation) :collect (cons b a))
                  :number-of-transpositions (slot-value permutation 'number-of-transpositions)))
 
-(defgeneric is-identity-permutation-p (permutation)
+(defgeneric identity-permutation-p (permutation)
   (:documentation "Return T if PERMUTATION is the identity, NIL otherwise."))
 
-(defmethod is-identity-permutation-p ((permutation (eql nil)))
+(defmethod identity-permutation-p ((permutation null))
   t)
 
-(defmethod is-identity-permutation-p ((permutation permutation-transposition))
+(defmethod identity-permutation-p ((permutation permutation-transposition))
   nil) ; By construction PERMUTATION-TRANSPOSITION objects cannot be the identity.
 
-(defmethod is-identity-permutation-p ((permutation permutation-general))
+(defmethod identity-permutation-p ((permutation permutation-general))
   (null (permutation-transpositions permutation)))
 
 (defun compose-permutations (&rest permutations)
@@ -197,12 +196,12 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
 4")
   (declare #.qvm::*optimize-dangerously-fast*))
 
-(defmethod apply-qubit-permutation ((permutation (eql nil)) address)
+(defmethod apply-qubit-permutation ((permutation null) address)
   address)
 
 (defmethod apply-qubit-permutation ((permutation permutation-transposition) address)
   (declare #.qvm::*optimize-dangerously-fast*
-           (type permutation permutation)
+           (type permutation-transposition)
            (type qvm:amplitude-address address)
            (values qvm:amplitude-address))
 
@@ -220,7 +219,7 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
   ;; J. Comput., vol. 24, no. 2, pp. 266–278, Apr. 1995.
 
   (declare #.qvm::*optimize-dangerously-fast*
-           (type permutation permutation)
+           (type permutation-general permutation)
            (type qvm:amplitude-address address)
            (values qvm:amplitude-address))
 
@@ -232,13 +231,13 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
 
     (loop :for index :from 0
           :for transposition :of-type transposition :in transpositions :do
-            (setf (bit bit-vector index) (ldb (byte 1 (first transposition))
-                                              address)))
+            (setf (sbit bit-vector index) (ldb (byte 1 (first transposition))
+                                               address)))
 
     (loop :for index :from 0
           :for transposition :of-type transposition :in transpositions :do
             (setf address (the qvm:amplitude-address
-                               (dpb (bit bit-vector index)
+                               (dpb (sbit bit-vector index)
                                     (byte 1 (the qubit-index (rest transposition)))
                                     address)))
           :finally (return address))))
@@ -247,7 +246,7 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
   (:documentation "Generate lambda function equivalent to APPLY-QUBIT-PERMUTATION suitable to be compiled.")
   (declare #.qvm::*optimize-dangerously-fast*))
 
-(defmethod generate-qubit-permutation-code ((permutation (eql nil)))
+(defmethod generate-qubit-permutation-code ((permutation null))
   (let ((address (gensym "ADDRESS-")))
     `(lambda (,address)
        (declare #.qvm::*optimize-dangerously-fast*)
@@ -272,7 +271,6 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
         (number-of-transpositions (slot-value permutation 'number-of-transpositions)))
     `(lambda (,address)
        (declare #.qvm::*optimize-dangerously-fast*
-                (type permutation permutation)
                 (type qvm:amplitude-address ,address)
                 (values qvm:amplitude-address))
 
@@ -281,13 +279,13 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
 
          ,@(loop :for index :from 0
                  :for transposition :of-type transposition :in transpositions
-                 :collect `(setf (bit bit-vector ,index) (ldb (byte 1 ,(first transposition))
-                                                              ,address)))
+                 :collect `(setf (sbit bit-vector ,index) (ldb (byte 1 ,(first transposition))
+                                                               ,address)))
 
          ,@(loop :for index :from 0
                  :for transposition :of-type transposition :in transpositions
                  :collect `(setf ,address (the qvm:amplitude-address
-                                               (dpb (bit bit-vector ,index)
+                                               (dpb (sbit bit-vector ,index)
                                                     (byte 1 (the qubit-index ,(rest transposition)))
                                                     ,address))))
          ,address))))

@@ -9,14 +9,14 @@
   (signals error (make-permutation '((1 . 2) (3 . 2))))
 
   (let ((permutation '()))
-    (is (is-identity-permutation-p permutation))
+    (is (identity-permutation-p permutation))
 
     (is (= (apply-permutation permutation 0) 0))
     (is (= (apply-permutation permutation 1) 1))
     (is (= (apply-permutation permutation 2) 2)))
 
   (let ((permutation (make-permutation)))
-    (is (is-identity-permutation-p permutation))
+    (is (identity-permutation-p permutation))
 
     (is (= (apply-permutation permutation 0) 0))
     (is (= (apply-permutation permutation 1) 1))
@@ -34,7 +34,7 @@
     (is (eq permutation (inverse-permutation permutation))))
 
   (let ((permutation (make-permutation '((2 . 1) (1 . 0)))))
-    (is (not (is-identity-permutation-p permutation)))
+    (is (not (identity-permutation-p permutation)))
 
     (is (= (apply-permutation permutation 2) 1))
     (is (= (apply-permutation permutation 1) 0))
@@ -65,14 +65,14 @@
   (let* ((permutation1 (make-permutation '((2 . 1))))
          (permutation2 (make-permutation '((0 . 1) (1 . 2))))
          (composition (compose-permutations permutation1 permutation2)))
-    (is (not (is-identity-permutation-p permutation1)))
-    (is (not (is-identity-permutation-p permutation2)))
+    (is (not (identity-permutation-p permutation1)))
+    (is (not (identity-permutation-p permutation2)))
 
-    (is (is-identity-permutation-p
+    (is (identity-permutation-p
          (compose-permutations permutation1
                                (inverse-permutation permutation1))))
 
-    (is (is-identity-permutation-p
+    (is (identity-permutation-p
          (compose-permutations permutation2
                                (inverse-permutation permutation2))))
 

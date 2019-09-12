@@ -38,7 +38,7 @@
            #:global-addresses
            #:global-addresses=
            #:inverse-permutation
-           #:is-identity-permutation-p
+           #:identity-permutation-p
            #:make-addresses
            #:make-addresses-like
            #:make-distributed-qvm
