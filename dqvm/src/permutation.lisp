@@ -259,7 +259,6 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
          (minus-tau (- tau)))
     `(lambda (,address)
        (declare #.qvm::*optimize-dangerously-fast*
-                (type permutation permutation)
                 (type qvm:amplitude-address ,address)
                 (values qvm:amplitude-address))
 
