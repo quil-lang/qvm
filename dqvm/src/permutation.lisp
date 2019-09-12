@@ -17,9 +17,17 @@
 ;;; more than three times faster than the equivalent application of a
 ;;; PERMUTATION-GENERAL object).
 
+(defconstant +qubit-index-length+ (ceiling (log qvm::+max-nat-tuple-cardinality+ 2))
+  "Number of bits required to represent a qubit index.")
+
+(defconstant +max-number-of-transpositions+ (* 2 #.qvm::+max-nat-tuple-cardinality+)
+  "Upper bound on the number of transpositions defining an arbitrary permutation.")
+
+(deftype qubit-index ()
+  '(unsigned-byte #.+qubit-index-length+))
+
 (deftype transposition ()
-  '(or null (cons alexandria:non-negative-fixnum
-             alexandria:non-negative-fixnum)))
+  '(or null (cons qubit-index qubit-index)))
 
 (defclass permutation ()
   ()
@@ -39,9 +47,9 @@
    :transpositions nil)
   (:documentation "Arbitrary permutation acting on sets of qubit indices."))
 
-(defclass permutation-transposition ()
+(defclass permutation-transposition (permutation)
   ((tau
-    :type (unsigned-byte 6)            ; Implies a maximum of 2⁶ = 64 qubits.
+    :type qubit-index
     :initarg :tau
     :initform (error-missing-initform :tau)
     :documentation "Positive value of τ in π = (0 τ)."))
@@ -81,7 +89,7 @@ Note that in the example above, the transposition (0 2) was automatically added.
         (codomain nil))
 
     (flet ((check-transposition (a b)
-             (declare (type alexandria:non-negative-fixnum a b))
+             (declare (type qubit-index a b))
              (let ((x (assoc a transpositions*))
                    (y (rassoc b transpositions*)))
                (alexandria:when-let ((z (or x y)))
@@ -90,17 +98,15 @@ Note that in the example above, the transposition (0 2) was automatically added.
 
       (declare (inline check-transposition))
 
-      (loop :for (a . b) :of-type alexandria:non-negative-fixnum :in transpositions :do
+      (loop :for (a . b) :of-type qubit-index :in transpositions :do
         (check-transposition a b)
         (unless (= a b)
           (pushnew (cons a b) transpositions*)
           (pushnew a domain)
           (pushnew b codomain))))
 
-    (loop :for a :of-type alexandria:non-negative-fixnum
-            :in (set-difference codomain domain)
-          :for b :of-type alexandria:non-negative-fixnum
-            :in (set-difference domain codomain)
+    (loop :for a :of-type qubit-index :in (set-difference codomain domain)
+          :for b :of-type qubit-index :in (set-difference domain codomain)
           :unless (= a b) :do
             (pushnew (cons a b) transpositions* :test #'equal))
 
@@ -159,7 +165,7 @@ If PERMUTATIONS is the list π₁, π₂, ..., πₛ, then the result is the com
     (loop :for permutation :in permutations :when permutation :do
       (loop :for transposition :of-type transposition :in (permutation-transpositions permutation) :do
         (let ((a (first transposition)))
-          (declare (type alexandria:non-negative-fixnum a))
+          (declare (type qubit-index a))
           (pushnew a domain))))
 
     ;; Now map each domain element to obtain transpositions.
@@ -169,8 +175,8 @@ If PERMUTATIONS is the list π₁, π₂, ..., πₛ, then the result is the com
               (setf (aref codomain i)
                     (apply-permutation permutation (aref codomain i))))
           :finally
-             (loop :for a :of-type alexandria:non-negative-fixnum :in domain
-                   :for b :of-type alexandria:non-negative-fixnum :across codomain
+             (loop :for a :of-type qubit-index :in domain
+                   :for b :of-type qubit-index :across codomain
                    :unless (= a b) :do
                      (pushnew (cons a b) transpositions :test #'equal)))
 
@@ -196,13 +202,12 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
 
 (defmethod apply-qubit-permutation ((permutation permutation-transposition) address)
   (declare #.qvm::*optimize-dangerously-fast*
-           (type (or null permutation) permutation)
-           ;; (type qvm:amplitude-address address)
-           (type (unsigned-byte 64) address) ; Imposed maximum number of qubits.
+           (type permutation permutation)
+           (type qvm:amplitude-address address)
            (values qvm:amplitude-address))
 
   (let ((tau (slot-value permutation 'tau)))
-    (declare (type (unsigned-byte 6) tau))
+    (declare (type qubit-index tau))
 
     ;; Swap bits 0 and TAU in ADDRESS.
     (let ((x (logxor (logand address 1) (logand (ash address (- tau)) 1))))
@@ -215,15 +220,14 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
   ;; J. Comput., vol. 24, no. 2, pp. 266–278, Apr. 1995.
 
   (declare #.qvm::*optimize-dangerously-fast*
-           (type (or null permutation) permutation)
-           ;; (type qvm:amplitude-address address)
-           (type (unsigned-byte 64) address) ; Imposed maximum number of qubits.
+           (type permutation permutation)
+           (type qvm:amplitude-address address)
            (values qvm:amplitude-address))
 
   (let* ((transpositions (slot-value permutation 'transpositions))
          (number-of-transpositions (slot-value permutation 'number-of-transpositions))
          (bit-vector (make-array number-of-transpositions :element-type 'bit)))
-    (declare (type (integer 0 128) number-of-transpositions)
+    (declare (type (integer 0 #.+max-number-of-transpositions+) number-of-transpositions)
              (dynamic-extent bit-vector))
 
     (loop :for index :from 0
@@ -235,8 +239,7 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
           :for transposition :of-type transposition :in transpositions :do
             (setf address (the qvm:amplitude-address
                                (dpb (bit bit-vector index)
-                                    (byte 1 (the (unsigned-byte 6) (rest transposition))) ; Enable this for speed (assumes a maximum of 64 qubits).
-                                    ;; (byte 1 (rest transposition))
+                                    (byte 1 (the qubit-index (rest transposition)))
                                     address)))
           :finally (return address))))
 
@@ -256,7 +259,8 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
          (minus-tau (- tau)))
     `(lambda (,address)
        (declare #.qvm::*optimize-dangerously-fast*
-                (type (unsigned-byte 64) ,address) ; Imposed maximum number of qubits.
+                (type permutation permutation)
+                (type qvm:amplitude-address ,address)
                 (values qvm:amplitude-address))
 
        ;; Swap bits 0 and TAU in ADDRESS.
@@ -269,8 +273,8 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
         (number-of-transpositions (slot-value permutation 'number-of-transpositions)))
     `(lambda (,address)
        (declare #.qvm::*optimize-dangerously-fast*
-                (type (or null permutation) permutation)
-                (type (unsigned-byte 64) ,address)
+                (type permutation permutation)
+                (type qvm:amplitude-address ,address)
                 (values qvm:amplitude-address))
 
        (let ((bit-vector (make-array ,number-of-transpositions :element-type 'bit)))
@@ -285,7 +289,7 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
                  :for transposition :of-type transposition :in transpositions
                  :collect `(setf ,address (the qvm:amplitude-address
                                                (dpb (bit bit-vector ,index)
-                                                    (byte 1 (the (unsigned-byte 6) ,(rest transposition)))
+                                                    (byte 1 (the qubit-index ,(rest transposition)))
                                                     ,address))))
          ,address))))
 
