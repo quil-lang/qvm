@@ -23,4 +23,5 @@
                (:file "utilities")
                (:file "qvm-app-ng-version")
                (:file "impl/sbcl" :if-feature :sbcl)
-               (:file "entry-point")))
+               (:file "entry-point")
+               (:file "job")))

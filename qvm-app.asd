@@ -70,5 +70,4 @@
                (:file "benchmark-programs")
                (:file "server-abstraction")
                (:file "handle-request")
-               (:file "entry-point")
-               (:file "job")))
+               (:file "entry-point")))
