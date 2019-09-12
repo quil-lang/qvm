@@ -4,6 +4,7 @@
   '(member fraiche running finished interrupted error))
 
 (defstruct (job (:constructor %make-job))
+  "A job is an data-structure that permits a given function to be run in a threaded (and thread-safe) environment."
   lock
   threader
   thread
@@ -12,6 +13,7 @@
   error)
 
 (defmacro with-job-lock ((job &key (wait t)) &body body)
+  "Evaluate BODY with the LOCK acquired for the duration of BODY. If WAIT is T, block until the lock is available."
   `(progn
      (bt:acquire-lock (job-lock ,job) ,wait)
      ,@body
@@ -22,19 +24,24 @@
     (format stream "QVM Job")))
 
 (defun job-running-p (job)
+  "Is the JOB in the RUNNING state."
   (with-job-lock (job)
     (eq (job-status job) 'running)))
 
 (defun job-interrupted-p (job)
+  "Is the JOB in the INTERRUPTED state?"
   (with-job-lock (job)
     (eq (job-status job) 'interrupted)))
 
 (defun job-finished-p (job)
+  "Is the JOB in the FINISHED state?"
   (with-job-lock (job)
     (eq (job-status job) 'finished)))
 
 (defun make-job (fn)
-  "Make a JOB object which will, under JOB-START, run FN in a thread."
+  "Make a JOB object which will, under JOB-START, run FN in a thread.
+
+The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INTERRUPTED). Only interact with the job after acquiring the lock (or alternatively by using WITH-JOB-LOCK)."
   (let* ((job (%make-job))
          (thr-fn (lambda ()
                    (setf (job-thread job)
@@ -42,9 +49,12 @@
                           (lambda ()
                             (handler-case
                                 (progn
-                                  (setf (job-status job) 'running)
+                                  ;; Reset run-specific slots
+                                  (setf (job-%result job) nil)
+                                  (setf (job-error   job) nil)
+                                  (setf (job-status  job) 'running)
                                   (setf (job-%result job) (funcall fn))
-                                  (setf (job-status job) 'finished))
+                                  (setf (job-status  job) 'finished))
                               (error (c)
                                 ;; TODO What happens to a thread when
                                 ;; there is an error in it?
@@ -57,15 +67,15 @@
 ;;; CUSTODIAL
 
 (defun job-start (job)
-  "Start the JOB. If JOB is already running, do nothing."
+  "Start the JOB and return T. If JOB is already running, do nothing and return NIL."
   (with-job-lock (job)
     (unless (job-running-p job)
-      (funcall (job-threader job)))))
+      (funcall (job-threader job))
+      t)))
 
 (defun job-stop (job &key (status 'interrupted))
-  "Forcefully stop JOB if running. Does not block."
+  "Forcefully stop JOB if running. Does not block. Set the JOB-STATUS into STATUS."
   (check-type status job-status)
-  ;; TODO Should this acquire the lock?
   (with-job-lock (job)
     (when (job-running-p job)
       (bt:destroy-thread (job-thread job))
