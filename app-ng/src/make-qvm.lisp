@@ -16,8 +16,8 @@
 (defmethod make-requested-qvm ((simulation-method (eql 'pure-state))
                                allocation-method
                                num-qubits
-                               (gate-noise (eql nil))
-                               (measurement-noise (eql nil)))
+                               (gate-noise null)
+                               (measurement-noise null))
   (qvm:make-qvm num-qubits :allocation (make-requested-allocation-descriptor
                                         allocation-method
                                         (expt 2 num-qubits))))
@@ -50,8 +50,8 @@
 (defmethod make-requested-qvm ((simulation-method (eql 'full-density-matrix))
                                allocation-method
                                num-qubits
-                               (gate-noise (eql nil))
-                               (measurement-noise (eql nil)))
+                               (gate-noise null)
+                               (measurement-noise null))
   (qvm:make-density-qvm num-qubits :allocation (make-requested-allocation-descriptor
                                                 allocation-method
                                                 (expt 2 (* 2 num-qubits)))))
