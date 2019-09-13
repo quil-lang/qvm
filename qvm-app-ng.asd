@@ -7,7 +7,7 @@
   :author "Mike Appleby <mappleby@rigetti.com>"
   :license "GNU Affero General Public License v3.0 (See app-ng/LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
-  :depends-on ((:version #:cl-quil "1.10.4")
+  :depends-on ((:version #:cl-quil "1.11.1")
                #:qvm
                #:alexandria
                #:bordeaux-threads
