@@ -154,6 +154,12 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
     (check-request (simple-request url :type "some-non-existent-method")
                    :status 404)))
 
+(deftest test-rpc-api-version ()
+  "Test the \"version\" API call."
+  (with-rpc-server (url)
+    (check-request (simple-request url :type "version")
+                   :response-re "\\A([0-9]+\\.)+[0-9]+ \\[[0-9a-f]+\\]\\z")))
+
 (deftest test-rpc-api-run-program-simple-request ()
   "Simple run-program calls on emphemeral QVMs return the expected results."
   (with-rpc-server (url)

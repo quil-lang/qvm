@@ -105,6 +105,14 @@ ADDRESSES is a HASH-TABLE where the keys are mem register names and the values a
              addresses)
     results))
 
+(define-rpc-handler (handle-version "version") ()
+  "Return QVM-APP-NG version info as a string."
+  ;; text/html rather than application/json for backwards compatibility with previous QVM-APP API.
+  (string-right-trim
+   '(#\Newline)
+   (with-output-to-string (*standard-output*)
+     (show-version))))
+
 (define-rpc-handler (handle-create-qvm "create-qvm") ((allocation-method #'parse-allocation-method)
                                                       (simulation-method #'parse-simulation-method)
                                                       (num-qubits #'parse-num-qubits)
