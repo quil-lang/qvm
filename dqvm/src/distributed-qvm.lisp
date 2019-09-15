@@ -14,12 +14,12 @@
    (amplitudes
     :accessor amplitudes
     :initarg :amplitudes
-    :type (or null (simple-array qvm:cflonum))
+    :type (or null (simple-array qvm:cflonum (*)))
     :documentation "The components of the (possibly permuted) wave function.")
    (scratch
     :accessor scratch
     :initarg :scratch
-    :type (or null (simple-array qvm:cflonum))
+    :type (or null (simple-array qvm:cflonum (*)))
     :documentation "Temporary memory."))
 
   (:default-initargs
