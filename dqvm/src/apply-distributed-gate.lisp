@@ -48,7 +48,6 @@
 The arguments START-OFFSET and END-OFFSET specify the offsets within the local portion of the wavefunction that will be inspected during this call.
 The parameter ALL-RECV-OFFSETS is the instance of OFFSET-ARRAYS which will hold the relevant offsets where data should be received.
 Finally, REQUESTS is an instance of the REQUESTS class that keeps track of MPI_Request objects."
-  ;; XXX simplify this by foregoing the use of MPI_Datatypes for data reception as much as possible.
   (loop :with addresses := (addresses qvm)
         :with global-addresses := (global-addresses addresses)
         :with next-addresses := (make-addresses-like addresses :permutation next-permutation)
@@ -78,7 +77,9 @@ Finally, REQUESTS is an instance of the REQUESTS class that keeps track of MPI_R
                 :for target-address := (get-address-by-offset target-addresses target-offset)
                 :while target-address :do
 
-            (alexandria:when-let ((source-offset (offset addresses target-address)))
-              (offset-arrays-push source-offset target-rank all-send-offsets)))
+                  (alexandria:when-let ((source-offset (offset addresses target-address)))
+                    (offset-arrays-push source-offset target-rank all-send-offsets))
 
-        :finally (post-mpi-isend qvm all-send-offsets requests)))
+                :finally (post-mpi-isend qvm all-send-offsets requests
+                                         :start target-rank
+                                         :end (1+ target-rank)))))
