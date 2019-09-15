@@ -29,7 +29,8 @@
           :for start-offset := (* block-index block-size)
           :for end-offset := (* (+ block-index blocks-per-chunk) block-size) :do
 
-            (reset-offset-arrays all-recv-offsets all-send-offsets)
+            (reset-offset-arrays all-recv-offsets)
+            (reset-offset-arrays all-send-offsets)
 
             (non-blocking-receive qvm next-permutation start-offset end-offset all-recv-offsets requests)
             (non-blocking-send qvm next-permutation start-offset end-offset all-send-offsets requests)

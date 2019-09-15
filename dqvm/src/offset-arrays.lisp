@@ -107,10 +107,10 @@
     (setf (cffi:mem-aref ptr-offsets :int32 count) offset)
     (incf (aref counts rank))))
 
-(defun reset-offset-arrays (&rest arrays)
-  "Set all the counters of each object in ARRAYS to zero."
-  (dolist (offset-arrays arrays)
-    (fill (the (array alexandria:non-negative-fixnum) (slot-value offset-arrays 'counts)) 0)))
+(defun-inlinable reset-offset-arrays (offset-arrays)
+  "Set all the counters of each object in OFFSET-ARRAYS to zero."
+  (declare (type offset-arrays offset-arrays))
+  (fill (slot-value offset-arrays 'counts) 0))
 
 (defmethod print-object ((offset-arrays offset-arrays) stream)
   (print-unreadable-object (offset-arrays stream :type t :identity t)
