@@ -4,7 +4,7 @@
 
 (in-package #:dqvm2)
 
-(defmethod post-mpi-request ((qvm distributed-qvm) all-offsets action requests)
+(defmethod post-mpi-request ((qvm distributed-qvm) all-offsets action requests &key (start 0) end)
   "Post non-blocking MPI_Isend/MPI_Irecv requests for the amplitudes specified in ALL-OFFSETS, to be stored in the scratch array of QVM. The associated MPI_Requests are handled by REQUESTS."
   (check-type all-offsets offset-arrays)
   (check-type action (member send recv))
@@ -16,7 +16,8 @@
                                            (recv (scratch qvm)))))
         (tag (qvm::pc qvm)))
 
-    (loop :for target-rank :from 0 :below number-of-processes
+    (loop :with real-end := (or (and end (min end number-of-processes)) number-of-processes)
+          :for target-rank :from start :below real-end
           :for offsets := (aref (slot-value all-offsets 'offsets) target-rank)
           :for count := (aref (slot-value all-offsets 'counts) target-rank)
           :when (plusp count) :do
@@ -29,10 +30,10 @@
                        target-rank tag +mpi-comm-world+
                        (get-next-request requests))))))
 
-(defun post-mpi-irecv (qvm all-recv-offsets requests)
+(defun post-mpi-irecv (qvm all-recv-offsets requests &key (start 0) end)
   "Post non-blocking MPI_Irecv requests for the amplitudes specified in ALL-RECV-OFFSETS, to be stored in the scratch array of QVM. The associated MPI_Requests are handled by REQUESTS."
-  (post-mpi-request qvm all-recv-offsets 'recv requests))
+  (post-mpi-request qvm all-recv-offsets 'recv requests :start start :end end))
 
-(defun post-mpi-isend (qvm all-send-offsets requests)
+(defun post-mpi-isend (qvm all-send-offsets requests &key (start 0) end)
   "Post non-blocking MPI_Isend requests for the amplitudes specified in ALL-SEND-OFFSETS, to be stored in the scratch array of QVM. The associated MPI_Requests are handled by REQUESTS."
-  (post-mpi-request qvm all-send-offsets 'send requests))
+  (post-mpi-request qvm all-send-offsets 'send requests :start start :end end))
