@@ -6,29 +6,43 @@
 
 ;;; We define an offset as an index within the portion of the wavefunction
 ;;; that exists in a given rank. This notion differs from an address, which
-;;; is the location of an amplitude within the whole wavefunction (not just
-;;; the particular piece stored a specific rank).
+;;; is the index of an amplitude within the whole wavefunction (not just the
+;;; particular piece stored a specific rank).
 ;;;
 ;;; Example:
 ;;;
-;;;     Consider the following partition of the addresses of wavefunciton
+;;;     Consider the following partition of the addresses of the wavefunction
 ;;;     among two ranks:
 ;;;
 ;;;       rank #0 | rank #1
 ;;;       --------+--------
 ;;;       0 4 2 6 | 1 5 3 7
 ;;;
-;;;     Addresses 0 4 2 6 are at offsets 0 1 2 3 of rank #0's portion of the
-;;;     wavefunction. Similarly, addresses 1 5 3 7 are at offsets 0 1 2 3 of
-;;;     rank #1's portion of the wavefunction.
+;;;     Addresses 0, 4, 2, and 6 are respectively at offsets 0, 1, 2, and 3
+;;;     of rank #0's portion of the wavefunction. Similarly, addresses 1, 5,
+;;;     3, and 7 are at offsets 0, 1, 2, and 3 of rank #1's portion of the
+;;;     wavefunction.
 ;;;
-;;; We use arrays of offsets to indicate to MPI which pieces of memory
-;;; should be accessed when transferring data.
+;;; We use arrays of offsets to tell MPI which pieces of memory should be
+;;; accessed when transferring data.
 ;;;
 ;;; This file defines the OFFSET-ARRAYS class. This class encapsulates the
 ;;; set up of auxiliary data for the MPI_Datatype structures required to
 ;;; off-load the transmission of amplitudes.
 
+;;; Note that the offsets must be 32-bit integers for compatibility with the
+;;; signature of MPI_Type_create_indexed_block. The limitations of the use of
+;;; the C type int for sizes in MPI are well-known [1] and can be avoided by
+;;; splitting the wavefunction into several static vectors and specifying
+;;; offsets with respect to each of those.
+;;;
+;;; Moreover, support for "big counts" is expected to be introduced in MPI
+;;; 4.0, to be ratified by 2020 or 2021. At that stage, we could use offsets
+;;; of bigger sizes.
+;;;
+;;; [1] J. R. Hammond, A. Schafer, and R. Latham, “To INT_MAX... and Beyond!
+;;; Exploring Large-Count Support in MPI,” in 2014 Workshop on Exascale MPI
+;;; at Supercomputing Conference, New Orleans, LA, USA, 2014.
 
 (defclass offset-arrays ()
   ((dimension
