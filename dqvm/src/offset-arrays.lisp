@@ -37,12 +37,12 @@
     :initform (error-missing-initform :dimension)
     :documentation "Upper bound on the number of offsets per rank.")
    (counts
-    :type (simple-array alexandria:non-negative-fixnum)
+    :type (simple-array alexandria:non-negative-fixnum (*))
     :initarg :counts
     :initform (error-missing-initform :counts)
     :documentation "Array containing the number of offsets currently allocated for each rank.")
    (offsets
-    :type (simple-array cffi:foreign-pointer)
+    :type (simple-array cffi:foreign-pointer (*))
     :initarg :offsets
     :initform (error-missing-initform :offsets)
     :documentation "Array containing pointers to foreign-allocated arrays of size DIMENSION, indexed by rank. The foreign arrays contain offsets to be used during data transfer."))
