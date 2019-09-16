@@ -61,7 +61,7 @@
                     :initform  (make-array *initial-pulse-event-log-length*
                                            :fill-pointer 0
                                            :adjustable t)
-                    :documentation "A log, in reverse chronological order, of observed pulse events."))
+                    :documentation "A log, in chronological order, of observed pulse events."))
   (:documentation "A quantum virtual machine capable of tracing pulse sequences over time."))
 
 ;;; TODO this fakeness is mainly to make LOAD-PROGRAM happy
@@ -165,7 +165,7 @@ If "
     (when (equalp left-frame right-frame)
       (error "SWAP-PHASE requires distinct frames."))
     (let ((left-state (frame-state qvm left-frame))
-          (right-state (frame-state qvm left-frame)))
+          (right-state (frame-state qvm right-frame)))
       (rotatef (frame-state-phase left-state) (frame-state-phase right-state))
       (setf (frame-state qvm left-frame) left-state
             (frame-state qvm right-frame) right-state)))
