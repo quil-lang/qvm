@@ -4,16 +4,15 @@
 
 (in-package #:dqvm2)
 
-(eval-when (:compile-toplevel :load-toplevel)
-  (defconstant +foreign-flonum+ (ecase qvm::+octets-per-flonum+
-                                  (4 :float)
-                                  (8 :double))
-    "Foreign type corresponding to a FLONUM.")
+(defconstant +foreign-flonum+ (ecase qvm::+octets-per-flonum+
+                                (4 :float)
+                                (8 :double))
+  "Foreign type corresponding to a FLONUM.")
 
-  (defconstant +gemm+ (ecase qvm::+octets-per-flonum+
-                        (4 #'magicl.blas-cffi::%%cgemm)
-                        (8 #'magicl.blas-cffi::%%zgemm))
-    "Generalized matrix-matrix multiplication routine."))
+(defconstant +gemm+ (ecase qvm::+octets-per-flonum+
+                      (4 #'magicl.blas-cffi::%%cgemm)
+                      (8 #'magicl.blas-cffi::%%zgemm))
+  "Generalized matrix-matrix multiplication routine.")
 
 (defun compute-matrix-vector-products (matrix input-array output-array start-offset end-offset)
   (magicl.cffi-types:with-array-pointers ((ptr-a (magicl::matrix-data matrix)))
