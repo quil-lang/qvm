@@ -29,7 +29,17 @@
 (deftype transposition ()
   '(or null (cons qubit-index qubit-index)))
 
-(defclass permutation-general ()
+(defclass permutation ()
+  ((size
+    :type (integer 0 +qubit-index-length+)
+    :reader permutation-size
+    :initarg :size
+    :documentation "Maximum number of bits on which the permutation acts."))
+  (:default-initargs
+   :size 0)
+  (:documentation "Permutation of qubits."))
+
+(defclass permutation-general (permutation)
   ((number-of-transpositions
     :type alexandria:non-negative-integer
     :initarg :number-of-transpositions
@@ -40,19 +50,17 @@
     :reader permutation-transpositions
     :documentation "Bijective map determined by transpositions, stored as an association list sorted by CAR."))
   (:default-initargs
+   :number-of-transpositions 0
    :transpositions nil)
   (:documentation "Arbitrary permutation acting on sets of qubit indices."))
 
-(defclass permutation-transposition ()
+(defclass permutation-transposition (permutation)
   ((tau
     :type qubit-index
     :initarg :tau
     :initform (error-missing-initform :tau)
     :documentation "Positive value of τ in π = (0 τ)."))
   (:documentation "Specialized permutation involving a single transposition of the form π = (0 τ) where τ ≠ 0."))
-
-(deftype permutation ()
-  '(or null permutation-general permutation-transposition))
 
 (defmethod permutation-transpositions ((permutation permutation-transposition))
   (let ((tau (slot-value permutation 'tau)))
@@ -85,7 +93,10 @@ Note that in the example above, the transposition (0 2) was automatically added.
 
   (let ((transpositions* nil)
         (domain nil)
-        (codomain nil))
+        (codomain nil)
+        (max-index 0))
+
+    (declare (type qubit-index max-index))
 
     (flet ((check-transposition (a b)
              (declare (type qubit-index a b))
@@ -97,12 +108,14 @@ Note that in the example above, the transposition (0 2) was automatically added.
 
       (declare (inline check-transposition))
 
-      (loop :for (a . b) :of-type qubit-index :in transpositions :do
-        (check-transposition a b)
-        (unless (= a b)
-          (pushnew (cons a b) transpositions*)
-          (pushnew a domain)
-          (pushnew b codomain))))
+      (loop :for (a . b) :of-type qubit-index :in transpositions
+            :maximize (max a b) :into max :do
+              (check-transposition a b)
+              (unless (= a b)
+                (pushnew (cons a b) transpositions*)
+                (pushnew a domain)
+                (pushnew b codomain))
+            :finally (setf max-index max)))
 
     (loop :for a :of-type qubit-index :in (set-difference codomain domain)
           :for b :of-type qubit-index :in (set-difference domain codomain)
@@ -114,16 +127,15 @@ Note that in the example above, the transposition (0 2) was automatically added.
       ((and (= 1 (length domain))
             (zerop (min (the qvm:amplitude-address (first domain))
                         (the qvm:amplitude-address (first codomain)))))
-       (make-instance 'permutation-transposition
-                      :tau (max (the qvm:amplitude-address (first domain))
-                                (the qvm:amplitude-address (first codomain)))))
+       (make-instance 'permutation-transposition :tau max-index :size (1+ max-index)))
       ((and (= 2 (length domain))
             (null (set-difference domain codomain))
             (zerop (the qvm:amplitude-address (alexandria:extremum domain #'<))))
-       (make-instance 'permutation-transposition :tau (alexandria:extremum domain #'>)))
+       (make-instance 'permutation-transposition :tau max-index :size (1+ max-index)))
       (t
        (make-instance 'permutation-general :number-of-transpositions (length transpositions*)
-                                           :transpositions (sort transpositions* #'< :key #'first))))))
+                                           :transpositions (sort transpositions* #'< :key #'first)
+                                           :size (1+ max-index))))))
 
 (defgeneric inverse-permutation (permutation)
   (:documentation "Return the inverse of PERMUTATION.")
@@ -249,7 +261,9 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
 (defmethod generate-qubit-permutation-code ((permutation null))
   (let ((address (gensym "ADDRESS-")))
     `(lambda (,address)
-       (declare #.qvm::*optimize-dangerously-fast*)
+       (declare #.qvm::*optimize-dangerously-fast*
+                (type qvm:amplitude-address ,address)
+                (values qvm:amplitude-address))
        ,address)))
 
 (defmethod generate-qubit-permutation-code ((permutation permutation-transposition))
@@ -290,15 +304,46 @@ DQVM2> (write (apply-qubit-permutation (make-permutation '((2 . 0))) #b001) :bas
                                                     ,address))))
          ,address))))
 
+(defmethod generate-qubit-permutation-code-with-look-up-table ((permutation null))
+  (generate-qubit-permutation-code permutation))
+
+(defmethod generate-qubit-permutation-code-with-look-up-table ((permutation permutation))
+  (let* ((num-bits (slot-value permutation 'size))
+         (num-entries (expt 2 num-bits))
+         (table (make-array num-entries :element-type `(unsigned-byte ,+qubit-index-length+)
+                                        :initial-contents (loop :for i :below num-entries :collect (apply-qubit-permutation permutation i)))))
+    (let ((address (gensym "ADDRESS-")))
+      `(lambda (,address)
+         (declare #.qvm::*optimize-dangerously-fast*
+                  (type qvm:amplitude-address ,address)
+                  (values qvm:amplitude-address))
+         (dpb (aref ,table (ldb (byte ,num-bits 0) ,address))
+              (byte ,num-bits 0)
+              ,address)))))
+
+(defun compile-qubit-permutation (permutation)
+  "Compile PERMUTATION and return a compiled function equivalent to (LAMBDA (ADDRESS) (APPLY-QUBIT-PERMUTATION PERMUTATION ADDRESS))."
+  (declare #.qvm::*optimize-dangerously-fast*
+           (type (or null permutation) permutation))
+  ;; Try the fastest method first. Namely, compilation with a look-up
+  ;; table. If that fails, fall back to single transposition or loop
+  ;; unrolling.
+  (let* ((size (if permutation
+                   (slot-value permutation 'size)
+                   0))
+         (function (if (<= size +qubit-index-length+)
+                       (generate-qubit-permutation-code-with-look-up-table permutation)
+                       (generate-qubit-permutation-code permutation))))
+    (declare (type qubit-index size))
+    (qvm::compile-lambda function)))
+
 (defun-inlinable apply-inverse-qubit-permutation (permutation address)
   (apply-qubit-permutation (inverse-permutation permutation) address))
 
 (defun print-qubit-permutation (permutation &optional number-of-qubits
                                               (stream *standard-output*))
   "Print the address permutation induced by PERMUTATION (possibly using up to NUMBER-OF-QUBITS) in STREAM."
-  (let* ((n (or number-of-qubits
-                (1+ (loop :for (a . b) :in (permutation-transpositions permutation)
-                          :maximizing (max a b)))))
+  (let* ((n (or number-of-qubits (permutation-size permutation)))
          (max-value (expt 2 n))
          (aux-control-string (format nil "~~~DD |~~~D,'0B>"
                                      (ceiling (log max-value 10)) n))

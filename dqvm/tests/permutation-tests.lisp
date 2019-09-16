@@ -86,10 +86,19 @@
              (float (/ (- stop start) internal-time-units-per-second)))
 
            (time-apply-qubit-permutation (permutation number-of-qubits)
-             "Measure the time taken by calls to APPLY-QUBIT-PERMUTATION on addresses from 0 to 2^NUMBER-OF-QUBITS."
+             "Measure the time taken by calls to APPLY-QUBIT-PERMUTATION on addresses from 0 to 2^NUMBER-OF-QUBITS - 1."
              (let ((start (get-internal-real-time)))
                (dotimes (x (expt 2 number-of-qubits))
                  (let ((y (apply-qubit-permutation permutation x)))
+                   (values x y)))
+               (get-elapsed-time-in-seconds start (get-internal-real-time))))
+
+           (time-compiled-qubit-permutation (permutation number-of-qubits)
+             "Measure the time taken by calls to COMPILE-QUBIT-PERMUTATION and its result on addresses from 0 to 2^NUMBER-OF-QUBITS - 1."
+             (let ((start (get-internal-real-time))
+                   (permute (dqvm2::compile-qubit-permutation permutation)))
+               (dotimes (x (expt 2 number-of-qubits))
+                 (let ((y (funcall permute x)))
                    (values x y)))
                (get-elapsed-time-in-seconds start (get-internal-real-time))))
 
@@ -109,7 +118,8 @@
            (permutation-0 (make-instance 'dqvm2::permutation-transposition :tau tau))
            (permutation-1 (make-instance 'dqvm2::permutation-general
                                          :number-of-transpositions 2
-                                         :transpositions (list (cons 0 tau) (cons tau 0)))))
+                                         :transpositions (list (cons 0 tau) (cons tau 0))))
+           (permutation-2 (make-permutation '((6 . 0) (3 . 1) (4 . 2)))))
 
       (loop :for x :below (expt 2 (1+ tau)) :do
         (is (= (apply-qubit-permutation permutation-0 x)
@@ -118,6 +128,15 @@
       (is (> (/ (time-apply-qubit-permutation permutation-1 number-of-qubits)
                 (time-apply-qubit-permutation permutation-0 number-of-qubits))
              3))
+
+
+      (is (> (/ (time-apply-qubit-permutation permutation-0 number-of-qubits)
+                (time-compiled-qubit-permutation permutation-0 number-of-qubits))
+             3.5))
+
+      (is (> (/ (time-apply-qubit-permutation permutation-2 number-of-qubits)
+                (time-compiled-qubit-permutation permutation-2 number-of-qubits))
+             4))
 
       ;; (is (> (/ (time-map-reordered-amplitudes permutation-0 number-of-qubits)
       ;;           (time-apply-qubit-permutation permutation-0 number-of-qubits))
