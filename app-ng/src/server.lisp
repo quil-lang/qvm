@@ -8,7 +8,7 @@
   :test #'string=
   :documentation "The default host address on which the HTTP server will listen.")
 
-(alexandria:define-constant +default-server-port+ 5000
+(alexandria:define-constant +default-server-port+ 5222
   :documentation "The default port on which the HTTP server will listen.")
 
 (defclass rpc-acceptor (tbnl:easy-acceptor)
