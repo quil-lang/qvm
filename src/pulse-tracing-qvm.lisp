@@ -32,6 +32,9 @@
   (scale 1.0d0
    :type real)
   (frequency (error "Frequency must be defined.")
+   :type real)
+  ;; The sample rate in Hz for waveform generation.
+  (sample-rate (error "Sample rate must be defined.")
    :type real))
 
 (defparameter *default-frame-frequency* 1.0 ; TODO get a better default
@@ -45,11 +48,7 @@
 ;;; although TODO in principle this could be more generic (e.g. provide some
 ;;; sort of "event consumer" callbacks).
 (defclass pulse-tracing-qvm (classical-memory-mixin)
-  ((sample-rate :initarg :sample-rate
-                :accessor sample-rate
-                :initform (error "A sample rate must be specified.")
-                :documentation "The sample rate in Hz for waveform generation.")
-   (local-clocks :initarg :local-clocks
+  ((local-clocks :initarg :local-clocks
                  :accessor local-clocks
                  :initform (make-hash-table)
                  :documentation "A table mapping qubit indices to the time of their last activity.")
@@ -69,19 +68,20 @@
 (defmethod number-of-qubits ((qvm pulse-tracing-qvm))
   most-positive-fixnum)
 
-(defun make-pulse-tracing-qvm (sample-rate)
-  "Create a new pulse tracing QVM with the specified SAMPLE-RATE."
+(defun make-pulse-tracing-qvm (frame-states)
+  "Create a new pulse tracing QVM. FRAME-STATES should be an association list mapping frame objects to their associated states."
   (make-instance 'pulse-tracing-qvm
-                 :sample-rate sample-rate
+                 :frame-states
+                 (alexandria:alist-hash-table frame-states :test 'equalp)
                  :classical-memory-subsystem
                  (make-instance 'classical-memory-subsystem
                                 :classical-memory-model
                                 quil:**empty-memory-model**)))
 
-(defun trace-quilt-program (program &key (sample-rate 100)) ; TODO better magic number
+(defun trace-quilt-program (program frame-states) ; TODO better magic number
   "Trace a quilt PROGRAM, returning a list of pulse events."
   (check-type program quil:parsed-program)
-  (let ((qvm (make-pulse-tracing-qvm sample-rate)))
+  (let ((qvm (make-pulse-tracing-qvm frame-states)))
     (load-program qvm program)
     (run qvm)
     (pulse-event-log qvm)))
@@ -97,24 +97,24 @@
         new-value))
 
 (defun frame-state (qvm frame)
-  (gethash frame (frame-states qvm)))
+  "Returns a copy of the state associated with the given frame."
+  (check-type qvm pulse-tracing-qvm)
+  (alexandria:if-let ((state (gethash frame (frame-states qvm))))
+    (copy-structure state)
+    (error "Attempted to reference non-existent frame ~A" frame)))
 
 (defun (setf frame-state) (new-value qvm frame)
-  (setf (gethash frame (frame-states qvm))
-        new-value))
+  "Set the state associated with the given frame."
+  (check-type qvm pulse-tracing-qvm)
+  (if (gethash frame (frame-states qvm))
+      (setf (gethash frame (frame-states qvm))
+            new-value)
+      (error "Attempted to modify non-existent frame ~A" frame)))
 
 (defun latest-time (qvm &rest qubits)
   "Get the latest time of the specified QUBITS on the pulse tracing QVM.
 If "
   (loop :for q :in qubits :maximize (local-time qvm q)))
-
-(defun new-or-copied-state (qvm frame)
-  "Get a copy of the frame state associated with FRAME on the pulse tracing qvm QVM.
-If there is no associated state, return a new one."
-  (check-type qvm pulse-tracing-qvm)
-  (alexandria:if-let ((fs (frame-state qvm frame)))
-    (copy-structure fs)
-    (make-frame-state :frequency *default-frame-frequency*)))
 
 ;;; TRANSITIONs
 
@@ -141,7 +141,7 @@ If there is no associated state, return a new one."
   (let* ((frame (quil:frame-mutation-target-frame instr))
          (val (quil:constant-value
                (quil:frame-mutation-value instr)))
-         (fs (new-or-copied-state qvm frame)))
+         (fs (frame-state qvm frame)))
 
     ;; update state
     (etypecase instr
@@ -164,8 +164,8 @@ If there is no associated state, return a new one."
   (with-slots (left-frame right-frame) instr
     (when (equalp left-frame right-frame)
       (error "SWAP-PHASE requires distinct frames."))
-    (let ((left-state (new-or-copied-state qvm left-frame))
-          (right-state (new-or-copied-state qvm left-frame)))
+    (let ((left-state (frame-state qvm left-frame))
+          (right-state (frame-state qvm left-frame)))
       (rotatef (frame-state-phase left-state) (frame-state-phase right-state))
       (setf (frame-state qvm left-frame) left-state
             (frame-state qvm right-frame) right-state)))
@@ -177,13 +177,11 @@ If there is no associated state, return a new one."
   (unless (typep instr '(or quil:pulse quil:capture quil:raw-capture))
     (error "Cannot resolve timing information for non-quilt instruction ~A" instr))
   (let* ((qubits (quil::quilt-instruction-qubits instr))
+         (frame-state (frame-state qvm (pulse-op-frame instr)))
          (start-time (apply #'latest-time qvm qubits))
          (end-time (+ start-time
-                      (quil::quilt-instruction-duration instr (sample-rate qvm))))
-         (frame-state (frame-state qvm (pulse-op-frame instr))))
-    (unless frame-state                 ; TODO is this a reasonable default?
-      (warn "Instruction ~A references an uninitialized frame." instr)
-      (setf frame-state (make-frame-state :frequency *default-frame-frequency*)))
+                      (quil::quilt-instruction-duration instr
+                                                        (frame-state-sample-rate frame-state)))))
     (vector-push-extend (make-pulse-event
                          :instruction instr
                          :start-time start-time
