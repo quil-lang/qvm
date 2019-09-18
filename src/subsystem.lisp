@@ -1,4 +1,4 @@
-;;;; lazy-entangle.lisp
+;;;; subsystem.lisp
 ;;;;
 ;;;; Author: Robert Smith
 
