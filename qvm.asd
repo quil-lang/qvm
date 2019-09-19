@@ -81,4 +81,5 @@
                (:file "execution")
                (:file "path-simulate")
                (:file "misc")
+               (:file "kraus-qvm-2")
                (:file "toy-qvm")))
