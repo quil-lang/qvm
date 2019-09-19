@@ -14,18 +14,18 @@
    (kraus-ops
     :initarg :kraus-ops
     :accessor kraus-ops
-    :initform ()
+    :initform (make-hash-table :test 'eql)
     :documentation "list of lists of kraus operators : ((t1 kraus ops) (t2 kraus ops) ...)"
     )
    (fros
     :initarg :fros
     :accessor fros
-    :initform nil
+    :initform (make-hash-table :test 'eql)
     :documentation "noisy readout encoded as a hash table of qubit to avg readout fidelity")
    (avg-gate-time
     :initarg :avg-gate-time
     :accessor avg-gate-time
-    :initform (error ":AVG-GATE-TIME is a required initarg ~ to APPROX-QVM")
+    :initform nil ;(error ":AVG-GATE-TIME is a required initarg ~ to APPROX-QVM")
     :documentation "the average gate time for a gate in this qvm")
    ))
 
@@ -36,13 +36,11 @@
   (declare (ignore args)) 
   (format t "approx-qvm~%")
   (if (t1 qvm) 
-      (setf (kraus-ops qvm) 
-            (append (kraus-ops qvm) 
-                    (list (generate-damping-kraus-ops (t1 qvm) (avg-gate-time qvm))))))
+      (setf (gethash "t1" (kraus-ops qvm))
+            (generate-damping-kraus-ops (t1 qvm) (avg-gate-time qvm))))
   (if (t2 qvm) 
-      (setf (kraus-ops qvm) 
-            (append (kraus-ops qvm) 
-                    (list (generate-damping-dephasing-kraus-ops (t2 qvm) (avg-gate-time qvm))))))
+      (setf (gethash "t2" (kraus-ops qvm)) 
+            (generate-damping-dephasing-kraus-ops (t2 qvm) (avg-gate-time qvm))))
   
   ;; readout fidelities are the average of the assignment probabilities p(0|0) and p(1|1). 
   ;; We approximate the readout povm as p(0|0) = p(1|1) = fR0, and 0(0|1) = p(1|0) = 1 - fR0.
@@ -52,12 +50,38 @@
                (fros qvm))))
 
 
+(defmethod set-gate-time ((qvm approx-qvm) gate-time)
+  (setf (avg-gate-time qvm) gate-time)
+  (set-t1 qvm (t1 qvm))
+  (set-t2 qvm (t2 qvm))
+  )
+
+
+(defmethod set-t1 ((qvm approx-qvm) t1)
+  (setf (t1 qvm) t1)
+  (setf (gethash "t1" (kraus-ops qvm)) (generate-damping-kraus-ops (t1 qvm) (avg-gate-time qvm)))
+  )
+
+(defmethod set-t2 ((qvm approx-qvm) t2)
+    (setf (t2 qvm) t2)
+    (setf (gethash "t2" (kraus-ops qvm)) (generate-damping-dephasing-kraus-ops (t2 qvm) (avg-gate-time qvm)))
+
+  )
+
+(defmethod set-fro ((qvm approx-qvm) qubit fro)
+    (setf (gethash qubit (fros qvm)) fro)
+    (setf (gethash qubit (readout-povms qvm)) (list fro (- 1.0d0 fro) (- 1.0d0 fro) fro))
+  )
+
+
 (defmethod apply-all-kraus-ops ((qvm approx-qvm) (instr quil:gate-application))
   "Apply all the kraus operators (for all of the noise sources) to the state of the program"
-   (loop :for kops :in (kraus-ops qvm)
-         :do
+  
+  (loop for kops being each hash-value of (kraus-ops qvm)
+        :do
            (check-kraus-ops kops)
-           (apply-kraus-ops qvm instr kops)))
+           (apply-kraus-ops qvm instr kops)
+        ))
 
 
 (defmethod transition ((qvm approx-qvm) (instr quil:gate-application))
@@ -69,6 +93,12 @@ that instruction.
         (params (mapcar #'(lambda (p) (force-parameter p qvm))
                         (quil:application-parameters instr)))
         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
+    ;(format t "~a~%" gate)
+   ; (format t "~a~%" (quil:application-operator instr))
+    ;(format t "~a~%" (quil:gate-application-gate instr))
+    (format t "~a~%" (cl-quil::application-operator-name instr))
+   ; (format t "~a~%" (quil:gate-definition-name gate))
+     ;(format t "~a~%" (quil:gate-definition-name (quil:gate-application-gate instr)))
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (apply-all-kraus-ops qvm instr)
     (incf (pc qvm))
@@ -132,3 +162,22 @@ to the t1 noise. "
     (format t "result: ~a" (float (/ ones numshots)))))
     
     
+(defun test-approx-fro ()
+  "Given a value for t1 and a gate time, generates the kraus operators corresponding
+to the t1 noise. "
+  
+  (let* ((ones 0)
+        (qubit 0)
+        (qvm (make-instance 'approx-qvm :number-of-qubits 1 :fros (fro-map qubit .9d0)))
+        (numshots 100)
+        (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
+
+    (loop :repeat numshots
+          :do (incf ones (do-noisy-measurement qvm 0 program)))
+    (format t "result: ~a" (float (/ ones numshots)))))
+
+
+(defun fro-map (qubit fro)
+  (setf m (make-hash-table))
+  (setf (gethash qubit m) fro)
+  m)
