@@ -23,14 +23,17 @@
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
 
-(defmacro with-persistent-qvm ((qvm &optional metadata) token &body body)
+(defmacro with-persistent-qvm ((qvm &optional metadata cv) token &body body)
   (check-type qvm symbol)
   (check-type metadata (or null symbol))
+  (check-type cv (or null symbol))
   (when (null metadata)
     (setf metadata (gensym "metadata")))
+  (when (null cv)
+    (setf cv (gensym "cv")))
   (alexandria:with-gensyms (lock)
     (alexandria:once-only (token)
-      `(destructuring-bind (,qvm ,lock ,metadata) (%lookup-persistent-qvm-or-lose ,token)
+      `(destructuring-bind (,qvm ,lock ,metadata ,cv) (%lookup-persistent-qvm-or-lose ,token)
          (declare (ignorable ,qvm))
          (bt:with-lock-held (,lock)
            (cond ((%marked-for-deletion-p ,metadata)
@@ -124,10 +127,27 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
                                      "created" (iso-time))
                                :test 'equal))
 
+(defstruct (table-entry (:type list))
+  qvm
+  lock
+  metadata
+  cv)
+
 (defun make-persistent-qvm (qvm allocation-method)
-  (list qvm
-        (bt:make-lock "PQVM Lock")
-        (%make-persistent-qvm-metadata allocation-method)))
+  (let ((lock (bt:make-lock "PQVM Lock"))
+        (cv (bt:make-condition-variable :name "PQVM CV")))
+    (setf (slot-value qvm 'qvm::wait-function)
+          (lambda (qvm)
+            (declare (ignore qvm))
+            (format t "~&waiting ")
+            (finish-output)
+            (bt:condition-wait cv lock)
+            (format t " resuming~%")
+            (finish-output)))
+    (make-table-entry :qvm qvm
+                      :lock lock
+                      :metadata (%make-persistent-qvm-metadata allocation-method)
+                      :cv cv)))
 
 (defun allocate-persistent-qvm (qvm allocation-method)
   (let ((persistent-qvm (make-persistent-qvm qvm allocation-method)))

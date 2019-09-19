@@ -185,3 +185,20 @@ The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
                                                 measurement-noise)
                             compiled-quil))
     addresses)))
+
+(define-rpc-handler (handle-run-program/async "run-program-async")
+                    ((qvm-token #'parse-qvm-token)
+                     (compiled-quil #'parse-quil-string))
+  (bt:make-thread
+   (lambda ()
+     (run-program-on-persistent-qvm qvm-token compiled-quil))
+   :name "hard working man or woman")
+  
+  (encode-json t))
+
+(define-rpc-handler (handle-resume-from-wait "resume")
+                    ((qvm-token #'parse-qvm-token))
+  (with-persistent-qvm (qvm nil cv) qvm-token
+    (bt:condition-notify cv))
+  
+  (encode-json t))
