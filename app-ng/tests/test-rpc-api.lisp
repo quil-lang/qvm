@@ -450,6 +450,36 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
             (check-request (simple-request url :type "delete-qvm" :qvm-token token)
                            :response-re "Deleted persistent QVM")))))))
 
+(deftest test-rpc-resume ()
+  (with-rpc-server (url)
+    (let* ((response (check-request (simple-request url
+                                                    :type "create-qvm"
+                                                    :allocation-method "native"
+                                                    :simulation-method "pure-state"
+                                                    :num-qubits 16)
+                                    :response-re +rpc-response-token-scanner+))
+           (token (extract-and-validate-token response)))
+      
+      
+      (check-request (simple-request url
+                                     :type "run-program-async"
+                                     :qvm-token token
+                                     :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro")
+                     :status 200)
+      (sleep 2)
+      (let ((qvm (first (qvm-app-ng::%lookup-persistent-qvm-or-lose token))))
+        (setf (qvm:memory-ref qvm "alpha" 0) pi)
+        (check-request (simple-request url
+                                       :type "resume"
+                                       :qvm-token token)
+                       :status 200)
+        (sleep 1)
+        (is (= 1 (qvm:memory-ref qvm "ro" 0))))
+
+      ;; cleanup
+      (check-request (simple-request url :type "delete-qvm" :qvm-token token)
+                     :response-re "Deleted persistent QVM"))))
+
 (deftest test-rpc-api-create-qvm-with-pauli-noise ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and Pauli noise parameters.."
   (with-rpc-server (url)
