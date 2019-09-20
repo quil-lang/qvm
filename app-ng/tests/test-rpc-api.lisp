@@ -450,31 +450,40 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
             (check-request (simple-request url :type "delete-qvm" :qvm-token token)
                            :response-re "Deleted persistent QVM")))))))
 
-(deftest test-rpc-resume ()
+(deftest test-rpc-api-resume ()
   (with-rpc-server (url)
     (let* ((response (check-request (simple-request url
                                                     :type "create-qvm"
                                                     :allocation-method "native"
                                                     :simulation-method "pure-state"
-                                                    :num-qubits 16)
+                                                    :num-qubits 2)
                                     :response-re +rpc-response-token-scanner+))
            (token (extract-and-validate-token response)))
-      
-      
+
       (check-request (simple-request url
                                      :type "run-program-async"
                                      :qvm-token token
                                      :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro")
                      :status 200)
-      (sleep 2)
-      (let ((qvm (first (qvm-app-ng::%lookup-persistent-qvm-or-lose token))))
-        (setf (qvm:memory-ref qvm "alpha" 0) pi)
-        (check-request (simple-request url
-                                       :type "resume"
-                                       :qvm-token token)
-                       :status 200)
-        (sleep 1)
-        (is (= 1 (qvm:memory-ref qvm "ro" 0))))
+
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token token
+                                     :memory-contents (alexandria:alist-hash-table
+                                                       `(("alpha" . ((0 ,pi))))))
+                     :status 200)
+
+      (check-request (simple-request url :type "resume" :qvm-token token)
+                     :status 200)
+
+      (sleep 1)
+
+      (check-request (simple-request url
+                                     :type "read-memory"
+                                     :qvm-token token
+                                     :addresses +all-ro-addresses+)
+                     :status 200
+                     :response-callback (response-json-fields-checker '(("ro" ((1))))))
 
       ;; cleanup
       (check-request (simple-request url :type "delete-qvm" :qvm-token token)

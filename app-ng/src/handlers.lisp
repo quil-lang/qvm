@@ -193,12 +193,23 @@ The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
    (lambda ()
      (run-program-on-persistent-qvm qvm-token compiled-quil))
    :name "hard working man or woman")
-  
   (encode-json t))
 
 (define-rpc-handler (handle-resume-from-wait "resume")
                     ((qvm-token #'parse-qvm-token))
   (with-persistent-qvm (qvm nil cv) qvm-token
     (bt:condition-notify cv))
-  
+  (encode-json t))
+
+(define-rpc-handler (handle-read-memory "read-memory")
+                    ((qvm-token #'parse-qvm-token)
+                     (addresses #'parse-addresses))
+  (encode-json
+   (with-persistent-qvm (qvm) qvm-token
+     (collect-memory-registers qvm addresses))))
+
+(define-rpc-handler (handle-write-memory "write-memory")
+                    ((qvm-token #'parse-qvm-token)
+                     (memory-contents #'parse-memory-contents))
+  (write-persistent-qvm-memory qvm-token memory-contents)
   (encode-json t))

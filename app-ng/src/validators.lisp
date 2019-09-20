@@ -65,6 +65,24 @@
               addresses)
      t)))
 
+(defun valid-memory-contents-query-p (memory-contents)
+  (cond
+    ((not (hash-table-p memory-contents)) nil)
+    (t
+     (maphash (lambda (k v)
+                (unless (and (stringp k)
+                             (and (alexandria:proper-list-p v)
+                                  (every (lambda (entry)
+                                           (and (alexandria:proper-list-p entry)
+                                                (= 2 (length entry))
+                                                (integerp (first entry))
+                                                (not (minusp (first entry)))
+                                                (typep (second entry) '(or integer real complex))))
+                                         v)))
+                  (return-from valid-memory-contents-query-p nil)))
+              memory-contents)
+     t)))
+
 (defun parse-addresses (addresses)
   (unless (valid-address-query-p addresses)
     (rpc-parameter-parse-error
@@ -72,6 +90,11 @@
       DECLAREd memory names, and whose values are either the true value to request all memory, or ~
       a list of non-negative integer indexes to request some memory."))
   addresses)
+
+(defun parse-memory-contents (memory-contents)
+  (unless (valid-memory-contents-query-p memory-contents)
+    (rpc-parameter-parse-error "Invalid MEMORY-CONTENTS."))
+  memory-contents)
 
 (defun parse-quil-string (string)
   "Safely parse a Quil string STRING."
