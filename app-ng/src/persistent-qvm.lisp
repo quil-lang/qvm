@@ -34,7 +34,7 @@
   (alexandria:with-gensyms (lock)
     (alexandria:once-only (token)
       `(destructuring-bind (,qvm ,lock ,metadata ,cv) (%lookup-persistent-qvm-or-lose ,token)
-         (declare (ignorable ,qvm))
+         (declare (ignorable ,qvm ,cv))
          (bt:with-lock-held (,lock)
            (cond ((%marked-for-deletion-p ,metadata)
                   (error "Persistent QVM ~A is marked for deletion." ,token))
@@ -169,3 +169,11 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 (defun run-program-on-persistent-qvm (token parsed-program)
   (with-persistent-qvm (qvm) token
     (run-program-on-qvm qvm parsed-program)))
+
+(defun write-persistent-qvm-memory (token memory-contents)
+  (with-persistent-qvm (qvm) token
+    (maphash (lambda (k v)
+               (loop :for (index value) :in v :do
+                 (setf (qvm:memory-ref qvm k index) value)))
+             memory-contents))
+  nil)

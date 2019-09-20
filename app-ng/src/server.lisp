@@ -91,7 +91,9 @@ This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-
   (gethash parameter-name request-json))
 
 (defun parse-request-json-or-lose (request)
-  (let ((json (ignore-errors (yason:parse (tbnl:raw-post-data :request request :force-text t)))))
+  (let ((json (ignore-errors
+               (let ((*read-default-float-format* 'double-float))
+                 (yason:parse (tbnl:raw-post-data :request request :force-text t))))))
     (unless (hash-table-p json)
       (rpc-bad-request-error "Failed to parse JSON object from request body"))
     json))
