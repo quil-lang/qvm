@@ -20,11 +20,8 @@
 (defun hadamard-program (n)
   (safely-parse-quil-string
    (with-output-to-string (*standard-output*)
-     (format t "DECLARE ro BIT[~D]~%" n)
      (dotimes (i n)
-       (format t "H ~D~%" i))
-     (dotimes (i n)
-       (format t "MEASURE ~D ro[~D]~%" i i)))))
+       (format t "H ~D~%" i)))))
 
 (defun nop-loop (num-loops num-nops)
   "Create a loop that has NUM-LOOPS iterations and NUM-NOPS NOP instructions per iteration."
