@@ -74,35 +74,41 @@ The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INT
     (setf (job-lock job) (bt:make-lock))
     job))
 
+(defmacro define-job-action (action (job) &body body)
+  "Evaluate BODY with a lock held for JOB."
+  (multiple-value-bind (body decls docstr)
+      (alexandria:parse-body body :documentation t)
+    (declare (ignore decls))
+    `(defun ,action (,job)
+       ,docstr
+       (with-job-lock (,job)
+         ,@body))))
+
 ;;; CUSTODIAL
 
-(defun job-start (job)
+(define-job-action job-start (job)
   "Start the JOB and return T. If JOB is already running, do nothing and return NIL."
-  (with-job-lock (job)
-    (unless (%job-running-p-unsafe job)
-      (funcall (job-threader job))
-      t)))
+  (unless (%job-running-p-unsafe job)
+    (funcall (job-threader job))
+    t))
 
-(defun job-stop (job)
+(define-job-action job-stop (job)
   "Forcefully stop JOB if running. Does not block."
-  (with-job-lock (job)
-    (when (%job-running-p-unsafe job)
-      (bt:destroy-thread (job-thread job))
-      (setf (job-status job) 'interrupted))))
+  (when (%job-running-p-unsafe job)
+    (bt:destroy-thread (job-thread job))
+    (setf (job-status job) 'interrupted)))
 
 ;;; sync/async
 
-(defun job-result (job)
+(define-job-action job-result (job)
   "Inspect the result of JOB. If JOB is in the running state, this will block."
-  (with-job-lock (job)
-    (when (%job-running-p-unsafe job)
-      (bt:join-thread (job-thread job)))
-    (job-%result job)))
+  (when (%job-running-p-unsafe job)
+    (bt:join-thread (job-thread job)))
+  (job-%result job))
 
-(defun job-peek (job)
+(define-job-action job-peek (job)
   "Inspect the result of JOB without blocking. Returns (VALUES RESULT FINISHED) where RESULT is the job result if the job is in the finished state (i.e. FINISHED is T); if FINISHED is NIL, then a RESULT of NIL does *not* mean that is the true result of the most recent run of JOB."
-  (with-job-lock (job)
-    (values (job-%result job)
-            (%job-finished-p-unsafe job))))
+  (values (job-%result job)
+          (%job-finished-p-unsafe job)))
 
 
