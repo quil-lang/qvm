@@ -23,29 +23,29 @@
   `((("default-allocation")
      :type string
      :initial-value "native"
-     :documentation "select where wavefunctions get allocated: \"native\" (default) for native allocation, \"foreign\" for C-compatible allocation")
+     :documentation "Select where wavefunctions get allocated: \"native\" (default) for native allocation, \"foreign\" for C-compatible allocation")
     (("execute" #\e)
      :type boolean
      :optional t
-     :documentation "read a Quil program from stdin and execute it (DEPRECATED: simply elide this option)")
+     :documentation "Read a Quil program from stdin and execute it (DEPRECATED: simply elide this option)")
 
     (("server" #\S)
      :type boolean
      :optional t
      :initial-value nil
-     :documentation "start a QVM server")
+     :documentation "Start a QVM server")
 
     (("host")
      :type string
      :optional t
      :initial-value "0.0.0.0"
-     :documentation "host on which to start the QVM server")
+     :documentation "Host on which to start the QVM server")
 
     (("port" #\p)
      :type integer
      :optional t
      :initial-value 5000
-     :documentation "port to start the QVM server on")
+     :documentation "Port to start the QVM server on")
 
     (("qubits" #\q)
      :type integer
@@ -55,22 +55,22 @@
     (("memory-limit")
      :type integer
      :initial-value #.qvm::**classical-memory-size-limit**
-     :documentation "limit to the number of octets of usable classical memory per program (this does *not* limit the amount of memory this program consumes)")
+     :documentation "Limit to the number of octets of usable classical memory per program (this does *not* limit the amount of memory this program consumes)")
 
     (("num-workers" #\w)
      :type integer
      :initial-value 0
-     :documentation "workers to use in parallel (0 => maximum number)")
+     :documentation "Workers to use in parallel (0 => maximum number)")
 
     (("time-limit")
      :type integer
      :initial-value 0
-     :documentation "time limit for computations (0 => unlimited, ms)")
+     :documentation "Time limit for computations (0 => unlimited, ms)")
 
     (("qubit-limit")
      :type integer
      :initial-value 0
-     :documentation "maximum number of qubits allowed to be used in the server (0 => unlimited)")
+     :documentation "Maximum number of qubits allowed to be used in the server (0 => unlimited)")
 
     (("parallelization-limit")
      :type integer
@@ -80,7 +80,7 @@
     (("benchmark")
      :type integer
      :initial-value 0
-     :documentation "run a benchmark entangling N qubits (default: 26)")
+     :documentation "Run a benchmark entangling N qubits (default: 26)")
 
     (("benchmark-type")
      :type string
@@ -90,48 +90,48 @@
     (("help" #\h)
      :type boolean
      :optional t
-     :documentation "display help")
+     :documentation "Display help")
 
     (("version" #\v)
      :type boolean
      :optional t
-     :documentation "display the versions of the app and underlying QVM")
+     :documentation "Display the versions of the app and underlying QVM")
 
     (("check-libraries")
      :type boolean
      :optional t
-     :documentation "check that foreign libraries are adequate")
+     :documentation "Check that foreign libraries are adequate")
 
     (("verbose")
      :type boolean
      :optional t
-     :documentation "display verbose output")
+     :documentation "Display verbose output")
 
     #-forest-sdk
     (("swank-port")
      :type integer
      :optional t
-     :documentation "port to start a Swank server on")
+     :documentation "Port to start a Swank server on")
 
     (("compile" #\c)
      :type boolean
      :optional t
-     :documentation "enable JIT compilation of Quil programs")
+     :documentation "Enable JIT compilation of Quil programs")
 
     (("optimization-level" #\O)
      :type integer
      :optional t
-     :documentation "compilation level of Quil programs before execution")
+     :documentation "Compilation level of Quil programs before execution")
 
     (("safe-include-directory")
      :type string
      :optional t
-     :documentation "allow INCLUDE only files in this directory")
+     :documentation "Allow INCLUDE only files in this directory")
 
     (("shared")
      :type string
      :optional t
-     :documentation "make the QVM use POSIX shared memory. If an empty string is provided, a name will be generated and printed out at initialization. Otherwise the name provided will be used. Must specify --qubits. Only relevant to --server option.")
+     :documentation "Make the QVM use POSIX shared memory. If an empty string is provided, a name will be generated and printed out at initialization. Otherwise the name provided will be used. Must specify --qubits. Only relevant to --server option.")
 
     (("simulation-method")
      :type string
@@ -143,7 +143,7 @@
     (("debug")
      :type boolean
      :optional t
-     :documentation "debug mode, specifically this causes the QVM to not automatically catch execution errors allowing interactive debugging via SWANK.")
+     :documentation "Debug mode, specifically this causes the QVM to not automatically catch execution errors allowing interactive debugging via SWANK.")
 
     (("check-sdk-version")
      :type boolean
@@ -164,7 +164,13 @@
      :type string
      :optional t
      :initial-value "debug"
-     :documentation "maximum logging level (\"debug\", \"info\", \"notice\", \"warning\", \"err\", \"crit\", \"alert\", or \"emerg\")")))
+     :documentation "Maximum logging level (\"debug\", \"info\", \"notice\", \"warning\", \"err\", \"crit\", \"alert\", or \"emerg\")")
+
+    (("hide-wavefunction")
+     :type boolean
+     :optional t
+     :initial-value nil
+     :documentation "Disable printing of the wavefunction in batch mode.")))
 
 (defun show-help ()
   (format t "Usage:~%")
@@ -371,7 +377,8 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
                           check-sdk-version
                           proxy
                           quiet
-                          log-level)
+                          log-level
+                          hide-wavefunction)
 
   (setf *logger* (make-instance 'cl-syslog:rfc5424-logger
                                 :app-name "qvm"
@@ -597,19 +604,20 @@ Version ~A is available from https://www.rigetti.com/forest~%"
        ;; Print our answer to stdout.
        (format-log "Printing classical memory and ~D-qubit state." qubits-needed)
        (print-classical-memory qvm)
-       (format t "~&Amplitudes:")
-       (let ((nq (qvm:number-of-qubits qvm)))
-         (qvm:map-amplitudes
-          qvm
-          (let ((i 0))
-            (lambda (z)
-              (format t
-                      "~%    |~v,'0B>: ~/QVM-APP::PPRINT-COMPLEX/, ~64TP=~5F%"
-                      nq
-                      i
-                      z
-                      (* 100 (qvm:probability z)))
-              (incf i)))))
+       (unless hide-wavefunction
+         (format t "~&Amplitudes:")
+         (let ((nq (qvm:number-of-qubits qvm)))
+           (qvm:map-amplitudes
+            qvm
+            (let ((i 0))
+              (lambda (z)
+                (format t
+                        "~%    |~v,'0B>: ~/QVM-APP::PPRINT-COMPLEX/, ~64TP=~5F%"
+                        nq
+                        i
+                        z
+                        (* 100 (qvm:probability z)))
+                (incf i))))))
        (terpri))))
 
   (quit-nicely))
