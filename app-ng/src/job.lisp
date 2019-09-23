@@ -15,9 +15,10 @@
 (defmacro with-job-lock ((job &key (wait t)) &body body)
   "Evaluate BODY with the LOCK acquired for the duration of BODY. If WAIT is T, block until the lock is available."
   `(progn
-     (bt:acquire-lock (job-lock ,job) ,wait)
-     ,@body
-     (bt:release-lock (job-lock ,job))))
+     (when (bt:acquire-lock (job-lock ,job) ,wait)
+       (unwind-protect
+            (progn ,@body)
+         (bt:release-lock (job-lock ,job))))))
 
 (defmethod print-object ((job job) stream)
   (print-unreadable-object (job stream :type nil :identity t)
