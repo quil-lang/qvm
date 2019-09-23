@@ -17,7 +17,7 @@
   `(progn
      (when (bt:acquire-lock (job-lock ,job) ,wait)
        (unwind-protect
-            (progn ,@body)
+           (progn ,@body)
          (bt:release-lock (job-lock ,job))))))
 
 (defmethod print-object ((job job) stream)
