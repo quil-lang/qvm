@@ -23,10 +23,13 @@
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
 
+(deftype persistent-qvm-status () '(member (ready dying)))
+
 (defstruct (persistent-qvm (:constructor %make-persistent-qvm))
   qvm
   cv
   lock
+  status
   metadata)
 
 (defun %make-persistent-qvm-metadata (allocation-method)
@@ -48,7 +51,16 @@
     (%make-persistent-qvm :qvm qvm
                           :cv cv
                           :lock lock
+                          :status 'ready
                           :metadata (%make-persistent-qvm-metadata allocation-method))))
+
+(defmacro %with-locked-pqvm ((pqvm) token &body body)
+  (check-type pqvm symbol)
+  (alexandria:once-only (token)
+    `(let ((,pqvm (%lookup-persistent-qvm-or-lose ,token)))
+       (declare (ignorable ,pqvm))
+       (bt:with-lock-held ((persistent-qvm-lock ,pqvm))
+         ,@body))))
 
 (defmacro with-persistent-qvm ((qvm &optional metadata cv) token &body body)
   (check-type qvm symbol)
@@ -58,15 +70,14 @@
     (setf metadata (gensym "metadata")))
   (when (null cv)
     (setf cv (gensym "cv")))
-  (alexandria:with-gensyms (lock)
+  (alexandria:with-gensyms (pqvm)
     (alexandria:once-only (token)
-      `(with-slots ((,qvm qvm) (,cv cv) (,lock lock) (,metadata metadata))
-           (%lookup-persistent-qvm-or-lose ,token)
-         (declare (ignorable ,qvm ,cv))
-         (bt:with-lock-held (,lock)
-           (cond ((%marked-for-deletion-p ,metadata)
-                  (error "Persistent QVM ~A is marked for deletion." ,token))
-                 (t ,@body)))))))
+      `(%with-locked-pqvm (,pqvm) ,token
+         (with-slots ((,qvm qvm) (,cv cv) (,metadata metadata)) ,pqvm
+           (declare (ignorable ,qvm ,cv ,metadata))
+           (case (persistent-qvm-status ,pqvm)
+             (dying (error "Persistent QVM ~A is marked for deletion." ,token))
+             (t ,@body)))))))
 
 (defun %insert-persistent-qvm-locked (token persistent-qvm)
   (setf (gethash token **persistent-qvms**) persistent-qvm))
@@ -79,8 +90,8 @@
     (remhash token **persistent-qvms**)))
 
 (defun delete-persistent-qvm (token)
-  (with-persistent-qvm (qvm metadata) token
-    (%mark-for-deletion metadata))
+  (%with-locked-pqvm (pqvm) token
+    (setf (persistent-qvm-status pqvm) 'dying))
   (%remove-persistent-qvm token))
 
 (defun %lookup-persistent-qvm-locked (token)
@@ -93,12 +104,6 @@
 (defun %lookup-persistent-qvm-or-lose (token)
   (or (%lookup-persistent-qvm token)
       (error "Failed to find persistent QVM ~D" token)))
-
-(defun %marked-for-deletion-p (metadata)
-  (gethash "delete-pending" metadata))
-
-(defun %mark-for-deletion (metadata)
-  (setf (gethash "delete-pending" metadata) t))
 
 (defun canonicalize-persistent-qvm-token (token)
   "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
@@ -161,10 +166,11 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 
 (defun persistent-qvm-info (token)
   (alexandria:plist-hash-table
-   (with-persistent-qvm (qvm metadata) token
-     (list "qvm-type" (symbol-name (type-of qvm))
-           "num-qubits" (qvm:number-of-qubits qvm)
-           "metadata" metadata))
+   (%with-locked-pqvm (pqvm) token
+     (list "qvm-type" (symbol-name (type-of (persistent-qvm-qvm pqvm)))
+           "num-qubits" (qvm:number-of-qubits (persistent-qvm-qvm pqvm))
+           "status" (symbol-name (persistent-qvm-status pqvm))
+           "metadata" (persistent-qvm-metadata pqvm)))
    :test 'equal))
 
 (defun run-program-on-persistent-qvm (token parsed-program)

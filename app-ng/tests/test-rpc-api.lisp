@@ -441,6 +441,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                            (response-json-fields-checker
                             `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
                               ("num-qubits" ,num-qubits)
+                              ("status" "READY")
                               ("metadata" ,(hash-table-fields-checker
                                             `(("allocation-method" ,(string-upcase allocation-method))
                                               ("created" ,(lambda (s)
@@ -651,6 +652,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                      (response-json-fields-checker
                       `(("qvm-type" "PURE-STATE-QVM")
                         ("num-qubits" 1)
+                        ("status" "READY")
                         ("metadata" ,(hash-table-fields-checker
                                       `(("allocation-method" "NATIVE")
                                         ("created" ,(lambda (s)
