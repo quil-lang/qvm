@@ -22,7 +22,7 @@
 
 (defmethod print-object ((job job) stream)
   (print-unreadable-object (job stream :type nil :identity t)
-    (format stream "QVM Job")))
+    (format stream "QVM Job (status ~A)" (job-status job))))
 
 (defun job-running-p (job)
   "Is the JOB in the RUNNING state."
