@@ -43,11 +43,7 @@
     (setf (slot-value qvm 'qvm::wait-function)
           (lambda (qvm)
             (declare (ignore qvm))
-            (format t "~&waiting ")
-            (finish-output)
-            (bt:condition-wait cv lock)
-            (format t " resuming~%")
-            (finish-output)))
+            (bt:condition-wait cv lock)))
     (%make-persistent-qvm :qvm qvm
                           :cv cv
                           :lock lock
