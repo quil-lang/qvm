@@ -36,9 +36,7 @@
                ;; For allocation info.
                #+sbcl #:sb-introspect
                ;; Portable *features*
-               #:trivial-features
-               #:uuid
-               )
+               #:trivial-features)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
   :around-compile (lambda (compile)
                     (let (#+sbcl (sb-ext:*derive-function-types* t))
