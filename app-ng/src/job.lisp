@@ -1,4 +1,4 @@
-(in-package #:qvm-app)
+(in-package #:qvm-app-ng)
 
 (deftype job-status ()
   '(member fraiche running finished interrupted error))
