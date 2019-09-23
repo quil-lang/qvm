@@ -60,18 +60,17 @@ The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INT
                          (bt:make-thread
                           (lambda ()
                             (handler-case
-                                (progn
-                                  ;; Reset run-specific slots
-                                  (setf (job-%result job) nil)
-                                  (setf (job-error   job) nil)
-                                  (setf (job-status  job) 'running)
-                                  (setf (job-%result job) (funcall fn))
-                                  (setf (job-status  job) 'finished))
+                                ;; Reset run-specific slots
+                                (setf (job-%result job) nil
+                                      (job-error   job) nil
+                                      (job-status  job) 'running
+                                      (job-%result job) (funcall fn)
+                                      (job-status  job) 'finished)
                               (error (c)
-                                (setf (job-error job) c)
-                                (setf (job-status job) 'error)))))))))
-    (setf (job-threader job) thr-fn)
-    (setf (job-lock job) (bt:make-lock))
+                                (setf (job-error  job) c
+                                      (job-status job) 'error)))))))))
+    (setf (job-threader job) thr-fn
+          (job-lock job) (bt:make-lock))
     job))
 
 (defmacro define-job-action (action (job) &body body)
