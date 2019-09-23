@@ -24,20 +24,31 @@
   (print-unreadable-object (job stream :type nil :identity t)
     (format stream "QVM Job (status ~A)" (job-status job))))
 
+;; The %x-unsafe variants below do not acquire a lock.
+
+(defun %job-running-p-unsafe (job)
+  (eq (job-status job) 'running))
+
 (defun job-running-p (job)
   "Is the JOB in the RUNNING state."
   (with-job-lock (job)
-    (eq (job-status job) 'running)))
+    (%job-running-p-unsafe job)))
+
+(defun %job-interrupted-p-unsafe (job)
+  (eq (job-status job) 'interrupted))
 
 (defun job-interrupted-p (job)
   "Is the JOB in the INTERRUPTED state?"
   (with-job-lock (job)
-    (eq (job-status job) 'interrupted)))
+    (%job-interrupted-p-unsafe job)))
+
+(defun %job-finished-p-unsafe (job)
+  (eq (job-status job) 'finished))
 
 (defun job-finished-p (job)
   "Is the JOB in the FINISHED state?"
   (with-job-lock (job)
-    (eq (job-status job) 'finished)))
+    (%job-finished-p-unsafe job)))
 
 (defun make-job (fn)
   "Make a JOB object which will, under JOB-START, run FN in a thread.
@@ -57,8 +68,6 @@ The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INT
                                   (setf (job-%result job) (funcall fn))
                                   (setf (job-status  job) 'finished))
                               (error (c)
-                                ;; TODO What happens to a thread when
-                                ;; there is an error in it?
                                 (setf (job-error job) c)
                                 (setf (job-status job) 'error)))))))))
     (setf (job-threader job) thr-fn)
@@ -70,14 +79,14 @@ The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INT
 (defun job-start (job)
   "Start the JOB and return T. If JOB is already running, do nothing and return NIL."
   (with-job-lock (job)
-    (unless (job-running-p job)
+    (unless (%job-running-p-unsafe job)
       (funcall (job-threader job))
       t)))
 
 (defun job-stop (job)
   "Forcefully stop JOB if running. Does not block."
   (with-job-lock (job)
-    (when (job-running-p job)
+    (when (%job-running-p-unsafe job)
       (bt:destroy-thread (job-thread job))
       (setf (job-status job) 'interrupted))))
 
@@ -86,7 +95,7 @@ The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INT
 (defun job-result (job)
   "Inspect the result of JOB. If JOB is in the running state, this will block."
   (with-job-lock (job)
-    (when (job-running-p job)
+    (when (%job-running-p-unsafe job)
       (bt:join-thread (job-thread job)))
     (job-%result job)))
 
@@ -94,6 +103,6 @@ The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INT
   "Inspect the result of JOB without blocking. Returns (VALUES RESULT FINISHED) where RESULT is the job result if the job is in the finished state (i.e. FINISHED is T); if FINISHED is NIL, then a RESULT of NIL does *not* mean that is the true result of the most recent run of JOB."
   (with-job-lock (job)
     (values (job-%result job)
-            (job-finished-p job))))
+            (%job-finished-p-unsafe job))))
 
 
