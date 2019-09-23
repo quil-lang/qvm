@@ -74,13 +74,12 @@ The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or INT
       (funcall (job-threader job))
       t)))
 
-(defun job-stop (job &key (status 'interrupted))
-  "Forcefully stop JOB if running. Does not block. Set the JOB-STATUS into STATUS."
-  (check-type status job-status)
+(defun job-stop (job)
+  "Forcefully stop JOB if running. Does not block."
   (with-job-lock (job)
     (when (job-running-p job)
       (bt:destroy-thread (job-thread job))
-      (setf (job-status job) status))))
+      (setf (job-status job) 'interrupted))))
 
 ;;; sync/async
 
