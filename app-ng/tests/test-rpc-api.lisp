@@ -138,8 +138,8 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
   "Make a POST request to the URL given. Any additional keyword args are collected in JSON-PLIST and converted to a JSON dict and sent as the request body."
   (http-request url :method ':POST :content (plist->json json-plist)))
 
-(defun request-qvm-status (url qvm-token)
-  (gethash "status" (yason:parse (simple-request url :type "qvm-info" :qvm-token qvm-token))))
+(defun request-qvm-state (url qvm-token)
+  (gethash "state" (yason:parse (simple-request url :type "qvm-info" :qvm-token qvm-token))))
 
 (deftest test-rpc-api-invalid-request ()
   "Requests without a valid JSON request body return 400 Bad Request."
@@ -444,7 +444,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                            (response-json-fields-checker
                             `(("qvm-type" ,(simulation-method->qvm-type simulation-method))
                               ("num-qubits" ,num-qubits)
-                              ("status" "READY")
+                              ("state" "READY")
                               ("metadata" ,(hash-table-fields-checker
                                             `(("allocation-method" ,(string-upcase allocation-method))
                                               ("created" ,(lambda (s)
@@ -471,7 +471,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                      :status 200)
 
       (check-request (simple-request url :type "qvm-info" :qvm-token token)
-                     :response-callback (response-json-fields-checker '(("status" "WAITING"))))
+                     :response-callback (response-json-fields-checker '(("state" "WAITING"))))
 
       ;; run-program on a persistent qvm in a non-READY state is disallowed
       (check-request (simple-request url
@@ -494,13 +494,13 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
       (check-request (simple-request url :type "qvm-info" :qvm-token token)
                      :response-callback
                      (response-json-fields-checker
-                      `(("status" ,(lambda (value)
+                      `(("state" ,(lambda (value)
                                      (member value '("RESUMING" "RUNNING" "READY") :test #'string=))))))
 
       ;; Wait for run-program-async to finish
-      (loop :repeat 10 :for status = (request-qvm-status url token)
-            :until (string= status "READY")
-            :finally (is (string= status "READY")))
+      (loop :repeat 10 :for state = (request-qvm-state url token)
+            :until (string= state "READY")
+            :finally (is (string= state "READY")))
 
       (check-request (simple-request url
                                      :type "read-memory"
@@ -674,7 +674,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                      (response-json-fields-checker
                       `(("qvm-type" "PURE-STATE-QVM")
                         ("num-qubits" 1)
-                        ("status" "READY")
+                        ("state" "READY")
                         ("metadata" ,(hash-table-fields-checker
                                       `(("allocation-method" "NATIVE")
                                         ("created" ,(lambda (s)
