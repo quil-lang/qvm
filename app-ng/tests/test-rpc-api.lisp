@@ -495,7 +495,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                      :response-callback
                      (response-json-fields-checker
                       `(("status" ,(lambda (value)
-                                     (member value '("AWAKENING" "RUNNING" "READY") :test #'string=))))))
+                                     (member value '("RESUMING" "RUNNING" "READY") :test #'string=))))))
 
       ;; Wait for run-program-async to finish
       (loop :repeat 10 :for status = (request-qvm-status url token)
