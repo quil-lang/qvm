@@ -25,11 +25,29 @@
 
 (deftype persistent-qvm-state () '(member (ready running waiting resuming dying)))
 
+(alexandria:define-constant +valid-pqvm-state-transitions+
+    '((ready    running           dying)
+      (running  ready    waiting  dying)
+      (waiting  resuming          dying)
+      (resuming running           dying)
+      (dying                      dying))
+  :test #'equal
+  :documentation "An alist of valid state transitions for a PERSISTENT-QVM. The alist is keyed on the current state. The value for each key is list of states that can be transitioned to from the corresponding current state.")
+
+(defun %checked-transition-to-state-locked (pqvm new-state)
+  (unless (member new-state (assoc (persistent-qvm-state pqvm) +valid-pqvm-state-transitions+))
+    (error "Attempting invalid state transition ~A -> ~A for Persistent QVM ~A"
+           (persistent-qvm-state pqvm)
+           new-state
+           (persistent-qvm-token pqvm)))
+  (setf (persistent-qvm-state pqvm) new-state))
+
 (defstruct (persistent-qvm (:constructor %make-persistent-qvm))
   qvm
   cv
   lock
   state
+  token
   metadata)
 
 (defun %make-persistent-qvm-metadata (allocation-method)
@@ -37,23 +55,25 @@
                                      "created" (iso-time))
                                :test 'equal))
 
-(defun make-persistent-qvm (qvm allocation-method)
+(defun make-persistent-qvm (qvm allocation-method token)
   (let* ((lock (bt:make-lock "PQVM Lock"))
          (cv (bt:make-condition-variable :name "PQVM CV"))
          (pqvm (%make-persistent-qvm :qvm qvm
                                      :cv cv
                                      :lock lock
                                      :state 'ready
+                                     :token token
                                      :metadata (%make-persistent-qvm-metadata allocation-method))))
     (setf (slot-value qvm 'qvm::wait-function)
           (lambda (qvm)
             (declare (ignore qvm))
             ;; LOCK must be held here or we're in trouble.
-            (setf (persistent-qvm-state pqvm) 'waiting)
+            (%checked-transition-to-state-locked pqvm 'waiting)
             ;; TODO:(appleby) possible to unwind from CONDITION-WAIT? Maybe UNWIND-PROTECT here.
             (loop :while (eq 'waiting (persistent-qvm-state pqvm))
                   :do (bt:condition-wait cv lock)
-                  :finally (setf (persistent-qvm-state pqvm) 'running))))
+                  :finally (unless (eq 'dying (persistent-qvm-state pqvm))
+                             (%checked-transition-to-state-locked pqvm 'running)))))
     pqvm))
 
 (defmacro %with-locked-pqvm ((pqvm) token &body body)
@@ -93,7 +113,7 @@
 
 (defun delete-persistent-qvm (token)
   (%with-locked-pqvm (pqvm) token
-    (setf (persistent-qvm-state pqvm) 'dying))
+    (%checked-transition-to-state-locked pqvm 'dying))
   (%remove-persistent-qvm token))
 
 (defun %lookup-persistent-qvm-locked (token)
@@ -158,12 +178,12 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
               token)))
 
 (defun allocate-persistent-qvm (qvm allocation-method)
-  (let ((persistent-qvm (make-persistent-qvm qvm allocation-method)))
-    (bt:with-lock-held (**persistent-qvms-lock**)
-      (let ((token (%make-persistent-qvm-token-locked)))
-        (cond ((not (null (%lookup-persistent-qvm-locked token)))
-               (error "Token collision while attempting to allocate persistent QVM: ~S" token))
-              (t (%insert-persistent-qvm-locked token persistent-qvm)
+  (bt:with-lock-held (**persistent-qvms-lock**)
+    (let ((token (%make-persistent-qvm-token-locked)))
+      (cond ((not (null (%lookup-persistent-qvm-locked token)))
+             (error "Token collision while attempting to allocate persistent QVM: ~S" token))
+            (t (let ((persistent-qvm (make-persistent-qvm qvm allocation-method token)))
+                 (%insert-persistent-qvm-locked token persistent-qvm)
                  (values token persistent-qvm)))))))
 
 (defun persistent-qvm-info (token)
@@ -179,9 +199,9 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
   (%with-locked-pqvm (pqvm) token
     (case (persistent-qvm-state pqvm)
       (ready
-       (setf (persistent-qvm-state pqvm) 'running)
+       (%checked-transition-to-state-locked pqvm 'running)
        (unwind-protect (run-program-on-qvm (persistent-qvm-qvm pqvm) parsed-program)
-         (setf (persistent-qvm-state pqvm) 'ready)))
+         (%checked-transition-to-state-locked pqvm 'ready)))
       (t
        (error "Cannot run program on Persistent QVM ~A in state ~A."
               token
@@ -197,5 +217,5 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 
 (defun resume-persistent-qvm (token)
   (%with-locked-pqvm (pqvm) token
-    (setf (persistent-qvm-state pqvm) 'resuming)
+    (%checked-transition-to-state-locked pqvm 'resuming)
     (bt:condition-notify (persistent-qvm-cv pqvm))))
