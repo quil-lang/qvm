@@ -84,19 +84,13 @@
        (bt:with-lock-held ((persistent-qvm-lock ,pqvm))
          ,@body))))
 
-(defmacro with-persistent-qvm ((qvm &optional metadata cv) token &body body)
+(defmacro with-persistent-qvm ((qvm) token &body body)
   (check-type qvm symbol)
-  (check-type metadata (or null symbol))
-  (check-type cv (or null symbol))
-  (when (null metadata)
-    (setf metadata (gensym "metadata")))
-  (when (null cv)
-    (setf cv (gensym "cv")))
   (alexandria:with-gensyms (pqvm)
     (alexandria:once-only (token)
       `(%with-locked-pqvm (,pqvm) ,token
-         (with-slots ((,qvm qvm) (,cv cv) (,metadata metadata)) ,pqvm
-           (declare (ignorable ,qvm ,cv ,metadata))
+         (with-slots ((,qvm qvm)) ,pqvm
+           (declare (ignorable ,qvm))
            (case (persistent-qvm-state ,pqvm)
              (dying (error "Persistent QVM ~A is marked for deletion." ,token))
              (t ,@body)))))))
