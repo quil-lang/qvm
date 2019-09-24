@@ -197,8 +197,7 @@ The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
 
 (define-rpc-handler (handle-resume-from-wait "resume")
                     ((qvm-token #'parse-qvm-token))
-  (with-persistent-qvm (qvm nil cv) qvm-token
-    (bt:condition-notify cv))
+  (resume-persistent-qvm qvm-token)
   (encode-json t))
 
 (define-rpc-handler (handle-read-memory "read-memory")

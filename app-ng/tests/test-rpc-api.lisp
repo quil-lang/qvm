@@ -138,6 +138,9 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
   "Make a POST request to the URL given. Any additional keyword args are collected in JSON-PLIST and converted to a JSON dict and sent as the request body."
   (http-request url :method ':POST :content (plist->json json-plist)))
 
+(defun request-qvm-status (url qvm-token)
+  (gethash "status" (yason:parse (simple-request url :type "qvm-info" :qvm-token qvm-token))))
+
 (deftest test-rpc-api-invalid-request ()
   "Requests without a valid JSON request body return 400 Bad Request."
   (with-rpc-server (url)
@@ -451,7 +454,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
             (check-request (simple-request url :type "delete-qvm" :qvm-token token)
                            :response-re "Deleted persistent QVM")))))))
 
-(deftest test-rpc-api-resume ()
+(deftest test-rpc-api-wait-resume ()
   (with-rpc-server (url)
     (let* ((response (check-request (simple-request url
                                                     :type "create-qvm"
@@ -467,6 +470,17 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
                                      :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro")
                      :status 200)
 
+      (check-request (simple-request url :type "qvm-info" :qvm-token token)
+                     :response-callback (response-json-fields-checker '(("status" "WAITING"))))
+
+      ;; run-program on a persistent qvm in a non-READY state is disallowed
+      (check-request (simple-request url
+                                     :type "run-program"
+                                     :qvm-token token
+                                     :compiled-quil +generic-x-0-quil-program+
+                                     :addresses +all-ro-addresses+)
+                     :status 500)
+
       (check-request (simple-request url
                                      :type "write-memory"
                                      :qvm-token token
@@ -477,13 +491,21 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
       (check-request (simple-request url :type "resume" :qvm-token token)
                      :status 200)
 
-      (sleep 1)
+      (check-request (simple-request url :type "qvm-info" :qvm-token token)
+                     :response-callback
+                     (response-json-fields-checker
+                      `(("status" ,(lambda (value)
+                                     (member value '("AWAKENING" "RUNNING" "READY") :test #'string=))))))
+
+      ;; Wait for run-program-async to finish
+      (loop :repeat 10 :for status = (request-qvm-status url token)
+            :until (string= status "READY")
+            :finally (is (string= status "READY")))
 
       (check-request (simple-request url
                                      :type "read-memory"
                                      :qvm-token token
                                      :addresses +all-ro-addresses+)
-                     :status 200
                      :response-callback (response-json-fields-checker '(("ro" ((1))))))
 
       ;; cleanup

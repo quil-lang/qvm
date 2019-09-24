@@ -23,7 +23,7 @@
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
 
-(deftype persistent-qvm-status () '(member (ready dying)))
+(deftype persistent-qvm-status () '(member (ready running waiting awakening dying)))
 
 (defstruct (persistent-qvm (:constructor %make-persistent-qvm))
   qvm
@@ -38,17 +38,23 @@
                                :test 'equal))
 
 (defun make-persistent-qvm (qvm allocation-method)
-  (let ((lock (bt:make-lock "PQVM Lock"))
-        (cv (bt:make-condition-variable :name "PQVM CV")))
+  (let* ((lock (bt:make-lock "PQVM Lock"))
+         (cv (bt:make-condition-variable :name "PQVM CV"))
+         (pqvm (%make-persistent-qvm :qvm qvm
+                                     :cv cv
+                                     :lock lock
+                                     :status 'ready
+                                     :metadata (%make-persistent-qvm-metadata allocation-method))))
     (setf (slot-value qvm 'qvm::wait-function)
           (lambda (qvm)
             (declare (ignore qvm))
-            (bt:condition-wait cv lock)))
-    (%make-persistent-qvm :qvm qvm
-                          :cv cv
-                          :lock lock
-                          :status 'ready
-                          :metadata (%make-persistent-qvm-metadata allocation-method))))
+            ;; LOCK must be held here or we're in trouble.
+            (setf (persistent-qvm-status pqvm) 'waiting)
+            ;; TODO:(appleby) possible to unwind from CONDITION-WAIT? Maybe UNWIND-PROTECT here.
+            (loop :while (eq 'waiting (persistent-qvm-status pqvm))
+                  :do (bt:condition-wait cv lock)
+                  :finally (setf (persistent-qvm-status pqvm) 'running))))
+    pqvm))
 
 (defmacro %with-locked-pqvm ((pqvm) token &body body)
   (check-type pqvm symbol)
@@ -170,8 +176,16 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
    :test 'equal))
 
 (defun run-program-on-persistent-qvm (token parsed-program)
-  (with-persistent-qvm (qvm) token
-    (run-program-on-qvm qvm parsed-program)))
+  (%with-locked-pqvm (pqvm) token
+    (case (persistent-qvm-status pqvm)
+      (ready
+       (setf (persistent-qvm-status pqvm) 'running)
+       (unwind-protect (run-program-on-qvm (persistent-qvm-qvm pqvm) parsed-program)
+         (setf (persistent-qvm-status pqvm) 'ready)))
+      (t
+       (error "Cannot run program on Persistent QVM ~A in state ~A."
+              token
+              (persistent-qvm-status pqvm))))))
 
 (defun write-persistent-qvm-memory (token memory-contents)
   (with-persistent-qvm (qvm) token
@@ -180,3 +194,8 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
                  (setf (qvm:memory-ref qvm k index) value)))
              memory-contents))
   nil)
+
+(defun resume-persistent-qvm (token)
+  (%with-locked-pqvm (pqvm) token
+    (setf (persistent-qvm-status pqvm) 'awakening)
+    (bt:condition-notify (persistent-qvm-cv pqvm))))
