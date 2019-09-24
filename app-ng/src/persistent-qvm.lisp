@@ -23,7 +23,7 @@
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
 
-(deftype persistent-qvm-status () '(member (ready running waiting awakening dying)))
+(deftype persistent-qvm-status () '(member (ready running waiting resuming dying)))
 
 (defstruct (persistent-qvm (:constructor %make-persistent-qvm))
   qvm
@@ -197,5 +197,5 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 
 (defun resume-persistent-qvm (token)
   (%with-locked-pqvm (pqvm) token
-    (setf (persistent-qvm-status pqvm) 'awakening)
+    (setf (persistent-qvm-status pqvm) 'resuming)
     (bt:condition-notify (persistent-qvm-cv pqvm))))
