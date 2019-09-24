@@ -23,13 +23,13 @@
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
 
-(deftype persistent-qvm-status () '(member (ready running waiting resuming dying)))
+(deftype persistent-qvm-state () '(member (ready running waiting resuming dying)))
 
 (defstruct (persistent-qvm (:constructor %make-persistent-qvm))
   qvm
   cv
   lock
-  status
+  state
   metadata)
 
 (defun %make-persistent-qvm-metadata (allocation-method)
@@ -43,17 +43,17 @@
          (pqvm (%make-persistent-qvm :qvm qvm
                                      :cv cv
                                      :lock lock
-                                     :status 'ready
+                                     :state 'ready
                                      :metadata (%make-persistent-qvm-metadata allocation-method))))
     (setf (slot-value qvm 'qvm::wait-function)
           (lambda (qvm)
             (declare (ignore qvm))
             ;; LOCK must be held here or we're in trouble.
-            (setf (persistent-qvm-status pqvm) 'waiting)
+            (setf (persistent-qvm-state pqvm) 'waiting)
             ;; TODO:(appleby) possible to unwind from CONDITION-WAIT? Maybe UNWIND-PROTECT here.
-            (loop :while (eq 'waiting (persistent-qvm-status pqvm))
+            (loop :while (eq 'waiting (persistent-qvm-state pqvm))
                   :do (bt:condition-wait cv lock)
-                  :finally (setf (persistent-qvm-status pqvm) 'running))))
+                  :finally (setf (persistent-qvm-state pqvm) 'running))))
     pqvm))
 
 (defmacro %with-locked-pqvm ((pqvm) token &body body)
@@ -77,7 +77,7 @@
       `(%with-locked-pqvm (,pqvm) ,token
          (with-slots ((,qvm qvm) (,cv cv) (,metadata metadata)) ,pqvm
            (declare (ignorable ,qvm ,cv ,metadata))
-           (case (persistent-qvm-status ,pqvm)
+           (case (persistent-qvm-state ,pqvm)
              (dying (error "Persistent QVM ~A is marked for deletion." ,token))
              (t ,@body)))))))
 
@@ -93,7 +93,7 @@
 
 (defun delete-persistent-qvm (token)
   (%with-locked-pqvm (pqvm) token
-    (setf (persistent-qvm-status pqvm) 'dying))
+    (setf (persistent-qvm-state pqvm) 'dying))
   (%remove-persistent-qvm token))
 
 (defun %lookup-persistent-qvm-locked (token)
@@ -171,21 +171,21 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
    (%with-locked-pqvm (pqvm) token
      (list "qvm-type" (symbol-name (type-of (persistent-qvm-qvm pqvm)))
            "num-qubits" (qvm:number-of-qubits (persistent-qvm-qvm pqvm))
-           "status" (symbol-name (persistent-qvm-status pqvm))
+           "state" (symbol-name (persistent-qvm-state pqvm))
            "metadata" (persistent-qvm-metadata pqvm)))
    :test 'equal))
 
 (defun run-program-on-persistent-qvm (token parsed-program)
   (%with-locked-pqvm (pqvm) token
-    (case (persistent-qvm-status pqvm)
+    (case (persistent-qvm-state pqvm)
       (ready
-       (setf (persistent-qvm-status pqvm) 'running)
+       (setf (persistent-qvm-state pqvm) 'running)
        (unwind-protect (run-program-on-qvm (persistent-qvm-qvm pqvm) parsed-program)
-         (setf (persistent-qvm-status pqvm) 'ready)))
+         (setf (persistent-qvm-state pqvm) 'ready)))
       (t
        (error "Cannot run program on Persistent QVM ~A in state ~A."
               token
-              (persistent-qvm-status pqvm))))))
+              (persistent-qvm-state pqvm))))))
 
 (defun write-persistent-qvm-memory (token memory-contents)
   (with-persistent-qvm (qvm) token
@@ -197,5 +197,5 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 
 (defun resume-persistent-qvm (token)
   (%with-locked-pqvm (pqvm) token
-    (setf (persistent-qvm-status pqvm) 'resuming)
+    (setf (persistent-qvm-state pqvm) 'resuming)
     (bt:condition-notify (persistent-qvm-cv pqvm))))
