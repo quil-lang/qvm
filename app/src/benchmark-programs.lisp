@@ -14,6 +14,7 @@
      (loop :for i :below n
            :do (format t "MEASURE ~D ro[~D]~%" i i)))))
 
+;;; TODO: remove this when QVM-EXAMPLES won't cause a circular dependency
 (defun qft-program (n)
   (labels ((bit-reversal-circuit (qubits)
              "Create a circuit which does a bit reversal on the amplitude indexes."
