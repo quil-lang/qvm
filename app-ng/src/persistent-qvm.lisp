@@ -23,7 +23,7 @@
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
 
-(deftype persistent-qvm-state () '(member (ready running waiting resuming dying)))
+(deftype persistent-qvm-state () '(member ready running waiting resuming dying))
 
 (alexandria:define-constant +valid-pqvm-state-transitions+
     '((ready    running           dying)
@@ -43,12 +43,12 @@
   (setf (persistent-qvm-state pqvm) new-state))
 
 (defstruct (persistent-qvm (:constructor %make-persistent-qvm))
-  qvm
-  cv
-  lock
-  state
-  token
-  metadata)
+  (qvm      (error "Must provide QVM")                                 :read-only t)
+  (cv       (error "Must provide CV")                                  :read-only t)
+  (lock     (error "Must provide LOCK")                                :read-only t)
+  (state    (error "Must provide STATE")    :type persistent-qvm-state)
+  (token    (error "Must provide TOKEN")    :type persistent-qvm-token :read-only t)
+  (metadata (error "Must provide METADATA") :type hash-table           :read-only t))
 
 (defun %make-persistent-qvm-metadata (allocation-method)
   (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method)
