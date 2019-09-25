@@ -8,8 +8,6 @@
   :license "GNU Affero General Public License v3.0 (See app/LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
   :depends-on (
-               ;; QFT
-               #:qvm-examples
                ;; Quil parsing
                (:version #:cl-quil "1.11.0")
                ;; Command line argument parsing

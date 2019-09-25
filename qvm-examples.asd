@@ -4,10 +4,18 @@
 
 (asdf:defsystem #:qvm-examples
   :description "Examples using the QVM."
-  :author "Robert Smith <robert@rigetti.com>"
+  :author "Robert Smith <robert@rigetti.com>, Juan M. Bello-Rivas <jbellorivas@rigetti.com>"
   :license "Apache License 2.0 (See LICENSE.txt)"
-  :depends-on (#:qvm)
+  :depends-on (
+               ;; Nelder-Mead
+               #:cl-grnm
+               ;; Quantum Virtual Machine
+               #:qvm
+               ;; Application server for the QVM
+               #:qvm-app
+               )
   :pathname "examples/"
   :serial t
   :components ((:file "package")
-               (:file "qft")))
+               (:file "qft")
+               (:file "vqe")))
