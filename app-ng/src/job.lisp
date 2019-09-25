@@ -16,7 +16,7 @@
     ((job-status-error error) (format nil "error: ~A" error))))
 
 (defstruct (job (:constructor %make-job))
-  "A job is an data-structure that permits a given function to be run in a threaded (and thread-safe) environment."
+  "A job permits a given function to be run in a threaded (and thread-safe) environment."
   lock
   work-function
   thread
