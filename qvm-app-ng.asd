@@ -13,7 +13,8 @@
                #:qvm
                #:alexandria
                #:cl-syslog
-               #:trivial-features)
+               #:trivial-features
+               #:cl-algebraic-data-type)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-app-ng-tests)))
   :pathname "app-ng/src/"
   :serial t
