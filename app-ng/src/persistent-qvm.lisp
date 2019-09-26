@@ -36,13 +36,27 @@
   :test #'equal
   :documentation "An alist of valid state transitions for a PERSISTENT-QVM. The alist is keyed on the current state. The value for each key is list of states that can be transitioned to from the corresponding current state.")
 
-(defun %checked-transition-to-state-locked (pqvm new-state)
-  (unless (member new-state (cdr (assoc (persistent-qvm-state pqvm) +valid-pqvm-state-transitions+)))
-    (error "Attempting invalid state transition ~A -> ~A for Persistent QVM ~A"
-           (persistent-qvm-state pqvm)
-           new-state
-           (persistent-qvm-token pqvm)))
-  (setf (persistent-qvm-state pqvm) new-state))
+(defun valid-pqvm-state-transition-p (current-state new-state)
+  "Is the state transition CURRENT-STATE -> NEW-STATE valid according to +VALID-PQVM-STATE-TRANSITIONS+?"
+  (check-type current-state persistent-qvm-state)
+  (check-type new-state persistent-qvm-state)
+  (member new-state (cdr (assoc current-state +valid-pqvm-state-transitions+))))
+
+(defun %checked-transition-to-state-locked (pqvm new-state &key from-state)
+  (check-type pqvm persistent-qvm)
+  (check-type new-state persistent-qvm-state)
+  (check-type from-state (or null persistent-qvm-state))
+  (with-slots ((current-state state)) pqvm
+    (let ((current-state-valid-p (or (null from-state) (eq from-state current-state))))
+      (cond ((and current-state-valid-p (valid-pqvm-state-transition-p current-state new-state))
+             (setf current-state new-state))
+            (t (error "Attempting invalid state transition ~A -> ~A~
+                      ~@[~&Invalid starting state: wanted ~A~]~
+                      ~&Persistent QVM is ~A"
+                      current-state
+                      new-state
+                      (and (not current-state-valid-p) from-state)
+                      (persistent-qvm-token pqvm)))))))
 
 (defstruct (persistent-qvm (:constructor %make-persistent-qvm))
   (qvm      (error "Must provide QVM")                                 :read-only t)
@@ -80,12 +94,14 @@ TOKEN is a PERSISTENT-QVM-TOKEN."
           (lambda (qvm)
             (declare (ignore qvm))
             ;; LOCK must be held here or we're in trouble.
-            (%checked-transition-to-state-locked pqvm 'waiting)
+            (%checked-transition-to-state-locked pqvm 'waiting :from-state 'running)
             ;; TODO:(appleby) possible to unwind from CONDITION-WAIT? Maybe UNWIND-PROTECT here.
             (loop :while (eq 'waiting (persistent-qvm-state pqvm))
                   :do (bt:condition-wait cv lock)
                   :finally (unless (eq 'dying (persistent-qvm-state pqvm))
-                             (%checked-transition-to-state-locked pqvm 'running)))))
+                             (%checked-transition-to-state-locked pqvm
+                                                                  'running
+                                                                  :from-state 'resuming)))))
     pqvm))
 
 (defmacro with-locked-pqvm ((pqvm) token &body body)
@@ -220,9 +236,9 @@ Returns the requested memory registers or signals an error if the given PERSISTE
   (with-locked-pqvm (pqvm) token
     (case (persistent-qvm-state pqvm)
       (ready
-       (%checked-transition-to-state-locked pqvm 'running)
+       (%checked-transition-to-state-locked pqvm 'running :from-state 'ready)
        (unwind-protect (run-program-on-qvm (persistent-qvm-qvm pqvm) parsed-program addresses)
-         (%checked-transition-to-state-locked pqvm 'ready)))
+         (%checked-transition-to-state-locked pqvm 'ready :from-state 'running)))
       (t
        (error "Cannot run program on Persistent QVM ~A in state ~A."
               token
@@ -251,6 +267,6 @@ TOKEN is a PERSISTENT-QVM-TOKEN.
 
 Returns NIL or signals an error if the given PERSISTENT-QVM is not in the WAITING state."
   (with-locked-pqvm (pqvm) token
-    (%checked-transition-to-state-locked pqvm 'resuming)
+    (%checked-transition-to-state-locked pqvm 'resuming :from-state 'waiting)
     (bt:condition-notify (persistent-qvm-cv pqvm)))
   nil)
