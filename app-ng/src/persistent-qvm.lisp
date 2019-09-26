@@ -50,7 +50,7 @@
   (token    (error "Must provide TOKEN")    :type persistent-qvm-token :read-only t)
   (metadata (error "Must provide METADATA") :type hash-table           :read-only t))
 
-(defun %make-persistent-qvm-metadata (allocation-method)
+(defun make-persistent-qvm-metadata (allocation-method)
   (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method)
                                      "created" (iso-time))
                                :test 'equal))
@@ -63,7 +63,7 @@
                                      :lock lock
                                      :state 'ready
                                      :token token
-                                     :metadata (%make-persistent-qvm-metadata allocation-method))))
+                                     :metadata (make-persistent-qvm-metadata allocation-method))))
     (setf (slot-value qvm 'qvm::wait-function)
           (lambda (qvm)
             (declare (ignore qvm))
@@ -76,7 +76,7 @@
                              (%checked-transition-to-state-locked pqvm 'running)))))
     pqvm))
 
-(defmacro %with-locked-pqvm ((pqvm) token &body body)
+(defmacro with-locked-pqvm ((pqvm) token &body body)
   (check-type pqvm symbol)
   (alexandria:once-only (token)
     `(let ((,pqvm (%lookup-persistent-qvm-or-lose ,token)))
@@ -88,7 +88,7 @@
   (check-type qvm symbol)
   (alexandria:with-gensyms (pqvm)
     (alexandria:once-only (token)
-      `(%with-locked-pqvm (,pqvm) ,token
+      `(with-locked-pqvm (,pqvm) ,token
          (with-slots ((,qvm qvm)) ,pqvm
            (declare (ignorable ,qvm))
            (case (persistent-qvm-state ,pqvm)
@@ -98,17 +98,11 @@
 (defun %insert-persistent-qvm-locked (token persistent-qvm)
   (setf (gethash token **persistent-qvms**) persistent-qvm))
 
-(defun %remove-persistent-qvm-locked (token)
-  (remhash token **persistent-qvms**))
-
-(defun %remove-persistent-qvm (token)
+(defun delete-persistent-qvm (token)
+  (with-locked-pqvm (pqvm) token
+    (%checked-transition-to-state-locked pqvm 'dying))
   (bt:with-lock-held (**persistent-qvms-lock**)
     (remhash token **persistent-qvms**)))
-
-(defun delete-persistent-qvm (token)
-  (%with-locked-pqvm (pqvm) token
-    (%checked-transition-to-state-locked pqvm 'dying))
-  (%remove-persistent-qvm token))
 
 (defun %lookup-persistent-qvm-locked (token)
   (gethash token **persistent-qvms**))
@@ -127,12 +121,12 @@
   ;; UUID:PRINT-OBJECT and UUID:PRINT-BYTES print them in uppercase.
   (string-downcase token))
 
-(defun %uuid->persistent-qvm-token (uuid)
+(defun uuid->persistent-qvm-token (uuid)
   (canonicalize-persistent-qvm-token (princ-to-string uuid)))
 
 (defun make-persistent-qvm-token ()
   "Return a new persistent QVM token."
-  (%uuid->persistent-qvm-token
+  (uuid->persistent-qvm-token
    (bt:with-lock-held (**persistent-qvms-lock**)
      ;; UUID:MAKE-V4-UUID is not thread safe. If you call it without locking, you get collisions. We
      ;; reuse **PERSISTENT-QVMS-LOCK** here to avoid needing to acquire two separate locks in order
@@ -145,7 +139,7 @@
      (uuid:make-v4-uuid))))
 
 (defun %make-persistent-qvm-token-locked ()
-  (%uuid->persistent-qvm-token (uuid:make-v4-uuid)))
+  (uuid->persistent-qvm-token (uuid:make-v4-uuid)))
 
 (defun valid-persistent-qvm-token-p (token)
   "True if TOKEN is a valid string representation of a v4 UUID.
@@ -182,7 +176,7 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 
 (defun persistent-qvm-info (token)
   (alexandria:plist-hash-table
-   (%with-locked-pqvm (pqvm) token
+   (with-locked-pqvm (pqvm) token
      (list "qvm-type" (symbol-name (type-of (persistent-qvm-qvm pqvm)))
            "num-qubits" (qvm:number-of-qubits (persistent-qvm-qvm pqvm))
            "state" (symbol-name (persistent-qvm-state pqvm))
@@ -190,7 +184,7 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
    :test 'equal))
 
 (defun run-program-on-persistent-qvm (token parsed-program)
-  (%with-locked-pqvm (pqvm) token
+  (with-locked-pqvm (pqvm) token
     (case (persistent-qvm-state pqvm)
       (ready
        (%checked-transition-to-state-locked pqvm 'running)
@@ -210,6 +204,6 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
   nil)
 
 (defun resume-persistent-qvm (token)
-  (%with-locked-pqvm (pqvm) token
+  (with-locked-pqvm (pqvm) token
     (%checked-transition-to-state-locked pqvm 'resuming)
     (bt:condition-notify (persistent-qvm-cv pqvm))))
