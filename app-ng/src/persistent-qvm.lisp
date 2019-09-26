@@ -35,7 +35,7 @@
   :documentation "An alist of valid state transitions for a PERSISTENT-QVM. The alist is keyed on the current state. The value for each key is list of states that can be transitioned to from the corresponding current state.")
 
 (defun %checked-transition-to-state-locked (pqvm new-state)
-  (unless (member new-state (assoc (persistent-qvm-state pqvm) +valid-pqvm-state-transitions+))
+  (unless (member new-state (cdr (assoc (persistent-qvm-state pqvm) +valid-pqvm-state-transitions+)))
     (error "Attempting invalid state transition ~A -> ~A for Persistent QVM ~A"
            (persistent-qvm-state pqvm)
            new-state
