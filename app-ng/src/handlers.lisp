@@ -82,29 +82,6 @@ Alternatively, the handler function can be called from lisp like so
                                                          (json-parameter "rng-seed"))))
               ,@body-forms))))))
 
-(defun collect-memory-registers (qvm addresses)
-  "Return a HASH-TABLE of exactly the QVM memory registers requested in ADDRESSES.
-
-ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register."
-  (let ((results (make-hash-table :test 'equal)))
-    (maphash (lambda (name indexes)
-               (cond
-                 ;; Give everything back.
-                 ((eq indexes t)
-                  (loop :with mv := (gethash name (qvm::classical-memories qvm))
-                        :for idx :below (qvm::memory-view-length mv)
-                        :collect (qvm:memory-ref qvm name idx) :into mem
-                        :finally (push mem (gethash name results))))
-                 ;; Give only some things back.
-                 ((alexandria:proper-list-p indexes)
-                  (loop :for idx :in indexes
-                        :collect (qvm:memory-ref qvm name idx) :into mem
-                        :finally (push mem (gethash name results))))
-                 (t
-                  (error "Invalid address parameter for memory named ~S." name))))
-             addresses)
-    results))
-
 (define-rpc-handler (handle-version "version") ()
   "Return QVM-APP-NG version info as a string."
   ;; text/html rather than application/json for backwards compatibility with previous QVM-APP API.
@@ -175,16 +152,15 @@ The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
     (rpc-parameter-parse-error
      "QVM-TOKEN is incompatible with any of the following parameters: ALLOCATION-METHOD, SIMULATION-METHOD, GATE-NOISE, MEASUREMENT-NOISE."))
   (encode-json
-   (collect-memory-registers
-    (if qvm-token
-        (run-program-on-persistent-qvm qvm-token compiled-quil)
-        (run-program-on-qvm (make-requested-qvm simulation-method
-                                                allocation-method
-                                                (quil:qubits-needed compiled-quil)
-                                                gate-noise
-                                                measurement-noise)
-                            compiled-quil))
-    addresses)))
+   (if qvm-token
+       (run-program-on-persistent-qvm qvm-token compiled-quil addresses)
+       (run-program-on-qvm (make-requested-qvm simulation-method
+                                               allocation-method
+                                               (quil:qubits-needed compiled-quil)
+                                               gate-noise
+                                               measurement-noise)
+                           compiled-quil
+                           addresses))))
 
 (define-rpc-handler (handle-run-program/async "run-program-async")
                     ((qvm-token #'parse-qvm-token)

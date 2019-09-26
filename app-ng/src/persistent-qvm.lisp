@@ -211,21 +211,22 @@ TOKEN is a PERSISTENT-QVM-TOKEN."
            "metadata" (persistent-qvm-metadata pqvm)))
    :test 'equal))
 
-(defun run-program-on-persistent-qvm (token parsed-program)
+(defun run-program-on-persistent-qvm (token parsed-program &optional addresses)
   "Run the given PARSED-PROGRAM on the PERSISTENT-QVM indicated by TOKEN.
 
-Returns NIL or signals an error if the given PERSISTENT-QVM is not in the READY state."
+The optional ADDRESSES are passed along to RUN-PROGRAM-ON-QVM and specify which memory register contents you want back.
+
+Returns the requested memory registers or signals an error if the given PERSISTENT-QVM is not in the READY state."
   (with-locked-pqvm (pqvm) token
     (case (persistent-qvm-state pqvm)
       (ready
        (%checked-transition-to-state-locked pqvm 'running)
-       (unwind-protect (run-program-on-qvm (persistent-qvm-qvm pqvm) parsed-program)
+       (unwind-protect (run-program-on-qvm (persistent-qvm-qvm pqvm) parsed-program addresses)
          (%checked-transition-to-state-locked pqvm 'ready)))
       (t
        (error "Cannot run program on Persistent QVM ~A in state ~A."
               token
-              (persistent-qvm-state pqvm))))
-    nil))
+              (persistent-qvm-state pqvm))))))
 
 (defun write-persistent-qvm-memory (token memory-contents)
   "Write MEMORY-CONTENTS in the classical memory of the given PERSISTENT-QVM.
