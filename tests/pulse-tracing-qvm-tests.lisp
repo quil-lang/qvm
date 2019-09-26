@@ -46,3 +46,20 @@ PULSE 0 1 \"foo\" flat(duration: 1.5, iq: 1.0)            # 4s-5.5s
         (is (= 4.0 (qvm::pulse-event-start-time event)))
         (is (= 5.5 (qvm::pulse-event-end-time event)))
         (is (= 1.5 (qvm::pulse-event-duration event)))))))
+
+(deftest test-tracing-quilt-nonblocking ()
+  (let* ((pp (quil:parse-quil "
+DEFFRAME 0 \"xy\":
+    SAMPLE-RATE: 1.0
+    INITIAL-FREQUENCY: 1e9
+
+DEFFRAME 0 \"foo\":
+    SAMPLE-RATE: 1.0
+    INITIAL-FREQUENCY: 1e9
+
+NONBLOCKING PULSE 0 \"xy\" gaussian(duration: 1.0, fwhm: 2, t0: 3)
+PULSE 0 \"foo\" gaussian(duration: 1.5, fwhm: 2, t0: 3)
+PULSE 0 \"xy\" gaussian(duration: 1.0, fwhm: 2, t0: 3)"))
+         (log (qvm::trace-quilt-program pp)))
+    (is (equalp '(0.0 0.0 1.5)
+                (map 'list #'qvm::pulse-event-start-time log)))))

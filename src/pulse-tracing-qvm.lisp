@@ -94,7 +94,7 @@
     (run qvm)
     (pulse-event-log qvm)))
 
-(defun local-time (qvm frame &optional (default 0.0))
+(defun local-time (qvm frame &optional (default 0.0d0))
   "Get the local time of FRAME on the pulse tracing QVM."
   (check-type qvm pulse-tracing-qvm)
   (gethash frame (local-clocks qvm) default))
@@ -124,10 +124,6 @@
   (loop :for f :in frames :maximize (local-time qvm f)))
 
 ;;; TRANSITIONs
-
-;;; TODO: right now we support basic quilt instructions: delay, fence, frame
-;;; mutations, pulse, capture, raw-capture
-;;; Do we want more?
 
 (defun intersecting-frames (qvm &rest qubits)
   "Return all frames tracked by the pulse tracing QVM which involve any of the specified QUBITS."
@@ -206,6 +202,7 @@
   (incf (pc qvm))
   qvm)
 
+;;; TODO: should we allow transition on other instructions? classical control flow?
 (defmethod transition ((qvm pulse-tracing-qvm) instr)
   (unless (typep instr '(or quil:pulse quil:capture quil:raw-capture))
     (error "Cannot resolve timing information for instruction ~A" instr))
@@ -220,12 +217,13 @@
                                           :frame-state frame-state)
                         (pulse-event-log qvm))
     (setf (local-time qvm frame) end-time)
-    ;; TODO NONBLOCKING
-    ;; this pulse/capture/raw-capture excludes other frames until END-TIME
-    (dolist (other (apply #'intersecting-frames qvm (quil:frame-qubits frame)))
-      (quil:print-instruction other)
-      (setf (local-time qvm other)
-            (max end-time (local-time qvm other)))))
+
+    (unless (quil:nonblocking-p instr)
+      ;; this pulse/capture/raw-capture excludes other frames until END-TIME
+      (dolist (other (apply #'intersecting-frames qvm (quil:frame-qubits frame)))
+        (quil:print-instruction other)
+        (setf (local-time qvm other)
+              (max end-time (local-time qvm other))))))
 
   (incf (pc qvm))
   qvm)
