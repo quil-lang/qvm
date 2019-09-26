@@ -19,6 +19,7 @@
    #:job-interrupted-p
    #:job-finished-p
    #:job-start
-   #:job-stop
+   #:kill-job
+   #:force-kill-job
    #:job-result
    #:job-peek))
