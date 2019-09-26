@@ -16,10 +16,12 @@
 (global-vars:define-global-var **persistent-qvms-lock** (bt:make-lock "Persistent QVMs DB Lock"))
 
 (defun reset-persistent-qvms-db ()
+  "Reset the **PERSISTENT-QVMS** database."
   (bt:with-lock-held (**persistent-qvms-lock**)
     (setf **persistent-qvms** (make-empty-persistent-qvms-db))))
 
 (defun persistent-qvms-count ()
+  "Return the number of PERSISTENT-QVMS currently allocated."
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
 
@@ -51,11 +53,21 @@
   (metadata (error "Must provide METADATA") :type hash-table           :read-only t))
 
 (defun make-persistent-qvm-metadata (allocation-method)
+  "Make a hash-table suitable a new PERSISTENT-QVM's METADATA slot."
   (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method)
                                      "created" (iso-time))
                                :test 'equal))
 
 (defun make-persistent-qvm (qvm allocation-method token)
+  "Make a PERSISTENT-QVM.
+
+This function only returns a new PERSISTENT-QVM object. External callers probably want ALLOCATE-PERSISTENT-QVM, instead.
+
+QVM is any QVM type (PURE-STATE-QVM, NOISY-QVM, etc).
+
+ALLOCATION-METHOD is one of +AVAILABLE-ALLOCATION-METHODS+. This only provided so that it can be recorded in the PERSISTENT-QVM's metadata.
+
+TOKEN is a PERSISTENT-QVM-TOKEN."
   (let* ((lock (bt:make-lock "PQVM Lock"))
          (cv (bt:make-condition-variable :name "PQVM CV"))
          (pqvm (%make-persistent-qvm :qvm qvm
@@ -77,6 +89,9 @@
     pqvm))
 
 (defmacro with-locked-pqvm ((pqvm) token &body body)
+  "Execute BODY with PQVM bound to the persistent QVM identified by TOKEN.
+
+BODY is executed with the persistent QVM's lock held. No other guarantees are made about the state of the persistent QVM. It's up to the caller to check that the persistent QVM's state is consistent inside BODY. Specifically, the persistent QVM may already be marked for deletion or in the WAITING state, etc. For this reason, callers should prefer the higher-level interface WITH-PERSISTENT-QVM when they only need safe access to the persistent QVM's underlying QVM object."
   (check-type pqvm symbol)
   (alexandria:once-only (token)
     `(let ((,pqvm (%lookup-persistent-qvm-or-lose ,token)))
@@ -85,6 +100,9 @@
          ,@body))))
 
 (defmacro with-persistent-qvm ((qvm) token &body body)
+  "Execute BODY with QVM bound to the QVM object owned by the persistent QVM corresponding to TOKEN.
+
+BODY is executed with the persistent QVM's lock held, and an error is signaled if the persistent QVM is dying."
   (check-type qvm symbol)
   (alexandria:with-gensyms (pqvm)
     (alexandria:once-only (token)
@@ -99,6 +117,7 @@
   (setf (gethash token **persistent-qvms**) persistent-qvm))
 
 (defun delete-persistent-qvm (token)
+  "Delete the PERSISTENT-QVM indicated by TOKEN."
   (with-locked-pqvm (pqvm) token
     (%checked-transition-to-state-locked pqvm 'dying))
   (bt:with-lock-held (**persistent-qvms-lock**)
@@ -122,6 +141,7 @@
   (string-downcase token))
 
 (defun uuid->persistent-qvm-token (uuid)
+  "Convert UUID to a canonicalized PERSISTENT-QVM-TOKEN."
   (canonicalize-persistent-qvm-token (princ-to-string uuid)))
 
 (defun make-persistent-qvm-token ()
@@ -166,6 +186,11 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
               token)))
 
 (defun allocate-persistent-qvm (qvm allocation-method)
+  "Allocate a new PERSISTENT-QVM.
+
+QVM is a QVM object of any type (PURE-STATE-QVM, NOISY-QVM, etc.)
+
+ALLOCATION-METHOD should be one of the +AVAILABLE-ALLOCATION-METHODS+, and is used when creating the PERSISTENT-QVM's metadata."
   (bt:with-lock-held (**persistent-qvms-lock**)
     (let ((token (%make-persistent-qvm-token-locked)))
       (cond ((not (null (%lookup-persistent-qvm-locked token)))
@@ -175,6 +200,9 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
                  (values token persistent-qvm)))))))
 
 (defun persistent-qvm-info (token)
+  "Return a HASH-TABLE of information about the PERSISTENT-QVM identified by TOKEN.
+
+TOKEN is a PERSISTENT-QVM-TOKEN."
   (alexandria:plist-hash-table
    (with-locked-pqvm (pqvm) token
      (list "qvm-type" (symbol-name (type-of (persistent-qvm-qvm pqvm)))
@@ -184,6 +212,9 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
    :test 'equal))
 
 (defun run-program-on-persistent-qvm (token parsed-program)
+  "Run the given PARSED-PROGRAM on the PERSISTENT-QVM indicated by TOKEN.
+
+Returns NIL or signals an error if the given PERSISTENT-QVM is not in the READY state."
   (with-locked-pqvm (pqvm) token
     (case (persistent-qvm-state pqvm)
       (ready
@@ -193,17 +224,30 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
       (t
        (error "Cannot run program on Persistent QVM ~A in state ~A."
               token
-              (persistent-qvm-state pqvm))))))
+              (persistent-qvm-state pqvm))))
+    nil))
 
 (defun write-persistent-qvm-memory (token memory-contents)
+  "Write MEMORY-CONTENTS in the classical memory of the given PERSISTENT-QVM.
+
+TOKEN is a PERSISTENT-QVM-TOKEN.
+
+MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory register name and the corresponding value is a LIST of (INDEX VALUE) pairs indicating that VALUE should be stored at index INDEX in the corresponding memory register.
+
+Returns NIL."
   (with-persistent-qvm (qvm) token
     (maphash (lambda (k v)
                (loop :for (index value) :in v :do
                  (setf (qvm:memory-ref qvm k index) value)))
-             memory-contents))
-  nil)
+             memory-contents)))
 
 (defun resume-persistent-qvm (token)
+  "Resume the PERSISTENT-QVM indicated by TOKEN.
+
+TOKEN is a PERSISTENT-QVM-TOKEN.
+
+Returns NIL or signals an error if the given PERSISTENT-QVM is not in the WAITING state."
   (with-locked-pqvm (pqvm) token
     (%checked-transition-to-state-locked pqvm 'resuming)
-    (bt:condition-notify (persistent-qvm-cv pqvm))))
+    (bt:condition-notify (persistent-qvm-cv pqvm)))
+  nil)
