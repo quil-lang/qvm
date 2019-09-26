@@ -1,7 +1,5 @@
 (in-package :qvm)
 
-;;; TODO is there a better name?
-;;; the event can either be tx or rx
 (defstruct pulse-event
   instruction
   start-time
@@ -31,14 +29,11 @@
    :type real)
   (scale 1.0d0
    :type real)
-  (frequency (error "Frequency must be defined.")
-   :type real)
+  (frequency nil
+   :type (or real null))
   ;; The sample rate in Hz for waveform generation.
   (sample-rate (error "Sample rate must be defined.")
    :type real))
-
-(defparameter *default-frame-frequency* 1.0 ; TODO get a better default
-  "The default frame frequency.")
 
 (defparameter *initial-pulse-event-log-length* 100
   "The initial length of the pulse tracing QVM's event log.")
@@ -50,11 +45,11 @@
 (defclass pulse-tracing-qvm (classical-memory-mixin)
   ((local-clocks :initarg :local-clocks
                  :accessor local-clocks
-                 :initform (make-hash-table)
+                 :initform (make-hash-table :test #'quil::frame= :hash-function #'quil::frame-hash)
                  :documentation "A table mapping qubit indices to the time of their last activity.")
    (frame-states :initarg :frame-states
                  :accessor frame-states
-                 :initform (make-hash-table :test 'equalp) ; TODO move to alist so we can use a custom equality check?
+                 :initform (make-hash-table :test #'quil::frame= :hash-function #'quil::frame-hash)
                  :documentation "A table mapping frames to their active states.")
    (pulse-event-log :initarg :log
                     :accessor pulse-event-log
@@ -68,32 +63,45 @@
 (defmethod number-of-qubits ((qvm pulse-tracing-qvm))
   most-positive-fixnum)
 
-(defun make-pulse-tracing-qvm (frame-states)
-  "Create a new pulse tracing QVM. FRAME-STATES should be an association list mapping frame objects to their associated states."
+(defun make-pulse-tracing-qvm ()
+  "Create a new pulse tracing QVM."
   (make-instance 'pulse-tracing-qvm
-                 :frame-states
-                 (alexandria:alist-hash-table frame-states :test 'equalp)
                  :classical-memory-subsystem
                  (make-instance 'classical-memory-subsystem
                                 :classical-memory-model
                                 quil:**empty-memory-model**)))
 
-(defun trace-quilt-program (program frame-states) ; TODO better magic number
+(defun initialize-frame-states (qvm frame-definitions)
+  "Set up initial frame states on the pulse tracing QVM."
+  (check-type qvm pulse-tracing-qvm)
+  (dolist (defn frame-definitions)
+    (let ((frame (quil:frame-definition-frame defn))
+          (sample-rate (quil:frame-definition-sample-rate defn))
+          (initial-frequency (quil:frame-definition-initial-frequency defn)))
+      (unless sample-rate
+        (error "Frame ~A has unspecified sample-rate" frame))
+      (setf (gethash frame (frame-states qvm))
+            (make-frame-state :frequency (and initial-frequency
+                                              (quil:constant-value initial-frequency))
+                              :sample-rate (quil:constant-value sample-rate))))))
+
+(defun trace-quilt-program (program)
   "Trace a quilt PROGRAM, returning a list of pulse events."
   (check-type program quil:parsed-program)
-  (let ((qvm (make-pulse-tracing-qvm frame-states)))
+  (let* ((qvm (make-pulse-tracing-qvm)))
+    (initialize-frame-states qvm (quil:parsed-program-frame-definitions program))
     (load-program qvm program)
     (run qvm)
     (pulse-event-log qvm)))
 
-(defun local-time (qvm qubit &optional (default 0.0))
-  "Get the local time of QUBIT on the pulse tracing qvm QVM."
+(defun local-time (qvm frame &optional (default 0.0))
+  "Get the local time of FRAME on the pulse tracing QVM."
   (check-type qvm pulse-tracing-qvm)
-  (gethash (quil:qubit-index qubit) (local-clocks qvm) default))
+  (gethash frame (local-clocks qvm) default))
 
-(defun (setf local-time) (new-value qvm qubit)
-  "Set the local time of qubit Q on the pulse tracing qvm QVM."
-  (setf (gethash (quil:qubit-index qubit) (local-clocks qvm))
+(defun (setf local-time) (new-value qvm frame)
+  "Set the local time of FRAME on the pulse tracing QVM."
+  (setf (gethash frame (local-clocks qvm))
         new-value))
 
 (defun frame-state (qvm frame)
@@ -111,10 +119,9 @@
             new-value)
       (error "Attempted to modify non-existent frame ~A" frame)))
 
-(defun latest-time (qvm &rest qubits)
-  "Get the latest time of the specified QUBITS on the pulse tracing QVM.
-If "
-  (loop :for q :in qubits :maximize (local-time qvm q)))
+(defun latest-time (qvm &rest frames)
+  "Get the latest time of the specified FRAMES on the pulse tracing QVM."
+  (loop :for f :in frames :maximize (local-time qvm f)))
 
 ;;; TRANSITIONs
 
@@ -122,17 +129,43 @@ If "
 ;;; mutations, pulse, capture, raw-capture
 ;;; Do we want more?
 
-(defmethod transition ((qvm pulse-tracing-qvm) (instr quil:delay))
-  (incf (local-time qvm (quil:delay-qubit instr))
-        (quil:delay-duration instr))
+(defun intersecting-frames (qvm &rest qubits)
+  "Return all frames tracked by the pulse tracing QVM which involve any of the specified QUBITS."
+  (check-type qvm pulse-tracing-qvm)
+  (loop :for frame :being :the :hash-key :of (frame-states qvm)
+        :when (intersection qubits
+                            (quil:frame-qubits frame)
+                            :test #'equalp)
+          :collect frame))
+
+(defun frames-on-qubits (qvm &rest qubits)
+  "Return all frames tracked by the pulse tracing QVM which involve exactly the specified QUBITS."
+  (check-type qvm pulse-tracing-qvm)
+  (loop :for frame :being :the :hash-key :of (frame-states qvm)
+        :when (equalp qubits (quil:frame-qubits frame))
+          :collect frame))
+
+(defmethod transition ((qvm pulse-tracing-qvm) (instr quil:delay-on-frames))
+  (dolist (frame (quil:delay-frames instr))
+    (incf (local-time qvm frame) (quil:delay-duration instr)))
+
+  (incf (pc qvm))
+  qvm)
+
+(defmethod transition ((qvm pulse-tracing-qvm) (instr quil:delay-on-qubits))
+  (let* ((frames (frames-on-qubits qvm (quil:delay-qubits instr)))
+         (latest (apply #'latest-time qvm frames)))
+    (dolist (frame frames)
+      (setf (local-time qvm frame) latest)))
 
   (incf (pc qvm))
   qvm)
 
 (defmethod transition ((qvm pulse-tracing-qvm) (instr quil:fence))
-  (let ((latest (apply #'latest-time qvm (quil::fence-qubits instr))))
-    (loop :for q :in (quil::fence-qubits instr)
-          :do (setf (local-time qvm q) latest)))
+  (let* ((frames (apply #'intersecting-frames qvm (quil:fence-qubits instr)))
+         (latest (apply #'latest-time qvm frames)))
+    (dolist (frame frames)
+      (setf (local-time qvm frame) latest)))
 
   (incf (pc qvm))
   qvm)
@@ -175,22 +208,24 @@ If "
 
 (defmethod transition ((qvm pulse-tracing-qvm) instr)
   (unless (typep instr '(or quil:pulse quil:capture quil:raw-capture))
-    (error "Cannot resolve timing information for non-quilt instruction ~A" instr))
-  (let* ((qubits (quil::quilt-instruction-qubits instr))
-         (frame-state (frame-state qvm (pulse-op-frame instr)))
-         (start-time (apply #'latest-time qvm qubits))
+    (error "Cannot resolve timing information for instruction ~A" instr))
+  (let* ((frame (pulse-op-frame instr))
+         (frame-state (frame-state qvm frame))
+         (start-time (latest-time qvm frame))
          (end-time (+ start-time
-                      (quil::quilt-instruction-duration instr
-                                                        (frame-state-sample-rate frame-state)))))
-    (vector-push-extend (make-pulse-event
-                         :instruction instr
-                         :start-time start-time
-                         :end-time end-time
-                         :frame-state frame-state)
+                      (quil::quilt-instruction-duration instr))))
+    (vector-push-extend (make-pulse-event :instruction instr
+                                          :start-time start-time
+                                          :end-time end-time
+                                          :frame-state frame-state)
                         (pulse-event-log qvm))
-    ;; update local times
-    (loop :for q :in qubits
-          :do (setf (local-time qvm q) end-time)))
+    (setf (local-time qvm frame) end-time)
+    ;; TODO NONBLOCKING
+    ;; this pulse/capture/raw-capture excludes other frames until END-TIME
+    (dolist (other (apply #'intersecting-frames qvm (quil:frame-qubits frame)))
+      (quil:print-instruction other)
+      (setf (local-time qvm other)
+            (max end-time (local-time qvm other)))))
 
   (incf (pc qvm))
   qvm)
