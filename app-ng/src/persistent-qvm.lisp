@@ -36,6 +36,12 @@
   :test #'equal
   :documentation "An alist of valid state transitions for a PERSISTENT-QVM. The alist is keyed on the current state. The value for each key is list of states that can be transitioned to from the corresponding current state.")
 
+(defun persistent-qvm-state= (state-a state-b)
+  "Is the PERSISTENT-QVM-STATE STATE-A equal to STATE-B?"
+  (check-type state-a persistent-qvm-state)
+  (check-type state-b persistent-qvm-state)
+  (eq state-a state-b))
+
 (defun valid-pqvm-state-transition-p (current-state new-state)
   "Is the state transition CURRENT-STATE -> NEW-STATE valid according to +VALID-PQVM-STATE-TRANSITIONS+?"
   (check-type current-state persistent-qvm-state)
@@ -47,7 +53,8 @@
   (check-type new-state persistent-qvm-state)
   (check-type from-state (or null persistent-qvm-state))
   (with-slots ((current-state state)) pqvm
-    (let ((current-state-valid-p (or (null from-state) (eq from-state current-state))))
+    (let ((current-state-valid-p (or (null from-state)
+                                     (persistent-qvm-state= from-state current-state))))
       (cond ((and current-state-valid-p (valid-pqvm-state-transition-p current-state new-state))
              (setf current-state new-state))
             (t (error "Attempting invalid state transition ~A -> ~A~
@@ -96,9 +103,9 @@ TOKEN is a PERSISTENT-QVM-TOKEN."
             ;; LOCK must be held here or we're in trouble.
             (%checked-transition-to-state-locked pqvm 'waiting :from-state 'running)
             ;; TODO:(appleby) possible to unwind from CONDITION-WAIT? Maybe UNWIND-PROTECT here.
-            (loop :while (eq 'waiting (persistent-qvm-state pqvm))
+            (loop :while (persistent-qvm-state= 'waiting (persistent-qvm-state pqvm))
                   :do (bt:condition-wait cv lock)
-                  :finally (unless (eq 'dying (persistent-qvm-state pqvm))
+                  :finally (unless (persistent-qvm-state= 'dying (persistent-qvm-state pqvm))
                              (%checked-transition-to-state-locked pqvm
                                                                   'running
                                                                   :from-state 'resuming)))))
