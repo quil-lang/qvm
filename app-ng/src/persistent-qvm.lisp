@@ -237,8 +237,10 @@ MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory
 Returns NIL."
   (with-persistent-qvm (qvm) token
     (maphash (lambda (region-name index-values)
-               (loop :for (index value) :in index-values :do
-                 (setf (qvm:memory-ref qvm region-name index) value)))
+               (mapc (lambda (index-and-value)
+                       (destructuring-bind (index value) index-and-value
+                         (setf (qvm:memory-ref qvm region-name index) value)))
+                     index-values))
              memory-contents)))
 
 (defun resume-persistent-qvm (token)
