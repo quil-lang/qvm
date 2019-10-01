@@ -40,6 +40,32 @@ ADDRESSES is a HASH-TABLE where the keys are mem register names and the values a
              addresses)
     results))
 
+(defun simulation-method->qvm-type (simulation-method &key pauli-noise-p)
+  "Return the QVM type for the given SIMULATION-METHOD and noise characteristics.
+
+PAULI-NOISE-P indicates the presence or absence of Pauli channel noise."
+  (ecase simulation-method
+    (pure-state (if pauli-noise-p
+                    'qvm:depolarizing-qvm
+                    'qvm:pure-state-qvm))
+    (full-density-matrix 'qvm:density-qvm)))
+
+(defun memory-required-for-qvm (simulation-method allocation-method num-qubits gate-noise
+                                measurement-noise)
+  "Return the amount of memory required for the persistent state of the corresponding QVM type."
+  (declare (ignore allocation-method))
+  (ecase (simulation-method->qvm-type simulation-method
+                                      :pauli-noise-p (or gate-noise measurement-noise))
+    ((qvm:pure-state-qvm qvm:depolarizing-qvm)
+     ;; Space required for the 2^N AMPLITUDES.
+     (* qvm::+octets-per-cflonum+ (expt 2 num-qubits)))
+    (qvm:noisy-qvm
+     ;; Space required for the AMPLITUDES, plus a copy in TRIAL-AMPLITUDES
+     (* qvm::+octets-per-cflonum+ (expt 2 (1+ num-qubits))))
+    (qvm:density-qvm
+     ;; Space required for the 2^N x 2^N density matrix, plus possible duplicate in TEMPORARY-STATE.
+     (* qvm::+octets-per-cflonum+ (expt 2 (1+ (* 2 num-qubits)))))))
+
 (defun run-program-on-qvm (qvm parsed-program &optional addresses)
   "Load and run PARSED-PROGRAM on the given QVM.
 
@@ -47,5 +73,3 @@ Return a HASH-TABLE of the requested classical memory ADDRESSES."
   (qvm:load-program qvm parsed-program :supersede-memory-subsystem t)
   (qvm:run qvm)
   (collect-memory-registers qvm (or addresses (make-hash-table))))
-
-
