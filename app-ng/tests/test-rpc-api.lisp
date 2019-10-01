@@ -68,12 +68,14 @@
     token))
 
 (defun simulation-method->qvm-type (simulation-method &key pauli-noise-p)
-  (alexandria:eswitch ((string-downcase simulation-method) :test #'string=)
-    ("pure-state" (if pauli-noise-p
-                      "DEPOLARIZING-QVM"
-                      "PURE-STATE-QVM"))
-    ("full-density-matrix" (progn (assert (not pauli-noise-p))
-                                  "DENSITY-QVM"))))
+  "Wrapper around QVM-APP-NG::SIMULATION-METHOD->QVM-TYPE.
+
+Returns a STRING and allows SIMULATION-METHOD to be either a STRING or SYMBOL."
+  (string (qvm-app-ng::simulation-method->qvm-type
+           (if (stringp simulation-method)
+               (qvm-app-ng::parse-simulation-method simulation-method)
+               simulation-method)
+           :pauli-noise-p pauli-noise-p)))
 
 (defun %make-url (protocol host port &optional (path "/"))
   (format nil "~A://~A:~D~A" protocol host port path))
@@ -454,7 +456,36 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
             (check-request (simple-request url :type "delete-qvm" :qvm-token token)
                            :response-re "Deleted persistent QVM")))))))
 
+(deftest test-rpc-api-qvm-memory-estimate ()
+  "Test the qvm-memory-estimate method."
+  (with-rpc-server (url)
+    (dolist (allocation-method +allocation-method-strings+)
+      (dolist (simulation-method +simulation-method-strings+)
+        (dolist (num-qubits '(0 1 16))
+          ;; EXPECTED-BYTES is duplicating the calculation in QVM-APP-NG::MEMORY-REQUIRED-FOR-QVM.
+          ;; We could just call that function here, but then we'd only be testing the HTTP
+          ;; interface, not the calculation. By duplicating the calculation here, this test will
+          ;; still catch any bugs that creep in to QVM-APP-NG::MEMORY-REQUIRED-FOR-QVM, at the
+          ;; expense of needing to be separately kept in sync as support for more SIMULATION-METHODs
+          ;; and noise models are added.
+          (let ((expected-bytes
+                  (* qvm::+octets-per-cflonum+
+                     (expt 2 (cond ((string= "pure-state" simulation-method) num-qubits)
+                                   ((string= "full-density-matrix" simulation-method) (1+ (* 2 num-qubits)))
+                                   ;; Eventually, this will need to be updated to deal
+                                   ;; with other QVM variants.
+                                   (t (error "Don't know how to estimate memory usage for SIMULATION-METHOD ~A"
+                                             simulation-method)))))))
+            (check-request (simple-request url
+                                           :type "qvm-memory-estimate"
+                                           :allocation-method allocation-method
+                                           :simulation-method simulation-method
+                                           :num-qubits num-qubits)
+                           :response-callback
+                           (response-json-fields-checker `(("bytes" ,expected-bytes))))))))))
+
 (deftest test-rpc-api-wait-resume ()
+  "Test wait and resume on a persistent QVM."
   (with-rpc-server (url)
     (let* ((response (check-request (simple-request url
                                                     :type "create-qvm"

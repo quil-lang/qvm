@@ -99,7 +99,13 @@ Alternatively, the handler function can be called from lisp like so
 
 SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
 
-NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM."
+ALLOCATION-METHOD is a STRING naming the desired allocation method (see *AVAILABLE-ALLOCATION-METHODS*).
+
+NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM.
+
+GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pauli X, Y, or Z gate happening after a gate application or a RESET.
+
+MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE."
   (encode-json (alexandria:plist-hash-table
                 `("token" ,(allocate-persistent-qvm
                             (make-requested-qvm simulation-method
@@ -108,6 +114,34 @@ NUM-QUBITS is a non-negative integer and represents the maximum number of qubits
                                                 gate-noise
                                                 measurement-noise)
                             allocation-method)))))
+
+(define-rpc-handler (handle-qvm-memory-estimate "qvm-memory-estimate")
+    ((allocation-method #'parse-allocation-method)
+     (simulation-method #'parse-simulation-method)
+     (num-qubits #'parse-num-qubits)
+     (gate-noise #'parse-optional-pauli-noise)
+     (measurement-noise #'parse-optional-pauli-noise))
+  "Return an estimate of the amount of memory required to simulate a QVM of the given type.
+
+The number returned represents the number of bytes required to store the QVM state, i.e. to store the amplitudes of the wavefunction for a PURE-STATE simulation or for the density matrix for a FULL-DENSITY-MATRIX simulation. Note that the memory required to store QVM state represents a lower-bound on the memory required for simulation, since in the course of simulating programs the QVM will allocate additional memory. For the most part, these additional allocations are small (compared to the QVM state), short-lived, and difficult to predict in advance. We also ignore any memory allocated for the classical memory subsystem of the QVM, which is bounded by QVM::**CLASSICAL-MEMORY-SIZE-LIMIT** (64K by default).
+
+The arguments accepted by this method are exactly the same as those accepted by the CREATE-QVM method.
+
+SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
+
+ALLOCATION-METHOD is a STRING naming the desired allocation method (see *AVAILABLE-ALLOCATION-METHODS*).
+
+NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM.
+
+GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pauli X, Y, or Z gate happening after a gate application or a RESET.
+
+MEASUREMENT-NOISE is an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE."
+  (encode-json (alexandria:plist-hash-table
+                `("bytes" ,(memory-required-for-qvm simulation-method
+                                                    allocation-method
+                                                    num-qubits
+                                                    gate-noise
+                                                    measurement-noise)))))
 
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
   "Delete a persistent QVM.
