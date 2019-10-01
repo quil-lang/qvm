@@ -75,7 +75,7 @@
   "Combines two noise models in a way such that both set of rules, or one and not the other could be matched by an instruction."
   (let ((nrs (loop :for rule1 in (noise-rules nm1) :append
                                                    (loop :for rule2 in (noise-rules nm2)
-                                                         :collect (make-noise-rule (predicate-and (noise-predicate rule1) (noise-predicate rule2)) (list (operation-elements rule1) (operation-elements rule2) ))
+                                                         :collect (make-noise-rule (predicate-and (noise-predicate rule1) (noise-predicate rule2)) (list (operation-elements rule1) (operation-elements rule2)))
                                                          :collect (make-noise-rule (predicate-and (noise-predicate rule1) (predicate-not (noise-predicate rule2))) (operation-elements rule1))
                                                          :collect (make-noise-rule (predicate-and (predicate-not (noise-predicate rule1)) (noise-predicate rule1)) (operation-elements rule2))))))
     (make-noise-model nrs)))
@@ -238,7 +238,6 @@ for that noise rule after applying the gate for this instruction
 
 
 (defmethod apply-kraus-ops ((qvm channel-qvm) (instr quil:gate-application) kraus-ops)
-  (format t "applying!")
   (let* ((amps (%trial-amplitudes qvm))
          (r (random 1.0d0))
          (summed-p 0.0d0)
@@ -256,6 +255,7 @@ for that noise rule after applying the gate for this instruction
     (normalize-wavefunction (amplitudes qvm))))
 
 
+
 (defgeneric apply-classical-readout-noise (qvm instr)
   (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
   ;; Pure state QVM has no readout noise.
@@ -265,15 +265,18 @@ for that noise rule after applying the gate for this instruction
   ;; Readout noise only happens to the resulting classical bit (i.e.,
   ;; it's classical noise). As such, discarding that bit doesn't
   ;; warrant any sort of special treatment.
-  (:method ((qvm krausqvm) (instr quil:measure-discard))
+  (:method ((qvm approx-qvm) (instr quil:measure))
+    (%corrupt-readout qvm instr (readout-povms qvm))
+    )
+  (:method ((qvm channel-qvm) (instr quil:measure-discard))
     (declare (ignore qvm instr))
     nil)
   ;; We do have a readout bit, and we want to corrupt it.
-  (:method ((qvm krausqvm) (instr quil:measure))
-    (%corrupt-qvm-memory-with-povm qvm instr))
+  (:method ((qvm channel-qvm) (instr quil:measure))
+    (%corrupt-readout qvm instr (readout-povms (noise-model qvm))))
   ;; For compiled measurements, refer to the source of that
   ;; instruction.
-  (:method ((qvm krausqvm) (instr compiled-measurement))
+  (:method ((qvm channel-qvm) (instr compiled-measurement))
     (apply-classical-readout-noise qvm (source-instruction instr))))
 
 
@@ -281,7 +284,6 @@ for that noise rule after applying the gate for this instruction
 (defun perturb-measurement (actual-outcome p00 p01 p10 p11)
   "Given the readout error encoded in the POVM (see documentation of NOISY-QVM)
 randomly sample the observed (potentially corrupted) measurement outcome."
-                                        ; (format t "actual: ~a p0|0: ~a p1|0: ~a" actual-outcome p00 p10)
   (check-type actual-outcome bit)
   (check-probabilities p00 p01 p10 p11)
   (let ((r (random 1.0d0)))
@@ -290,7 +292,7 @@ randomly sample the observed (potentially corrupted) measurement outcome."
       ((1) (if (<= r p01) 0 1)))))
 
 
-(defun %corrupt-qvm-memory-with-povm (qvm instr)
+(defun %corrupt-channel-qvm (qvm instr)
   (check-type instr quil:measure)
   (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
          (a (quil:measure-address instr))
@@ -300,6 +302,20 @@ randomly sample the observed (potentially corrupted) measurement outcome."
       (destructuring-bind (p00 p01 p10 p11) povm
         (setf (dereference-mref qvm a)
               (perturb-measurement c p00 p01 p10 p11))))))
+
+
+(defun %corrupt-readout (qvm instr povm-map)
+  (check-type instr quil:measure)
+  (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
+         (a (quil:measure-address instr))
+         (c (dereference-mref qvm a))
+         (povm (gethash q povm-map))
+         )
+    (when povm
+      (destructuring-bind (p00 p01 p10 p11) povm
+        (setf (dereference-mref qvm a)
+              (perturb-measurement c p00 p01 p10 p11)))))
+  )
 
 
 (defun check-povm (povm)
