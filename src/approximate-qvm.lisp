@@ -1,6 +1,6 @@
 (in-package #:qvm)
 
-(defclass approx-qvm (kraus-qvm)
+(defclass approx-qvm (channel-qvm)
   ((t1
     :initarg :t1
     :accessor t1
@@ -11,12 +11,6 @@
     :accessor t2
     :initform nil ; default value
     :documentation "t2 value to simulate")
-   (kraus-ops
-    :initarg :kraus-ops
-    :accessor kraus-ops
-    :initform (make-hash-table :test 'eql)
-    :documentation "list of lists of kraus operators : ((t1 kraus ops) (t2 kraus ops) ...)"
-    )
    (fros
     :initarg :fros
     :accessor fros
@@ -27,6 +21,15 @@
     :accessor avg-gate-time
     :initform nil ;(error ":AVG-GATE-TIME is a required initarg ~ to APPROX-QVM")
     :documentation "the average gate time for a gate in this qvm")
+   (kraus-ops
+    :initarg :kraus-ops
+    :accessor kraus-ops
+    :initform (make-hash-table :test 'eql)
+    :documentation "list of lists of kraus operators : ((t1 kraus ops) (t2 kraus ops) ...)")
+   (readout-povms
+    :initarg :readout-povms
+    :accessor readout-povms
+    :initform (make-hash-table :test 'eql))
    ))
 
 
@@ -34,7 +37,6 @@
   "This function populates the kraus-ops slot. It checks for any set noise params (T1, T2, etc)
    and adds the kraus operators representing that noise to the kraus-ops slot. "
   (declare (ignore args)) 
-  (format t "approx-qvm~%")
   (if (t1 qvm) 
       (setf (gethash "t1" (kraus-ops qvm))
             (generate-damping-kraus-ops (t1 qvm) (avg-gate-time qvm))))
@@ -93,16 +95,22 @@ that instruction.
         (params (mapcar #'(lambda (p) (force-parameter p qvm))
                         (quil:application-parameters instr)))
         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
-    ;(format t "~a~%" gate)
-   ; (format t "~a~%" (quil:application-operator instr))
-    ;(format t "~a~%" (quil:gate-application-gate instr))
-    (format t "~a~%" (cl-quil::application-operator-name instr))
-   ; (format t "~a~%" (quil:gate-definition-name gate))
-     ;(format t "~a~%" (quil:gate-definition-name (quil:gate-application-gate instr)))
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (apply-all-kraus-ops qvm instr)
     (incf (pc qvm))
     qvm))
+
+
+(defun %corrupt-approx-qvm (qvm instr povm)
+  (check-type instr quil:measure)
+  (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
+         (a (quil:measure-address instr))
+         (c (dereference-mref qvm a))
+         (povm (gethash q (readout-povms qvm))))
+    (when povm
+      (destructuring-bind (p00 p01 p10 p11) povm
+        (setf (dereference-mref qvm a)
+              (perturb-measurement c p00 p01 p10 p11))))))
 
 
 (defun tphi (t1 t2)
@@ -165,14 +173,14 @@ to the t1 noise. "
 (defun test-approx-fro ()
   "Given a value for t1 and a gate time, generates the kraus operators corresponding
 to the t1 noise. "
-  
   (let* ((ones 0)
         (qubit 0)
         (qvm (make-instance 'approx-qvm :number-of-qubits 1 :fros (fro-map qubit .9d0)))
         (numshots 100)
-        (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
+        (program "DECLARE R0 BIT; X 0;  MEASURE 0 R0"))
 
     (loop :repeat numshots
+          :do (bring-to-zero-state (amplitudes qvm))
           :do (incf ones (do-noisy-measurement qvm 0 program)))
     (format t "result: ~a" (float (/ ones numshots)))))
 
