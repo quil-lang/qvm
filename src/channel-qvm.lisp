@@ -17,6 +17,27 @@
     :initform nil
     :documentation "should the application of a channel happen before or after the instruciton?")))
 
+(defmethod make-noise-predicate (predicate priority noise-position)
+  "Creates a noise predicate with the given predicate (callable), priority, and noise position"
+  (make-instance 'noise-pred :predicate predicate :priority priority :noise-position noise-position))
+
+(defmethod predicate-and (np1 np2)
+  "Logical AND of 2 noise predicates"
+  (let* ((conjunction (alexandria:conjoin (predicate np1) (predicate np2)))
+         (priority (max (priority np1) (priority np2)))
+         (noise-position (noise-position np1)))
+    (make-noise-predicate conjunction priority noise-position)))
+
+(defmethod predicate-or (np1 np2)
+  "Logical OR of 2 noise predicates"
+  (let* ((disjunction (alexandria:disjoin (predicate np1) (predicate np2)))
+         (priority (max (priority np1) (priority np2)))
+         (noise-position (noise-position np1)))
+    (make-noise-predicate disjunction priority noise-position)))
+
+(defmethod predicate-not (np)
+  "Logical NOT of a noise predicate"
+  (make-noise-predicate (complement (predicate np)) (priority np) (noise-position np)))
 
 (defclass noise-rule ()
   ((noise-predicate
@@ -53,30 +74,30 @@
 (defmethod multiply-noise-models (nm1 nm2)
   "Combines two noise models in a way such that both set of rules, or one and not the other could be matched by an instruction."
   (let ((nrs (loop :for rule1 in (noise-rules nm1) :append
-    (loop :for rule2 in (noise-rules nm2)
-          :collect (make-noise-rule (alexandria:conjoin (noise-predicate rule1) (noise-predicate rule2)) (list (operation-elements rule1) (operation-elements rule2) ))
-          :collect (make-noise-rule (alexandria:conjoin (noise-predicate rule1) (complement (noise-predicate rule2))) (operation-elements rule1))
-          :collect (make-noise-rule (alexandria:conjoin (complement (noise-predicate rule1)) (noise-predicate rule1)) (operation-elements rule2))))) )
+                                                   (loop :for rule2 in (noise-rules nm2)
+                                                         :collect (make-noise-rule (predicate-and (noise-predicate rule1) (noise-predicate rule2)) (list (operation-elements rule1) (operation-elements rule2) ))
+                                                         :collect (make-noise-rule (predicate-and (noise-predicate rule1) (predicate-not (noise-predicate rule2))) (operation-elements rule1))
+                                                         :collect (make-noise-rule (predicate-and (predicate-not (noise-predicate rule1)) (noise-predicate rule1)) (operation-elements rule2))))))
     (make-noise-model nrs)))
- 
+
 
 (defun match-strict-qubits (qubits)
   "The returned function is true if the instruciton's qubits are exactly equal to qubits"
-   (lambda (i-qubits i-name) (equal qubits i-qubits)))
+  (lambda (i-qubits i-name) (equal qubits i-qubits)))
 
 
 (defun match-any-qubits (qubits)
   "The returned function is true if there is any intersection between the instruction's qubits and qubits."
-   (lambda (i-qubits i-name) (intersection qubits i-qubits )) )
+  (lambda (i-qubits i-name) (intersection qubits i-qubits )) )
 
 
 (defun match-strict-gates (gates)
-    "The returned function is true if the instruciton's gates are exactly equal to gates"
-   (lambda (i-qubits i-name) (equal gates i-name))
+  "The returned function is true if the instruciton's gates are exactly equal to gates"
+  (lambda (i-qubits i-name) (equal gates i-name))
   )
 
 (defun match-any-gates (gates)
-    "The returned function is true if there is any intersection between the instruction's gates and gates."
+  "The returned function is true if there is any intersection between the instruction's gates and gates."
   (lambda (i-qubits i-name) (instr-intersect gates i-name ))
   )
 
@@ -88,12 +109,12 @@
 
 (defun match-measure ()
   "The returned function is true if the instruction is a MEASURE."
-   (lambda (i-qubits i-name) (equal (list "MEASURE") i-name))
+  (lambda (i-qubits i-name) (equal (list "MEASURE") i-name))
   )
 
 (defun match-measure-at-strict (qubit)
   "The returned function is true if the instruciton is a measure on the specified qubit."
-   (lambda (i-qubits i-name) (and (equal qubit i-qubits) (string= "MEASURE" i-name)))
+  (lambda (i-qubits i-name) (and (equal qubit i-qubits) (string= "MEASURE" i-name)))
   )
 
 
@@ -178,9 +199,12 @@ for that noise rule after applying the gate for this instruction
          (instr-qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
          (instr-name (list (cl-quil::application-operator-name instr)))
          (noise-rules (noise-rules (noise-model qvm)))
-         (kraus-ops (match-rules noise-rules instr-qubits instr-name)))
+         (prepend-kraus-ops (match-rules noise-rules instr-qubits instr-name "before"))
+         (append-kraus-ops (match-rules noise-rules instr-qubits instr-name "after"))
+         )
+    (if prepend-kraus-ops (apply-all-kraus-operators qvm instr prepend-kraus-ops))
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple instr-qubits) params)
-    (if kraus-ops (apply-all-kraus-operators qvm instr kraus-ops))
+    (if append-kraus-ops (apply-all-kraus-operators qvm instr append-kraus-ops))
     (incf (pc qvm))
     qvm))
 
@@ -191,10 +215,17 @@ for that noise rule after applying the gate for this instruction
     ret-qvm))
 
 
-(defun match-rules (rules instr-qubits instr-name)
+(defun matches-rule (rule instr-qubits instr-name position)
+  "check if rule is matched by instruction data and the position of the match request"
+  (let* ((noise-predicate (predicate (noise-predicate rule)))
+         (noise-position (noise-position (noise-predicate rule))))
+    (and (funcall noise-predicate instr-qubits instr-name) (string= position noise-position))))
+
+
+(defun match-rules (rules instr-qubits instr-name position)
   "return the operation elements for the first matching rule"
   (loop :for rule in rules
-        :when (funcall (noise-predicate rule) instr-qubits instr-name)
+        :when (matches-rule rule instr-qubits instr-name position)
           :return (operation-elements rule)))
 
 
@@ -207,6 +238,7 @@ for that noise rule after applying the gate for this instruction
 
 
 (defmethod apply-kraus-ops ((qvm channel-qvm) (instr quil:gate-application) kraus-ops)
+  (format t "applying!")
   (let* ((amps (%trial-amplitudes qvm))
          (r (random 1.0d0))
          (summed-p 0.0d0)
@@ -287,27 +319,27 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
 
 
 (defun make-nm1 ()
-   (let* ((r1 (make-noise-rule (match-any-qubits (list 0 1)) (list (generate-damping-kraus-ops 2 1))))
-          (nm (make-noise-model (list r1))))
-     nm
-     ))
+  (let* ((r1 (make-noise-rule (match-any-qubits (list 0 1)) (list (generate-damping-kraus-ops 2 1))))
+         (nm (make-noise-model (list r1))))
+    nm))
 
-  
+
 (defun make-nm2 ()
-   (let* ((r2 (make-noise-rule (match-strict-gates (list "Y")) (list (generate-damping-kraus-ops 3 1))))
-          (nm2 (make-noise-model (list r2))))
-     nm2))
+  (let* ((r2 (make-noise-rule (match-strict-gates (list "Y")) (list (generate-damping-kraus-ops 3 1))))
+         (nm2 (make-noise-model (list r2))))
+    nm2))
 
 (defun make-noisy-qvm ()
-  (let* ((r1 (make-noise-rule (match-any-qubits (list 0 1)) (list (generate-damping-kraus-ops 2 1))))
-         (r2 (make-noise-rule (match-strict-gates (list "Y")) (list (generate-damping-kraus-ops 3 1))))
+  (let* ((p1 (make-noise-predicate (match-strict-qubits (list 0 1)) 1 "after"))
+         (p2 (make-noise-predicate (match-strict-gates (list "Y")) 1 "after"))
+         (r1 (make-noise-rule p1 (list (generate-damping-kraus-ops 2 1))))
+         (r2 (make-noise-rule p2 (list (generate-damping-kraus-ops 3 1))))
          (nm (make-noise-model (list r1 r2)))
          (qvm (make-instance 'channel-qvm :number-of-qubits 2 :noise-model nm)))
-    qvm)
-  )
+    qvm))
 
 (defun test ()
-  (let* ((pred1 (match-any-qubits1 (list 0 1)))
+  (let* ((p (match-any-qubits (list 0 1)))
          (q (make-noisy-qvm))
          (numshots 100)
          (qubit 0)
@@ -316,9 +348,7 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
          )
     (set-readout-povm q 0 (list .9d0 .1d0 .1d0 .9d0))
     (load-program q parsed-program :supersede-memory-subsystem t)
-    (run q)
-    )
-  )
+    (run q)))
 
 
 
