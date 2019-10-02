@@ -6,6 +6,16 @@
 
 (deftype persistent-qvm-token () 'string)
 
+(deftype persistent-qvm-state () '(member ready running waiting resuming dying))
+
+(defstruct (persistent-qvm (:constructor %make-persistent-qvm))
+  (qvm      (error "Must provide QVM")                                 :read-only t)
+  (cv       (error "Must provide CV")                                  :read-only t)
+  (lock     (error "Must provide LOCK")                                :read-only t)
+  (state    (error "Must provide STATE")    :type persistent-qvm-state)
+  (token    (error "Must provide TOKEN")    :type persistent-qvm-token :read-only t)
+  (metadata (error "Must provide METADATA") :type hash-table           :read-only t))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-empty-persistent-qvms-db ()
     (make-hash-table :test 'equal)))
@@ -24,8 +34,6 @@
   "Return the number of PERSISTENT-QVMS currently allocated."
   (bt:with-lock-held (**persistent-qvms-lock**)
     (hash-table-count **persistent-qvms**)))
-
-(deftype persistent-qvm-state () '(member ready running waiting resuming dying))
 
 (alexandria:define-constant +valid-pqvm-state-transitions+
     '((ready    running           dying)
@@ -64,14 +72,6 @@
                       new-state
                       (and (not current-state-valid-p) from-state)
                       (persistent-qvm-token pqvm)))))))
-
-(defstruct (persistent-qvm (:constructor %make-persistent-qvm))
-  (qvm      (error "Must provide QVM")                                 :read-only t)
-  (cv       (error "Must provide CV")                                  :read-only t)
-  (lock     (error "Must provide LOCK")                                :read-only t)
-  (state    (error "Must provide STATE")    :type persistent-qvm-state)
-  (token    (error "Must provide TOKEN")    :type persistent-qvm-token :read-only t)
-  (metadata (error "Must provide METADATA") :type hash-table           :read-only t))
 
 (defun make-persistent-qvm-metadata (allocation-method)
   "Make a hash-table suitable a new PERSISTENT-QVM's METADATA slot."
