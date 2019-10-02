@@ -59,6 +59,10 @@ PAULI-NOISE-P indicates the presence or absence of Pauli channel noise."
     ((qvm:pure-state-qvm qvm:depolarizing-qvm)
      ;; Space required for the 2^N AMPLITUDES.
      (* qvm::+octets-per-cflonum+ (expt 2 num-qubits)))
+    #+(or)
+    ;; TODO(appleby): enable once NOISY-QVM is supported. SBCL is able to infer that
+    ;; SIMULATION-METHOD->QVM-TYPE never returns QVM:NOISY-QVM, and so emits a compilation note here
+    ;; if this clause isn't disabled.
     (qvm:noisy-qvm
      ;; Space required for the AMPLITUDES, plus a copy in TRIAL-AMPLITUDES
      (* qvm::+octets-per-cflonum+ (expt 2 (1+ num-qubits))))
