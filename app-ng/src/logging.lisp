@@ -20,6 +20,11 @@
                   (cl-syslog:syslog-log-writer program-name :local0)
                   *error-output*)))
 
+(alexandria:define-constant +available-log-levels+
+    (mapcar #'car cl-syslog::*priorities*)
+  :test #'equal
+  :documentation "A list of valid log level keywords.")
+
 (global-vars:define-global-var **log-lock** (bt:make-lock "Log Lock"))
 (defmacro with-locked-log (() &body body)
   `(bt:with-lock-held (**log-lock**)

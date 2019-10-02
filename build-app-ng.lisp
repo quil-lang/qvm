@@ -16,7 +16,7 @@
       (system-table (make-hash-table :test 'equal))
       (toplevel (lambda ()
                   (with-simple-restart (abort "Abort")
-                    (funcall (read-from-string "qvm-app-ng::%main")
+                    (funcall (read-from-string "qvm-app-ng::entry-point")
                              (rest sb-ext:*posix-argv*))))))
   (labels ((load-systems-table ()
              (unless (probe-file "system-index.txt")

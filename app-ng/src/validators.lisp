@@ -16,7 +16,8 @@
 (defun parse-optional-qvm-token (qvm-token)
   (and qvm-token (parse-qvm-token qvm-token)))
 
-(defun %parse-string-to-known-symbol (parameter-name parameter-string known-symbols)
+(defun %parse-string-to-known-symbol (parameter-name parameter-string known-symbols
+                                      &optional (package 'qvm-app-ng))
   (flet ((%error ()
            (rpc-parameter-parse-error "Invalid ~A. Expected one of: ~{~S~^, ~}. Got ~S"
                                       parameter-name
@@ -24,7 +25,7 @@
                                       parameter-string)))
     (unless (typep parameter-string 'string)
       (%error))
-    (let ((symbol (find-symbol (string-upcase parameter-string) 'qvm-app-ng)))
+    (let ((symbol (find-symbol (string-upcase parameter-string) package)))
       (unless (and symbol (member symbol known-symbols))
         (%error))
       symbol)))
@@ -36,6 +37,13 @@
 
 (defun parse-optional-simulation-method (simulation-method)
   (and simulation-method (parse-simulation-method simulation-method)))
+
+(defun parse-log-level (log-level)
+  ;; TODO(appleby): This is only called when parsing command-line args, but returns an
+  ;; RPC-PARAMETER-PARSE-ERROR on failure. As more command line options are added, these PARSE-*
+  ;; functions should be converted to return a generic PARAMETER-ERROR, which DEFINE-RPC-HANDLER
+  ;; arranges to convert to an RPC-PARAMETER-PARSE-ERROR.
+  (%parse-string-to-known-symbol "log-level" log-level +available-log-levels+ 'keyword))
 
 (defun parse-allocation-method (allocation-method)
   (%parse-string-to-known-symbol "allocation-method"

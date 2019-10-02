@@ -22,12 +22,12 @@
 (defvar *rpc-acceptor* nil
   "*RPC-ACCEPTOR* holds a reference to the RPC-ACCEPTOR instance created by last invocation of START-SERVER.")
 
-(defun start-server-mode (&key host port)
+(defun start-server-mode (&key (host +default-server-address+) (port +default-server-port+))
   "Start the HTTP server on the indicated HOST and PORT. Does not return."
   (check-type host string)
   ;; A PORT of 0 tells hunchentoot to pick a random port.
-  (check-type port (or null (integer 0 65535)) "The port must be between 0 and 65535.")
-  (format-log "Starting server on port ~D." port)
+  (check-type port (integer 0 65535) "The port must be between 0 and 65535.")
+  (format-log "Starting server on ~A:~D." host port)
   (start-server host port)
   (loop (sleep 60)))
 
@@ -90,17 +90,17 @@ REQUEST-JSON defaults to the JSON object parsed from the request body in *REQUES
 This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-PARAMETER."
   (gethash parameter-name request-json))
 
-(defun parse-request-json-or-lose (request)
+(defun parse-json-or-lose (request-body)
   (let ((json (ignore-errors
                (let ((*read-default-float-format* 'double-float))
-                 (yason:parse (tbnl:raw-post-data :request request :force-text t))))))
+                 (yason:parse request-body)))))
     (unless (hash-table-p json)
-      (rpc-bad-request-error "Failed to parse JSON object from request body"))
+      (rpc-bad-request-error "Failed to parse JSON object from request body: ~S" request-body))
     json))
 
 (defmethod tbnl:acceptor-dispatch-request ((acceptor rpc-acceptor) request)
   (handler-case
-      (let ((*request-json* (parse-request-json-or-lose request)))
+      (let ((*request-json* (parse-json-or-lose (tbnl:raw-post-data :request request :force-text t))))
         (call-next-method))
     (rpc-error (c)
       (setf (tbnl:return-code*) (rpc-error-http-status c))

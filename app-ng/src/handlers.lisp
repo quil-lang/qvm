@@ -3,14 +3,15 @@
 (defvar *rpc-handlers* '()
   "An alist of (rpc-method-name . handler-function) conses defined by DEFINE-RPC-HANDLER.")
 
+(defun lookup-rpc-handler-for-request (request-params)
+  (cdr (assoc (gethash "type" request-params) *rpc-handlers* :test #'string=)))
+
 (defun dispatch-rpc-handlers (request)
   "Called by TBNL:ACCEPTOR-DISPATCH-REQUEST to determine if any of the handlers in *RPC-HANDLERS* should handle the given REQUEST."
-  (loop :for (rpc-method . handler) :in *rpc-handlers*
-        :when (and (eq ':POST (tbnl:request-method request))
-                   (string= "/" (tbnl:script-name request))
-                   (boundp '*request-json*)
-                   (string= rpc-method (gethash "type" *request-json*)))
-          :do (return-from dispatch-rpc-handlers handler)))
+  (and (eq ':POST (tbnl:request-method request))
+       (string= "/" (tbnl:script-name request))
+       (boundp '*request-json*)
+       (lookup-rpc-handler-for-request *request-json*)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun remove-existing-rpc-handlers (rpc-method name)
@@ -87,7 +88,7 @@ Alternatively, the handler function can be called from lisp like so
   ;; text/html rather than application/json for backwards compatibility with previous QVM-APP API.
   (string-right-trim
    '(#\Newline)
-   (with-output-to-string (*standard-output*)
+   (with-output-to-string (*error-output*)
      (show-version))))
 
 (define-rpc-handler (handle-create-qvm "create-qvm") ((allocation-method #'parse-allocation-method)
