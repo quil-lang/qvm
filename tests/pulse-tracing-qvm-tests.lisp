@@ -28,8 +28,12 @@ RAW-CAPTURE 1 \"rx\" 2.0 ro                               # 2s-4s
 PULSE 0 1 \"foo\" flat(duration: 1.5, iq: 1.0)            # 4s-5.5s
 "))
         ;; The frames here are pure nonsense.
-        (qvm (qvm::make-pulse-tracing-qvm)))
+        (qvm (qvm::make-pulse-tracing-qvm))
+        (log nil))
     (qvm::initialize-frame-states qvm (quil:parsed-program-frame-definitions pp))
+    (qvm::install-event-handler qvm
+                                (lambda (event)
+                                  (alexandria:appendf log (list event))))
     (load-program qvm pp)
     (run qvm)
     ;; check frame state
@@ -38,14 +42,13 @@ PULSE 0 1 \"foo\" flat(duration: 1.5, iq: 1.0)            # 4s-5.5s
       (is (= 1e9 (qvm::frame-state-frequency state)))
       (is (- 0.5 (qvm::frame-state-phase state))))
 
-    (let ((log (qvm::pulse-event-log qvm)))
-      ;; check # of events
-      (is (= 4 (length log)))
-      ;; check that the last event has the right timing
-      (let ((event (elt log (1- (length log)))))
-        (is (= 4.0 (qvm::pulse-event-start-time event)))
-        (is (= 5.5 (qvm::pulse-event-end-time event)))
-        (is (= 1.5 (qvm::pulse-event-duration event)))))))
+    ;; check # of events
+    (is (= 4 (length log)))
+    ;; check that the last event has the right timing
+    (let ((event (elt log (1- (length log)))))
+      (is (= 4.0 (qvm::pulse-event-start-time event)))
+      (is (= 5.5 (qvm::pulse-event-end-time event)))
+      (is (= 1.5 (qvm::pulse-event-duration event))))))
 
 (deftest test-tracing-quilt-nonblocking ()
   (let* ((pp (quil:parse-quil "

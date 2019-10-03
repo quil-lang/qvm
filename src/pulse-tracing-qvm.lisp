@@ -27,8 +27,6 @@
 (defparameter *initial-pulse-event-log-length* 100
   "The initial length of the pulse tracing QVM's event log.")
 
-;;; This is pretty barebones, but does make some claims about what is important
-;;; to track. Namely, qubit local time and frame states. 
 (defclass pulse-tracing-qvm (classical-memory-mixin)
   ((local-clocks :initarg :local-clocks
                  :accessor local-clocks
@@ -38,12 +36,10 @@
                  :accessor frame-states
                  :initform (make-hash-table :test #'quil::frame= :hash-function #'quil::frame-hash)
                  :documentation "A table mapping frames to their active states.")
-   (pulse-event-log :initarg :log
-                    :accessor pulse-event-log
-                    :initform  (make-array *initial-pulse-event-log-length*
-                                           :fill-pointer 0
-                                           :adjustable t)
-                    :documentation "A log, in chronological order, of observed pulse events."))
+   (pulse-event-handlers :initarg :event-handler
+                   :accessor pulse-event-handlers
+                   :initform nil
+                   :documentation "A list of event handlers, which are called with active PULSE events."))
   (:documentation "A quantum virtual machine capable of tracing pulse sequences over time."))
 
 ;;; TODO this fakeness is mainly to make LOAD-PROGRAM happy
@@ -72,14 +68,22 @@
                                               (quil:constant-value initial-frequency))
                               :sample-rate (quil:constant-value sample-rate))))))
 
+(defun install-event-handler (qvm handler)
+  (check-type handler function)
+  (push handler (pulse-event-handlers qvm)))
+
 (defun trace-quilt-program (program)
   "Trace a quilt PROGRAM, returning a list of pulse events."
   (check-type program quil:parsed-program)
-  (let* ((qvm (make-pulse-tracing-qvm)))
+  (let ((qvm (make-pulse-tracing-qvm))
+        (log nil))
     (initialize-frame-states qvm (quil:parsed-program-frame-definitions program))
+    (install-event-handler qvm
+                           (lambda (event)
+                             (push event log)))
     (load-program qvm program)
     (run qvm)
-    (pulse-event-log qvm)))
+    (nreverse log)))
 
 (defun local-time (qvm frame &optional (default 0.0d0))
   "Get the local time of FRAME on the pulse tracing QVM."
@@ -193,16 +197,17 @@
   (if (not (typep instr '(or quil:pulse quil:capture quil:raw-capture)))
       (warn "Cannot resolve timing information for instruction ~A" instr)
       (let* ((frame (quil::pulse-operation-frame instr))
-                 (frame-state (frame-state qvm frame))
-                 (start-time (latest-time qvm frame))
-           (end-time (+ start-time
-                        (quil::quilt-instruction-duration instr))))
-      (vector-push-extend (make-pulse-event :instruction instr
-                                            :start-time start-time
-                                            :end-time end-time
-                                            :frame frame
-                                            :frame-state frame-state)
-                          (pulse-event-log qvm))
+             (frame-state (frame-state qvm frame))
+             (start-time (latest-time qvm frame))
+             (end-time (+ start-time
+                          (quil::quilt-instruction-duration instr)))
+             (event (make-pulse-event :instruction instr
+                                      :start-time start-time
+                                      :end-time end-time
+                                      :frame frame
+                                      :frame-state frame-state)))
+        (dolist (handler (pulse-event-handlers qvm))
+          (funcall handler event))
       (setf (local-time qvm frame) end-time)
 
       (unless (quil:nonblocking-p instr)
