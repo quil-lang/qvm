@@ -24,9 +24,6 @@
   (sample-rate (error "Sample rate must be defined.")
    :type real))
 
-(defparameter *initial-pulse-event-log-length* 100
-  "The initial length of the pulse tracing QVM's event log.")
-
 (defclass pulse-tracing-qvm (classical-memory-mixin)
   ((local-clocks :initarg :local-clocks
                  :accessor local-clocks

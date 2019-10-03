@@ -156,6 +156,12 @@
    #:set-noisy-gate                     ; GENERIC, METHOD
    )
 
+  ;; pulse-tracing-qvm.lisp
+  (:export
+   #:pulse-tracing-qvm
+   #:trace-quilt-program
+   )
+
   ;; density-qvm
   (:export
    #:density-qvm                        ; CLASS

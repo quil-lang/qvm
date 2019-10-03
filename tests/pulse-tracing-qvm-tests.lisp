@@ -63,6 +63,6 @@ DEFFRAME 0 \"foo\":
 NONBLOCKING PULSE 0 \"xy\" gaussian(duration: 1.0, fwhm: 2, t0: 3)
 PULSE 0 \"foo\" gaussian(duration: 1.5, fwhm: 2, t0: 3)
 PULSE 0 \"xy\" gaussian(duration: 1.0, fwhm: 2, t0: 3)"))
-         (log (qvm::trace-quilt-program pp)))
+         (log (qvm:trace-quilt-program pp)))
     (is (equalp '(0.0 0.0 1.5)
                 (map 'list #'qvm::pulse-event-start-time log)))))
