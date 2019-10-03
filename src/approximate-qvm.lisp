@@ -1,116 +1,74 @@
 (in-package #:qvm)
 
 (defclass approx-qvm (channel-qvm)
-  ((t1
-    :initarg :t1
-    :accessor t1
-    :initform nil ; default value
-    :documentation "t1 value to simulate")
-   (t2
-    :initarg :t2
-    :accessor t2
-    :initform nil ; default value
-    :documentation "t2 value to simulate")
-   (fros
-    :initarg :fros
-    :accessor fros
+  ((t1-ops
+    :initarg :t1-ops
+    :accessor t1-ops
     :initform (make-hash-table :test 'eql)
-    :documentation "noisy readout encoded as a hash table of qubit to avg readout fidelity")
+    :documentation "t1 value to simulate")
+   (t2-ops
+    :initarg :t2-ops
+    :accessor t2-ops
+    :initform (make-hash-table :test 'eql)         
+    :documentation "t2 value to simulate")
    (avg-gate-time
     :initarg :avg-gate-time
     :accessor avg-gate-time
-    :initform nil ;(error ":AVG-GATE-TIME is a required initarg ~ to APPROX-QVM")
-    :documentation "the average gate time for a gate in this qvm")
-   (kraus-ops
-    :initarg :kraus-ops
-    :accessor kraus-ops
-    :initform (make-hash-table :test 'eql)
-    :documentation "list of lists of kraus operators : ((t1 kraus ops) (t2 kraus ops) ...)")
+    :initform (error ":AVG-GATE-TIME is a required initarg to APPROX-QVM")
+    :documentation "The average gate time for a gate in this qvm")
    (readout-povms
     :initarg :readout-povms
     :accessor readout-povms
-    :initform (make-hash-table :test 'eql))
-   ))
+    :initform (make-hash-table :test 'eql))))
 
 
-(defmethod initialize-instance :after ((qvm approx-qvm) &rest args)
-  "This function populates the kraus-ops slot. It checks for any set noise params (T1, T2, etc)
-   and adds the kraus operators representing that noise to the kraus-ops slot. "
-  (declare (ignore args)) 
-  (if (t1 qvm) 
-      (setf (gethash "t1" (kraus-ops qvm))
-            (generate-damping-kraus-ops (t1 qvm) (avg-gate-time qvm))))
-  (if (t2 qvm) 
-      (setf (gethash "t2" (kraus-ops qvm)) 
-            (generate-damping-dephasing-kraus-ops (t2 qvm) (avg-gate-time qvm))))
-  
-  ;; readout fidelities are the average of the assignment probabilities p(0|0) and p(1|1). 
-  ;; We approximate the readout povm as p(0|0) = p(1|1) = fR0, and 0(0|1) = p(1|0) = 1 - fR0.
-  (if (fros qvm)
-      (maphash #'(lambda (k v) (setf (gethash k (readout-povms qvm)) 
-                                     (list v (- 1.0d0 v) (- 1.0d0 v) v)))
-               (fros qvm))))
+(defmethod set-qubit-t1 (qvm qubit t1)
+  "Save the kraus operators for the t1 provided on the specified qubit."
+  (setf (gethash qubit (t1-ops qvm)) (generate-damping-kraus-ops t1 (avg-gate-time qvm))))
 
 
+(defmethod set-qubit-t2 (qvm qubit t2)
+  "Save the kraus operators for the t2 provided on the specified qubit."
+  (setf (gethash qubit (t2-ops qvm)) (generate-damping-dephasing-kraus-ops t2 (avg-gate-time qvm))))
+
+
+(defmethod set-qubit-fro (qvm qubit fro)
+  "Save the readout povms for the fro provided on the specified qubit. The fR0 is assumed to be the average readout fidelity (avg of p(1|1) and p(0|0)) so as an approximation, we set p(0|0) = p(1|1) = fR0 in the readout povm assignment probabilities. "
+  (setf (gethash qubit (readout-povms qvm)) (list fro (- 1.0d0 fro) (- 1.0d0 fro) fro)))
+
+
+; For now just use a single gate time value for all calculations
 (defmethod set-gate-time ((qvm approx-qvm) gate-time)
-  (setf (avg-gate-time qvm) gate-time)
-  (set-t1 qvm (t1 qvm))
-  (set-t2 qvm (t2 qvm))
-  )
+  "Set the gate time slot for approx-qvm. This value should represent the average gate time of the gates that will be run."
+  (setf (avg-gate-time qvm) gate-time))
 
 
-(defmethod set-t1 ((qvm approx-qvm) t1)
-  (setf (t1 qvm) t1)
-  (setf (gethash "t1" (kraus-ops qvm)) (generate-damping-kraus-ops (t1 qvm) (avg-gate-time qvm)))
-  )
-
-(defmethod set-t2 ((qvm approx-qvm) t2)
-    (setf (t2 qvm) t2)
-    (setf (gethash "t2" (kraus-ops qvm)) (generate-damping-dephasing-kraus-ops (t2 qvm) (avg-gate-time qvm)))
-
-  )
-
-(defmethod set-fro ((qvm approx-qvm) qubit fro)
-    (setf (gethash qubit (fros qvm)) fro)
-    (setf (gethash qubit (readout-povms qvm)) (list fro (- 1.0d0 fro) (- 1.0d0 fro) fro))
-  )
-
-
-(defmethod apply-all-kraus-ops ((qvm approx-qvm) (instr quil:gate-application))
-  "Apply all the kraus operators (for all of the noise sources) to the state of the program"
-  
-  (loop for kops being each hash-value of (kraus-ops qvm)
-        :do
-           (check-kraus-ops kops)
-           (apply-kraus-ops qvm instr kops)
-        ))
+(defmethod apply-all-kraus-operators ((qvm approx-qvm) (instr quil:gate-application) qubits)
+  "Apply all the kraus operators (for all of the noise sources) to the state of the program. If we have just encountered a 2qubit gate, we need to tensor the kraus operators for each qubit's error source. Currently, this does not support >2 qubit gates. Note: if the current instr is a 2 qubit gate and there is only kraus ops for one of the qubits, then no error is applied. For example, if q0 has T1 error associated with it but q1 does not, no error channel is applied after a CNOT 0 1. "
+  (loop :for source :in (list (t1-ops qvm) (t2-ops qvm))
+        :do (cond ((= (list-length qubits) 1) 
+                   (let ((kraus-map (gethash (nth 0 qubits) source)))
+                     (when kraus-map (check-kraus-ops kraus-map) (apply-kraus-ops qvm instr kraus-map) )))
+                  ((= (list-length qubits) 2) 
+                   (let ((kraus-map  (kraus-kron (gethash (nth 0 qubits) source) 
+                                                 (gethash (nth 1 qubits) source))))
+                     (when kraus-map (check-kraus-ops kraus-map) (apply-kraus-ops qvm instr kraus-map))))              
+                  ((> (list-length qubits) 2) 
+                   (error "Unable to APPLY-ALL-KRAUS-OPERATORS: expected two or less qubits, but got ~A" (list-length qubits))))))
 
 
 (defmethod transition ((qvm approx-qvm) (instr quil:gate-application))
   "For the current instruction in the program, apply the gate corresponding to that
 instruction, and then apply all the kraus operators for all the sources of noise following
-that instruction. 
-"
+that instruction. "
   (let ((gate   (pull-teeth-to-get-a-gate instr))
-        (params (mapcar #'(lambda (p) (force-parameter p qvm))
+        (params (mapcar (lambda (p) (force-parameter p qvm))
                         (quil:application-parameters instr)))
         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
-    (apply-all-kraus-ops qvm instr)
+    (apply-all-kraus-operators qvm instr qubits)
     (incf (pc qvm))
     qvm))
-
-
-(defun %corrupt-approx-qvm (qvm instr povm)
-  (check-type instr quil:measure)
-  (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
-         (a (quil:measure-address instr))
-         (c (dereference-mref qvm a))
-         (povm (gethash q (readout-povms qvm))))
-    (when povm
-      (destructuring-bind (p00 p01 p10 p11) povm
-        (setf (dereference-mref qvm a)
-              (perturb-measurement c p00 p01 p10 p11))))))
 
 
 (defun tphi (t1 t2)
@@ -121,64 +79,78 @@ that instruction.
 
 (defun generate-damping-kraus-ops (t1 gate-time)
   "Given a value for t1 and a gate time, generates the kraus operators corresponding
-to the t1 noise. 
-"
+to the t1 noise. "
   (let* ((prob (/ gate-time t1)) 
-        (k0 (magicl:make-complex-matrix 2 2 (list 0 0 (sqrt prob) 0)))
-        (k1 (magicl:make-complex-matrix 2 2 (list 1 0 0  (sqrt (- 1 prob))))))
+         (k0 (magicl:make-complex-matrix 2 2 (list 0 0 (sqrt prob) 0)))
+         (k1 (magicl:make-complex-matrix 2 2 (list 1 0 0  (sqrt (- 1 prob))))))
     (list k0 k1)))
 
 
 (defun generate-dephasing-kraus-ops (tphi gate-time)
   "Given a value for t_phi (dephasing time) and a gate time, calculates the kraus
-operators corresponding to the dephasing noise.
-"
-   (let*  ((prob (/ gate-time tphi))
-           (prob-k1 (/ prob 2))
-           (prob-k0 (- 1 prob-k1 ))
-           (kraus-ops (loop :for mat :in '("I" "Z")
-                 :for pj :in (list prob-k0 prob-k1)
-                 :collect (magicl:scale (sqrt pj)
-                                        (quil:gate-matrix
-                                         (quil:gate-definition-to-gate
-                                          (quil:lookup-standard-gate mat)))))))
-     kraus-ops
-     )) 
+operators corresponding to the dephasing noise."
+  (let*  ((prob (/ gate-time tphi))
+          (prob-k1 (/ prob 2))
+          (prob-k0 (- 1 prob-k1 ))
+          (kraus-ops (loop :for mat :in '("I" "Z")
+                           :for pj :in (list prob-k0 prob-k1)
+                           :collect (magicl:scale (sqrt pj)
+                                                  (quil:gate-matrix
+                                                   (quil:gate-definition-to-gate
+                                                    (quil:lookup-standard-gate mat)))))))
+    kraus-ops)) 
 
 (defun generate-damping-dephasing-kraus-ops (t2 gate-time)  
   "Calculates the kraus operators for dephasing and damping noise from t2, which
-is decoherence time. 
-"
-  (generate-dephasing-kraus-ops t2 gate-time)
-  ) 
-  
-  
+is decoherence time. "
+  (generate-dephasing-kraus-ops t2 gate-time)) 
 
- 
+
+(defun kraus-kron (k1s k2s)
+  "Calculate the tensor product of two kraus maps by tensoring their elems."
+  (loop :for x in k1s
+        :append (loop :for y in k2s
+                      :collect (magicl:kron x y))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun simple-test-approx ()
+  (let* ((ones 0)
+         (qvm (make-instance 'approx-qvm :number-of-qubits 2 :avg-gate-time 1))
+         (numshots 100)
+         (program "DECLARE R0 BIT; X 0; CNOT 0 1;  MEASURE 0 R0")
+         (parsed-program  (quil:parse-quil program)) )
+    (load-program qvm parsed-program :supersede-memory-subsystem t)
+    (set-qubit-t1 qvm 0 5)
+    (set-qubit-t1 qvm 1 4)
+    (set-qubit-t2 qvm 0 3)
+    (set-qubit-t2 qvm 1 5)
+    (run qvm))
+  )
 
 (defun test-approx ()
   "Given a value for t1 and a gate time, generates the kraus operators corresponding
 to the t1 noise. "
   (let ((ones 0)
-        (qvm (make-instance 'approx-qvm :number-of-qubits 1 :t1 2 :avg-gate-time 1))
+        (qvm (make-instance 'approx-qvm :number-of-qubits 1 :t1 5 :avg-gate-time 1))
         (numshots 100)
         (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
-     (loop :repeat numshots
-       :do (incf ones (do-noisy-measurement qvm 0 program)))
+    (loop :repeat numshots
+          :do (bring-to-zero-state (amplitudes qvm))
+          :do (incf ones (do-noisy-measurement qvm 0 program)))
     (format t "result: ~a" (float (/ ones numshots)))))
-    
-    
-(defun test-approx-fro ()
-  "Given a value for t1 and a gate time, generates the kraus operators corresponding
-to the t1 noise. "
-  (let* ((ones 0)
-        (qubit 0)
-        (qvm (make-instance 'approx-qvm :number-of-qubits 1 :fros (fro-map qubit .9d0)))
-        (numshots 100)
-        (program "DECLARE R0 BIT; X 0;  MEASURE 0 R0"))
 
+
+(defun test-approx-fro ()
+  "Given a value for t1 and a gate time, generates the kraus operators corresponding to the t1 noise. "
+  (let* ((ones 0)
+         (qubit 0)
+         (qvm (make-instance 'approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+         (numshots 100)
+         (program "DECLARE R0 BIT; X 0;  MEASURE 0 R0"))
+    
+    (set-qubit-fro qvm qubit .9d0)
     (loop :repeat numshots
           :do (bring-to-zero-state (amplitudes qvm))
           :do (incf ones (do-noisy-measurement qvm 0 program)))
@@ -189,3 +161,11 @@ to the t1 noise. "
   (setf m (make-hash-table))
   (setf (gethash qubit m) fro)
   m)
+
+
+(defun make-noisy-approx-qvm ()
+  (let* ((qvm (make-instance 'approx-qvm :number-of-qubits 2 :avg-gate-time 1)))
+    (set-qubit-t1 qvm 0 5)
+    (set-qubit-t2 qvm 0 4)
+    (set-qubit-t1 qvm 1 2)
+    (set-qubit-t2 qvm 1 3)))
