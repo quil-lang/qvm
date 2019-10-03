@@ -36,8 +36,8 @@
    (pulse-event-handlers :initarg :event-handler
                    :accessor pulse-event-handlers
                    :initform nil
-                   :documentation "A list of event handlers, which are called with active PULSE events."))
-  (:documentation "A quantum virtual machine capable of tracing pulse sequences over time."))
+                   :documentation "A list of event handlers, which are called with active PULSE-EVENTs."))
+  (:documentation "A quantum virtual machine capable of producing tracing quilt instructions over time."))
 
 ;;; TODO this fakeness is mainly to make LOAD-PROGRAM happy
 (defmethod number-of-qubits ((qvm pulse-tracing-qvm))
@@ -66,6 +66,7 @@
                               :sample-rate (quil:constant-value sample-rate))))))
 
 (defun install-event-handler (qvm handler)
+  "Install the HANDLER to be called on new pulse events."
   (check-type handler function)
   (push handler (pulse-event-handlers qvm)))
 
@@ -136,11 +137,13 @@
 
 (defmethod transition ((qvm pulse-tracing-qvm) (instr quil:delay-on-qubits))
   (let ((frames (frames-on-qubits qvm (quil:delay-qubits instr))))
+    ;; delegate
     (transition qvm (make-instance 'quil:delay-on-frames
                                    :frames frames
                                    :duration (quil:delay-duration instr)))))
 
 (defun synchronize-frame-clocks (qvm frames)
+  "Bring all clocks on the specified FRAMES to their latest time."
   (let ((latest (apply #'latest-time qvm frames)))
     (dolist (frame frames)
       (setf (local-time qvm frame) latest))))
