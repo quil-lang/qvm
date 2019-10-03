@@ -106,7 +106,9 @@ NUM-QUBITS is a non-negative integer and represents the maximum number of qubits
 
 GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pauli X, Y, or Z gate happening after a gate application or a RESET.
 
-MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE."
+MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
+
+Return a JSON object containing a \"token\" key with the newly-created persistent QVM's unique ID token."
   (encode-json (alexandria:plist-hash-table
                 `("token" ,(allocate-persistent-qvm
                             (make-requested-qvm simulation-method
@@ -122,7 +124,7 @@ MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the proba
      (num-qubits #'parse-num-qubits)
      (gate-noise #'parse-optional-pauli-noise)
      (measurement-noise #'parse-optional-pauli-noise))
-  "Return an estimate of the amount of memory required to simulate a QVM of the given type.
+  "Return an estimate of the number of bytes required to store the quantum state of a QVM of the given type.
 
 The number returned represents the number of bytes required to store the QVM state, i.e. to store the amplitudes of the wavefunction for a PURE-STATE simulation or for the density matrix for a FULL-DENSITY-MATRIX simulation. Note that the memory required to store QVM state represents a lower-bound on the memory required for simulation, since in the course of simulating programs the QVM will allocate additional memory. For the most part, these additional allocations are small (compared to the QVM state), short-lived, and difficult to predict in advance. We also ignore any memory allocated for the classical memory subsystem of the QVM, which is bounded by QVM::**CLASSICAL-MEMORY-SIZE-LIMIT** (64K by default).
 
@@ -136,7 +138,9 @@ NUM-QUBITS is a non-negative integer and represents the maximum number of qubits
 
 GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pauli X, Y, or Z gate happening after a gate application or a RESET.
 
-MEASUREMENT-NOISE is an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE."
+MEASUREMENT-NOISE is an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
+
+Return a JSON object with a \"bytes\" key indicating the estimated number of bytes required."
   (encode-json (alexandria:plist-hash-table
                 `("bytes" ,(memory-required-for-qvm simulation-method
                                                     allocation-method
@@ -147,14 +151,14 @@ MEASUREMENT-NOISE is an optional list of three FLOATs giving the probabilities o
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
   "Delete a persistent QVM.
 
-QVM-TOKEN is a valid persistent QVM token such as one returned by the CREATE-QVM RPC call."
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
   (delete-persistent-qvm qvm-token)
   (encode-json (format nil "Deleted persistent QVM ~D" qvm-token)))
 
 (define-rpc-handler (handle-qvm-info "qvm-info") ((qvm-token #'parse-qvm-token))
   "Return some basic bookkeeping info about the specified QVM.
 
-QVM-TOKEN is a valid persistent QVM token such as one returned by the CREATE-QVM RPC call."
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
   (encode-json (persistent-qvm-info qvm-token)))
 
 (define-rpc-handler (handle-run-program "run-program")
@@ -167,7 +171,7 @@ QVM-TOKEN is a valid persistent QVM token such as one returned by the CREATE-QVM
                      (measurement-noise #'parse-optional-pauli-noise))
   "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD.
 
-QVM-TOKEN is a valid persistent QVM token as returned by the CREATE-QVM RPC call.
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 
 SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
 
@@ -175,7 +179,9 @@ COMPILED-QUIL is a STRING containing a valid Quil program.
 
 ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
 
-The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
+The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both.
+
+Return the contents of the memory registers requested in the ADDRESSES request parameter."
   (when (and (null qvm-token)
              (not (and allocation-method simulation-method)))
     (rpc-parameter-parse-error
@@ -200,20 +206,42 @@ The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
 (define-rpc-handler (handle-run-program/async "run-program-async")
                     ((qvm-token #'parse-qvm-token)
                      (compiled-quil #'parse-quil-string))
+  "Run COMPILED-QUIL asynchronously on the persistent QVM given by QVM-TOKEN.
+
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
+
+COMPILED-QUIL is a STRING containing a valid Quil program.
+
+Return true on success."
   (bt:make-thread
    (lambda ()
      (run-program-on-persistent-qvm qvm-token compiled-quil))
    :name "hard working man or woman")
   (encode-json t))
 
-(define-rpc-handler (handle-resume-from-wait "resume")
-                    ((qvm-token #'parse-qvm-token))
+(define-rpc-handler (handle-resume-from-wait "resume") ((qvm-token #'parse-qvm-token))
+  "Resume execution of a persistent QVM that is in the WAITING state.
+
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
+
+It is an error to try to resume a QVM in any state other than the WAITING state.
+
+Return true on success."
   (resume-persistent-qvm qvm-token)
   (encode-json t))
 
 (define-rpc-handler (handle-read-memory "read-memory")
                     ((qvm-token #'parse-qvm-token)
                      (addresses #'parse-addresses))
+  "Read from a persistent QVM's classical memory registers.
+
+DANGER! DANGER! DANGER! The affects of reading from classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only read from a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
+
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
+
+ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
+
+Return the contents of the memory registers requested by the ADDRESSES request parameter."
   (encode-json
    (with-persistent-qvm (qvm) qvm-token
      (collect-memory-registers qvm addresses))))
@@ -221,5 +249,14 @@ The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both."
 (define-rpc-handler (handle-write-memory "write-memory")
                     ((qvm-token #'parse-qvm-token)
                      (memory-contents #'parse-memory-contents))
+  "Write to the classical memory of a persistent QVM.
+
+DANGER! DANGER! DANGER! The affects of writing to classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only write to a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
+
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
+
+MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory register name and the corresponding value is a LIST of (INDEX VALUE) pairs indicating that VALUE should be stored at index INDEX in the corresponding memory register.
+
+Return true on success."
   (write-persistent-qvm-memory qvm-token memory-contents)
   (encode-json t))
