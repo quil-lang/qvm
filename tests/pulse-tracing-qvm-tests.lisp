@@ -23,7 +23,7 @@ SET-PHASE 0 \"xy\" 0.5
 PULSE 0 \"xy\" gaussian(duration: 1.0, fwhm: 2, t0: 3)    # 0s-1s
 FENCE 0 1
 PULSE 1 \"xy\" gaussian(duration: 1.0, fwhm: 2, t0: 3)    # 1s-2s
-DECLARE ro BIT[100]
+DECLARE ro REAL[100]
 RAW-CAPTURE 1 \"rx\" 2.0 ro                               # 2s-4s
 PULSE 0 1 \"foo\" flat(duration: 1.5, iq: 1.0)            # 4s-5.5s
 "))

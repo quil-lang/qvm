@@ -1,22 +1,11 @@
 (in-package :qvm)
 
 (defstruct pulse-event
-  instruction
   start-time
   end-time
-  frame-state)
-
-;;; TODO move this to cl-quil ast code?
-(defun pulse-op-frame (instr)
-  (etypecase instr
-    (quil:pulse (quil:pulse-frame instr))
-    (quil:capture (quil:capture-frame instr))
-    (quil:raw-capture (quil:raw-capture-frame instr))))
-
-(defun pulse-event-frame (event)
-  "The frame associated with a pulse event."
-  (let ((instr (pulse-event-instruction event)))
-    (pulse-op-frame instr)))
+  frame
+  frame-state
+  instruction)
 
 (defun pulse-event-duration (pulse-event)
   "The duration of a pulse event."
@@ -39,9 +28,7 @@
   "The initial length of the pulse tracing QVM's event log.")
 
 ;;; This is pretty barebones, but does make some claims about what is important
-;;; to track. Namely, qubit local time and frame states. We also update a log,
-;;; although TODO in principle this could be more generic (e.g. provide some
-;;; sort of "event consumer" callbacks).
+;;; to track. Namely, qubit local time and frame states. 
 (defclass pulse-tracing-qvm (classical-memory-mixin)
   ((local-clocks :initarg :local-clocks
                  :accessor local-clocks
@@ -125,21 +112,19 @@
 
 ;;; TRANSITIONs
 
-(defun intersecting-frames (qvm &rest qubits)
+(defun intersecting-frames (qvm qubits)
   "Return all frames tracked by the pulse tracing QVM which involve any of the specified QUBITS."
   (check-type qvm pulse-tracing-qvm)
-  (loop :for frame :being :the :hash-key :of (frame-states qvm)
-        :when (intersection qubits
-                            (quil:frame-qubits frame)
-                            :test #'equalp)
-          :collect frame))
+  (remove-if-not (lambda (f)
+                   (quil::frame-intersects-p f qubits))
+                 (alexandria:hash-table-keys (frame-states qvm))))
 
-(defun frames-on-qubits (qvm &rest qubits)
-  "Return all frames tracked by the pulse tracing QVM which involve exactly the specified QUBITS."
+(defun frames-on-qubits (qvm qubits)
+  "Return all frames tracked by the pulse tracing QVM which involve exactly the specified QUBITS in the specified order."
   (check-type qvm pulse-tracing-qvm)
-  (loop :for frame :being :the :hash-key :of (frame-states qvm)
-        :when (equalp qubits (quil:frame-qubits frame))
-          :collect frame))
+  (remove-if-not (lambda (f)
+                   (quil::frame-on-p f qubits))
+                 (alexandria:hash-table-keys (frame-states qvm))))
 
 (defmethod transition ((qvm pulse-tracing-qvm) (instr quil:delay-on-frames))
   (dolist (frame (quil:delay-frames instr))
@@ -149,19 +134,19 @@
   qvm)
 
 (defmethod transition ((qvm pulse-tracing-qvm) (instr quil:delay-on-qubits))
-  (let* ((frames (frames-on-qubits qvm (quil:delay-qubits instr)))
-         (latest (apply #'latest-time qvm frames)))
-    (dolist (frame frames)
-      (setf (local-time qvm frame) latest)))
+  (let ((frames (frames-on-qubits qvm (quil:delay-qubits instr))))
+    (transition qvm (make-instance 'quil:delay-on-frames
+                                   :frames frames
+                                   :duration (quil:delay-duration instr)))))
 
-  (incf (pc qvm))
-  qvm)
+(defun synchronize-frame-clocks (qvm frames)
+  (let ((latest (apply #'latest-time qvm frames)))
+    (dolist (frame frames)
+      (setf (local-time qvm frame) latest))))
 
 (defmethod transition ((qvm pulse-tracing-qvm) (instr quil:fence))
-  (let* ((frames (apply #'intersecting-frames qvm (quil:fence-qubits instr)))
-         (latest (apply #'latest-time qvm frames)))
-    (dolist (frame frames)
-      (setf (local-time qvm frame) latest)))
+  (let ((frames (intersecting-frames qvm (quil:fence-qubits instr))))
+    (synchronize-frame-clocks qvm frames))
 
   (incf (pc qvm))
   qvm)
@@ -193,6 +178,8 @@
   (with-slots (left-frame right-frame) instr
     (when (equalp left-frame right-frame)
       (error "SWAP-PHASE requires distinct frames."))
+    ;; there is an implicit synchronization in SWAP-PHASE
+    (apply #'synchronize-frame-clocks left-frame right-frame)
     (let ((left-state (frame-state qvm left-frame))
           (right-state (frame-state qvm right-frame)))
       (rotatef (frame-state-phase left-state) (frame-state-phase right-state))
@@ -202,28 +189,28 @@
   (incf (pc qvm))
   qvm)
 
-;;; TODO: should we allow transition on other instructions? classical control flow?
 (defmethod transition ((qvm pulse-tracing-qvm) instr)
-  (unless (typep instr '(or quil:pulse quil:capture quil:raw-capture))
-    (error "Cannot resolve timing information for instruction ~A" instr))
-  (let* ((frame (pulse-op-frame instr))
-         (frame-state (frame-state qvm frame))
-         (start-time (latest-time qvm frame))
-         (end-time (+ start-time
-                      (quil::quilt-instruction-duration instr))))
-    (vector-push-extend (make-pulse-event :instruction instr
-                                          :start-time start-time
-                                          :end-time end-time
-                                          :frame-state frame-state)
-                        (pulse-event-log qvm))
-    (setf (local-time qvm frame) end-time)
+  (if (not (typep instr '(or quil:pulse quil:capture quil:raw-capture)))
+      (warn "Cannot resolve timing information for instruction ~A" instr)
+      (let* ((frame (quil::pulse-operation-frame instr))
+                 (frame-state (frame-state qvm frame))
+                 (start-time (latest-time qvm frame))
+           (end-time (+ start-time
+                        (quil::quilt-instruction-duration instr))))
+      (vector-push-extend (make-pulse-event :instruction instr
+                                            :start-time start-time
+                                            :end-time end-time
+                                            :frame frame
+                                            :frame-state frame-state)
+                          (pulse-event-log qvm))
+      (setf (local-time qvm frame) end-time)
 
-    (unless (quil:nonblocking-p instr)
-      ;; this pulse/capture/raw-capture excludes other frames until END-TIME
-      (dolist (other (apply #'intersecting-frames qvm (quil:frame-qubits frame)))
-        (quil:print-instruction other)
-        (setf (local-time qvm other)
-              (max end-time (local-time qvm other))))))
+      (unless (quil:nonblocking-p instr)
+        ;; this pulse/capture/raw-capture excludes other frames until END-TIME
+        (dolist (other (intersecting-frames qvm (quil:frame-qubits frame)))
+          (quil:print-instruction other)
+          (setf (local-time qvm other)
+                (max end-time (local-time qvm other)))))))
 
   (incf (pc qvm))
   qvm)
