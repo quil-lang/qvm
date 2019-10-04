@@ -1,0 +1,17 @@
+# This is a version of the app-ng Dockerfile that is compatible with
+# crusty old versions of docker that do not support ARG directives or
+# COPY --from. Humph.
+
+FROM rigetti/quilc:1.11.1
+FROM rigetti/lisp:2019-07-11
+RUN git clone https://github.com/rigetti/quilc /src/quilc
+
+# build the qvm-ng app
+ADD . /src/qvm
+WORKDIR /src/qvm
+RUN git clean -fdx && make qvm-ng
+
+EXPOSE 5222
+
+ENTRYPOINT ["./qvm-ng"]
+CMD ["-S"]
