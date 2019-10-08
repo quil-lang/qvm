@@ -3,11 +3,21 @@
 (defun enter-quietly (argv)
   (qvm-app-ng::%entry-point (append '("--verbose" "0") argv)))
 
-(deftest test-initial-rpc-request ()
+(deftest test-initial-rpc-request-version ()
   (is (string= (with-output-to-string (*error-output*)
                  (qvm-app-ng::show-version))
                (with-output-to-string (*standard-output*)
                  (enter-quietly '("--rpc-request" "{\"type\": \"version\"}"))))))
+
+(deftest test-initial-rpc-create-qvm ()
+  (unwind-protect
+       (extract-and-validate-token
+        (with-output-to-string (*standard-output*)
+          (enter-quietly `("--rpc-request" ,(plist->json '(:type "create-qvm"
+                                                           :num-qubits 20
+                                                           :simulation-method "pure-state"
+                                                           :allocation-method "native"))))))
+    (qvm-app-ng::reset-persistent-qvms-db)))
 
 (deftest test-show-version ()
   (dolist (flag '("-v" "--version"))
