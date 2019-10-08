@@ -116,7 +116,10 @@
 
 (defun %entry-point (argv)
   ;; A (somewhat) testable version of ENTRY-POINT that doesn't QUIT-NICELY or trap errors. Note that
-  ;; certain flags in ARGV (e.g. "-S") will cause PROCESS-OPTIONS to start a server and never return.
+  ;; certain flags in ARGV (e.g. "-S") will cause PROCESS-OPTIONS to start a server and never
+  ;; return.
+  (qvm:prepare-for-parallelization)
+
   (command-line-arguments:handle-command-line
    *option-spec*
    'process-options

@@ -8,10 +8,12 @@
   :license "GNU Affero General Public License v3.0 (See app/LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
   :depends-on (#:qvm-app-ng
+               #:alexandria
                #:drakma
                #:fiasco
                #:lparallel
-               #:uiop)
+               #:uiop
+               #:yason)
   :perform (asdf:test-op (o s)
                          (uiop:symbol-call ':qvm-app-ng-tests
                                            '#:run-qvm-app-ng-tests))
