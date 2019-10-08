@@ -1,8 +1,6 @@
 (in-package #:qvm)
 
-;; A noise predicate is a function that takes an instruction's gate and qubits, and returns either 
-;; true if the instruction is a match, else false. The priority indicates the priority of the predicate (tbd) 
-;; and the noise-position indicates whether the predicate should match before or after an instruction. 
+;; A noise predicate is a function that takes an instruction's gate and qubits, and returns either true if the instruction is a match, else false. The priority indicates the priority of the predicate (tbd) and the noise-position indicates whether the predicate should match before or after an instruction. 
 (defclass noise-pred ()
   ((predicate
     :initarg :predicate
@@ -21,30 +19,30 @@
     :documentation "Should the application of a channel happen before or after the instruciton?")))
 
 
-(defmethod make-noise-predicate (predicate priority noise-position)
-  "Creates a noise predicate with the given predicate (callable), priority, and noise position"
+(defmethod make-noise-pred (predicate priority noise-position)
+  "Creates a NOISE-PRED with the given PREDICATE (callable), PRIORITY, and NOISE-POSITION"
   (make-instance 'noise-pred :predicate predicate :priority priority :noise-position noise-position))
 
 
 (defmethod predicate-and (np1 np2)
-  "Logical AND of 2 noise predicates"
+  "Logical AND of 2 noise predicates. The noise position is taken from NP1 and the priority is taken to be the min (smaller in value) priority between the two predicates."
   (let* ((conjunction (alexandria:conjoin (predicate np1) (predicate np2)))
-         (priority (max (priority np1) (priority np2)))
+         (priority (min (priority np1) (priority np2)))
          (noise-position (noise-position np1)))
-    (make-noise-predicate conjunction priority noise-position)))
+    (make-noise-pred conjunction priority noise-position)))
 
 
 (defmethod predicate-or (np1 np2)
-  "Logical OR of 2 noise predicates"
+  "Logical OR of 2 noise predicates. The noise position is taken from NP1 and the priority is taken to be the min (smaller in value) priority between the two predicates."
   (let* ((disjunction (alexandria:disjoin (predicate np1) (predicate np2)))
-         (priority (max (priority np1) (priority np2)))
+         (priority (min (priority np1) (priority np2)))
          (noise-position (noise-position np1)))
-    (make-noise-predicate disjunction priority noise-position)))
+    (make-noise-pred disjunction priority noise-position)))
 
 
 (defmethod predicate-not (np)
   "Logical NOT of a noise predicate"
-  (make-noise-predicate (complement (predicate np)) (priority np) (noise-position np)))
+  (make-noise-pred (complement (predicate np)) (priority np) (noise-position np)))
 
 
 ;; A noise rule consists of a noise predicate and a list of operation elements. The operation elements
@@ -105,7 +103,7 @@
                                            (predicate-and (noise-predicate rule1) (predicate-not (noise-predicate rule2))) 
                                            (operation-elements rule1))
                                  :collect (make-noise-rule 
-                                           (predicate-and (predicate-not (noise-predicate rule1)) (noise-predicate rule1)) 
+                                           (predicate-and (predicate-not (noise-predicate rule1)) (noise-predicate rule2)) 
                                            (operation-elements rule2))))))
     (make-noise-model nrs)))
 
@@ -117,9 +115,10 @@
          (equal qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
 
-(defun match-any-qubits (qubits)
-  "The returned function is true if there is any intersection between the instruction's qubits and qubits."
+(defun match-any-n-qubits (qubits n)
+  "The returned function is true if there is any intersection between the instruction's qubits and qubits for an n qubit operation. We need to specify n in the rule because a 2 qubit gate CNOT 0 1 could match a rule with qubits that has operation elements for a 1q gate. We want to prevent this, so we require the user to specify the number of qubits expected in the gate."
   (lambda (instr) (and (typep instr 'quil:gate-application)
+                       (equal n (list-length (mapcar #'quil:qubit-index (quil:application-arguments instr))))
                        (intersection qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
 
@@ -132,8 +131,12 @@
 (defun match-any-gates (gates)
   "The returned function is true if there is any intersection between the instruction's gates and gates."
   (lambda (instr) (and (typep instr 'quil:gate-application)
-                       (instr-intersect gates (list (cl-quil::application-operator-name instr))))))
+                       (intersection gates (list (cl-quil::application-operator-name instr)) :test #'string=))))
 
+(defun match-all-nq-gates (n)
+  "The returned function is true if the instruction operates on n qubits."
+  (lambda (instr) (and (typep instr 'quil:gate-application)
+                       (equal n (list-length (mapcar #'quil:qubit-index (quil:application-arguments instr)))))))
 
 (defun match-all-gates ()
   "The returned function is true if the instruction contains a gate (not a measure)."
@@ -156,11 +159,6 @@
   (lambda (instr) (and (typep instr 'quil:measurement)
                        (intersection qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
-(defmethod instr-intersect (l1 l2)
-  "Check if there are any gates in common between L1 and L2. L1 and L2 are  lists of string."
-  (loop :named outer :for inst1 in l1
-        :do (loop :named inner :for inst2 in l2
-                  :do (when (string= inst1 inst2) (return-from outer "A")))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -178,7 +176,7 @@
 
 
 (defmethod initialize-instance :after ((qvm channel-qvm) &rest args)
-  " Initializes an instance of a krausqvm"
+  " Initializes an instance of a CHANNEL-QVM"
   (declare (ignore args)) 
   (setf
    ;; Initialize the trial-amplitudes to an empty array of the correct size
@@ -212,9 +210,7 @@
 
 
 (defmethod transition ((qvm channel-qvm) (instr quil:gate-application))
-  "If any noise rules are matched by this instruction, apply the the kraus operators
-for that noise rule after applying the gate for this instruction
-"
+  "If any noise rules are matched by this instruction, apply the the kraus operators for that noise rule after applying the gate for this instruction."
   (let* ((gate   (pull-teeth-to-get-a-gate instr))
          (params (mapcar #'(lambda (p) (force-parameter p qvm))
                          (quil:application-parameters instr)))
@@ -232,7 +228,7 @@ for that noise rule after applying the gate for this instruction
 
 (defmethod transition :around ((qvm channel-qvm) (instr quil:measurement))
   (let ((ret-qvm (call-next-method)))
-    (apply-classical-readout-noisee ret-qvm instr)
+    (apply-classical-readout-noise ret-qvm instr)
     ret-qvm))
 
 
@@ -250,6 +246,10 @@ for that noise rule after applying the gate for this instruction
           :return (operation-elements rule)))
 
 
+(defgeneric apply-all-kraus-operators (qvm instr kraus-operators)
+  (:documentation "This function applies all the kraus operators in the list KRAUS-OPERATORS to the state of the system."))
+
+
 (defmethod apply-all-kraus-operators ((qvm channel-qvm) (instr quil:gate-application) kraus-operators)
   "Apply all the kraus operators to the state of the system."
   (loop :for kops :in kraus-operators
@@ -258,13 +258,21 @@ for that noise rule after applying the gate for this instruction
            (apply-kraus-ops qvm instr kops)))
 
 
+(defgeneric apply-kraus-ops (qvm instr kraus-ops)
+  (:documentation "We randomly select a kraus operator from the list KRAUS-OPS to apply to the state of the program. We do this by transform sampling (cf [1]): We divide the unit interval [0,1] into n bins where the j-th bin size equals the probability p_j with which the j-th Kraus operator k_j should be applied. We know that the Kraus operators are normalized such that
+       p_j = <psi|k_j^H k_j |psi> 
+where x^H denotes hermitian conjugation of x and can therefore perform this sampling lazily: First generate a uniformly sampled random number r in [0,1]. Next, find j such that
+     sum_{k=1}^{j-1} p_k < r <= sum_{k=1}^{j} p_k
+This is possible by evaluating only all p_k for k<=j. Then pick this j as the choice of Kraus operator to apply.
+[1]: https://en.wikipedia.org/wiki/Inverse_transform_sampling)"))
+
+
 (defmethod apply-kraus-ops ((qvm channel-qvm) (instr quil:gate-application) kraus-ops)
-  (format t "instr! ~a~%" instr)
   (let* ((amps (%trial-amplitudes qvm))
          (r (random 1.0d0))
          (summed-p 0.0d0)
          (logical-qubits (quil:application-arguments instr))
-         (qubits (mapcar #'quil:qubit-index logical-qubits))) ;; this needs to be some kind of reference to operational qubits. Have another dict? 
+         (qubits (mapcar #'quil:qubit-index logical-qubits)))
     (check-type amps quantum-state)
     (loop :for kj :in kraus-ops
           :do
@@ -276,28 +284,17 @@ for that noise rule after applying the gate for this instruction
     (normalize-wavefunction (amplitudes qvm))))
 
 
-(defgeneric apply-classical-readout-noisee (qvm instr)
-  (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
-  ;; Pure state QVM has no readout noise.
-  (:method ((qvm pure-state-qvm) (instr quil:measurement))
-    (declare (ignore qvm instr))
-    nil)
-  ;; Readout noise only happens to the resulting classical bit (i.e.,
-  ;; it's classical noise). As such, discarding that bit doesn't
-  ;; warrant any sort of special treatment.
-  (:method ((qvm approx-qvm) (instr quil:measure))
-    (%corrupt-readout qvm instr (readout-povms qvm))
-    )
-  (:method ((qvm channel-qvm) (instr quil:measure-discard))
-    (declare (ignore qvm instr))
-    nil)
-  ;; We do have a readout bit, and we want to corrupt it.
-  (:method ((qvm channel-qvm) (instr quil:measure))
-    (%corrupt-readout qvm instr (readout-povms (noise-model qvm))))
-  ;; For compiled measurements, refer to the source of that
-  ;; instruction.
-  (:method ((qvm channel-qvm) (instr compiled-measurement))
-    (apply-classical-readout-noise qvm (source-instruction instr))))
+(defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr quil:measure-discard))
+  (declare (ignore qvm instr))
+  nil)
+
+
+(defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr quil:measure))
+  (%corrupt-readout qvm instr (readout-povms (noise-model qvm))))
+
+
+(defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr compiled-measurement))
+  (apply-classical-readout-noise qvm (source-instruction instr)))
 
 
 (defun %corrupt-readout (qvm instr povm-map)
@@ -313,7 +310,7 @@ for that noise rule after applying the gate for this instruction
               (perturb-measurement c p00 p01 p10 p11))))))
 
 
-;; TODO declare inlinabldee, turn on optimization
+;; Duplicate function in noisy-qvm.lisp
 (defun perturb-measurement (actual-outcome p00 p01 p10 p11)
   "Given the readout error encoded in the POVM (see documentation of NOISY-QVM)
 randomly sample the observed (potentially corrupted) measurement outcome."
@@ -325,7 +322,7 @@ randomly sample the observed (potentially corrupted) measurement outcome."
       ((1) (if (<= r p01) 0 1)))))
 
 
-
+;; Duplicate function in noisy-qvm.lisp
 (defun check-povm (povm)
   "Verify that the list POVM contains a valid single qubit diagonal POVM.
 Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
@@ -336,51 +333,6 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
     (check-type p11 (double-float 0.0d0 1.0d0))
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                                        ; Temporary functions for testing
-
-
-(defun make-nm1 ()
-  (let* ((r1 (make-noise-rule (match-any-qubits (list 0 1)) (list (generate-damping-kraus-ops 2 1))))
-         (nm (make-noise-model (list r1))))
-    nm))
-
-
-(defun make-nm2 ()
-  (let* ((r2 (make-noise-rule (match-strict-gates (list "Y")) (list (generate-damping-kraus-ops 3 1))))
-         (nm2 (make-noise-model (list r2))))
-    nm2))
-
-(defun make-noisy-qvm ()
-  (let* ((p1 (make-noise-predicate (match-all-gates) 1 "after"))
-         (r1 (make-noise-rule p1 (list (generate-damping-kraus-ops 2 1))))
-         (nm (make-noise-model (list r1)))
-         (qvm (make-instance 'channel-qvm :number-of-qubits 2 :noise-model nm)))
-    qvm))
-
-(defun build-noise-model ()
-  (let* ((pred1 (make-noise-predicate (match-strict-qubits (list 0 1)) 1 "after"))
-          (pred2 (make-noise-predicate (match-strict-gates (list "X" "Z")) 1 "after"))
-          (kraus-elems1 (list (generate-damping-kraus-ops 2 1)))
-          (kraus-elems2 (list (generate-damping-dephasing-kraus-ops 3 1)))
-          (rule1 (make-noise-rule pred1 kraus-elems1))
-          (rule2 (make-noise-rule pred2 kraus-elems2)))
-    (make-noise-model (list rule1 rule2))))
-
-;TODO: 2Q ANY!!
-(defun test ()
-  (let* (
-         (q (make-noisy-qvm))
-         (numshots 100)
-         (qubit 0)
-         (program "DECLARE R0 BIT; X 0; Y 1;  MEASURE 0 R0")
-         (parsed-program (quil:parse-quil program))
-         )
-    (set-readout-povm q 0 (list .9d0 .1d0 .1d0 .9d0))
-    (load-program q parsed-program :supersede-memory-subsystem t)
-    (run q)))
 
 
 

@@ -36,5 +36,7 @@
                (:file "stress-tests")
                (:file "path-simulate-tests")
                (:file "stabilizer-qvm-tests")
+               (:file "channel-qvm-tests")
+               (:file "approximate-qvm-tests")
                (:file "parallel-tests")
                (:file "qvm-avx-intrinsics" :if-feature (:and :qvm-intrinsics :avx2))))

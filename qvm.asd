@@ -82,4 +82,4 @@
                (:file "path-simulate")
                (:file "misc")
                (:file "channel-qvm")
-               (:file "toy-qvm")))
+               (:file "approximate-qvm"))
