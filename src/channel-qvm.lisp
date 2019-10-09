@@ -108,27 +108,26 @@
     (make-noise-model nrs)))
 
 
-;; The following are examples of predicates! 
-(defun match-strict-qubits (qubits)
+(defun match-strict-qubits (&rest qubits)
   (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (equal qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
 
-(defun match-any-n-qubits (qubits n)
+(defun match-any-n-qubits (n qubits)
   "The returned function is true if there is any intersection between the instruction's qubits and qubits for an n qubit operation. We need to specify n in the rule because a 2 qubit gate CNOT 0 1 could match a rule with qubits that has operation elements for a 1q gate. We want to prevent this, so we require the user to specify the number of qubits expected in the gate."
   (lambda (instr) (and (typep instr 'quil:gate-application)
-                       (equal n (list-length (mapcar #'quil:qubit-index (quil:application-arguments instr))))
+                       (= n (list-length (mapcar #'quil:qubit-index (quil:application-arguments instr))))
                        (intersection qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
 
-(defun match-strict-gates (gates)
+(defun match-strict-gates (&rest gates)
   "The returned function is true if the instruciton's gates are exactly equal to gates"
   (lambda (instr) (and (typep instr 'quil:gate-application)
                        (equal gates (list (cl-quil::application-operator-name instr))))))
 
 
-(defun match-any-gates (gates)
+(defun match-any-gates (&rest gates)
   "The returned function is true if there is any intersection between the instruction's gates and gates."
   (lambda (instr) (and (typep instr 'quil:gate-application)
                        (intersection gates (list (cl-quil::application-operator-name instr)) :test #'string=))))
@@ -154,14 +153,14 @@
                        (equal qubit (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
 
-(defun match-measure-at-any (qubits)
+(defun match-measure-at-any (&rest qubits)
   "The returned function is true if the instruciton is a measure on any of the specified qubits. "
   (lambda (instr) (and (typep instr 'quil:measurement)
                        (intersection qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defclass channel-qvm (pure-state-qvm)
@@ -302,8 +301,7 @@ This is possible by evaluating only all p_k for k<=j. Then pick this j as the ch
   (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
          (a (quil:measure-address instr))
          (c (dereference-mref qvm a))
-         (povm (gethash q povm-map))
-         )
+         (povm (gethash q povm-map)))
     (when povm
       (destructuring-bind (p00 p01 p10 p11) povm
         (setf (dereference-mref qvm a)
@@ -333,6 +331,4 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
     (check-type p11 (double-float 0.0d0 1.0d0))
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
-
-
 

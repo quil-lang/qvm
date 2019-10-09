@@ -131,6 +131,9 @@ ALLOCATION is an optional argument with the following behavior.
   (bring-to-zero-state (amplitudes qvm))
   qvm)
 
+(defmethod apply-classical-readout-noise ((qvm pure-state-qvm) (instr quil:measurement))
+  (declare (ignore qvm instr))
+  nil)
 
 ;;; DEPRECATED:
 

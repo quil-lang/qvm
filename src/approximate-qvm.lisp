@@ -42,22 +42,19 @@
 
 ; For now just use a single gate time value for all calculations
 (defmethod set-gate-time ((qvm approx-qvm) gate-time)
-  "Set the gate time slot for approx-qvm. This value should represent the average gate time of the gates that will be run."
+  "To calculate the kraus operators for T1, T2, etc.. noise, a gate time value is needed. Ideally, this gate time should be the duration of the gate preceeding the application of the kraus noise. For now, since I haven't figured out a good way to get a qvm gate's time, I just made the gate time a slot that should represent the average gate time of gates that the qvm will run, and I use this value to calculate T1 and T2 noise. Set the gate time slot for approx-qvm. This value should represent the average gate time of the gates that will be run."
   (setf (avg-gate-time qvm) gate-time))
 
 
 (defmethod apply-all-kraus-operators ((qvm approx-qvm) (instr quil:gate-application) qubits)
   "Apply all the kraus operators (for all of the noise sources) to the state of the program. If we have just encountered a 2-qubit gate, we need to tensor the kraus operators for each qubit's error source. Currently, this does not support > 2 qubit gates. Note: if the current instr is a 2 qubit gate and there is only kraus ops for one of the qubits, then no error is applied. For example, if q0 has T1 error associated with it but q1 does not, no error channel is applied after a CNOT 0 1. "
   (loop :for source :in (list (t1-ops qvm) (t2-ops qvm))
-        :do (cond ((= (length qubits) 1) 
-                   (let ((kraus-map (gethash (nth 0 qubits) source)))
-                     (when kraus-map (apply-kraus-ops qvm instr kraus-map) )))
-                  ((= (length qubits) 2) 
-                   (let ((kraus-map  (kraus-kron (gethash (nth 0 qubits) source) 
-                                                 (gethash (nth 1 qubits) source))))
-                     (when kraus-map (check-kraus-ops kraus-map) (apply-kraus-ops qvm instr kraus-map))))              
-                  ((> (length qubits) 2) 
-                   (error "Unable to APPLY-ALL-KRAUS-OPERATORS: expected two or less qubits, but got ~A" (length qubits))))))
+        :do (case (length qubits)
+              (1 (let ((kraus-map (gethash (nth 0 qubits) source))) 
+                   (when kraus-map (apply-kraus-ops qvm instr kraus-map))))
+              (2 (let ((kraus-map (kraus-kron (gethash (nth 0 qubits) source) (gethash (nth 1 qubits) source))))
+                   (when kraus-map (check-kraus-ops kraus-map) (apply-kraus-ops qvm instr kraus-map))))
+              (t (error "Unable to APPLY-ALL-KRAUS-OPERATORS: expected two or fewer qubits, but got ~A" (length qubits))))))
 
 
 (defmethod transition ((qvm approx-qvm) (instr quil:gate-application))
@@ -118,7 +115,13 @@ is decoherence time. "
 
 
 (defun kraus-kron (k1s k2s)
-  "Calculate the tensor product of two kraus maps by tensoring their elems."
-  (loop :for x in k1s
-        :append (loop :for y in k2s
-                      :collect (magicl:kron x y))))
+  "Calculate the tensor product of two kraus maps by tensoring their elems. If one of
+the kraus maps is nil, tensor the other with the identity matrix. "
+
+  (cond ((not k1s) (loop :for k in k2s 
+                         :collect (magicl:kron (magicl:make-identity-matrix 2) k )))
+        ((not k2s) (loop :for k in k1s 
+                         :collect (magicl:kron k (magicl:make-identity-matrix 2))))
+        (t  (loop :for k1 in k1s :append (loop :for k2 in k2s
+                                               :collect (magicl:kron k1 k2))))))
+

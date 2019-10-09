@@ -267,10 +267,6 @@ POVM must be a 4-element list of double-floats."))
 
 (defgeneric apply-classical-readout-noise (qvm instr)
   (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
-  ;; Pure state QVM has no readout noise.
-  (:method ((qvm pure-state-qvm) (instr quil:measurement))
-    (declare (ignore qvm instr))
-    nil)
   ;; Readout noise only happens to the resulting classical bit (i.e.,
   ;; it's classical noise). As such, discarding that bit doesn't
   ;; warrant any sort of special treatment.
@@ -279,7 +275,7 @@ POVM must be a 4-element list of double-floats."))
     nil)
   ;; We do have a readout bit, and we want to corrupt it.
   (:method ((qvm noisy-qvm) (instr quil:measure))
-    (%corrupt-qvm-memory-with-povm qvm instr))
+    (%corrupt-readout qvm instr (readout-povms qvm)))
   ;; For compiled measurements, refer to the source of that
   ;; instruction.
   (:method ((qvm noisy-qvm) (instr compiled-measurement))
