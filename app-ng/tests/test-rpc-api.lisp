@@ -1,4 +1,4 @@
-(in-package :qvm-app-ng-tests)
+(in-package #:qvm-app-ng-tests)
 
 (alexandria:define-constant +generic-x-0-quil-program+
   "DECLARE ro BIT[2]; X 0; MEASURE 0 ro[0]"

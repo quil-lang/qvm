@@ -1,4 +1,4 @@
-(in-package :qvm-app-ng-tests)
+(in-package #:qvm-app-ng-tests)
 
 (deftest test-valid-uuid-string-p ()
   (is (qvm-app-ng::valid-uuid-string-p "fa8acf54-201d-4eef-8777-de4c5057aac9"))

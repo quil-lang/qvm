@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Author: appleby
 
-(in-package :qvm-app-ng)
+(in-package #:qvm-app-ng)
 
 (deftype persistent-qvm-token () 'string)
 

@@ -1,4 +1,4 @@
-(in-package :qvm-app-ng-tests)
+(in-package #:qvm-app-ng-tests)
 
 (defun enter-quietly (argv)
   (qvm-app-ng::%entry-point (append '("--verbose" "0") argv)))

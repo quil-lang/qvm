@@ -1,7 +1,7 @@
 ;;;; uuid.lisp
 ;;;;
 ;;;; Author: appleby
-(in-package :qvm-app-ng)
+(in-package #:qvm-app-ng)
 
 ;;; This file contains common utilities for working with v4 UUIDs. UUIDs are used as unique
 ;;; identifiers in various places, such as PERSISTENT-QVM and asynchronous JOB tokens. The utilities

@@ -1,4 +1,4 @@
-(in-package :qvm-app-ng-tests)
+(in-package #:qvm-app-ng-tests)
 
 (defun run-qvm-app-ng-tests (&key (verbose nil) (headless nil))
   "Run all qvm-app-ng tests. If VERBOSE is T, print out lots of test info. If HEADLESS is T, disable interactive debugging and quit on completion."
