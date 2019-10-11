@@ -31,9 +31,7 @@
       symbol)))
 
 (defun parse-simulation-method (simulation-method)
-  (%parse-string-to-known-symbol "simulation-method"
-                                 simulation-method
-                                 +available-simulation-methods+))
+  (%parse-string-to-known-symbol 'simulation-method simulation-method +available-simulation-methods+))
 
 (defun parse-optional-simulation-method (simulation-method)
   (and simulation-method (parse-simulation-method simulation-method)))
@@ -43,12 +41,10 @@
   ;; RPC-PARAMETER-PARSE-ERROR on failure. As more command line options are added, these PARSE-*
   ;; functions should be converted to return a generic PARAMETER-ERROR, which DEFINE-RPC-HANDLER
   ;; arranges to convert to an RPC-PARAMETER-PARSE-ERROR.
-  (%parse-string-to-known-symbol "log-level" log-level +available-log-levels+ 'keyword))
+  (%parse-string-to-known-symbol 'log-level log-level +available-log-levels+ 'keyword))
 
 (defun parse-allocation-method (allocation-method)
-  (%parse-string-to-known-symbol "allocation-method"
-                                 allocation-method
-                                 +available-allocation-methods+))
+  (%parse-string-to-known-symbol 'allocation-method allocation-method +available-allocation-methods+))
 
 (defun parse-optional-allocation-method (allocation-method)
   (and allocation-method (parse-allocation-method allocation-method)))
