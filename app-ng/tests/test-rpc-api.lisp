@@ -101,7 +101,8 @@ HOST defaults to 127.0.0.1 and PORT defaults to a randomly assigned port."
   (unwind-protect
        (funcall function body-or-stream status-code headers uri stream must-close reason-phrase)
     (progn
-      (close stream)
+      (when (streamp stream)
+        (close stream))
       (when (streamp body-or-stream)
         (close body-or-stream)))))
 
