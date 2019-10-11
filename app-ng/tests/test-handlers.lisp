@@ -1,4 +1,4 @@
-(in-package :qvm-app-ng-tests)
+(in-package #:qvm-app-ng-tests)
 
 (deftest test-handle-run-program ()
   ;; This test demonstrates calling a handler directly, rather than through the HTTP interface.

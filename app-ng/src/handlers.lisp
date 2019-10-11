@@ -1,4 +1,4 @@
-(in-package :qvm-app-ng)
+(in-package #:qvm-app-ng)
 
 (defvar *rpc-handlers* '()
   "An alist of (rpc-method-name . handler-function) conses defined by DEFINE-RPC-HANDLER.")

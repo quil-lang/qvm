@@ -1,4 +1,4 @@
-(in-package :qvm-app-ng)
+(in-package #:qvm-app-ng)
 
 (define-condition rpc-error (simple-error)
   ((http-status
