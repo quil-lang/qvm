@@ -159,54 +159,17 @@ BODY is executed with the persistent QVM's lock held, and an error is signaled i
 
 (defun canonicalize-persistent-qvm-token (token)
   "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
-  ;; Standardize on the more common (and more readable) lowercase UUID string, even though
-  ;; UUID:PRINT-OBJECT and UUID:PRINT-BYTES print them in uppercase.
-  (string-downcase token))
-
-(defun uuid->persistent-qvm-token (uuid)
-  "Convert UUID to a canonicalized PERSISTENT-QVM-TOKEN."
-  (canonicalize-persistent-qvm-token (princ-to-string uuid)))
+  (canonicalize-uuid-string token))
 
 (defun make-persistent-qvm-token ()
   "Return a new persistent QVM token."
-  (uuid->persistent-qvm-token
-   (bt:with-lock-held (**persistent-qvms-lock**)
-     ;; UUID:MAKE-V4-UUID is not thread safe. If you call it without locking, you get collisions. We
-     ;; reuse **PERSISTENT-QVMS-LOCK** here to avoid needing to acquire two separate locks in order
-     ;; to allocate a new persistent QVM. We could potentially avoid locking by always creating a
-     ;; thread-local binding for UUID:*UUID-RANDOM-STATE*, but since we only ever generate a new
-     ;; token at allocation time when we already hold the **PERSISTENT-QVMS-LOCK**, it's convenient
-     ;; to reuse it. In fact, at allocation time we call %MAKE-PERSISTENT-QVM-TOKEN-LOCKED. This
-     ;; locking version is provided for external code (like tests) that want to safely generate a
-     ;; valid persistent token without foisting the burden of thread-safe access on the caller.
-     (uuid:make-v4-uuid))))
-
-(defun %make-persistent-qvm-token-locked ()
-  (uuid->persistent-qvm-token (uuid:make-v4-uuid)))
+  (make-uuid-string))
 
 (defun valid-persistent-qvm-token-p (token)
   "True if TOKEN is a valid string representation of a v4 UUID.
 
 Note that this function requires that any hexadecimal digits in TOKEN are lowercased."
-  ;; See RFC 4122 for UUID format.
-  ;; https://tools.ietf.org/html/rfc4122#section-4.1
-  ;;
-  ;; We validate that token is a valid v4 UUID in printed string format. That is, as a string of
-  ;; hexadecimal digits (with certain restrictions) separated by hyphens in the expected places.
-  (and (typep token 'persistent-qvm-token)
-       (= (length token) 36)
-       (eql (aref token  8) #\-)
-       (eql (aref token 13) #\-)
-       (eql (aref token 14) #\4) ; version
-       (eql (aref token 18) #\-)
-       ;; https://tools.ietf.org/html/rfc4122#section-4.4
-       ;; The two most-significant bits of the clock sequence field are #b10, meaning the
-       ;; resulting hex digit of the most-significant byte is one of 8, 9, a, or b.
-       (find (aref token 19) "89ab")
-       (eql (aref token 23) #\-)
-       (every (lambda (c)
-                (find c "-0123456789abcdef"))
-              token)))
+  (valid-uuid-string-p token))
 
 (defun allocate-persistent-qvm (qvm allocation-method)
   "Allocate a new PERSISTENT-QVM.
@@ -215,7 +178,7 @@ QVM is a QVM object of any type (PURE-STATE-QVM, NOISY-QVM, etc.)
 
 ALLOCATION-METHOD should be one of the +AVAILABLE-ALLOCATION-METHODS+, and is used when creating the PERSISTENT-QVM's metadata."
   (bt:with-lock-held (**persistent-qvms-lock**)
-    (let ((token (%make-persistent-qvm-token-locked)))
+    (let ((token (make-persistent-qvm-token)))
       (cond ((not (null (%lookup-persistent-qvm-locked token)))
              (error "Token collision while attempting to allocate persistent QVM: ~S" token))
             (t (let ((persistent-qvm (make-persistent-qvm qvm allocation-method token)))

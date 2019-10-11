@@ -26,6 +26,7 @@
   :components ((:file "package")
                (:file "globals")
                (:file "utilities")
+               (:file "uuid")
                (:file "logging")
                (:file "errors")
                (:file "validators")
