@@ -1,4 +1,4 @@
-;;;; api/persistent-qvm.lisp
+;;;; persistent-qvm.lisp
 ;;;;
 ;;;; Author: appleby
 
