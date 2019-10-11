@@ -155,7 +155,7 @@ BODY is executed with the persistent QVM's lock held, and an error is signaled i
 
 (defun %lookup-persistent-qvm-or-lose (token)
   (or (%lookup-persistent-qvm token)
-      (error "Failed to find persistent QVM ~D" token)))
+      (error "Failed to find persistent QVM ~A" token)))
 
 (defun canonicalize-persistent-qvm-token (token)
   "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
