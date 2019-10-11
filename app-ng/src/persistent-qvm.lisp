@@ -21,7 +21,7 @@
     (make-hash-table :test 'equal)))
 
 (global-vars:define-global-var **persistent-qvms** (make-empty-persistent-qvms-db)
-  "The database of persistent QVMs. The keys are integers and the values are lists of (QVM LOCK METADATA) triples.")
+  "The database of persistent QVMs. The keys are PERSISTENT-QVM-TOKENs and the values are PERSISTENT-QVMs.")
 
 (global-vars:define-global-var **persistent-qvms-lock** (bt:make-lock "Persistent QVMs DB Lock"))
 
