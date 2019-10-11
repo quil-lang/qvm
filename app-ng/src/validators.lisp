@@ -1,5 +1,14 @@
 (in-package :qvm-app-ng)
 
+(defun optionally (parameter-parser)
+  "Combinator for parsing optional parameters.
+
+PARAMETER-PARSER is a function-designator for a function that accepts a single required argument.
+
+Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on it if PARAMETER is non-NIL. Otherwise, return NIL."
+  (lambda (parameter)
+    (and parameter (funcall parameter-parser parameter))))
+
 (defun parse-qvm-token (qvm-token)
   ;; Ensure it's a STRING before attempting to canonicalize the case. Otherwise, we'll get a
   ;; not-so-helpful error message.
@@ -12,9 +21,6 @@
       (rpc-parameter-parse-error "Invalid persistent QVM token. Expected a v4 UUID. Got ~S"
                                  qvm-token))
     canonicalized-token))
-
-(defun parse-optional-qvm-token (qvm-token)
-  (and qvm-token (parse-qvm-token qvm-token)))
 
 (defun %parse-string-to-known-symbol (parameter-name parameter-string known-symbols
                                       &optional (package 'qvm-app-ng))
@@ -33,9 +39,6 @@
 (defun parse-simulation-method (simulation-method)
   (%parse-string-to-known-symbol 'simulation-method simulation-method +available-simulation-methods+))
 
-(defun parse-optional-simulation-method (simulation-method)
-  (and simulation-method (parse-simulation-method simulation-method)))
-
 (defun parse-log-level (log-level)
   ;; TODO(appleby): This is only called when parsing command-line args, but returns an
   ;; RPC-PARAMETER-PARSE-ERROR on failure. As more command line options are added, these PARSE-*
@@ -45,9 +48,6 @@
 
 (defun parse-allocation-method (allocation-method)
   (%parse-string-to-known-symbol 'allocation-method allocation-method +available-allocation-methods+))
-
-(defun parse-optional-allocation-method (allocation-method)
-  (and allocation-method (parse-allocation-method allocation-method)))
 
 (defun parse-num-qubits (num-qubits)
   (unless (typep num-qubits `(integer 0))
@@ -115,6 +115,3 @@
                (every #'floatp noise))
     (rpc-parameter-parse-error "Invalid Pauli noise. Expected a LIST of three FLOATs. Got ~S" noise))
   noise)
-
-(defun parse-optional-pauli-noise (noise)
-  (and noise (parse-pauli-noise noise)))

@@ -91,11 +91,12 @@ Alternatively, the handler function can be called from lisp like so
    (with-output-to-string (*error-output*)
      (show-version))))
 
-(define-rpc-handler (handle-create-qvm "create-qvm") ((allocation-method #'parse-allocation-method)
-                                                      (simulation-method #'parse-simulation-method)
-                                                      (num-qubits #'parse-num-qubits)
-                                                      (gate-noise #'parse-optional-pauli-noise)
-                                                      (measurement-noise #'parse-optional-pauli-noise))
+(define-rpc-handler (handle-create-qvm "create-qvm")
+                    ((allocation-method #'parse-allocation-method)
+                     (simulation-method #'parse-simulation-method)
+                     (num-qubits #'parse-num-qubits)
+                     (gate-noise (optionally #'parse-pauli-noise))
+                     (measurement-noise (optionally #'parse-pauli-noise)))
   "Create the requested persistent QVM.
 
 SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
@@ -119,11 +120,11 @@ Return a JSON object containing a \"token\" key with the newly-created persisten
                             allocation-method)))))
 
 (define-rpc-handler (handle-qvm-memory-estimate "qvm-memory-estimate")
-    ((allocation-method #'parse-allocation-method)
-     (simulation-method #'parse-simulation-method)
-     (num-qubits #'parse-num-qubits)
-     (gate-noise #'parse-optional-pauli-noise)
-     (measurement-noise #'parse-optional-pauli-noise))
+                    ((allocation-method #'parse-allocation-method)
+                     (simulation-method #'parse-simulation-method)
+                     (num-qubits #'parse-num-qubits)
+                     (gate-noise (optionally #'parse-pauli-noise))
+                     (measurement-noise (optionally #'parse-pauli-noise)))
   "Return an estimate of the number of bytes required to store the quantum state of a QVM of the given type.
 
 The number returned represents the number of bytes required to store the QVM state, i.e. to store the amplitudes of the wavefunction for a PURE-STATE simulation or for the density matrix for a FULL-DENSITY-MATRIX simulation. Note that the memory required to store QVM state represents a lower-bound on the memory required for simulation, since in the course of simulating programs the QVM will allocate additional memory. For the most part, these additional allocations are small (compared to the QVM state), short-lived, and difficult to predict in advance. We also ignore any memory allocated for the classical memory subsystem of the QVM, which is bounded by QVM::**CLASSICAL-MEMORY-SIZE-LIMIT** (64K by default).
@@ -162,13 +163,13 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
   (encode-json (persistent-qvm-info qvm-token)))
 
 (define-rpc-handler (handle-run-program "run-program")
-                    ((qvm-token #'parse-optional-qvm-token)
-                     (allocation-method #'parse-optional-allocation-method)
-                     (simulation-method #'parse-optional-simulation-method)
+                    ((qvm-token (optionally #'parse-qvm-token))
+                     (allocation-method (optionally #'parse-allocation-method))
+                     (simulation-method (optionally #'parse-simulation-method))
                      (compiled-quil #'parse-quil-string)
                      (addresses #'parse-addresses)
-                     (gate-noise #'parse-optional-pauli-noise)
-                     (measurement-noise #'parse-optional-pauli-noise))
+                     (gate-noise (optionally #'parse-pauli-noise))
+                     (measurement-noise (optionally #'parse-pauli-noise)))
   "Run the requested COMPILED-QUIL program, either on a persistent QVM or an emphemeral QVM using the given SIMULATION-METHOD.
 
 QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
