@@ -18,22 +18,18 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-empty-persistent-qvms-db ()
-    (make-hash-table :test 'equal)))
+    (make-safety-hash :test 'equal)))
 
 (global-vars:define-global-var **persistent-qvms** (make-empty-persistent-qvms-db)
   "The database of persistent QVMs. The keys are PERSISTENT-QVM-TOKENs and the values are PERSISTENT-QVMs.")
 
-(global-vars:define-global-var **persistent-qvms-lock** (bt:make-lock "Persistent QVMs DB Lock"))
-
 (defun reset-persistent-qvms-db ()
   "Reset the **PERSISTENT-QVMS** database."
-  (bt:with-lock-held (**persistent-qvms-lock**)
-    (setf **persistent-qvms** (make-empty-persistent-qvms-db))))
+  (safety-hash-clrhash **persistent-qvms**))
 
 (defun persistent-qvms-count ()
   "Return the number of PERSISTENT-QVMS currently allocated."
-  (bt:with-lock-held (**persistent-qvms-lock**)
-    (hash-table-count **persistent-qvms**)))
+  (safety-hash-table-count **persistent-qvms**))
 
 (alexandria:define-constant +valid-pqvm-state-transitions+
     '((ready    running           dying)
@@ -118,7 +114,6 @@ BODY is executed with the persistent QVM's lock held. No other guarantees are ma
   (check-type pqvm symbol)
   (alexandria:once-only (token)
     `(let ((,pqvm (%lookup-persistent-qvm-or-lose ,token)))
-       (declare (ignorable ,pqvm))
        (bt:with-lock-held ((persistent-qvm-lock ,pqvm))
          ,@body))))
 
@@ -136,26 +131,16 @@ BODY is executed with the persistent QVM's lock held, and an error is signaled i
              (dying (error "Persistent QVM ~A is marked for deletion." ,token))
              (t ,@body)))))))
 
-(defun %insert-persistent-qvm-locked (token persistent-qvm)
-  (setf (gethash token **persistent-qvms**) persistent-qvm))
+(defun %lookup-persistent-qvm-or-lose (token)
+  (handler-case (safety-hash-gethash-or-lose token **persistent-qvms**)
+    (error (c)
+      (error "Failed to find persistent QVM ~A~%~A" token c))))
 
 (defun delete-persistent-qvm (token)
   "Delete the PERSISTENT-QVM indicated by TOKEN."
   (with-locked-pqvm (pqvm) token
     (%checked-transition-to-state-locked pqvm 'dying))
-  (bt:with-lock-held (**persistent-qvms-lock**)
-    (remhash token **persistent-qvms**)))
-
-(defun %lookup-persistent-qvm-locked (token)
-  (gethash token **persistent-qvms**))
-
-(defun %lookup-persistent-qvm (token)
-  (bt:with-lock-held (**persistent-qvms-lock**)
-    (%lookup-persistent-qvm-locked token)))
-
-(defun %lookup-persistent-qvm-or-lose (token)
-  (or (%lookup-persistent-qvm token)
-      (error "Failed to find persistent QVM ~A" token)))
+  (safety-hash-remhash token **persistent-qvms**))
 
 (defun canonicalize-persistent-qvm-token (token)
   "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
@@ -177,13 +162,10 @@ Note that this function requires that any hexadecimal digits in TOKEN are lowerc
 QVM is a QVM object of any type (PURE-STATE-QVM, NOISY-QVM, etc.)
 
 ALLOCATION-METHOD should be one of the +AVAILABLE-ALLOCATION-METHODS+, and is used when creating the PERSISTENT-QVM's metadata."
-  (bt:with-lock-held (**persistent-qvms-lock**)
-    (let ((token (make-persistent-qvm-token)))
-      (cond ((not (null (%lookup-persistent-qvm-locked token)))
-             (error "Token collision while attempting to allocate persistent QVM: ~S" token))
-            (t (let ((persistent-qvm (make-persistent-qvm qvm allocation-method token)))
-                 (%insert-persistent-qvm-locked token persistent-qvm)
-                 (values token persistent-qvm)))))))
+  (let* ((token (make-persistent-qvm-token))
+         (persistent-qvm (make-persistent-qvm qvm allocation-method token)))
+    (safety-hash-insert-unique token persistent-qvm **persistent-qvms**)
+    (values token persistent-qvm)))
 
 (defun persistent-qvm-info (token)
   "Return a HASH-TABLE of information about the PERSISTENT-QVM identified by TOKEN.
