@@ -50,7 +50,7 @@
 ;;;;       (maphash (lambda (key value)
 ;;;;                  (setf (gethash key hash-table) (1+ value)))
 ;;;;                hash-table)
-(in-package #:qvm-app-ng)
+(in-package #:qvm-app-ng.safety-hash)
 
 (defstruct (safety-hash (:constructor %make-safety-hash))
   (lock  (error "Must provide LOCK")  :read-only t)
@@ -74,38 +74,38 @@
 (defun make-safety-hash (&rest make-hash-table-args)
   (%make-safety-hash :lock (bt:make-lock) :table (apply #'make-hash-table make-hash-table-args)))
 
-(defun safety-hash-clrhash (safety-hash)
+(defun clrhash (safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
-    (clrhash hash-table)))
+    (cl:clrhash hash-table)))
 
-(defun safety-hash-gethash (key safety-hash &optional default)
+(defun gethash (key safety-hash &optional default)
   (with-locked-safety-hash (hash-table) safety-hash
-    (gethash key hash-table default)))
+    (cl:gethash key hash-table default)))
 
-(defun (setf safety-hash-gethash) (new-value key safety-hash)
+(defun (setf gethash) (new-value key safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
-    (setf (gethash key hash-table) new-value)))
+    (setf (cl:gethash key hash-table) new-value)))
 
-(defun safety-hash-table-count (safety-hash)
+(defun hash-table-count (safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
-    (hash-table-count hash-table)))
+    (cl:hash-table-count hash-table)))
 
-(defun safety-hash-remhash (key safety-hash)
+(defun remhash (key safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
-    (remhash key hash-table)))
+    (cl:remhash key hash-table)))
 
 
 ;;; Higher-level multi-access & convenience functions.
 
-(defun safety-hash-gethash-or-lose (key safety-hash)
+(defun gethash-or-lose (key safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
-    (multiple-value-bind (value foundp) (gethash key hash-table)
+    (multiple-value-bind (value foundp) (cl:gethash key hash-table)
       (if foundp
           value
           (error "Failed to find key ~A in SAFETY-HASH" key)))))
 
-(defun safety-hash-insert-unique (key value safety-hash)
+(defun insert-unique (key value safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
-    (if (nth-value 1 (gethash key hash-table))
+    (if (nth-value 1 (cl:gethash key hash-table))
         (error "Collision for key ~A in SAFETY-HASH ~A" key safety-hash)
-        (setf (gethash key hash-table) value))))
+        (setf (cl:gethash key hash-table) value))))

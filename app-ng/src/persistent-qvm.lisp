@@ -18,18 +18,18 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-empty-persistent-qvms-db ()
-    (make-safety-hash :test 'equal)))
+    (safety-hash:make-safety-hash :test 'equal)))
 
 (global-vars:define-global-var **persistent-qvms** (make-empty-persistent-qvms-db)
   "The database of persistent QVMs. The keys are PERSISTENT-QVM-TOKENs and the values are PERSISTENT-QVMs.")
 
 (defun reset-persistent-qvms-db ()
   "Reset the **PERSISTENT-QVMS** database."
-  (safety-hash-clrhash **persistent-qvms**))
+  (safety-hash:clrhash **persistent-qvms**))
 
 (defun persistent-qvms-count ()
   "Return the number of PERSISTENT-QVMS currently allocated."
-  (safety-hash-table-count **persistent-qvms**))
+  (safety-hash:hash-table-count **persistent-qvms**))
 
 (alexandria:define-constant +valid-pqvm-state-transitions+
     '((ready    running           dying)
@@ -132,7 +132,7 @@ BODY is executed with the persistent QVM's lock held, and an error is signaled i
              (t ,@body)))))))
 
 (defun %lookup-persistent-qvm-or-lose (token)
-  (handler-case (safety-hash-gethash-or-lose token **persistent-qvms**)
+  (handler-case (safety-hash:gethash-or-lose token **persistent-qvms**)
     (error (c)
       (error "Failed to find persistent QVM ~A~%~A" token c))))
 
@@ -140,7 +140,7 @@ BODY is executed with the persistent QVM's lock held, and an error is signaled i
   "Delete the PERSISTENT-QVM indicated by TOKEN."
   (with-locked-pqvm (pqvm) token
     (%checked-transition-to-state-locked pqvm 'dying))
-  (safety-hash-remhash token **persistent-qvms**))
+  (safety-hash:remhash token **persistent-qvms**))
 
 (defun canonicalize-persistent-qvm-token (token)
   "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
@@ -164,7 +164,7 @@ QVM is a QVM object of any type (PURE-STATE-QVM, NOISY-QVM, etc.)
 ALLOCATION-METHOD should be one of the +AVAILABLE-ALLOCATION-METHODS+, and is used when creating the PERSISTENT-QVM's metadata."
   (let* ((token (make-persistent-qvm-token))
          (persistent-qvm (make-persistent-qvm qvm allocation-method token)))
-    (safety-hash-insert-unique token persistent-qvm **persistent-qvms**)
+    (safety-hash:insert-unique token persistent-qvm **persistent-qvms**)
     (values token persistent-qvm)))
 
 (defun persistent-qvm-info (token)
