@@ -31,6 +31,7 @@
                (:file "errors")
                (:file "validators")
                (:file "make-qvm")
+               (:file "safety-hash")
                (:file "persistent-qvm")
                (:file "server")
                (:file "handlers")
