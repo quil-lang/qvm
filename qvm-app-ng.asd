@@ -23,7 +23,11 @@
   :pathname "app-ng/src/"
   :serial t
   :entry-point "qvm-app-ng::asdf-entry-point"
-  :components ((:file "package")
+  :components ((:module "safety-hash"
+                :serial t
+                :components ((:file "package")
+                             (:file "safety-hash")))
+               (:file "package")
                (:file "globals")
                (:file "utilities")
                (:file "uuid")
@@ -31,7 +35,6 @@
                (:file "errors")
                (:file "validators")
                (:file "make-qvm")
-               (:file "safety-hash")
                (:file "persistent-qvm")
                (:file "server")
                (:file "handlers")
