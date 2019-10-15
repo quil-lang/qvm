@@ -26,7 +26,8 @@
   :components ((:module "safety-hash"
                 :serial t
                 :components ((:file "package")
-                             (:file "safety-hash")))
+                             (:file "impl-bordeaux-threads" :if-feature (:not :sbcl))
+                             (:file "impl-sbcl" :if-feature :sbcl)))
                (:file "package")
                (:file "globals")
                (:file "utilities")

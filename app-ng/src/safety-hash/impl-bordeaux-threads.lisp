@@ -1,26 +1,10 @@
-;;;; safety-hash.lisp
+;;;; app-ng/src/safety-hash/impl-bordeaux-threads.lisp
 ;;;;
 ;;;; Author: appleby
-;;;;
-;;;;     Safety-hash!
-;;;;
-;;;;     Ah we can hash if we want to, we can leave your locks behind
-;;;;     Cause your threads don't hash and if they don't hash
-;;;;     Well they're are no threads of mine
-;;;;
-;;;; SAFETY-HASH implements a portable, thread-safe interface to basic CRUD operations for a
-;;;; globally-accessible hash-table-like object. SAFETY-HASHes are used in QVM-APP-NG to store
-;;;; PERSISTENT-QVMs and other objects which might persist between requests.
 ;;;;
 ;;;; The SAFETY-HASH implementation in this file is intended to be simple and portable (and probably
 ;;;; slow). This portable implementation acquires and releases a recursive per-object lock around
 ;;;; every operation. It depends on BORDEAUX-THREADS for the locking primitives.
-;;;;
-;;;; The SAFETY-HASH API sticks closely to the standard Common Lisp HASH-TABLE API, but doesn't
-;;;; attempt to be a drop-in replacement. Only functions actually needed in the parent QVM-APP-NG
-;;;; package are included. For example, some of the standard HASH-TABLE functions are missing
-;;;; (HASH-TABLE-SIZE, MAPHASH, etc.), and other functions are included here which have no direct
-;;;; counterpart for standard HASH-TABLEs (e.g. SAFETY-HASH-INSERT-UNIQUE).
 (in-package #:qvm-app-ng.safety-hash)
 
 (defstruct (safety-hash (:constructor %make-safety-hash))
