@@ -1,8 +1,6 @@
 ;;;; app-ng/src/globals.lisp
 ;;;;
-;;;; Author: Nikolas Tezak
-;;;;         Robert Smith
-
+;;;; Author: appleby
 (in-package #:qvm-app-ng)
 
 ;; These are GLOBAL-VARS but act like constants, so name them like constants.

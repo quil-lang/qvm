@@ -1,6 +1,6 @@
 ;;;; app-ng/tests/package.lisp
 ;;;;
-;;;; Author: Nik Tezak
+;;;; Author: appleby
 
 (fiasco:define-test-package #:qvm-app-ng-tests
   (:use #:qvm-app-ng)
