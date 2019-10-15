@@ -13,43 +13,14 @@
 ;;;; PERSISTENT-QVMs and other objects which might persist between requests.
 ;;;;
 ;;;; The SAFETY-HASH implementation in this file is intended to be simple and portable (and probably
-;;;; slow). This portable implementation acquires and releases a non-recursive per-object lock
-;;;; around every operation. It depends on BORDEAUX-THREADS for the locking primitives.
+;;;; slow). This portable implementation acquires and releases a recursive per-object lock around
+;;;; every operation. It depends on BORDEAUX-THREADS for the locking primitives.
 ;;;;
 ;;;; The SAFETY-HASH API sticks closely to the standard Common Lisp HASH-TABLE API, but doesn't
-;;;; attempt to be a drop-in replacement. Some of the standard functions that operate on HASH-TABLEs
-;;;; are missing, and other functions are included here which have no direct counterpart for
-;;;; standard HASH-TABLEs (e.g. SAFETY-HASH-INSERT-UNIQUE). Some of the standard HASH-TABLE
-;;;; functions are missing only because the rest of QVM-APP-NG has no use for them yet
-;;;; (e.g. HASH-TABLE-SIZE); others (MAPHASH, WITH-HASH-TABLE-ITERATOR) are missing partially
-;;;; because they are not yet needed, and partially because adding them would either mean switching
-;;;; to recursive locks, or else modifying the interfaces to do something different than their
-;;;; documented behavior in the standard. In such cases, the user always has an escape hatch in the
-;;;; form of the WITH-LOCKED-SAFETY-HASH macro, which locks the SAFETY-HASH and binds a reference to
-;;;; the underlying HASH-TABLE, which the caller can then modify as they please.
-;;;;
-;;;; For example, the caller is allowed to modify the current entry when iterating over a
-;;;; HASH-TABLE with MAPHASH, like so
-;;;;
-;;;;     (maphash (lambda (key value)
-;;;;                (setf (gethash key some-hash) (1+ value)))
-;;;;              some-hash)
-;;;;
-;;;; Translating the above into SAFETY-HASH-compatible API would produce something like
-;;;;
-;;;;     (safety-hash-maphash (lambda (key value)
-;;;;                            (setf (safety-hash-gethash key some-hash) (1+ value)))
-;;;;              some-hash)
-;;;;
-;;;; where the call to SAFETY-HASH-GETHASH would attempt to acquire the lock already held by
-;;;; SAFETY-HASH-MAPHASH. Switching to recursive locks here could work. For now, the recommend
-;;;; approach is to instead use WITH-LOCKED-SAFETY-HASH and operate on the underlying HASH-TABLE
-;;;; directly, like so:
-;;;;
-;;;;     (with-locked-safety-hash (hash-table) safety-hash
-;;;;       (maphash (lambda (key value)
-;;;;                  (setf (gethash key hash-table) (1+ value)))
-;;;;                hash-table)
+;;;; attempt to be a drop-in replacement. Only functions actually needed in the parent QVM-APP-NG
+;;;; package are included. For example, some of the standard HASH-TABLE functions are missing
+;;;; (HASH-TABLE-SIZE, MAPHASH, etc.), and other functions are included here which have no direct
+;;;; counterpart for standard HASH-TABLEs (e.g. SAFETY-HASH-INSERT-UNIQUE).
 (in-package #:qvm-app-ng.safety-hash)
 
 (defstruct (safety-hash (:constructor %make-safety-hash))
@@ -57,7 +28,7 @@
   (table (error "Must provide TABLE") :read-only t))
 
 (defun call-with-locked-safety-hash (safety-hash function)
-  (bt:with-lock-held ((safety-hash-lock safety-hash))
+  (bt:with-recursive-lock-held ((safety-hash-lock safety-hash))
     (funcall function (safety-hash-table safety-hash))))
 
 #+#:warning-extreme-danger-will-robinson-use-only-in-case-of-testing
@@ -72,7 +43,8 @@
 ;;; Standard HASH-TABLE API replacements.
 
 (defun make-safety-hash (&rest make-hash-table-args)
-  (%make-safety-hash :lock (bt:make-lock) :table (apply #'make-hash-table make-hash-table-args)))
+  (%make-safety-hash :lock (bt:make-recursive-lock)
+                     :table (apply #'make-hash-table make-hash-table-args)))
 
 (defun clrhash (safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
