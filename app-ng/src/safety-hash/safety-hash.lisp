@@ -79,5 +79,5 @@
 (defun insert-unique (key value safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
     (if (nth-value 1 (cl:gethash key hash-table))
-        (error "Collision for key ~A in SAFETY-HASH ~A" key safety-hash)
+        (error "Collision for key ~A in SAFETY-HASH" key)
         (setf (cl:gethash key hash-table) value))))
