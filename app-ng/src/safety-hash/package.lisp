@@ -32,6 +32,7 @@
 (defpackage #:qvm-app-ng.safety-hash
   (:use #:cl)
   (:nicknames #:safety-hash)
+  ;; WARNING: You really really don't want to :USE this package.
   (:shadow #:clrhash
            #:gethash
            #:hash-table-count
