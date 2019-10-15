@@ -79,6 +79,18 @@
       (setf (gethash 0 hash-table) 0))
     (is (= 0 (safety-hash:gethash 0 h)))))
 
+(deftest test-safety-hash-recursive-locking ()
+  (let ((h (safety-hash:make-safety-hash)))
+    (safety-hash:with-locked-safety-hash (hash-table-1) h
+      (setf (gethash 0 hash-table-1) 0)
+      (safety-hash:with-locked-safety-hash (hash-table-2) h
+        (is (eq hash-table-1 hash-table-2))
+        (setf (gethash 1 hash-table-1) 1)
+        (setf (gethash 2 hash-table-2) 2)))
+    (is (= 0 (safety-hash:gethash 0 h)))
+    (is (= 1 (safety-hash:gethash 1 h)))
+    (is (= 2 (safety-hash:gethash 2 h)))))
+
 ;;; Concurrency tests
 
 (deftest test-safety-hash-concurrent-writers-one-key ()
