@@ -66,7 +66,7 @@
 
 (defmacro with-locked-safety-hash ((hash-table) safety-hash &body body)
   (check-type hash-table symbol)
-  `(call-with-locked-safety-hash ,safety-hash (lambda (hash-table) ,@body)))
+  `(call-with-locked-safety-hash ,safety-hash (lambda (,hash-table) ,@body)))
 
 
 ;;; Standard HASH-TABLE API replacements.
