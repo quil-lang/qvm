@@ -2,7 +2,7 @@
 
 ;;; Basic API sanity tests
 
-(deftest test-make-safety-hash ()
+(deftest test-safety-hash-make-safety-hash ()
   ;; exhaustive test of :TEST keyword
   (dolist (test (list 'eq 'eql 'equal 'equalp #'eq #'eql #'equal #'equalp))
     (is (safety-hash:safety-hash-p (safety-hash:make-safety-hash :test test))))
@@ -67,13 +67,13 @@
     (is (= 0 (setf (safety-hash:gethash 0 h) 0)))
     (signals error (safety-hash:insert-unique 0 0 h))))
 
-(deftest test-call-with-locked-safety-hash ()
+(deftest test-safety-hash-call-with-locked-safety-hash ()
   (let ((h (safety-hash:make-safety-hash)))
     (is (= 0 (safety-hash:call-with-locked-safety-hash h (lambda (hash-table)
                                                            (setf (gethash 0 hash-table) 0)))))
     (is (= 0 (safety-hash:gethash 0 h)))))
 
-(deftest test-with-locked-safety-hash ()
+(deftest test-safety-hash-with-locked-safety-hash ()
   (let ((h (safety-hash:make-safety-hash)))
     (safety-hash:with-locked-safety-hash (hash-table) h
       (setf (gethash 0 hash-table) 0))
