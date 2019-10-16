@@ -23,14 +23,14 @@
 
 
 (defun (setf qubit-t1) (t1 qvm qubit)
-  "Save the kraus operators for the t1 provided on the specific qubit."
+  "Save the kraus operators for the T1 provided on the specific qubit."
   (let ((kraus-ops (generate-damping-kraus-ops t1 (avg-gate-time qvm))))
     (check-kraus-ops kraus-ops)
     (setf (gethash qubit (t1-ops qvm)) kraus-ops)))
 
 
 (defun (setf qubit-t2) (t2 qvm qubit)
-  "Save the kraus operators for the t2 provided on the specified qubit."
+  "Save the kraus operators for the T2  provided on the specified qubit."
   (let ((kraus-ops (generate-damping-dephasing-kraus-ops t2 (avg-gate-time qvm))))
     (check-kraus-ops kraus-ops)
     (setf (gethash qubit (t2-ops qvm)) kraus-ops)))
@@ -86,25 +86,26 @@
 
 
 (defmethod apply-classical-readout-noise ((qvm approx-qvm) (instr quil:measure))
+  ;; Apply the classical readout noise to the state of an APPROX-QVM
   (%corrupt-readout qvm instr (readout-povms qvm)))
 
 
 (defun tphi (t1 t2)
-  "Calculate t_phi from t1 and t2. t_phi = (2*t1*t2) / (2*t1 + t2)"
+  "Calculate t_phi from T1 and T2. t_phi = (2*t1*t2) / (2*t1 + t2)"
   (/ (* 2 (* t1 t2)) (+ t2 (* 2 t1))))
 
 
 (defun generate-damping-kraus-ops (t1 gate-time)
-  "Given a value for t1 and a gate time, generates the kraus operators corresponding to the t1 noise. "
+  "Given a value for T1 and a GATE-TIME, generates the kraus operators corresponding to the t1 noise. "
   (let* ((prob (/ gate-time t1)) 
          (k0 (magicl:make-complex-matrix 2 2 (list 0 0 (sqrt prob) 0)))
          (k1 (magicl:make-complex-matrix 2 2 (list 1 0 0  (sqrt (- 1 prob))))))
     (list k0 k1)))
 
 
-(defun generate-dephasing-kraus-ops (tphi gate-time)
-  "Given a value for t_phi (dephasing time) and a gate time, calculates the kraus operators corresponding to the dephasing noise."
-  (let*  ((prob (/ gate-time tphi))
+(defun generate-dephasing-kraus-ops (t-phi gate-time)
+  "Given a value for T-PHI (dephasing time) and a GATE-TIME, calculates the kraus operators corresponding to the dephasing noise."
+  (let*  ((prob (/ gate-time t-phi))
           (prob-k1 (/ prob 2))
           (prob-k0 (- 1 prob-k1 ))
           (kraus-ops (loop :for mat :in '("I" "Z")
@@ -120,12 +121,12 @@
 ;; combining it into generate-dephasing-kraus-ops. For now I am pretty sure the calculations
 ;; are the same. 
 (defun generate-damping-dephasing-kraus-ops (t2 gate-time)  
-  "Calculates the kraus operators for dephasing and damping noise from t2, which is decoherence time. "
+  "Calculates the kraus operators for dephasing and damping noise from T2, which is decoherence time. "
   (generate-dephasing-kraus-ops t2 gate-time)) 
 
 
 (defun kraus-kron (k1s k2s)
-  "Calculate the tensor product of two kraus maps by tensoring their elems. If one of the kraus maps is nil, tensor the other with the identity matrix. "
+  "Calculate the tensor product of two kraus maps K1 and K2 by tensoring their elems. If one of the kraus maps is NIL, tensor the other with the identity matrix. "
   (cond ((not k1s) (loop :for k in k2s 
                          :collect (magicl:kron (magicl:make-identity-matrix 2) k )))
         ((not k2s) (loop :for k in k1s 
@@ -135,17 +136,3 @@
 
 
 
-
-(defun simple-test-approx ()
-  (let* ((ones 0)
-         (qvm (make-instance 'approx-qvm :number-of-qubits 2 :avg-gate-time 1))
-         (numshots 100)
-         (program "DECLARE R0 BIT; X 0; CNOT 0 1;  MEASURE 0 R0")
-         (parsed-program  (quil:parse-quil program)) )
-    (load-program qvm parsed-program :supersede-memory-subsystem t)
-    (setf (qubit-t1 qvm 0) 5
-          (qubit-t2 qvm 0) 4
-          (qubit-t1 qvm 1) 2
-          (qubit-t2 qvm 1) 3)
-    (run qvm))
-  )
