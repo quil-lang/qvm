@@ -150,6 +150,22 @@ test-app-ng:
 		--eval '(ql:quickload :qvm-app-ng-tests)' \
 		--eval '(asdf:test-system :qvm-app-ng)'
 
+# Re-run the full QVM-APP-NG-TESTS suite using the generic bordeaux-threads implementation of the
+# SAFETY-HASH package. Run the test-app-ng target via a recursive make invocation here, rather than
+# specifying it as a prerequisite; otherwise, in a command line invocation like
+#
+#     make test-app-ng test-app-ng-with-generic-safety-hash
+#
+# Make will consider the test-app-ng goal to be up-to-date when test-app-ng-with-generic-safety-hash
+# runs. Run clean-cache before and after to ensure that this and subsequent builds aren't polluted
+# with stale FASLs. Since nuking the cache in this way is obnoxious, don't run these tests as a
+# prerequisite of the default "make test" target.
+test-app-ng-with-generic-safety-hash: QVM_FEATURES=qvm-intrinsics qvm-app-ng-generic-safety-hash
+test-app-ng-with-generic-safety-hash:
+	$(MAKE) clean-cache
+	$(MAKE) QVM_FEATURES="$(QVM_FEATURES)" test-app-ng
+	$(MAKE) clean-cache
+
 test-ccl:
 	ccl --batch --eval '(ql:quickload :qvm)' --eval '(quit)'
 
