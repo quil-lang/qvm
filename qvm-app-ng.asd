@@ -25,9 +25,10 @@
   :entry-point "qvm-app-ng::asdf-entry-point"
   :components ((:module "safety-hash"
                 :serial t
-                :components ((:file "package")
-                             (:file "impl-bordeaux-threads" :if-feature (:not :sbcl))
-                             (:file "impl-sbcl" :if-feature :sbcl)))
+                :components
+                ((:file "package")
+                 (:file "impl-bordeaux-threads" :if-feature (:or (:not :sbcl) :qvm-app-ng-generic-safety-hash))
+                 (:file "impl-sbcl" :if-feature (:and :sbcl (:not :qvm-app-ng-generic-safety-hash)))))
                (:file "package")
                (:file "globals")
                (:file "utilities")
