@@ -32,7 +32,8 @@
 
 (defun clrhash (safety-hash)
   (with-locked-safety-hash (hash-table) safety-hash
-    (cl:clrhash hash-table)))
+    (cl:clrhash hash-table))
+  safety-hash)
 
 (defun gethash (key safety-hash &optional default)
   (with-locked-safety-hash (hash-table) safety-hash

@@ -28,7 +28,8 @@
                 :components
                 ((:file "package")
                  (:file "impl-bordeaux-threads" :if-feature (:or (:not :sbcl) :qvm-app-ng-generic-safety-hash))
-                 (:file "impl-sbcl" :if-feature (:and :sbcl (:not :qvm-app-ng-generic-safety-hash)))))
+                 (:file "impl-sbcl" :if-feature (:and :sbcl (:not :qvm-app-ng-generic-safety-hash)))
+                 (:file "interface")))
                (:file "package")
                (:file "globals")
                (:file "utilities")
