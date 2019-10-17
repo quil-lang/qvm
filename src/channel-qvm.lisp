@@ -1,6 +1,10 @@
 (in-package #:qvm)
 
-;; A noise predicate is a function that takes an instruction's gate and qubits, and returns either true if the instruction is a match, else false. The priority indicates the priority of the predicate (tbd) and the noise-position indicates whether the predicate should match before or after an instruction. 
+;;; A noise predicate is a function that takes an instruction's gate
+;;; and qubits, and returns either true if the instruction is a match,
+;;; else false. The priority indicates the priority of the predicate
+;;; (tbd) and the noise-position indicates whether the predicate
+;;; should match before or after an instruction.
 (defclass noise-pred ()
   ((predicate
     :initarg :predicate
@@ -17,7 +21,8 @@
     :accessor noise-position
     :initform nil
     :type noise-pos
-    :documentation "Should the application of a channel happen before or after the instruciton?")))
+    :documentation "Should the application of a channel happen before or after the instruciton?"))
+  (:documentation "A NOISE-PREDICATe describes a collection of program instructions. When used in a NOISE-RULE, the NOISE-PREDICATE describes which instructions should be matched by the noise described in the OPERATION-ELEMENTS."))
 
 
 (deftype noise-pos ()
@@ -64,20 +69,23 @@
   (make-noise-pred (complement (predicate np)) (priority np) (noise-position np)))
 
 
-;; A noise rule consists of a noise predicate and a list of operation elements. The operation elements
-;; describe the noise as kraus operators, and the noise-predicate is a function that takes an instruction
-;; and returns true if the operation-elements should be applied after the instruction. 
+;;; A noise rule consists of a noise predicate and a list of operation
+;;; elements. The operation elements describe the noise as kraus
+;;; operators, and the noise-predicate is a function that takes an
+;;; instruction and returns true if the operation-elements should be
+;;; applied after the instruction.
 (defclass noise-rule ()
   ((noise-predicate
     :initarg :noise-predicate
     :accessor noise-predicate
-    :initform nil 
+    :initform nil
     :documentation "A function that is true when an instruciton is matched, false otherwise")
    (operation-elements
     :initarg :operation-elements
     :accessor operation-elements
-    :initform ()  
-    :documentation "Operation elements (kraus operators) to apply when the predicate is satisfied")))
+    :initform ()
+    :documentation "Operation elements (kraus operators) to apply when the predicate is satisfied"))
+  (:documentation "A noise rule consists of noise data (OPERATION-ELEMENTS) and a specificiation of where the noise data should be applied to the program (NOISE-PREDICATE)."))
 
 
 (defun min-rule-priority-p (r1 r2)
@@ -87,12 +95,14 @@
 
 (defun make-noise-rule (predicate operation-elements)
   "Returns a noise rule with the specified PREDICATE and OPERATION-ELEMENTS. "
-  (make-instance 'noise-rule :noise-predicate predicate 
+  (make-instance 'noise-rule :noise-predicate predicate
                              :operation-elements operation-elements))
 
 
-;; A noise model consists of a set of noise rules and readout-povms. The noise rules define quantum channels and where they should be
-;; applied,  and the readout-povms describe the noisy readout probabilities. 
+;;; A noise model consists of a set of noise rules and readout-povms.
+;;; The noise rules define quantum channels and where they should be
+;;; applied, and the readout-povms describe the noisy readout
+;;; probabilities.
 (defclass noise-model ()
   ((noise-rules
     :initarg :noise-rules
@@ -103,7 +113,8 @@
     :initarg :readout-povms
     :accessor readout-povms
     :initform (make-hash-table :test 'eql)
-    :documentation "A map of qubit to readout noise assignment probabilities. These are treated differently from noise channels (for now).")))
+    :documentation "A map of qubit to readout noise assignment probabilities. These are treated differently from noise channels (for now)."))
+  (:documentation "A NOISE-MODEL is a collection of NOISE-RULES, describing what type of noise should be applied to a program that goes through a qvm, and where that noise should be applied."))
 
 
 (defmethod initialize-instance :after ((nm noise-model) &rest args)
@@ -113,6 +124,12 @@
     (setf (slot-value nm 'noise-rules) (sort rules #'min-rule-priority-p))))
 
 
+(defun (setf qubit-povm) (povm nm qubit)
+  "Set the povm for a qubit in this noise model."
+  (check-povm povm)
+  (setf (gethash qubit (readout-povms nm)) povm))
+
+
 (defun make-noise-model (noise-rules)
   "Returns a noise model with noise-rules."
   (make-instance 'noise-model :noise-rules noise-rules))
@@ -120,7 +137,7 @@
 
 (defmethod add-noise-models (nm1 nm2)
   ;; Combines two noise models by concatenating their rules. This way,
-  ;; either rule can be matched by an instruction. 
+  ;; either rule can be matched by an instruction.
   (let* ((rules (append (noise-rules nm1) (noise-rules nm2)))
          (sorted-rules (sort rules #'min-rule-priority-p)))
     (make-noise-model sorted-rules)))
@@ -129,29 +146,29 @@
 (defmethod multiply-noise-models (nm1 nm2)
   ;; Combines two noise models in a way such that both set of rules,
   ;; or one and not the other could be matched by an instruction.
-  (let ((rules (loop :for rule1 in (noise-rules nm1) 
-                   :append (loop :for rule2 in (noise-rules nm2)
-                                 :collect (make-noise-rule 
-                                           (predicate-and (noise-predicate rule1) 
-                                                          (noise-predicate rule2)) 
-                                           (list (operation-elements rule1) 
-                                                 (operation-elements rule2)))
-                                 :collect (make-noise-rule 
-                                           (predicate-and 
-                                            (noise-predicate rule1) 
-                                            (predicate-not (noise-predicate rule2))) 
-                                           (operation-elements rule1))
-                                 :collect (make-noise-rule 
-                                           (predicate-and 
-                                            (predicate-not (noise-predicate rule1)) 
-                                            (noise-predicate rule2)) 
-                                           (operation-elements rule2))))))
-    
+  (let ((rules (loop :for rule1 in (noise-rules nm1)
+                     :append (loop :for rule2 in (noise-rules nm2)
+                                   :collect (make-noise-rule
+                                             (predicate-and (noise-predicate rule1) 
+                                                            (noise-predicate rule2)) 
+                                             (list (operation-elements rule1)
+                                                   (operation-elements rule2)))
+                                   :collect (make-noise-rule
+                                             (predicate-and
+                                              (noise-predicate rule1)
+                                              (predicate-not (noise-predicate rule2))) 
+                                             (operation-elements rule1))
+                                   :collect (make-noise-rule
+                                             (predicate-and
+                                              (predicate-not (noise-predicate rule1)) 
+                                              (noise-predicate rule2))
+                                             (operation-elements rule2))))))
+
     (make-noise-model (sort rules #'min-rule-priority-p))))
 
 
 (defun match-strict-qubits (&rest qubits)
-  "The returned function is true if QUBITS exactly equals the instruction's qubits. "
+  "The returned function is true if QUBITS exactly equals the instruction's qubits."
   (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (equal qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
@@ -165,7 +182,7 @@
 
 
 (defun match-strict-gate (gate)
-  "The returned function is true if the instruciton's gate is exactly equal to GATE"
+  "The returned function is true if the instruciton's gate is exactly equal to GATE."
   (lambda (instr) (and (typep instr 'quil:gate-application)
                        (string= gate (cl-quil::application-operator-root-name instr)))))
 
@@ -173,7 +190,7 @@
 (defun match-any-gates (&rest gates)
   "The returned function is true if there is any intersection between the instruction's gates and GATES."
   (lambda (instr) (and (typep instr 'quil:gate-application)
-                       (member gates (cl-quil::application-operator-root-name instr) :test #'string=))))
+                       (member (cl-quil::application-operator-root-name instr) gates :test #'string=))))
 
 (defun match-all-nq-gates (n)
   "The returned function is true if the instruction operates on N qubits."
@@ -193,14 +210,13 @@
 (defun match-measure-at-strict (qubit)
   "The returned function is true if the instruciton is a measure on the specified QUBIT."
   (lambda (instr) (and (typep instr 'quil:measurement)
-                       (= 1 (length (quil:application-arguments instr)))
-                       (= qubit (quil:qubit-index (first (quil:application-arguments instr)))))))
+                       (= qubit (quil:qubit-index (quil:measurement-qubit instr))))))
 
 
 (defun match-measure-at-any (&rest qubits)
-  "The returned function is true if the instruciton is a measure on any of the specified QUBITS. "
+  "The returned function is true if the instruciton is a measure on any of the specified QUBITS."
   (lambda (instr) (and (typep instr 'quil:measurement)
-                       (intersection qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
+                       (member (quil:qubit-index (quil:measurement-qubit instr)) qubits))))
 
 
 
@@ -222,14 +238,16 @@
    (noise-model
     :initarg :noise-model
     :accessor noise-model
-    :initform nil)))
+    :initform nil))
+  (:documentation "The CHANNEL-QVM is a QVM that supports a fully explicit NOISE-MODEL. The NOISE-MODEL is a list of NOISE-RULES, where each NOISE-RULE describes a type of noise and at which points in a program's execution that type of noise should be applied."))
 
 
 (defmethod initialize-instance :after ((qvm channel-qvm) &rest args)
-  " Initializes an instance of a CHANNEL-QVM"
-  (declare (ignore args)) 
+  ;; Initializes an instance of a CHANNEL-QVM"
+  (declare (ignore args))
   (setf
-   ;; Initialize the trial-amplitudes to an empty array of the correct size
+   ;; Initialize the trial-amplitudes to an empty array of the correct
+   ;; size
    (%trial-amplitudes qvm) (make-lisp-cflonum-vector (expt 2 (number-of-qubits qvm)))
    ;; Save a pointer to the originally provided memory
    (slot-value qvm 'original-amplitude-pointer) (amplitudes qvm)))
@@ -252,20 +270,15 @@
     (rotatef (amplitudes qvm) (%trial-amplitudes qvm))))
 
 
-(defmethod set-readout-povm ((qvm channel-qvm) qubit povm)
-  " Set a readout povm specified by the list POVM for a QUBIT on this QVM"
-  (check-povm povm)
-  (setf (gethash qubit (readout-povms (noise-model qvm))) povm)
-  nil)
-
 
 (defmethod transition ((qvm channel-qvm) (instr quil:gate-application))
-  "If any noise rules are matched by theinstruction INSTR, apply the the kraus operators for that noise rule after applying the gate for this instruction."
+  ;; If any noise rules are matched by theinstruction INSTR, apply the
+  ;; the kraus operators for that noise rule after applying the gate
+  ;; for this instruction.
   (let* ((gate   (pull-teeth-to-get-a-gate instr))
          (params (mapcar #'(lambda (p) (force-parameter p qvm))
                          (quil:application-parameters instr)))
          (instr-qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
-      
          (noise-rules (noise-rules (noise-model qvm)))
          (prepend-kraus-maps (match-rules noise-rules instr :before))
          (append-kraus-maps (match-rules noise-rules instr :after)))
@@ -283,14 +296,14 @@
 
 
 (defun rule-matches-instr-p (rule instr position)
-  "Check if rule is matched by instruction data and the position of the match request"
+  "Check if rule is matched by instruction data and the position of the match request."
   (let* ((noise-predicate (predicate (noise-predicate rule)))
          (noise-position (noise-position (noise-predicate rule))))
     (and (funcall noise-predicate instr) (string= position noise-position))))
 
 
 (defun match-rules (rules instr position)
-  "Return the operation elements for the first matching rule"
+  "Return the operation elements for the first matching rule."
   (loop :for rule in rules
         :when (rule-matches-instr-p rule instr position)
           :return (operation-elements rule)))
@@ -313,15 +326,15 @@
          (logical-qubits (quil:application-arguments instr))
          (qubits (mapcar #'quil:qubit-index logical-qubits)))
     (check-type amps quantum-state)
-    ;; Randomly select one of the Kraus operators by inverse
-    ;; transform sampling (cf [1]): We divide the unit interval
-    ;; [0,1] into n bins where the j-th bin size equals the
-    ;; probability p_j with which the j-th Kraus operator k_j
-    ;; should be applied. We know that the Kraus operators are
-    ;; normalized such that p_j = <psi|k_j^H k_j |psi> where x^H
-    ;; denotes hermitian conjugation of x and can therefore
-    ;; perform this sampling lazily: First generate a uniformly
-    ;; sampled random number r in [0,1]. Next, find j such that
+    ;; Randomly select one of the Kraus operators by inverse transform
+    ;; sampling (cf [1]): We divide the unit interval [0,1] into n
+    ;; bins where the j-th bin size equals the probability p_j with
+    ;; which the j-th Kraus operator k_j should be applied. We know
+    ;; that the Kraus operators are normalized such that p_j =
+    ;; <psi|k_j^H k_j |psi> where x^H denotes hermitian conjugation of
+    ;; x and can therefore perform this sampling lazily: First
+    ;; generate a uniformly sampled random number r in [0,1]. Next,
+    ;; find j such that
     ;;
     ;;       sum_{k=1}^{j-1} p_k < r <= sum_{k=1}^{j} p_k
     ;;
@@ -333,7 +346,7 @@
           :do
              (replace amps (amplitudes qvm))
              (apply-matrix-operator (magicl-matrix-to-quantum-operator kj)
-                                    amps 
+                                    amps
                                     (apply #'nat-tuple qubits))
              (incf summed (psum #'probability amps))
           :until (>= summed r))
@@ -392,5 +405,3 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
     (check-type p11 (double-float 0.0d0 1.0d0))
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
-
-
