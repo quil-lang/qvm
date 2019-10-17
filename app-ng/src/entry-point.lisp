@@ -97,10 +97,7 @@
   nil)
 
 (defun run-initial-rpc-request (rpc-request)
-  (let ((*request-json* (parse-json-or-lose rpc-request)))
-    (alexandria:if-let ((handler (lookup-rpc-handler-for-request *request-json*)))
-      (format t "~A~%" (funcall handler))
-      (error "No handler found for initial rpc request: ~S" rpc-request))))
+  (format t "~A~%" (dispatch-rpc-request (parse-json-or-lose rpc-request))))
 
 (defun generalized-boolean-to-exit-code (successp)
   (cond ((integerp successp) successp)

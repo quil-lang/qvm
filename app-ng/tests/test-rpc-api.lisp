@@ -28,6 +28,9 @@
     (cl-ppcre:create-scanner
      "\\A\\d{4}-(?:1[0-2]|0[1-9])-(?:3[0-1]|[1-2][0-9]|0[0-9]) (?:2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9]\\z"))
 
+(global-vars:define-global-var +rpc-response-version-scanner+
+    (cl-ppcre:create-scanner "\\A([0-9]+\\.)+[0-9]+ \\[[0-9a-f]+\\]\\z"))
+
 (defun plist-lowercase-keys (plist)
   (assert (evenp (length plist)))
   (loop :for (k v) :on plist :by #'cddr
@@ -64,7 +67,7 @@
 
 (defun extract-and-validate-token (response)
   (let ((token (extract-token response)))
-    (is (qvm-app-ng::valid-persistent-qvm-token-p token))
+    (is (qvm-app-ng::valid-uuid-string-p token))
     token))
 
 (defun simulation-method->qvm-type (simulation-method &key pauli-noise-p)
@@ -141,8 +144,24 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
   "Make a POST request to the URL given. Any additional keyword args are collected in JSON-PLIST and converted to a JSON dict and sent as the request body."
   (http-request url :method ':POST :content (plist->json json-plist)))
 
+(defun job-request (url &rest json-plist)
+  "Create an async job for the request in JSON-PLIST, then await and return the result.
+
+The CREATE-JOB request is expected to return with status 200 OK.
+
+Ensure that the job is deleted afterwards."
+  (let ((job-token (extract-and-validate-token
+                    (check-request (simple-request url :type "create-job"
+                                                       :sub-request (plist->json json-plist))))))
+    (unwind-protect
+         (simple-request url :type "job-result" :job-token job-token)
+      (simple-request url :type "delete-job" :job-token job-token))))
+
 (defun request-qvm-state (url qvm-token)
   (gethash "state" (yason:parse (simple-request url :type "qvm-info" :qvm-token qvm-token))))
+
+(defun request-job-status (url job-token)
+  (gethash "status" (yason:parse (simple-request url :type "job-info" :job-token job-token))))
 
 (deftest test-rpc-api-invalid-request ()
   "Requests without a valid JSON request body return 400 Bad Request."
@@ -164,7 +183,7 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
   "Test the \"version\" API call."
   (with-rpc-server (url)
     (check-request (simple-request url :type "version")
-                   :response-re "\\A([0-9]+\\.)+[0-9]+ \\[[0-9a-f]+\\]\\z")))
+                   :response-re +rpc-response-version-scanner+)))
 
 (deftest test-rpc-api-run-program-simple-request ()
   "Simple run-program calls on emphemeral QVMs return the expected results."
@@ -488,61 +507,143 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
 (deftest test-rpc-api-wait-resume ()
   "Test wait and resume on a persistent QVM."
   (with-rpc-server (url)
-    (let* ((response (check-request (simple-request url
-                                                    :type "create-qvm"
-                                                    :allocation-method "native"
-                                                    :simulation-method "pure-state"
-                                                    :num-qubits 2)
-                                    :response-re +rpc-response-token-scanner+))
-           (token (extract-and-validate-token response)))
+    (let* ((qvm-token (extract-and-validate-token
+                       (check-request (simple-request url
+                                                      :type "create-qvm"
+                                                      :allocation-method "native"
+                                                      :simulation-method "pure-state"
+                                                      :num-qubits 2)
+                                      :response-re +rpc-response-token-scanner+)))
+           (job-token (extract-and-validate-token
+                       (check-request (simple-request url
+                                                      :type "run-program-async"
+                                                      :qvm-token qvm-token
+                                                      :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro")
+                                      :status 200))))
 
-      (check-request (simple-request url
-                                     :type "run-program-async"
-                                     :qvm-token token
-                                     :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro")
-                     :status 200)
-
-      (check-request (simple-request url :type "qvm-info" :qvm-token token)
+      (check-request (simple-request url :type "qvm-info" :qvm-token qvm-token)
                      :response-callback (response-json-fields-checker '(("state" "WAITING"))))
+
+      (check-request (simple-request url :type "job-info" :job-token job-token)
+                     :response-callback (response-json-fields-checker '(("status" "RUNNING"))))
 
       ;; run-program on a persistent qvm in a non-READY state is disallowed
       (check-request (simple-request url
                                      :type "run-program"
-                                     :qvm-token token
+                                     :qvm-token qvm-token
                                      :compiled-quil +generic-x-0-quil-program+
                                      :addresses +all-ro-addresses+)
                      :status 500)
 
       (check-request (simple-request url
                                      :type "write-memory"
-                                     :qvm-token token
+                                     :qvm-token qvm-token
                                      :memory-contents (alexandria:alist-hash-table
                                                        `(("alpha" . ((0 ,pi))))))
                      :status 200)
 
-      (check-request (simple-request url :type "resume" :qvm-token token)
+      (check-request (simple-request url :type "resume" :qvm-token qvm-token)
                      :status 200)
 
-      (check-request (simple-request url :type "qvm-info" :qvm-token token)
+      (check-request (simple-request url :type "qvm-info" :qvm-token qvm-token)
                      :response-callback
                      (response-json-fields-checker
                       `(("state" ,(lambda (value)
                                      (member value '("RESUMING" "RUNNING" "READY") :test #'string=))))))
 
-      ;; Wait for run-program-async to finish
-      (loop :repeat 10 :for state = (request-qvm-state url token)
+      ;; Wait for the persistent qvm to enter the READY state
+      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
             :until (string= state "READY")
             :finally (is (string= state "READY")))
 
+      ;; Wait for the job to finish
+      (loop :repeat 10 :for state = (request-job-status url job-token)
+            :until (string= state "FINISHED")
+            :finally (is (string= state "FINISHED")))
+
       (check-request (simple-request url
                                      :type "read-memory"
-                                     :qvm-token token
+                                     :qvm-token qvm-token
                                      :addresses +all-ro-addresses+)
                      :response-callback (response-json-fields-checker '(("ro" ((1))))))
 
       ;; cleanup
-      (check-request (simple-request url :type "delete-qvm" :qvm-token token)
-                     :response-re "Deleted persistent QVM"))))
+      (check-request (simple-request url :type "delete-qvm" :qvm-token qvm-token)
+                     :response-re "Deleted persistent QVM")
+      (check-request (simple-request url :type "delete-job" :job-token job-token)
+                     :response-re "Deleted async JOB"))))
+
+(deftest test-rpc-api-wait-resume-async-full-monty ()
+  "Test wait and resume on a persistent QVM with all calls being async jobs."
+  (with-rpc-server (url)
+    (let* ((qvm-token (extract-and-validate-token
+                       (check-request (job-request url
+                                                   :type "create-qvm"
+                                                   :allocation-method "native"
+                                                   :simulation-method "pure-state"
+                                                   :num-qubits 2)
+                                      :response-re +rpc-response-token-scanner+)))
+           (job-token (extract-and-validate-token
+                       (check-request (simple-request url
+                                                      :type "create-job"
+                                                      :sub-request
+                                                      (plist->json `(:type "run-program"
+                                                                     :qvm-token ,qvm-token
+                                                                     :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro"
+                                                                     :addresses ,+all-ro-addresses+)))
+                                      :status 200))))
+
+      (check-request (job-request url :type "qvm-info" :qvm-token qvm-token)
+                     :response-callback (response-json-fields-checker '(("state" "WAITING"))))
+
+      (check-request (job-request url :type "job-info" :job-token job-token)
+                     :response-callback (response-json-fields-checker '(("status" "RUNNING"))))
+
+      ;; run-program on a persistent qvm in a non-READY state is disallowed
+      (check-request (job-request url
+                                  :type "run-program"
+                                  :qvm-token qvm-token
+                                  :compiled-quil +generic-x-0-quil-program+
+                                  :addresses +all-ro-addresses+)
+                     :status 500)
+
+      (check-request (job-request url
+                                  :type "write-memory"
+                                  :qvm-token qvm-token
+                                  :memory-contents (alexandria:alist-hash-table
+                                                    `(("alpha" . ((0 ,pi))))))
+                     :status 200)
+
+      (check-request (job-request url :type "resume" :qvm-token qvm-token)
+                     :status 200)
+
+      (check-request (job-request url :type "qvm-info" :qvm-token qvm-token)
+                     :response-callback
+                     (response-json-fields-checker
+                      `(("state" ,(lambda (value)
+                                    (member value '("RESUMING" "RUNNING" "READY") :test #'string=))))))
+
+      ;; Wait for the persistent qvm to enter the READY state
+      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
+            :until (string= state "READY")
+            :finally (is (string= state "READY")))
+
+      ;; Wait for the job to finish
+      (loop :repeat 10 :for state = (request-job-status url job-token)
+            :until (string= state "FINISHED")
+            :finally (is (string= state "FINISHED")))
+
+      (check-request (job-request url
+                                  :type "read-memory"
+                                  :qvm-token qvm-token
+                                  :addresses +all-ro-addresses+)
+                     :response-callback (response-json-fields-checker '(("ro" ((1))))))
+
+      ;; cleanup
+      (check-request (job-request url :type "delete-qvm" :qvm-token qvm-token)
+                     :response-re "Deleted persistent QVM")
+      (check-request (job-request url :type "delete-job" :job-token job-token)
+                     :response-re "Deleted async JOB"))))
 
 (deftest test-rpc-api-create-qvm-with-pauli-noise ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and Pauli noise parameters.."
@@ -774,3 +875,74 @@ REQUEST-FORM is expected to return the same VALUES as a DRAKMA:HTTP-REQUEST, nam
          ;; cleanup
          (check-request (simple-request url :type "delete-qvm" :qvm-token token)
                         :response-re "Deleted persistent QVM"))))))
+
+(deftest test-rpc-api-create-job ()
+  (with-rpc-server (url)
+    ;; version: check handler that returns plain text
+    (check-request (job-request url :type "version")
+                   :response-re +rpc-response-version-scanner+)
+
+    ;; qvm-memory-estimate: check handler that returns JSON
+    (check-request (job-request url :type "qvm-memory-estimate"
+                                    :simulation-method "pure-state"
+                                    :allocation-method "native"
+                                    :num-qubits 2)
+                   :response-callback (response-json-fields-checker
+                                       `(("bytes" ,(lambda (bytes) (plusp bytes))))))
+    ;; create-job: check that attempting a nested create-job returns 400 Bad Request
+    (check-request (simple-request url :type "create-job"
+                                       :sub-request (plist->json
+                                                     `(:type "create-job"
+                                                       :sub-request ,(plist->json '(:type "version")))))
+                   :status 400)
+
+    ;; run-program-async: check that attempting run-program-async returns 400 Bad Request
+    (check-request (simple-request url :type "create-job"
+                                       :sub-request (plist->json
+                                                     '(:type "run-program-async"
+                                                       :qvm-token "irrelevant"
+                                                       :compiled-quil "irrelevant")))
+                   :status 400)
+
+    ;; qvm-info: check that errors are propagated for invalid requests
+    (let ((job-token (extract-and-validate-token
+                      (check-request
+                       (simple-request url
+                                       :type "create-job"
+                                       :sub-request (plist->json '(:type "qvm-info"
+                                                                   :qvm-token "bogus")))))))
+
+      (check-request (simple-request url :type "job-info" :job-token job-token)
+                     :response-callback
+                     (response-json-fields-checker
+                      `(("status" ,(lambda (value)
+                                     (member value '("RUNNING" "ERROR") :test #'string=))))))
+
+      (check-request (simple-request url :type "job-result" :job-token job-token)
+                     :status 400)
+
+      (is (string= "ERROR" (request-job-status url job-token)))
+
+      ;; cleanup
+      (check-request (simple-request url :type "delete-job" :job-token job-token)
+                     :response-re "Deleted async JOB"))
+
+    ;; job-info and job-result: slightly wacky, but check that these can be called asynchronously
+    (let ((job-token (extract-and-validate-token
+                      (check-request
+                       (simple-request url
+                                       :type "create-job"
+                                       :sub-request (plist->json '(:type "version")))))))
+
+      (check-request (job-request url :type "job-info" :job-token job-token)
+                     :response-callback
+                     (response-json-fields-checker
+                      `(("status" ,(lambda (value)
+                                     (member value '("RUNNING" "FINISHED") :test #'string=))))))
+
+      (check-request (job-request url :type "job-result" :job-token job-token)
+                     :response-re +rpc-response-version-scanner+)
+
+      ;; cleanup
+      (check-request (simple-request url :type "delete-job" :job-token job-token)
+                     :response-re "Deleted async JOB"))))
