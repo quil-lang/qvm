@@ -22,6 +22,18 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
                                  qvm-token))
     canonicalized-token))
 
+(defun parse-job-token (job-token)
+  ;; TODO(appleby): unify PARSE-JOB-TOKEN and PARSE-QVM-TOKEN.
+  ;; Ensure it's a STRING before attempting to canonicalize the case. Otherwise, we'll get a
+  ;; not-so-helpful error message.
+  (unless (typep job-token 'string)
+    (rpc-parameter-parse-error "Invalid JOB token. Expected a v4 UUID string. Got ~S" job-token))
+
+  (let ((canonicalized-token (canonicalize-uuid-string job-token)))
+    (unless (valid-uuid-string-p canonicalized-token)
+      (rpc-parameter-parse-error "Invalid JOB token. Expected a v4 UUID. Got ~S" job-token))
+    canonicalized-token))
+
 (defun %parse-string-to-known-symbol (parameter-name parameter-string known-symbols
                                       &optional (package 'qvm-app-ng))
   (flet ((%error ()
@@ -115,3 +127,9 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
                (every #'floatp noise))
     (rpc-parameter-parse-error "Invalid Pauli noise. Expected a LIST of three FLOATs. Got ~S" noise))
   noise)
+
+(defun parse-sub-request (sub-request)
+  (let ((json (parse-json-or-lose sub-request)))
+    (when (member (gethash "type" json) '("create-job" "run-program-async") :test #'string=)
+      (rpc-bad-request-error "Invalid create-job SUB-REQUEST: ~S." sub-request))
+    json))

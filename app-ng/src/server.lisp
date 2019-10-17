@@ -115,7 +115,7 @@ This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-
   (with-locked-log ()
     (cl-syslog:format-log *logger* ':info
                           "~:[-~@[ (~A)~]~;~:*~A~@[ (~A)~]~] ~:[-~;~:*~A~] [~A] \"~A ~A~@[?~A~] ~
-                          ~A\" ~D ~:[-~;~:*~D~] \"~:[-~;~:*~A~]\" \"~:[-~;~:*~A~]\"~%"
+                          ~A\" ~D ~:[-~;~:*~D~] \"~:[-~;~:*~A~]\" \"~:[-~;~:*~A~]\" ~S~%"
                           (tbnl::remote-addr*)
                           (tbnl::header-in* :x-forwarded-for)
                           (tbnl::authorization)
@@ -127,7 +127,8 @@ This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-
                           return-code
                           (tbnl::content-length*)
                           (tbnl::referer)
-                          (tbnl::user-agent))))
+                          (tbnl::user-agent)
+                          (tbnl:raw-post-data :request tbnl:*request* :force-text t))))
 
 (defmethod tbnl:acceptor-log-message ((acceptor rpc-acceptor) log-level format-string &rest format-arguments)
   (with-locked-log ()

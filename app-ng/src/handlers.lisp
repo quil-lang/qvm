@@ -13,6 +13,21 @@
        (boundp '*request-json*)
        (lookup-rpc-handler-for-request *request-json*)))
 
+(defun dispatch-rpc-request (request-json)
+  "Dispatch the RPC request found in REQUEST-JSON.
+
+DISPATCH-RPC-REQUEST is like TBNL:ACCEPTOR-DISPATCH-REQUEST, but may be called in non-HTTP contexts (RUN-INITIAL-RPC-REQUEST) or from a nested HTTP request (HANDLE-CREATE-JOB).
+
+Lookup the handler for the given request, and return the result of calling that handler with *REQUEST-JSON* bound to REQUEST-JSON.
+
+Signal an error if no handler is found."
+  (alexandria:if-let ((handler (lookup-rpc-handler-for-request request-json)))
+    (let ((*request-json* request-json))
+      (funcall handler))
+    (error "No handler found for rpc request: ~S"
+           (with-output-to-string (*standard-output*)
+             (yason:encode request-json)))))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun remove-existing-rpc-handlers (rpc-method name)
     (remove-if (lambda (handler-spec)
@@ -214,11 +229,11 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 COMPILED-QUIL is a STRING containing a valid Quil program.
 
 Return true on success."
-  (bt:make-thread
-   (lambda ()
-     (run-program-on-persistent-qvm qvm-token compiled-quil))
-   :name "hard working man or woman")
-  (encode-json t))
+  ;; TODO(appleby): this should probably return either 201 Created or 202 Accepted.
+  (encode-json
+   (alexandria:plist-hash-table
+    (list "token" (run-jobbo (lambda ()
+                               (run-program-on-persistent-qvm qvm-token compiled-quil)))))))
 
 (define-rpc-handler (handle-resume-from-wait "resume") ((qvm-token #'parse-qvm-token))
   "Resume execution of a persistent QVM that is in the WAITING state.
@@ -261,3 +276,33 @@ MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory
 Return true on success."
   (write-persistent-qvm-memory qvm-token memory-contents)
   (encode-json t))
+
+(define-rpc-handler (handle-job-info "job-info") ((job-token #'parse-job-token))
+  (encode-json (jobbo-info job-token)))
+
+(define-rpc-handler (handle-delete-job "delete-job") ((job-token #'parse-job-token))
+  (delete-jobbo job-token)
+  (encode-json (format nil "Deleted async JOB ~D" job-token)))
+
+(define-rpc-handler (handle-job-result "job-result") ((job-token #'parse-job-token))
+  ;; TODO(appleby): This assumes that the handler for the async job has already encoded it's result
+  ;; in the expected output format (usually JSON); hence, no call to ENCODE-JSON here. This
+  ;; abstraction is insufficient, however, because it means we don't know what to set the
+  ;; CONTENT-TYPE header to here. Probably the Right Thing(TM) is to have handlers return an
+  ;; unencoded lisp object, and do the encoding a higher level, in DISPATCH-RPC-HANDLERS or
+  ;; TBNL:ACCEPTOR-DISPATCH-REQUEST.
+  (jobbo-result job-token))
+
+(define-rpc-handler (handle-create-job "create-job") ((sub-request #'parse-sub-request))
+  ;; TODO(appleby): should we attempt to LOOKUP-RPC-HANDLER-FOR-REQUEST here as a sanity check and
+  ;; early warning? Seems like an edge-case that's not worth special-casing.
+
+  ;; TODO(appleby): should we whitelist rather than blacklist "asyncable" methods? Currently, we
+  ;; allow creating a job for any RPC call other than create-job. Probably the only really useful
+  ;; calls to run async are ones that perform computation (currently only run-program), although
+  ;; there doesn't seem to be any harm in allowing someone to run qvm-info, say, asynchronously if
+  ;; they want. Whitelisting would at least reduce the API surface for testing. Something to ponder.
+  (encode-json
+   (alexandria:plist-hash-table
+    (list "token" (run-jobbo (lambda ()
+                               (dispatch-rpc-request sub-request)))))))
