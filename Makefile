@@ -1,6 +1,8 @@
 # Heap space for QVM in MiB.
 QVM_WORKSPACE ?= 2048
+THIS_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 LISP_CACHE ?= `sbcl --noinform --non-interactive --eval '(princ asdf:*user-cache*)'`
+QVM_LISP_CACHE ?= $(LISP_CACHE)$(THIS_DIR)
 
 # QVM feature flags (in QVM_FEATURES)
 QVM_FEATURE_FLAGS=$(foreach feature,$(QVM_FEATURES),--eval '(pushnew :$(feature) *features*)')
@@ -157,14 +159,14 @@ test-app-ng:
 #     make test-app-ng test-app-ng-with-generic-safety-hash
 #
 # Make will consider the test-app-ng goal to be up-to-date when test-app-ng-with-generic-safety-hash
-# runs. Run clean-cache before and after to ensure that this and subsequent builds aren't polluted
-# with stale FASLs. Since nuking the cache in this way is obnoxious, don't run these tests as a
-# prerequisite of the default "make test" target.
+# runs. Run clean-qvm-cache before and after to ensure that this and subsequent builds aren't
+# polluted with stale FASLs. Since nuking the cache in this way is obnoxious, don't run these tests
+# as a prerequisite of the default "make test" target.
 test-app-ng-with-generic-safety-hash: QVM_FEATURES=qvm-intrinsics qvm-app-ng-generic-safety-hash
 test-app-ng-with-generic-safety-hash:
-	$(MAKE) clean-cache
+	$(MAKE) clean-qvm-cache
 	$(MAKE) QVM_FEATURES="$(QVM_FEATURES)" test-app-ng
-	$(MAKE) clean-cache
+	$(MAKE) clean-qvm-cache
 
 test-ccl:
 	ccl --batch --eval '(ql:quickload :qvm)' --eval '(quit)'
@@ -187,6 +189,12 @@ clean-cache:
 	$(QUICKLISP) \
              --eval "(ql:register-local-projects)"
 	rm -rf "$(LISP_CACHE)"
+
+clean-qvm-cache:
+	@echo "Deleting $(QVM_LISP_CACHE)"
+	$(QUICKLISP) \
+		--eval "(ql:register-local-projects)"
+	rm -rf $(QVM_LISP_CACHE)
 
 clean-quicklisp:
 	@echo "Cleaning up old projects in Quicklisp"
