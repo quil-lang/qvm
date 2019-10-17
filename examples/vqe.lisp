@@ -296,12 +296,11 @@ DEFCIRCUIT ANSATZ:
   "Return a parsed program resulting from concatenating the ansatz characterized by THETAS-2 (possibly taking its Hermitian conjugate, depending on the value of DAGGER) to the ansatz determined by THETAS-1.
 
 In other words, we return a program implementing the operator A(θ₂)† A(θ₁)."
-  (let ((quil (with-output-to-string (stream)
-                (format stream "DECLARE theta REAL[2]~%~A~%~A~%~A~%~A~%"
-                        (slot-value vqe-problem 'reference-state)
-                        (slot-value vqe-problem 'ansatz)
-                        (make-ansatz-string thetas-1)
-                        (make-ansatz-string thetas-2 :dagger dagger)))))
+  (let ((quil (format nil "DECLARE theta REAL[2]~%~A~%~A~%~A~%~A~%"
+                      (slot-value vqe-problem 'reference-state)
+                      (slot-value vqe-problem 'ansatz)
+                      (make-ansatz-string thetas-1)
+                      (make-ansatz-string thetas-2 :dagger dagger))))
     (quil:parse-quil quil)))
 
 (defun find-inverse-ansatz (vqe-problem thetas initial-values)
