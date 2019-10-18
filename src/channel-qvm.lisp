@@ -379,6 +379,15 @@
               (perturb-measurement c p00 p01 p10 p11))))))
 
 
+;;; Don't compile things for the noisy-qvm.
+(defmethod compile-loaded-program ((qvm approx-qvm))
+  qvm)
+
+(defmethod compile-instruction ((qvm approx-qvm) isn)
+  (declare (ignore qvm))
+  isn)
+
+
 ;; Duplicate function in noisy-qvm.lisp
 (defun perturb-measurement (actual-outcome p00 p01 p10 p11)
   "Given the readout error encoded in the POVM (see documentation of NOISY-QVM)
@@ -405,3 +414,4 @@ Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
     (check-type p11 (double-float 0.0d0 1.0d0))
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
+
