@@ -92,9 +92,9 @@
          (x (quil::nth-instr 0 parsed-program))
          (cnot (quil::nth-instr 1 parsed-program))
          (measure (quil::nth-instr 2 parsed-program)))
-    (is (funcall (qvm::match-any-n-qubits 2 (list 0 1 2)) cnot))
-    (is (funcall (qvm::match-any-n-qubits 1 (list 0 1)) x))
-    (is (not (funcall (qvm::match-any-n-qubits 1 (list 2)) x)))))
+    (is (funcall (qvm::match-any-n-qubits 2 '(0 1 2)) cnot))
+    (is (funcall (qvm::match-any-n-qubits 1 '(0 1)) x))
+    (is (not (funcall (qvm::match-any-n-qubits 1 '(2)) x)))))
 
 
 (deftest test-make-noise-predicate ()
@@ -110,10 +110,12 @@
   (let* ((p1 (qvm::make-noise-pred (qvm::match-strict-qubits 0) 1 :after))
          (p2 (qvm::make-noise-pred (qvm::match-strict-gate "X") 2 :before))
          (and-p (qvm::predicate-and p1 p2))
-         (test-gate (quil::build-gate "X" () 0)))
+         (test-gate-x0 (quil::build-gate "X" () 0))
+         (test-gate-x1 (quil::build-gate "X" () 1)))
     (is (qvm::priority and-p) 1)
     (is (qvm::priority and-p) ':after)
-    (is (funcall (qvm::predicate and-p) test-gate))))
+    (is (funcall (qvm::predicate and-p) test-gate-x0))
+    (is (not (funcall (qvm::predicate and-p) test-gate-x1)))))
 
 
 (deftest test-predicate-or ()
@@ -121,27 +123,34 @@
          (p2 (qvm::make-noise-pred (qvm::match-strict-gate "X") 2 ':before))
          (or-p (qvm::predicate-or p1 p2))
          (test-gate-1 (quil::build-gate "X" () 1))
-         (test-gate-2 (quil::build-gate "Y" () 0)))
+         (test-gate-2 (quil::build-gate "Y" () 0))
+         (test-gate-3 (quil::build-gate "CNOT" () 0 1)))
     (is (qvm::priority or-p) 1)
     (is (qvm::priority or-p) ':after)
     (is (funcall (qvm::predicate or-p) test-gate-1))
-    (is (funcall (qvm::predicate or-p) test-gate-2))))
+    (is (funcall (qvm::predicate or-p) test-gate-2))
+    (is (not (funcall (qvm::predicate or-p) test-gate-3)))))
 
 
 (deftest test-predicate-not ()
   (let* ((p (qvm::make-noise-pred (qvm::match-strict-qubits 0) 1 ':after))
          (not-p (qvm::predicate-not p))
-         (test-gate (quil::build-gate "Y" () 1)))
-    (is (qvm::priority not-p) 1)
-    (is (qvm::priority not-p) ':after)
-    (is (funcall (qvm::predicate not-p) test-gate))))
+         (test-gate-1 (quil::build-gate "Y" () 1))
+         (test-gate-2 (quil::build-gate "Z" () 0)))
+    (is (qvm::priority not-p) 19)
+    (is (qvm::noise-position not-p) ':after)
+    (is (funcall (qvm::predicate not-p) test-gate-1))
+    (is (not (funcall (qvm::predicate not-p) test-gate-2)))))
 
 
 (deftest test-make-noise-rule ()
   (let* ((np (qvm::make-noise-pred (qvm::match-strict-qubits 0) 1 ':after))
-         (op-elems (qvm::generate-damping-kraus-ops 1 5))
-         (nr (qvm::make-noise-rule np op-elems)))
-    (is (equalp (qvm::operation-elements nr) op-elems))))
+         (kraus-map-1 (qvm::generate-damping-kraus-map 5 1))
+         (kraus-map-2 (qvm::generate-damping-dephasing-kraus-map 6 2))
+         (nr (qvm::make-noise-rule np kraus-map-1 kraus-map-2)))
+    (loop :for mapi :in (qvm::operation-elements nr)
+          :for mapj :in (list kraus-map-1 kraus-map-2)
+          :do (is (every #'cl-quil::matrix-equality mapi mapj)))))
 
 
 (defun pred-1 ()
@@ -155,30 +164,29 @@
 
 
 (defun op-elems ()
-  (qvm::generate-damping-kraus-ops 1 5))
-
+  (qvm::generate-damping-kraus-map 5 1))
 
 (defun readout-povms ()
   (let ((povm-table (make-hash-table)))
-    (setf (gethash 0 povm-table) (list .9d0 .1d0 .1d0 .9d0))
-    (setf (gethash 1 povm-table) (list .8d0 .2d0 .2d0 .8d0))
+    (setf (gethash 0 povm-table) '(.9d0 .1d0 .1d0 .9d0))
+    (setf (gethash 1 povm-table) '(.8d0 .2d0 .2d0 .8d0))
     povm-table)) 
 
 
-(deftest test-min-rule-priority-p ()
+(deftest test-rule-priority>= ()
   (let ((nr1 (qvm::make-noise-rule (pred-1) (op-elems)))
         (nr2 (qvm::make-noise-rule (pred-2) (op-elems))))
-    (is (qvm::min-rule-priority-p nr1 nr2))))
+    (is (qvm::rule-priority>= nr2 nr1))))
 
 
 (deftest test-make-noise-model ()
   (let* ((nr1 (qvm::make-noise-rule (pred-1) (op-elems)))
          (nr2 (qvm::make-noise-rule (pred-2) (op-elems)))
          (nm (qvm::make-noise-model (list nr1 nr2))))
-    (setf (qvm::qubit-povm nm 0) (list .9d0 .1d0 .1d0 .9d0))
-    (setf (qvm::qubit-povm nm 1) (list .8d0 .2d0 .2d0 .8d0))
-                                        ; check that rules are sorted in priority order
-    (is (< (qvm::priority (qvm::noise-predicate (nth 0 (qvm::noise-rules nm)))) (qvm::priority (qvm::noise-predicate  (nth 1 (qvm::noise-rules nm))))))))
+    (setf (qvm::qubit-povm nm 0) '(.9d0 .1d0 .1d0 .9d0))
+    (setf (qvm::qubit-povm nm 1) '(.8d0 .2d0 .2d0 .8d0))
+    ;; check that rules are sorted in priority order
+    (is (>= (qvm::priority (qvm::noise-predicate (nth 0 (qvm::noise-rules nm)))) (qvm::priority (qvm::noise-predicate  (nth 1 (qvm::noise-rules nm))))))))
 
 
 (deftest test-add-noise-models ()
@@ -189,18 +197,75 @@
          (nm2 (qvm::make-noise-model (list nr3)))
          (tot-nm (qvm::add-noise-models nm1 nm2)))
     (is (= (length (qvm::noise-rules tot-nm)) 3))
-    (is (< (qvm::priority (qvm::noise-predicate (nth 0 (qvm::noise-rules tot-nm)))) (qvm::priority (qvm::noise-predicate  (nth 1 (qvm::noise-rules tot-nm))))))
-    (is (< (qvm::priority (qvm::noise-predicate (nth 1 (qvm::noise-rules tot-nm)))) (qvm::priority (qvm::noise-predicate  (nth 2 (qvm::noise-rules tot-nm))))))))
+    (is (>= (qvm::priority (qvm::noise-predicate (nth 0 (qvm::noise-rules tot-nm)))) 
+           (qvm::priority (qvm::noise-predicate  (nth 1 (qvm::noise-rules tot-nm))))))
+    (is (>= (qvm::priority (qvm::noise-predicate (nth 1 (qvm::noise-rules tot-nm)))) 
+           (qvm::priority (qvm::noise-predicate  (nth 2 (qvm::noise-rules tot-nm))))))))
 
 
-(deftest test-multiply-noise-models ()
-  (let* ((nr1 (qvm::make-noise-rule (pred-1) (op-elems)))
-         (nr2 (qvm::make-noise-rule (pred-3) (op-elems)))
-         (nr3 (qvm::make-noise-rule (pred-2) (op-elems)))
-         (nm1 (qvm::make-noise-model (list nr1 nr2)))
-         (nm2 (qvm::make-noise-model (list nr3)))
-         (tot-nm (qvm::multiply-noise-models nm1 nm2)))
-    (is (= (length (qvm::noise-rules tot-nm)) 6))
-    (is (<= (qvm::priority (qvm::noise-predicate (nth 0 (qvm::noise-rules tot-nm)))) (qvm::priority (qvm::noise-predicate  (nth 1 (qvm::noise-rules tot-nm))))))
-    (is (<= (qvm::priority (qvm::noise-predicate (nth 1 (qvm::noise-rules tot-nm)))) (qvm::priority (qvm::noise-predicate  (nth 2 (qvm::noise-rules tot-nm))))))
-    (is (<= (qvm::priority (qvm::noise-predicate (nth 4 (qvm::noise-rules tot-nm)))) (qvm::priority (qvm::noise-predicate  (nth 5 (qvm::noise-rules tot-nm))))))))
+(deftest test-multiply-noise-models-simple ()
+  (let* ((priority 20)
+         (p1 (qvm::make-noise-pred (qvm::match-strict-qubits 0) priority ':after))
+         (p2 (qvm::make-noise-pred (qvm::match-strict-qubits 1) priority ':after))
+         (nr1 (qvm::make-noise-rule p1 (op-elems)))
+         (nr2 (qvm::make-noise-rule p2 (op-elems)))
+        ; (nr3 (qvm::make-noise-rule (pred-2) (op-elems) (op-elems)))
+         (nm1 (qvm::make-noise-model (list nr1)))
+         (nm2 (qvm::make-noise-model (list nr2)))
+         (mult-nm (qvm::multiply-noise-models nm1 nm2)))
+    (is (= (length (qvm::noise-rules mult-nm)) 3))
+    ;; new noise rules should be (not p1 and p2 with p2's op elems), (not p2 and p1 with p1's elems), and (p2 and p1 with both p2 and p1's elems).
+    (let ((first-rule (nth 0 (qvm::noise-rules mult-nm)))
+          (second-rule (nth 1 (qvm::noise-rules mult-nm)))
+          (third-rule (nth 2 (qvm::noise-rules mult-nm))))
+      (is  (= priority  (qvm::priority (qvm::noise-predicate first-rule))))
+      (is  (= priority  (qvm::priority (qvm::noise-predicate second-rule))))
+      (is  (= priority  (qvm::priority (qvm::noise-predicate third-rule))))
+      (is  (= 1 (length (qvm::operation-elements first-rule))))
+      (is  (= 1 (length (qvm::operation-elements second-rule))))
+      (is  (= 2 (length (qvm::operation-elements third-rule)))))))
+
+
+(deftest test-multiply-noise-models-medium ()
+  (let* ((priority 20)
+         (p1 (qvm::make-noise-pred (qvm::match-strict-qubits 0) priority ':after))
+         (p2 (qvm::make-noise-pred (qvm::match-strict-qubits 1) priority ':after))
+         (nr1 (qvm::make-noise-rule p1 (op-elems) (op-elems)))
+         (nr2 (qvm::make-noise-rule p2 (op-elems) (op-elems)))
+        ; (nr3 (qvm::make-noise-rule (pred-2) (op-elems) (op-elems)))
+         (nm1 (qvm::make-noise-model (list nr1)))
+         (nm2 (qvm::make-noise-model (list nr2)))
+         (mult-nm (qvm::multiply-noise-models nm1 nm2)))
+    (is (= (length (qvm::noise-rules mult-nm)) 3))
+    ;; new noise rules should be (not p1 and p2 with p2's op elems), (not p2 and p1 with p1's elems), and (p2 and p1 with both p2 and p1's elems).
+    (let ((first-rule (nth 0 (qvm::noise-rules mult-nm)))
+          (second-rule (nth 1 (qvm::noise-rules mult-nm)))
+          (third-rule (nth 2 (qvm::noise-rules mult-nm))))
+      (is  (= priority  (qvm::priority (qvm::noise-predicate first-rule))))
+      (is  (= priority  (qvm::priority (qvm::noise-predicate second-rule))))
+      (is  (= priority  (qvm::priority (qvm::noise-predicate third-rule))))
+      (is  (= 2 (length (qvm::operation-elements first-rule))))
+      (is  (= 2 (length (qvm::operation-elements second-rule))))
+      (is  (= 4 (length (qvm::operation-elements third-rule)))))))
+
+
+(defparameter *channel-qvm-tests-list '(qvm-tests::test-match-strict-gate
+                                        qvm-tests::test-match-any-gates
+                                        qvm-tests::test-match-all-nq-gates
+                                        qvm-tests::test-match-all-gates
+                                        qvm-tests::test-match-measure
+                                        qvm-tests::test-match-measure-at-strict
+                                        qvm-tests::test-match-measure-at-any
+                                        qvm-tests::test-match-strict-qubits
+                                        qvm-tests::test-match-any-n-qubits
+                                        qvm-tests::test-make-noise-predicate
+                                        qvm-tests::test-predicate-and
+                                        qvm-tests::test-prediate-or
+                                        qvm-tests::test-predicate-not
+                                        qvm-tests::test-make-noise-rule
+                                        qvm-tests::test-mult-ops
+                                        qvm-tests::test-rule-priority>=
+                                        qvm-tests::test-make-noise-model
+                                        qvm-tests::test-add-noise-models
+                                        qvm-tests::test-multiply-noise-models-simple
+                                        qvm-tests::test-multiply-noise-models-medium))
