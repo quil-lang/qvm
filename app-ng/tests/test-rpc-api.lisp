@@ -83,22 +83,23 @@ Returns a STRING and allows SIMULATION-METHOD to be either a STRING or SYMBOL."
 (defun %make-url (protocol host port &optional (path "/"))
   (format nil "~A://~A:~D~A" protocol host port path))
 
-(defun call-with-rpc-server (host port function)
+(defun call-with-rpc-server (host port debug function)
   (let (rpc-acceptor)
     (unwind-protect
          (progn
-           (setf rpc-acceptor (qvm-app-ng::start-server host port))
+           (setf rpc-acceptor (qvm-app-ng::start-server host port debug))
            (funcall function (%make-url "http" host (tbnl:acceptor-port rpc-acceptor))))
       (qvm-app-ng::stop-server rpc-acceptor)
-      (qvm-app-ng::reset-persistent-qvms-db))))
+      (qvm-app-ng::reset-persistent-qvms-db)
+      (qvm-app-ng::reset-jobs-db))))
 
-(defmacro with-rpc-server ((url-var &key (host "127.0.0.1") (port 0)) &body body)
+(defmacro with-rpc-server ((url-var &key (host "127.0.0.1") (port 0) (debug nil)) &body body)
   "Execute BODY with URL-VAR bound the URL of a new RPC server started on HOST and PORT.
 
 HOST defaults to 127.0.0.1 and PORT defaults to a randomly assigned port."
   (check-type url-var symbol)
   (alexandria:once-only (host port)
-    `(call-with-rpc-server ,host ,port (lambda (,url-var) ,@body))))
+    `(call-with-rpc-server ,host ,port ,debug (lambda (,url-var) ,@body))))
 
 (defun call-with-drakma-request (body-or-stream status-code headers uri stream must-close reason-phrase function)
   (unwind-protect
