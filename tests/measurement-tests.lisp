@@ -132,7 +132,7 @@
 ;;; these statistical tests are cheeky
 
 (deftest test-hadamard-measurements ()
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :no-parallel)
     (let ((n 100000)
           (p (with-output-to-quil
                "DECLARE ro BIT"
@@ -143,7 +143,7 @@
       (test-range p n 0.5 0.5))))
 
 (deftest test-quarter-rotation-measurements ()
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :no-parallel)
     (let* ((n 100000)
            (one (expt (sin (/ pi 4 2)) 2))
            (zero (- 1 one))
@@ -156,7 +156,7 @@
       (test-range p n zero one))))
 
 (deftest test-three-quarter-rotation-measurements ()
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :no-parallel)
     (let* ((n 100000)
            (zero (expt (sin (/ pi 4 2)) 2))
            (one (- 1 zero))
@@ -169,7 +169,7 @@
       (test-range p n zero one))))
 
 (deftest test-eighth-rotation-measurements ()
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :no-parallel)
     (let* ((n 100000)
            (one (expt (sin (/ pi 8 2)) 2))
            (zero (- 1 one))

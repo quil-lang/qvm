@@ -11,8 +11,19 @@
   `(integer 0 50))
 
 (declaim (type parallelization-limit *qubits-required-for-parallelization*))
-(defparameter *qubits-required-for-parallelization* 19
-  "The number of qubits required of a quantum state before it gets operated on in parallel.")
+(defvar *qubits-required-for-parallelization* 19
+  "The number of qubits required of a quantum state before it gets operated on in parallel.
+
+See also *QUBIT-LIMIT-FOR-USING-SERIAL-KERNELS*.")
+
+(declaim (type parallelization-limit *qubit-limit-for-using-serial-kernels*))
+(defvar *qubit-limit-for-using-serial-kernels* 29
+  "The maximum number of qubits allowed in order to use a specified serial kernel.")
+
+(defun qubit-limit-for-using-serial-kernels ()
+  "The maximum number of qubits allowed in order to use a specified serial kernel. The value of this function also takes into account *QUBITS-REQUIRED-FOR-PARALLELIZATION*."
+  (max *qubit-limit-for-using-serial-kernels*
+       *qubits-required-for-parallelization*))
 
 (defvar *transition-verbose* nil
   "Controls whether each transition is printed with a timing.")

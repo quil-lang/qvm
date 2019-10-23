@@ -211,6 +211,12 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           #-sbcl
           "many many"
           (or *num-workers* (max 1 (qvm:count-logical-cores))))
+  (format t "(Gates parallelize at ~D qubit~:P.)~%"
+          qvm::*qubits-required-for-parallelization*)
+  (format t "(There are ~D kernel~:P and they are used with ~
+              up to ~D qubit~:P.)~%"
+          (length qvm::*available-kernels*)
+          (qvm::qubit-limit-for-using-serial-kernels))
   (let ((qvm-features
           (list                         ; List of features
                 #+qvm-intrinsics
