@@ -12,7 +12,7 @@
 
 (deftest test-hadamard ()
   "Test Hadamard initialization on several qubits."
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :interpret-no-kernel)
     (flet ((test-size (size)
              (let* ((quil (with-output-to-quil
                             (loop :for q :below size :do
@@ -22,7 +22,7 @@
                (every (lambda (z)
                         (double-float= expected-probability (probability z) 1/10000))
                       (qvm::amplitudes qvm)))))
-      (dotimes (i 7)
+      (dotimes (i 10)
         (is (test-size i))))))
 
 (deftest test-qubit-ordering-in-compiled-mode ()
@@ -45,7 +45,7 @@
 
 (deftest test-full-rotation ()
   "Test four RX(pi/2) gates."
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :interpret-no-kernel)
     (let* ((quil (with-output-to-quil
                    (loop :repeat 4 :do
                      (format t "RX(pi/2) 0~%"))))
@@ -63,7 +63,7 @@
 
 (deftest test-cnot-from-cz ()
   "Test the construction of a CNOT gate from a CZ gate."
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :interpret-no-kernel)
     (let* ((quil (with-output-to-quil
                    (format t "X 0~%")
                    (format t "H 1~%")
@@ -74,7 +74,7 @@
 
 (deftest test-bell ()
   "Test the construction of a Bell pair."
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :interpret-no-kernel) 
     (labels ((bell-state (n)
                "Construct an N-qubit Bell state."
                (with-output-to-quil
@@ -83,7 +83,7 @@
                    (format t "CNOT 0 ~D~%" i))))
              (run-bell (i)
                (qvm::amplitudes (run-program i (bell-state i)))))
-      (loop :for i :from 1 :to 7
+      (loop :for i :from 1 :to 10
             :for amps := (run-bell i)
             :do (is (double-float= 1/2 (probability (vector-first amps)) 1/10000))
                 (is (double-float= 1/2 (probability (vector-last amps)) 1/10000))))))
@@ -104,7 +104,7 @@
 
 (deftest test-parametric-gate ()
   "Test a parametric gate."
-  (with-execution-modes (:compile :interpret)
+  (with-execution-modes (:compile :interpret :interpret-no-kernel)
     (let* ((qvm (make-qvm 1))
            (amps (qvm::amplitudes qvm)))
       (load-program qvm (with-output-to-quil

@@ -294,7 +294,7 @@ EXCHANGE ox[0] ox[1]
 DECLARE ro BIT[4]
 DECLARE theta REAL[1]
 MOVE theta[0] 0.0
-PRAGMA EXPECTED_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
+PRAGMA EXPECTED_REWIRING \"#(0 1 2 5 3 4)\"
 RX(-pi/2) 0
 CZ 1 0
 RX(pi) 5
@@ -322,12 +322,12 @@ RZ(pi/2) 2
 RX(pi) 2
 RZ(pi/2) 5
 RX(pi) 5
-PRAGMA CURRENT_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
-PRAGMA EXPECTED_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
+PRAGMA CURRENT_REWIRING \"#(0 1 2 5 3 4)\"
+PRAGMA EXPECTED_REWIRING \"#(0 1 2 5 3 4)\"
 MEASURE 5 ro[3]
 MEASURE 2 ro[2]
 MEASURE 1 ro[1]
 MEASURE 0 ro[0]
-PRAGMA CURRENT_REWIRING \"#(0 1 2 5 3 4 6 7 8)\"
+PRAGMA CURRENT_REWIRING \"#(0 1 2 5 3 4)\"
 ")))
     (not-signals error (qvm:run-program 6 valid-quil))))

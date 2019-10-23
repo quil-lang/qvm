@@ -65,6 +65,7 @@
                (:file "qam")
                (:file "classical-memory")
                (:file "classical-memory-mixin")
+               (:file "serial-kernels")
                (:file "wavefunction")
                (:file "subsystem")
                (:file "qvm")
