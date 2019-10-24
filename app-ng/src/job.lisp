@@ -10,7 +10,8 @@
 (defstruct (job (:constructor %make-job (work-function)))
   "A job permits a given function to be run in a threaded (and thread-safe) environment."
   (lock (bt:make-lock) :type bt:lock :read-only t)
-  (work-function nil :type function :read-only t)
+  (work-function nil :type function :read-only t
+                     :documentation "The job is ``performed'' by calling this function, where setting of job status and handling of errors is accounted for. A lock should be held by the caller when calling this function.")
   (thread nil :type (or null bt:thread))
   (status job-status-fresh :type job-status))
 
