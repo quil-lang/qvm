@@ -187,5 +187,4 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
             (with-output-to-string (s)
               (yason:encode t s))))))))
 
-  #+sbcl
-  (sb-ext:gc :full t))
+  (tg:gc :full t))
