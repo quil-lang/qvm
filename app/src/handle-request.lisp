@@ -187,6 +187,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
             (with-output-to-string (s)
               (yason:encode t s))))))))
 
-  ;; Trigger the garbage collector to ensure that foreign memory is freed
-  ;; (see issue #198).
-  (tg:gc :full t))
+  (when (eq *allocation-description* 'qvm:c-allocation)
+    ;; Trigger the garbage collector to ensure that foreign memory is freed
+    ;; (see issue #198).
+    (tg:gc :full t)))

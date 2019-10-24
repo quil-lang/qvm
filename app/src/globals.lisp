@@ -15,8 +15,12 @@
 (global-vars:define-global-var **persistent-wavefunction** nil)
 (global-vars:define-global-var **persistent-wavefunction-finalizer** (constantly nil))
 
+(defparameter *allocation-descriptions* '(("native" . qvm:lisp-allocation)
+                                          ("foreign" . qvm:c-allocation))
+  "Association list of allocation descriptions.")
+(defvar *allocation-description* 'qvm:lisp-allocation "Default allocation description.")
 (global-vars:define-global-var **default-allocation**
-    (lambda (n) (make-instance 'qvm:lisp-allocation :length n)))
+    (lambda (n) (make-instance *allocation-description* :length n)))
 
 (deftype simulation-method ()
   "Available QVM simulation methods."
