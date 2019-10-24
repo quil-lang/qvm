@@ -7,6 +7,13 @@
   (job-status-finished t)
   (job-status-error condition))
 
+(defstruct (job (:constructor %make-job (work-function)))
+  "A job permits a given function to be run in a threaded (and thread-safe) environment."
+  (lock (bt:make-lock) :type bt:lock :read-only t)
+  (work-function nil :type function :read-only t)
+  (thread nil :type (or null bt:thread))
+  (status job-status-fresh :type job-status))
+
 (defun job-status-name (job)
   (adt:match job-status (job-status job)
     (job-status-fresh "fresh")
@@ -14,13 +21,6 @@
     (job-status-killed "killed")
     ((job-status-finished _) "finished")
     ((job-status-error _) "error")))
-
-(defstruct (job (:constructor %make-job (work-function)))
-  "A job permits a given function to be run in a threaded (and thread-safe) environment."
-  (lock (bt:make-lock) :type bt:lock :read-only t)
-  (work-function nil :type function :read-only t)
-  (thread nil :type (or null bt:thread))
-  (status job-status-fresh :type job-status))
 
 (define-condition job-error (error)
   ((job :initarg :job :reader job-error-job)
