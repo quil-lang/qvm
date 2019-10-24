@@ -1,16 +1,27 @@
 (in-package #:qvm)
 
+;;; The APPROX-QVM supports a QUBIT-level noise model, intended to
+;;; approximate the qubit noise on a QPU. The APPROX-QVM allows the
+;;; specification of T1, T2, DEPOLARIZATION, and READOUT noise for
+;;; each qubit. During the APPROX-QVM's TRANSITION, qubit-level noise
+;;; is applied after each instruction for which qubit noise is
+;;; specified.
 (defclass approx-qvm (channel-qvm)
   ((t1-ops
     :initarg :t1-ops
     :accessor t1-ops
     :initform (make-hash-table :test 'eql)
-    :documentation "T1 value to simulate")
+    :documentation "T1 noise for each qubit to simulate")
    (t2-ops
     :initarg :t2-ops
     :accessor t2-ops
     :initform (make-hash-table :test 'eql)
-    :documentation "T2 value to simulate")
+    :documentation "T2 noise for each qubit to simulate")
+   (depol-ops
+    :initarg :depol-ops
+    :accessor depol-ops
+    :initform (make-hash-table :test 'eql)
+    :documentation "Gate application noise for each qubit to simulate. Gate overrotations and underrotations average out to the depolarizing channel.")
    (avg-gate-time
     :initarg :avg-gate-time
     :reader avg-gate-time
@@ -29,35 +40,41 @@
   (declare (ignore args))
   (maphash #'%evaluate-noise-entry (t1-ops qvm))
   (maphash #'%evaluate-noise-entry (t2-ops qvm))
+  (maphash #'%evaluate-noise-entry (depol-ops qvm))
   (maphash #'%evaluate-povm-entry (readout-povms qvm)))
 
 
 (defun %evaluate-noise-entry (qubit noise-ops)
-  "Helper function to check that a key value pair in T1-OPS or T2-OPS is valid. The qubit must be a NON-NEGATIVE INTEGER, and the NOISE-OPS must be a valid kraus map.."
+  "Helper function to check that a key value pair in T1-OPS or T2-OPS is valid. The qubit must be a NON-NEGATIVE INTEGER, and the NOISE-OPS must be a valid kraus map."
   (assert (and (integerp qubit) (<= 0 qubit)))
-  (check-kraus-ops noise-ops)
-  (format t "~a~%" noise-ops)
-  )
+  (check-kraus-ops noise-ops))
 
 
 (defun %evaluate-povm-entry (qubit povm)
   "Helper fucntion to check that a key value pair in READOUT-POVMS is valid. The QUBIT must be a NON-NEGATIVE INTEGER, and the POVM must be a correctly formatted POVM."
   (assert (and (integerp qubit) (<= 0 qubit)))
   (check-povm povm))
-  
+
 
 (defun (setf qubit-t1) (t1 qvm qubit)
   "Save the kraus operators for the T1 provided on the specific qubit."
-  (let ((kraus-ops (generate-damping-kraus-ops t1 (avg-gate-time qvm))))
+  (let ((kraus-ops (generate-damping-kraus-map t1 (avg-gate-time qvm))))
     (check-kraus-ops kraus-ops)
     (setf (gethash qubit (t1-ops qvm)) kraus-ops)))
 
 
 (defun (setf qubit-t2) (t2 qvm qubit)
   "Save the kraus operators for the T2  provided on the specified qubit."
-  (let ((kraus-ops (generate-dephasing-kraus-ops t2 (avg-gate-time qvm))))
+  (let ((kraus-ops (generate-dephasing-kraus-map t2 (avg-gate-time qvm))))
     (check-kraus-ops kraus-ops)
     (setf (gethash qubit (t2-ops qvm)) kraus-ops)))
+
+
+(defun (setf qubit-depolarization) (depol-prob qvm qubit)
+  "Save the kraus operators for the depolarizing channel on QUBIT. The depolarizing channel represents the average gate overrotation/underrotation noise. It is specified by DEPOL-PROB, which is the probability of overrotation/underrotation for the given QUBIT."
+  (let ((kraus-ops (generate-depolarizing-kraus-map depol-prob)))
+    (check-kraus-ops kraus-ops)
+    (setf (gethash qubit (depol-ops qvm)) kraus-ops)))
 
 
 (defun (setf qubit-fro) (fro qvm qubit)
@@ -88,7 +105,8 @@
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
          (t1-ops (loop :for q :in qubits :collect (gethash q (t1-ops qvm))))
          (t2-ops (loop :for q :in qubits :collect (gethash q (t2-ops qvm))))
-         (kraus-ops (list t1-ops t2-ops)))
+         (depol-ops (loop :for q in qubits :collect (gethash q (depol-ops qvm))))
+         (kraus-ops (list t1-ops t2-ops depol-ops)))
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
     (apply-all-kraus-maps qvm instr kraus-ops)
     (incf (pc qvm))
@@ -129,6 +147,19 @@
     kraus-ops))
 
 
+(defun generate-depolarizing-kraus-map (prob)
+  "Given a probability of depolarization PROB, calculate the kraus operation elements for the depolarizing channel."
+  (assert (< 0 prob 1) (prob) "DEPOL-PROB must be between 0 and 1")
+  (let* ((pk0 (sqrt (- 1 (/ (* 3 prob) 4))))
+         (pkn (sqrt (/ prob 4)))
+         (kraus-ops (loop :for mat :in '("I" "X" "Y" "Z")
+                          :for pj :in (list pk0 pkn pkn pkn)
+                          :collect (magicl:scale pj (quil:gate-matrix 
+                                                     (quil:gate-definition-to-gate
+                                                      (quil:lookup-standard-gate mat)))))))
+    kraus-ops))
+
+
 ;; TODO: Need to double check how damping dephasing kraus ops are
 ;; calculated before just combining it into
 ;; generate-dephasing-kraus-ops. For now I am pretty sure the
@@ -145,7 +176,7 @@
         ((not k2s) (loop :for k :in k1s
                          :collect (magicl:kron k (magicl:make-identity-matrix 2))))
         (t  (loop :for k1 :in k1s :append (loop :for k2 :in k2s
-                                               :collect (magicl:kron k1 k2))))))
+                                                :collect (magicl:kron k1 k2))))))
 
 
 

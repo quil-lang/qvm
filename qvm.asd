@@ -81,5 +81,6 @@
                (:file "execution")
                (:file "path-simulate")
                (:file "misc")
+               (:file "noise-models")
                (:file "channel-qvm")
                (:file "approximate-qvm")))
