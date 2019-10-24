@@ -97,7 +97,7 @@ Note: Only interact with the job after acquiring the lock (or alternatively by u
                  (_ (error 'job-error :job job :message "Job cannot be started because it is not fresh."))))))
 
 (defmacro define-job-action (action (job) &body body)
-  "Evaluate BODY with a lock held for JOB."
+  "Define a function ACTION taking a single argument JOB, that evaluates BODY while holding JOB's lock."
   (multiple-value-bind (body decls docstr)
       (alexandria:parse-body body :documentation t)
     (declare (ignore decls))
