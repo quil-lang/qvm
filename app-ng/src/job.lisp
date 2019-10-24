@@ -76,7 +76,9 @@
 (defun make-job (fn)
   "Make a JOB object which will, under JOB-START, run FN in a thread.
 
-The returned JOB can be repeatedly started if the JOB-STATUS is FINISHED (or KILLED). Only interact with the job after acquiring the lock (or alternatively by using WITH-JOB-LOCK)."
+The returned JOB can be repeatedly started if the JOB-STATUS is FRESH.
+
+Note: Only interact with the job after acquiring the lock (or alternatively by using WITH-JOB-LOCK)."
   (%make-job (lambda (job)
                (adt:match job-status (job-status job)
                  (job-status-fresh
