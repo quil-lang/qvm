@@ -225,3 +225,9 @@
     (and (typep instr 'quil:measurement)
          (member (quil:qubit-index (quil:measurement-qubit instr)) qubits))))
 
+
+(defun match-instr-idxs (parsed-prog &rest idxs)
+  "The returned function is true if the index of the INSTR in the program PARSED-PROG matches IDX."
+  (lambda (instr)
+    (member (position instr (cl-quil::parsed-program-executable-code parsed-prog) :test 'eq) idxs)))
+
