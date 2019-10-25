@@ -18,7 +18,9 @@
 (defparameter *allocation-descriptions* '(("native" . qvm:lisp-allocation)
                                           ("foreign" . qvm:c-allocation))
   "Association list of allocation descriptions.")
+
 (defvar *allocation-description* 'qvm:lisp-allocation "Default allocation description.")
+
 (global-vars:define-global-var **default-allocation**
     (lambda (n) (make-instance *allocation-description* :length n)))
 
