@@ -95,6 +95,17 @@
     (is (not (funcall (qvm::match-any-n-qubits 1 '(2)) x)))))
 
 
+(deftest test-match-instr-idxs ()
+    (let* ((program "DECLARE R0 BIT; X 0; CNOT 0 1;  MEASURE 0 R0")
+         (parsed-program (quil:parse-quil program))
+         (x (quil::nth-instr 0 parsed-program))
+         (cnot (quil::nth-instr 1 parsed-program))
+         (measure (quil::nth-instr 2 parsed-program)))
+    (is (funcall (qvm::match-instr-idxs parsed-program 1) cnot))
+    (is (funcall (qvm::match-instr-idxs parsed-program 0 1 2) x))
+    (is (not (funcall (qvm::match-instr-idxs parsed-program 1 2 3) x)))))
+
+
 (deftest test-make-noise-predicate ()
   (let* ((pred (qvm::match-strict-qubits 0))
          (priority 1)
