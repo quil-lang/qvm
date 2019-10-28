@@ -1,75 +1,113 @@
+;;;; noise-models.lisp
+;;;;
+;;;; Author: Sophia Ponte
+
 (in-package #:qvm)
+
+;;; Implementation of rule-based noise models for the QVM.
+
+;;; These values are relatively aribtrary limits for NOISE-PREDICATE
+;;; priorty. They are used to order noise models for matching to
+;;; instructions.
+(defconstant +MAX-PRIORITY+ 20)
+(defconstant +MIN-PRIORITY+ 0)
+(alexandria:define-constant +DEFAULT-NOISE-PREDICATE-NAME+ "NOISE-NAME" :test #'string=)
+
 
 ;;; A noise predicate is a function that takes an instruction's gate
 ;;; and qubits, and returns either true if the instruction is a match,
 ;;; else false. The priority indicates the priority of the predicate
 ;;; (tbd) and the noise-position indicates whether the predicate
 ;;; should match before or after an instruction.
-(defclass noise-pred ()
-  ((predicate
-    :initarg :predicate
-    :reader predicate
-    :initform nil
+(defclass noise-predicate ()
+  ((predicate-function
+    :initarg :predicate-function
+    :reader predicate-function
     :documentation "Does the instruction trigger the application of a channel?")
    (priority
     :initarg :priority
     :reader priority
-    :initform 10 ; Default priority is 10
-    :documentation "For ordering when checking for an instruction's  matching predicates. The convention we use is that more specific predicates get higher priorities.")
+    :documentation "For ordering when checking for an instruction's matching predicates. The convention we use is that more specific predicates get higher priorities.")
    (noise-position
     :initarg :noise-position
     :reader noise-position
-    :initform nil
-    :type noise-pos
-    :documentation "Should application of a channel happen before or after the instruction?"))
-  (:documentation "A NOISE-PREDICATe describes a collection of program instructions. When used in a NOISE-RULE, the NOISE-PREDICATE describes which instructions should be matched by the noise described in the OPERATION-ELEMENTS."))
+    :type noise-position
+    :documentation "Should application of a channel happen before or after the instruction?")
+   (name
+    :initarg :name
+    :reader name
+    :documentation "Name or descriptor for noise."))
+  (:default-initargs
+   :predicate-function nil
+   :priority 10
+   :noise-position ':after
+   :name +DEFAULT-NOISE-PREDICATE-NAME+)
+  (:documentation "A NOISE-PREDICATE describes a collection of program instructions. When used in a NOISE-RULE, the NOISE-PREDICATEICATE describes which instructions should be matched by the noise described in the OPERATION-ELEMENTS. Optionally, the NOISE-PREDICATE can be given a NAME. If none is provided, use the default 'NOISE-NAME'."))
 
-(defconstant +MAX-PRIORITY+ 20)
-(defconstant +MIN-PRIORITY+ 0)
 
-
-(deftype noise-pos ()
+(deftype noise-position ()
   "Describes the position of a noise rule relative to an instruction. Should the noise be applied BEFORE or AFTER the instruction is executed?" 
   '(member :before :after))
 
 
-(defmethod initialize-instance :after ((pred noise-pred) &rest args)
+(defmethod initialize-instance :after ((pred noise-predicate) &rest args)
   ;; Assert that the NOISE-POSITION of the predicate is of type
-  ;; NOISE-POS, and that PRIORITY is of type INTEGER
+  ;; NOISE-POSITION, and that PRIORITY is of type INTEGER
   (declare (ignore args))
-  (assert (typep (noise-position pred) 'noise-pos))
-  (assert (typep  (priority pred) 'integer))
+  (assert (typep (noise-position pred) 'noise-position))
+  (assert (typep (priority pred) 'integer))
   (let ((pr (priority pred)))
     (assert (<= +MIN-PRIORITY+ pr +MAX-PRIORITY+) (pr)
             "PRIORITY of a NOISE-PREDICATE must be between MIN-PRIORITY and MAX-PRIORITY")))
 
 
-(defun make-noise-pred (predicate priority noise-position)
-  "Creates a NOISE-PRED with the given PREDICATE (function designator), PRIORITY, and NOISE-POSITION."
-  (make-instance 'noise-pred :predicate predicate 
-                             :priority priority 
-                             :noise-position noise-position))
+(defun make-noise-predicate (predicate-function priority noise-position &optional (name +DEFAULT-NOISE-PREDICATE-NAME+))
+  "Creates a NOISE-PREDICATE with the given PREDICATE-FUNCTION (function designator), PRIORITY, and NOISE-POSITION."
+  (make-instance 'noise-predicate :predicate-function predicate-function
+                                  :priority priority
+                                  :noise-position noise-position
+                                  :name name))
 
 
 (defun predicate-and (np1 np2)
   "Logical AND of 2 noise predicates. The NOISE-POSITION is taken from NP1 and the priority is taken to be the min (smaller in value) priority between the two predicates."
-  (let* ((conjunction (alexandria:conjoin (predicate np1) (predicate np2)))
+  (let* ((new-name (and-predicate-names (name np1) (name np2)))
+         (conjunction (alexandria:conjoin (predicate-function np1) (predicate-function np2)))
          (priority (max (priority np1) (priority np2)))
          (noise-position (noise-position np1)))
-    (make-noise-pred conjunction priority noise-position)))
+    (make-noise-predicate conjunction priority noise-position new-name)))
 
 
 (defun predicate-or (np1 np2)
   "Logical OR of 2 noise predicates. The NOISE-POSITION is taken from NP1 and the priority is taken to be the min (smaller in value) priority between the two predicates."
-  (let* ((disjunction (alexandria:disjoin (predicate np1) (predicate np2)))
+  (let* ((new-name (or-predicate-names (name np1) (name np2)))
+         (disjunction (alexandria:disjoin (predicate-function np1) (predicate-function np2)))
          (priority (max (priority np1) (priority np2)))
          (noise-position (noise-position np1)))
-    (make-noise-pred disjunction priority noise-position)))
+    (make-noise-predicate disjunction priority noise-position new-name)))
 
 
 (defmethod predicate-not (np)
   "Logical NOT of a NOISE-PREDICATE NP. The PRIORITY of the predicate is 'inverted', by taking the difference between it and +MAX-PRIORITY+."
-  (make-noise-pred (complement (predicate np)) (- +MAX-PRIORITY+ (priority np)) (noise-position np)))
+  (make-noise-predicate (complement (predicate-function np))
+                   (- +MAX-PRIORITY+ (priority np))
+                   (noise-position np)
+                   (not-predicate-name (name np))))
+
+
+(defun and-predicate-names (name1 name2)
+  "Returns the concatenated predicate name (NAME1 & NAME2)"
+  (concatenate 'string "(" name1 " & " name2 ")"))
+
+
+(defun or-predicate-names (name1 name2)
+  "Returns the concatenated predicate name NAME1|NAME2"
+  (concatenate 'string  "(" name1 " | " name2 ")" ))
+
+
+(defun not-predicate-name (name)
+  "Returns the concatenated predicate name !NAME"
+  (concatenate 'string "!" name))
 
 
 ;;; A noise rule consists of a noise predicate and a list of operation
@@ -99,6 +137,7 @@
   (mapc #'check-kraus-ops kraus-maps)
   (make-instance 'noise-rule :noise-predicate predicate
                              :operation-elements kraus-maps))
+
 
 
 ;;; A noise model consists of a set of noise rules and readout-povms.
@@ -145,25 +184,25 @@
 (defun multiply-noise-models (nm1 nm2)
   "Combines two noise models in a way such that both set of rules, or one and not the other could be matched by an instruction."
   (make-noise-model
-   (loop :for rule1 :in (noise-rules nm1)
-         :append (loop :for rule2 :in (noise-rules nm2)
+   (loop :for r1 :in (noise-rules nm1)
+         :append (loop :for r2 :in (noise-rules nm2)
                        :collect (apply #'make-noise-rule
-                                       (predicate-and (noise-predicate rule1) 
-                                                      (noise-predicate rule2))
-                                       (append (operation-elements rule1) 
-                                               (operation-elements rule2)))
-                       :collect (apply #'make-noise-rule 
-                                       (predicate-and (noise-predicate rule1)                    
-                                                      (predicate-not (noise-predicate rule2)))
-                                       (operation-elements rule1))
-                       :collect (apply #'make-noise-rule 
-                                       (predicate-and (noise-predicate rule2)                    
-                                                      (predicate-not (noise-predicate rule1)))
-                                       (operation-elements rule2))))))
+                                       (predicate-and (noise-predicate r1)
+                                                      (noise-predicate r2))
+                                       (append (operation-elements r1)
+                                               (operation-elements r2)))
+                       :collect (apply #'make-noise-rule
+                                       (predicate-and (noise-predicate r1)                
+                                                      (predicate-not (noise-predicate r2)))
+                                       (operation-elements r1))
+                       :collect (apply #'make-noise-rule
+                                       (predicate-and (noise-predicate r2)                   
+                                                      (predicate-not (noise-predicate r1)))
+                                       (operation-elements r2))))))
 
 
 (defun match-strict-qubits (&rest qubits)
-  "The returned function is true if QUBITS exactly equals the instruction's qubits."
+  "The returned function is true if QUBITS exactly equals the gate application's qubits in the same order (CNOT 0 1 does not match CNOT 1 0)."
   (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (equal qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
@@ -230,4 +269,3 @@
   "The returned function is true if the index of the INSTR in the program PARSED-PROG matches IDX."
   (lambda (instr)
     (member (position instr (cl-quil::parsed-program-executable-code parsed-prog) :test 'eq) idxs)))
-
