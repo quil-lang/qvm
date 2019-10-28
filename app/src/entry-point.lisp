@@ -328,18 +328,17 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
     (terpri)))
 
 (defun allocation-description-maker (kind)
-  "Return a function INTEGER -> ALLOCATION that takes a number of elements and returns a proper descriptor for the allocation."
-  (cond
-    ((string-equal kind "native")
-     (lambda (length)
-       (make-instance 'qvm:lisp-allocation :length length)))
-    ((string-equal kind "foreign")
-     (lambda (length)
-       (make-instance 'qvm:c-allocation :length length)))
-    (t
-     (error "Invalid kind of allocation ~S, wanted any of {~{~S~^, ~}"
-            kind
-            *available-allocation-kinds*))))
+  "Return a function INTEGER -> ALLOCATION that takes a number of elements and returns a proper descriptor for the allocation. In addition to said function, return the allocator description used."
+  (let ((x (assoc kind *allocation-descriptions* :test #'string=)))
+    (if x
+        (let ((description (cdr x)))
+          (values
+           (lambda (length)
+             (make-instance description :length length))
+           description))
+        (error "Invalid kind of allocation ~S, wanted any of {~{~S~^, ~}"
+               kind
+               *available-allocation-kinds*))))
 
 (defun log-level-string-to-symbol (log-level)
   (let ((log-level-kw (assoc (intern (string-upcase log-level) 'keyword)
@@ -415,7 +414,11 @@ Version ~A is available from https://www.rigetti.com/forest~%"
     (setf qvm:*transition-verbose* t))
 
   (when default-allocation
-    (setq **default-allocation** (allocation-description-maker default-allocation)))
+
+    (multiple-value-bind (allocation description)
+        (allocation-description-maker default-allocation)
+      (setf **default-allocation** allocation
+            *allocation-description* description)))
 
   (when (plusp time-limit)
     (setf *time-limit* (/ time-limit 1000.0d0)))
