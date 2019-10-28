@@ -107,7 +107,7 @@ This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-
       (tbnl:abort-request-handler (error-response (princ-to-string c))))))
 
 (defmethod tbnl:acceptor-status-message ((acceptor rpc-acceptor) http-status-code &key error &allow-other-keys)
-  (if (eql http-status-code tbnl:+http-internal-server-error+)
+  (if (eql http-status-code +http-internal-server-error+)
       (error-response error)
       (call-next-method)))
 
