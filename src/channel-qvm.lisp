@@ -1,5 +1,11 @@
+;;;; channel-qvm.lisp
+;;;;
+;;;; Author: Sophia Ponte, Nikolas Tezak
+
 (in-package #:qvm)
 
+;;; Implements a QVM that can interpret a rule-based noise model and
+;;; apply kraus operators to it's state.
 
 (defgeneric apply-all-kraus-maps (qvm instr kraus-maps)
   (:documentation "Applies every kraus-map in the list KRAUS-MAPS to the state of the system."))
@@ -59,13 +65,13 @@
                          (quil:application-parameters instr)))
          (instr-qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
          (noise-rules (noise-rules (noise-model qvm)))
-         (prepend-kraus-maps (match-rules noise-rules instr :before))
-         (append-kraus-maps (match-rules noise-rules instr :after)))
-    (when prepend-kraus-maps 
-      (apply-all-kraus-maps qvm instr prepend-kraus-maps))
+         (prepend-matched-rule (find-matching-rule noise-rules instr ':before))
+         (append-matched-rule (find-matching-rule noise-rules instr ':after)))
+    (when prepend-matched-rule
+      (apply-all-kraus-maps qvm instr (operation-elements prepend-matched-rule)))
     (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple instr-qubits) params)
-    (when append-kraus-maps 
-      (apply-all-kraus-maps qvm instr append-kraus-maps))
+    (when append-matched-rule
+      (apply-all-kraus-maps qvm instr (operation-elements append-matched-rule)))
     (incf (pc qvm))
     qvm))
 
@@ -78,16 +84,14 @@
 
 (defun rule-matches-instr-p (rule instr position)
   "Check if rule is matched by instruction data and the position of the match request."
-  (let* ((noise-predicate (predicate (noise-predicate rule)))
+  (let* ((noise-predicate (predicate-function (noise-predicate rule)))
          (noise-position (noise-position (noise-predicate rule))))
     (and (funcall noise-predicate instr) (eq position noise-position))))
 
 
-(defun match-rules (rules instr position)
-  "Return the operation elements for the first matching rule."
-  (loop :for rule :in rules
-        :when (rule-matches-instr-p rule instr position)
-          :return (operation-elements rule)))
+(defun find-matching-rule (rules instr position)
+  "Return the first rule that matches INSTR/POSITION in the list RULES."
+  (find-if (lambda (rule) (rule-matches-instr-p rule instr position)) rules))
 
 
 (defmethod apply-all-kraus-maps ((qvm channel-qvm) (instr quil:gate-application) kraus-maps)
@@ -183,7 +187,6 @@
       ((1) (if (<= r p01) 0 1)))))
 
 
-;; Duplicate fn in noisy-qvm.lisp (deleted in noisy-qvm.lisp)
 (defun check-povm (povm)
   "Verify that the list POVM contains a valid single qubit diagonal POVM. Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
   (destructuring-bind (p00 p01 p10 p11) povm

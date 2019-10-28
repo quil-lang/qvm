@@ -1,3 +1,8 @@
+;;;; approximate-qvm-tests.lisp
+;;;;
+;;;; Author: Sophia Ponte
+
+
 (in-package #:qvm-tests)
 
 
@@ -16,21 +21,21 @@
     (setf (gethash 1 t2-ops) t2)
     (setf (gethash 0 depol-ops) depol)
     (setf (gethash 0 povms) good-povm)
-    (make-instance 'qvm::approx-qvm :number-of-qubits 2 
-                                    :t1-ops t1-ops 
+    (make-instance 'qvm::approx-qvm :number-of-qubits 2
+                                    :t1-ops t1-ops
                                     :t2-ops t2-ops
                                     :depol-ops depol-ops
                                     :readout-povms povms
                                     :avg-gate-time avg-gate-time)
     (setf (gethash 0 t1-ops) '(4 5 3 6))
-    (signals error  
+    (signals error
       (make-instance 'qvm::approx-qvm :number-of-qubits 2
                                       :t1-ops t1-ops
                                       :t2-ops t2-ops
                                       :readout-povms povms
                                       :avg-gate-time avg-gate-time))
     (setf (gethash 1 povms) bad-povm)
-    (signals error  
+    (signals error
       (make-instance 'qvm::approx-qvm :number-of-qubits 2
                                       :t1-ops t1-ops
                                       :t2-ops t2-ops
@@ -42,7 +47,7 @@
   ;; Test that the correct kraus operators are set for the correct
   ;; qubits when building an APPROX-QVM.
   (let* ((approx-qvm (make-instance 'qvm::approx-qvm :number-of-qubits 2 :avg-gate-time 1))
-         (program "DECLARE R0 BIT; X 0; CNOT 0 1;  MEASURE 0 R0")
+         (program "DECLARE R0 BIT; X 0; CNOT 0 1; MEASURE 0 R0")
          (parsed-program (quil:parse-quil program)))
     (load-program approx-qvm parsed-program :supersede-memory-subsystem t)
     (setf (qvm::qubit-t1 approx-qvm 0) 5
@@ -75,10 +80,10 @@
   (let* ((t1 12)
          (t2 40)
          (tphi (qvm::tphi t1 t2)))
-    (= tphi 15)
-    (is (= (qvm::tphi 0 0) 0))
-    (is (= (qvm::tphi 1 0) 0))
-    (is (= (qvm::tphi 0 1)) 0)))
+    (is (= 15 tphi))
+    (is (= 0 (qvm::tphi 0 0)))
+    (is (= 0 (qvm::tphi 1 0)))
+    (is (= 0 (qvm::tphi 0 1)))))
 
 
 (deftest test-kraus-kron ()
@@ -88,21 +93,21 @@
          (k2 (qvm::generate-damping-kraus-map 3 7))
          (kron (qvm::kraus-kron k1 k2)))
     (loop :for k in kron
-          :do (is (magicl::matrix-rows (nth 0 kron)) 4)
-          :do (is (magicl::matrix-cols (nth 0 kron)) 4))
-    (is (= (length kron) 4)))
+          :do (is (= 4 (magicl::matrix-rows (nth 0 kron))))
+          :do (is (= 4 (magicl::matrix-cols (nth 0 kron)))))
+    (is (= 4 (length kron))))
   (let* ((k (qvm::generate-damping-kraus-map 2 5))
          (kron-first (qvm::kraus-kron k nil))
          (kron-second (qvm::kraus-kron nil k)))
     (loop :for elem in kron-first
-          :do (is (magicl::matrix-rows elem) 4)
-          :do (is (magicl::matrix-cols elem) 4))
+          :do (is (= 4  (magicl::matrix-rows elem)))
+          :do (is (= 4 (magicl::matrix-cols elem))))
     (loop :for elem in kron-second
-          :do (is (magicl::matrix-rows elem) 4)
-          :do (is (magicl::matrix-cols elem) 4))
-    (is (= (length kron-first) 2))
-    (is (= (length kron-second) 2))
-    (is (null (qvm::kraus-kron nil nil))))) 
+          :do (is (= 4 (magicl::matrix-rows elem)))
+          :do (is (= 4 (magicl::matrix-cols elem))))
+    (is (= 2 (length kron-first)))
+    (is (= 2 (length kron-second)))
+    (is (null (qvm::kraus-kron nil nil)))))
 
 
 (deftest test-approx-qvm-readout-noise ()
@@ -110,19 +115,13 @@
   ;; APPROX-QVM. Test by applying a program 100 times and evaluating
   ;; the resulting excited state population.
   (with-execution-modes (:interpret)
-    (let* ((ones 0)
-           (qubit 0)
-           (approx-qvm (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+    (let* ((q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
            (numshots 100)
-           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0")
-           (parsed-program (quil:parse-quil program)))
-      (setf (qvm::qubit-fro approx-qvm qubit) .9d0)
-      (load-program approx-qvm parsed-program :supersede-memory-subsystem t)
-      (loop :repeat numshots
-            :do (qvm::bring-to-zero-state (qvm::amplitudes approx-qvm))
-            :do (run approx-qvm)
-            :do (incf ones (qvm::dereference-mref approx-qvm (quil:mref "R0" qubit))))
-      (is (< 50 ones numshots)))))
+           (qubit 0)
+           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
+      (setf (qvm::qubit-fro q qubit) .9d0)
+      (let ((ones-measured (qvm-tests::run-n-shot-program numshots q program)))
+        (is (< 50 ones-measured numshots))))))
 
 
 (deftest test-approx-qvm-t1-noise ()
@@ -130,19 +129,13 @@
   ;; APPROX-QVM. Test by applying a program 100 times and evaluating
   ;; the resulting excited state population.
   (with-execution-modes (:interpret)
-    (let* ((ones 0)
-           (qubit 0)
-           (approx-qvm (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time .2))
+    (let* ((qubit 0)
+           (q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time .2))
            (numshots 100)
-           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0")
-           (parsed-program (quil:parse-quil program)))
-      (setf (qvm::qubit-t1 approx-qvm 0) 4)
-      (load-program approx-qvm parsed-program :supersede-memory-subsystem t)
-      (loop :repeat numshots
-            :do (qvm::bring-to-zero-state (qvm::amplitudes approx-qvm))
-            :do (run approx-qvm)
-            :do (incf ones (qvm::dereference-mref approx-qvm (quil:mref "R0" qubit))))
-      (is (< 85 ones numshots)))))
+           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
+      (setf (qvm::qubit-t1 q qubit) 4)
+      (let ((ones-measured (qvm-tests::run-n-shot-program numshots q program)))
+        (is (< 85 ones-measured numshots))))))
 
 
 (deftest test-approx-qvm-t2-noise ()
@@ -150,20 +143,14 @@
   ;; Test by applying a program 100 times and evaluating the resulting
   ;; excited state population.
   (with-execution-modes (:interpret)
-    (let* ((ones 0)
+    (let* (
            (qubit 0)
-           (approx-qvm (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+           (q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
            (numshots 100)
-           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0")
-           (parsed-program (quil:parse-quil program)))
-      (setf (qvm::qubit-t2 approx-qvm 0) 2)
-      (load-program approx-qvm parsed-program :supersede-memory-subsystem t)
-      (loop :repeat numshots
-            :do (qvm::bring-to-zero-state (qvm::amplitudes approx-qvm))
-            :do (run approx-qvm)
-            :do (incf ones (qvm::dereference-mref approx-qvm (quil:mref "R0" qubit))))
-      (is (= 100 ones)))))
-
+           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
+      (setf (qvm::qubit-t2 q qubit) 2)
+      (let ((ones-measured (qvm-tests::run-n-shot-program numshots q program)))
+        (is (= 100 ones-measured numshots))))))
 
 
 (deftest test-approx-qvm-depol-noise ()
@@ -171,28 +158,21 @@
   ;; APPROX-QVM Test by applying a program 100 times and evaluating
   ;; the resulting excited state population.
   (with-execution-modes (:interpret)
-    (let* ((ones 0)
-           (qubit 0)
-           (approx-qvm (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+    (let* ((qubit 0)
+           (q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
            (numshots 100)
-           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0")
-           (parsed-program (quil:parse-quil program)))
-      (setf (qvm::qubit-depolarization approx-qvm 0) .2)
-      (load-program approx-qvm parsed-program :supersede-memory-subsystem t)
-      (loop :repeat numshots
-            :do (qvm::bring-to-zero-state (qvm::amplitudes approx-qvm))
-            :do (run approx-qvm)
-            :do (incf ones (qvm::dereference-mref approx-qvm (quil:mref "R0" qubit))))
-      (is (< 0 ones numshots)))))
+           (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
+      (setf (qvm::qubit-depolarization q qubit) .2)
+      (let ((ones-measured (qvm-tests::run-n-shot-program numshots q program)))
+        (is (< 0 ones-measured numshots))))))
 
 
 (deftest test-generate-damping-kraus-map ()
   (let* ((gate-time (+ 1 (random 3))) ; gate-time between 1 and 4
-         (t1 (+ gate-time (random 6))) ; random t1 > gate-time 
+         (t1 (+ gate-time (random 6))) ; random t1 > gate-time
          (kraus (qvm::generate-damping-kraus-map t1 gate-time))
          (k0 (magicl:make-complex-matrix 2 2 (list 0 0 (sqrt (/ gate-time t1)) 0)))
-         (k1 (magicl:make-complex-matrix 2 2 (list 1 0 0 (sqrt (- 1 (/ gate-time t1))))))
-         )
+         (k1 (magicl:make-complex-matrix 2 2 (list 1 0 0 (sqrt (- 1 (/ gate-time t1)))))))
     (is (cl-quil::matrix-equality (nth 0 kraus) k0))
     (is (cl-quil::matrix-equality (nth 1 kraus) k1))))
 
