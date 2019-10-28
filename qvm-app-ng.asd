@@ -36,6 +36,7 @@
                (:file "utilities")
                (:file "uuid")
                (:file "logging")
+               (:file "http-status")
                (:file "errors")
                (:file "validators")
                (:file "make-qvm")
