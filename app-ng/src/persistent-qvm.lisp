@@ -98,7 +98,7 @@ TOKEN is a PERSISTENT-QVM-TOKEN."
             (declare (ignore qvm))
             ;; LOCK must be held here or we're in trouble.
             (%checked-transition-to-state-locked pqvm 'waiting :from-state 'running)
-            ;; TODO:(appleby) possible to unwind from CONDITION-WAIT? Maybe UNWIND-PROTECT here.
+            ;; TODO(appleby): possible to unwind from CONDITION-WAIT? Maybe UNWIND-PROTECT here.
             (loop :while (persistent-qvm-state= 'waiting (persistent-qvm-state pqvm))
                   :do (bt:condition-wait cv lock)
                   :finally (unless (persistent-qvm-state= 'dying (persistent-qvm-state pqvm))
