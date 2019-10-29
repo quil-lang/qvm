@@ -672,6 +672,84 @@ Ensure that the job is deleted afterwards."
       (check-request (job-request url :type "delete-job" :job-token job-token)
                      :response-re "Deleted async JOB"))))
 
+(deftest test-rpc-api-read-memory ()
+  "Test the read-memory API call."
+  (with-rpc-server (url)
+    (let ((qvm-token (extract-and-validate-token
+                      (check-request (job-request url
+                                                  :type "create-qvm"
+                                                  :allocation-method "native"
+                                                  :simulation-method "pure-state"
+                                                  :num-qubits 2)
+                                     :status 201
+                                     :response-re +rpc-response-token-scanner+))))
+
+      ;; request nothing get nothing
+      (check-request (simple-request url :type "read-memory"
+                                         :qvm-token qvm-token
+                                         :addresses +empty-hash-table+)
+                     :response-re "{}")
+
+      ;; error, no classical memory subsystem configured yet
+      (check-request (simple-request url :type "read-memory"
+                                         :qvm-token qvm-token
+                                         :addresses +all-ro-addresses+)
+                     :status 500)
+
+      ;; DECLARE some memory
+      (check-request (simple-request url
+                                     :type "run-program"
+                                     :qvm-token qvm-token
+                                     :compiled-quil "DECLARE ro BIT[2]"
+                                     :addresses +empty-hash-table+)
+                     :response-re "{}")
+
+      ;; Wait for the persistent qvm to enter the READY state
+      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
+            :until (string= state "READY")
+            :finally (is (string= state "READY")))
+
+      ;; ro register can now be read
+      (check-request (simple-request url
+                                     :type "read-memory"
+                                     :qvm-token qvm-token
+                                     :addresses +all-ro-addresses+)
+                     :response-callback (response-json-fields-checker '(("ro" ((0 0))))))
+
+      ;; or even a single location
+      (check-request (simple-request url :type "read-memory"
+                                         :qvm-token qvm-token
+                                         :addresses (alexandria:plist-hash-table '("ro" (1))))
+                     :response-callback (response-json-fields-checker '(("ro" ((0))))))
+
+      ;; but ro[2] is out-of-bounds
+      (check-request (simple-request url :type "read-memory"
+                                         :qvm-token qvm-token
+                                         :addresses (alexandria:plist-hash-table '("ro" (2))))
+                     :status 500)
+
+      ;; and register "zonk" does not exist
+      (check-request (simple-request url :type "read-memory"
+                                         :qvm-token qvm-token
+                                         :addresses (alexandria:plist-hash-table '("zonk" t)))
+                     :status 500)
+
+      ;; invalid qvm-token
+      (check-request (simple-request url :type "read-memory"
+                                         :qvm-token (invalidate-token qvm-token)
+                                         :addresses +all-ro-addresses+)
+                     :status 400)
+
+      ;; invalid address parameter
+      (check-request (simple-request url :type "read-memory"
+                                         :qvm-token qvm-token
+                                         :addresses "all of them")
+                     :status 400)
+
+      ;; clean up
+      (check-request (simple-request url :type "delete-qvm" :qvm-token qvm-token)
+                     :response-re "Deleted persistent QVM"))))
+
 (deftest test-rpc-api-create-qvm-with-pauli-noise ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and Pauli noise parameters.."
   (with-rpc-server (url)
