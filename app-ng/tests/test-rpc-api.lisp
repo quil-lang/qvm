@@ -153,7 +153,8 @@ The CREATE-JOB request is expected to return with status 200 OK.
 Ensure that the job is deleted afterwards."
   (let ((job-token (extract-and-validate-token
                     (check-request (simple-request url :type "create-job"
-                                                       :sub-request (plist->json json-plist))))))
+                                                       :sub-request (plist->json json-plist))
+                                   :status 202))))
     (unwind-protect
          (simple-request url :type "job-result" :job-token job-token)
       (simple-request url :type "delete-job" :job-token job-token))))
@@ -458,6 +459,7 @@ Ensure that the job is deleted afterwards."
                                                           :allocation-method allocation-method
                                                           :simulation-method simulation-method
                                                           :num-qubits num-qubits)
+                                          :status 201
                                           :response-re +rpc-response-token-scanner+))
                  (token (extract-and-validate-token response)))
 
@@ -514,13 +516,14 @@ Ensure that the job is deleted afterwards."
                                                       :allocation-method "native"
                                                       :simulation-method "pure-state"
                                                       :num-qubits 2)
+                                      :status 201
                                       :response-re +rpc-response-token-scanner+)))
            (job-token (extract-and-validate-token
                        (check-request (simple-request url
                                                       :type "run-program-async"
                                                       :qvm-token qvm-token
                                                       :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro")
-                                      :status 200))))
+                                      :status 202))))
 
       (check-request (simple-request url :type "qvm-info" :qvm-token qvm-token)
                      :response-callback (response-json-fields-checker '(("state" "WAITING"))))
@@ -583,6 +586,7 @@ Ensure that the job is deleted afterwards."
                                                    :allocation-method "native"
                                                    :simulation-method "pure-state"
                                                    :num-qubits 2)
+                                      :status 201
                                       :response-re +rpc-response-token-scanner+)))
            (job-token (extract-and-validate-token
                        (check-request (simple-request url
@@ -592,7 +596,7 @@ Ensure that the job is deleted afterwards."
                                                                      :qvm-token ,qvm-token
                                                                      :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro"
                                                                      :addresses ,+all-ro-addresses+)))
-                                      :status 200))))
+                                      :status 202))))
 
       (check-request (job-request url :type "qvm-info" :qvm-token qvm-token)
                      :response-callback (response-json-fields-checker '(("state" "WAITING"))))
@@ -668,6 +672,7 @@ Ensure that the job is deleted afterwards."
                                                         :num-qubits 1
                                                         :gate-noise gate-noise
                                                         :measurement-noise measurement-noise)
+                                        :status 201
                                         :response-re +rpc-response-token-scanner+))
                (token (extract-and-validate-token response)))
 
@@ -794,6 +799,7 @@ Ensure that the job is deleted afterwards."
                                                     :allocation-method "native"
                                                     :simulation-method "pure-state"
                                                     :num-qubits 1)
+                                    :status 201
                                     :response-re +rpc-response-token-scanner+))
            (token (extract-and-validate-token response)))
 
@@ -846,6 +852,7 @@ Ensure that the job is deleted afterwards."
                                                        :allocation-method allocation-method
                                                        :simulation-method simulation-method
                                                        :num-qubits 2)
+                                       :status 201
                                        :response-re +rpc-response-token-scanner+))
               (token (extract-and-validate-token response)))
 
@@ -911,7 +918,8 @@ Ensure that the job is deleted afterwards."
                        (simple-request url
                                        :type "create-job"
                                        :sub-request (plist->json '(:type "qvm-info"
-                                                                   :qvm-token "bogus")))))))
+                                                                   :qvm-token "bogus")))
+                       :status 202))))
 
       (check-request (simple-request url :type "job-info" :job-token job-token)
                      :response-callback
@@ -933,7 +941,8 @@ Ensure that the job is deleted afterwards."
                       (check-request
                        (simple-request url
                                        :type "create-job"
-                                       :sub-request (plist->json '(:type "version")))))))
+                                       :sub-request (plist->json '(:type "version")))
+                       :status 202))))
 
       (check-request (job-request url :type "job-info" :job-token job-token)
                      :response-callback

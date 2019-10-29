@@ -176,7 +176,14 @@ Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the 
                                                        gate-noise
                                                        measurement-noise)
                                    allocation-method))
-                       :test #'equal)))
+                       :test #'equal)
+                      ;; TODO(appleby): is it bad netiquette to return 201 Created without setting
+                      ;; the Location header? Since we use JSON-RPC semantics, it's not clear what
+                      ;; Location should be. The spec seems to indicate that it's OK to not set
+                      ;; Location if it's equal to the request URL. I suppose that's technically
+                      ;; true, since all RPC requests are served from /, but it definitely feels
+                      ;; like we're muddying the HTTP semantics.
+                      :status +http-created+))
 
 (define-rpc-handler (handle-qvm-info "qvm-info") ((qvm-token #'parse-qvm-token))
   "Return some basic bookkeeping info about the specified QVM.
@@ -288,12 +295,12 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 COMPILED-QUIL is a STRING containing a valid Quil program.
 
 Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created async JOB's unique ID token."
-  ;; TODO(appleby): this should probably return either 201 Created or 202 Accepted.
   (make-json-response
    (alexandria:plist-hash-table
     (list "token" (run-jobbo (lambda ()
                                (run-program-on-persistent-qvm qvm-token compiled-quil))))
-    :test #'equal)))
+    :test #'equal)
+   :status +http-accepted+))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; ASYNC JOB HANDLERS ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -325,11 +332,11 @@ Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the 
   ;; calls to run async are ones that perform computation (currently only run-program), although
   ;; there doesn't seem to be any harm in allowing someone to run qvm-info, say, asynchronously if
   ;; they want. Whitelisting would at least reduce the API surface for testing. Something to ponder.
-  (make-json-response
-   (alexandria:plist-hash-table
-    (list "token" (run-jobbo (lambda ()
-                               (dispatch-rpc-request sub-request))))
-    :test #'equal)))
+  (make-json-response (alexandria:plist-hash-table
+                       (list "token" (run-jobbo (lambda ()
+                                                  (dispatch-rpc-request sub-request))))
+                       :test #'equal)
+                      :status +http-accepted+))
 
 (define-rpc-handler (handle-job-info "job-info") ((job-token #'parse-job-token))
   "Return a JSON-RESPONSE with some basic bookkeeping info about the specified async JOB.
