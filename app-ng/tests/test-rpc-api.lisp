@@ -437,6 +437,28 @@ Ensure that the job is deleted afterwards."
                      :addresses (alexandria:plist-hash-table '("mem" (0 2))))
      :response-callback (response-json-fields-checker `(("mem" ((0 1))))))
 
+    ;; invalid register index OOB
+    (check-request
+     (simple-request url
+                     :type "run-program"
+                     :allocation-method "native"
+                     :simulation-method "pure-state"
+                     :compiled-quil +generic-x-0-quil-program+
+                     :addresses (alexandria:plist-hash-table '("ro" (0 2))))
+     :status 500
+     :response-re "qvm_error")
+
+    ;; invalid negative register index
+    (check-request
+     (simple-request url
+                     :type "run-program"
+                     :allocation-method "native"
+                     :simulation-method "pure-state"
+                     :compiled-quil +generic-x-0-quil-program+
+                     :addresses (alexandria:plist-hash-table '("ro" (-1))))
+     :status 400
+     :response-re "qvm_error")
+
     ;; non-existent named register
     (check-request
      (simple-request url
