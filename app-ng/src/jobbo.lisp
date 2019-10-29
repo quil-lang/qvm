@@ -2,8 +2,8 @@
 ;;;;
 ;;;; author: appleby
 ;;;;
-;;;; This file will be renamed or else merged with job.lisp once that PR lands. I've stuck this code
-;;;; in a separate file for now to avoid merge conflicts.
+;;;; TODO(appleby): This file will be renamed or else merged with job.lisp once that PR lands. I've
+;;;; stuck this code in a separate file for now to avoid merge conflicts.
 (in-package #:qvm-app-ng)
 
 (deftype job-token () 'string)
