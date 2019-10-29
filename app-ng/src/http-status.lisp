@@ -18,6 +18,8 @@
                   ,@(alexandria:ensure-list tbnl-documentation)))))
 
   (define-tbnl-derived-constant +http-ok+)
+  (define-tbnl-derived-constant +http-created+)
+  (define-tbnl-derived-constant +http-accepted+)
   (define-tbnl-derived-constant +http-bad-request+)
   (define-tbnl-derived-constant +http-internal-server-error+))
 
