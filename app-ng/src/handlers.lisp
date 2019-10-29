@@ -99,7 +99,7 @@ Alternatively, the handler function can be called from lisp like so
               ,@body-forms))))))
 
 (define-rpc-handler (handle-version "version") ()
-  "Return QVM-APP-NG version info as a string."
+  "Return a TEXT-RESPONSE that contains the QVM-APP-NG version."
   ;; text/html rather than application/json for backwards compatibility with previous QVM-APP API.
   (make-text-response (string-right-trim
                        '(#\Newline)
@@ -124,7 +124,7 @@ GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pau
 
 MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
 
-Return a JSON object containing a \"token\" key with the newly-created persistent QVM's unique ID token."
+Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created persistent QVM's unique ID token."
   (make-json-response (alexandria:plist-hash-table
                        `("token" ,(allocate-persistent-qvm
                                    (make-requested-qvm simulation-method
@@ -157,7 +157,7 @@ GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pau
 
 MEASUREMENT-NOISE is an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
 
-Return a JSON object with a \"bytes\" key indicating the estimated number of bytes required."
+Return a JSON-RESPONSE object that contains a HASH-TABLE with a \"bytes\" key indicating the estimated number of bytes required."
   (make-json-response (alexandria:plist-hash-table
                        `("bytes" ,(memory-required-for-qvm simulation-method
                                                            allocation-method
@@ -199,7 +199,7 @@ ADDRESSES is a HASH-TABLE where the keys are mem register names and the values a
 
 The caller must provide either QVM-TOKEN or SIMULATION-METHOD, but not both.
 
-Return the contents of the memory registers requested in the ADDRESSES request parameter."
+Return a JSON-RESPONSE that contains a HASH-TABLE of the contents of the memory registers requested in the ADDRESSES request parameter."
   (when (and (null qvm-token)
              (not (and allocation-method simulation-method)))
     (rpc-parameter-parse-error
@@ -230,7 +230,7 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 
 COMPILED-QUIL is a STRING containing a valid Quil program.
 
-Return true on success."
+Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created async JOB's unique ID token."
   ;; TODO(appleby): this should probably return either 201 Created or 202 Accepted.
   (make-json-response
    (alexandria:plist-hash-table
@@ -245,7 +245,7 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 
 It is an error to try to resume a QVM in any state other than the WAITING state.
 
-Return true on success."
+Return a JSON-RESPONSE that contains T on success."
   (resume-persistent-qvm qvm-token)
   (make-json-response t))
 
@@ -260,7 +260,7 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 
 ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
 
-Return the contents of the memory registers requested by the ADDRESSES request parameter."
+Return a JSON-RESPONSE that contains a HASH-TABLE of the contents of the memory registers requested in the ADDRESSES request parameter."
   (make-json-response
    (with-persistent-qvm (qvm) qvm-token
      (collect-memory-registers qvm addresses))))
@@ -276,22 +276,51 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 
 MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory register name and the corresponding value is a LIST of (INDEX VALUE) pairs indicating that VALUE should be stored at index INDEX in the corresponding memory register.
 
-Return true on success."
+Return a JSON-RESPONSE that contains T on success."
   (write-persistent-qvm-memory qvm-token memory-contents)
   (make-json-response t))
 
 (define-rpc-handler (handle-job-info "job-info") ((job-token #'parse-job-token))
+  "Return a JSON-RESPONSE with some basic bookkeeping info about the specified async JOB.
+
+JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
   (make-json-response (jobbo-info job-token)))
 
 (define-rpc-handler (handle-delete-job "delete-job") ((job-token #'parse-job-token))
+  "Delete a JOB.
+
+JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
   (delete-jobbo job-token)
   (make-json-response (format nil "Deleted async JOB ~D" job-token)))
 
 (define-rpc-handler (handle-job-result "job-result") ((job-token #'parse-job-token))
+  "Return a JSON-RESPONSE with result of the given async JOB.
+
+This call will block waiting for the JOB to complete.
+
+JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
   ;;  No need to MAKE-FOO-RESPONSE here; the JOB result will already be a RESPONSE object.
   (jobbo-result job-token))
 
 (define-rpc-handler (handle-create-job "create-job") ((sub-request #'parse-sub-request))
+  "Create the request async JOB.
+
+SUB-REQUEST is a valid json object that indicates what RPC request should be run asynchronously. For example, to execute a \"run-program\" request asynchronously, you might pass the following as the SUB-REQUEST parameter:
+
+    {
+     \"type\": \"run-program\",
+     \"simulation-method\": \"pure-state\",
+     \"allocation-method\": \"native\",
+     \"num-qubits\": 10,
+     \"compiled-quil\": \"X 0\",
+     \"addresses\": {\"ro\": t}
+    }
+
+It is an error to attempt to nest \"create-job\" requests by specifying \"create-job\" as the \"type\" field of SUB-REQUEST.
+
+JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call.
+
+Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created JOB's unique ID token."
   ;; TODO(appleby): should we attempt to LOOKUP-RPC-HANDLER-FOR-REQUEST here as a sanity check and
   ;; early warning? Seems like an edge-case that's not worth special-casing.
 
