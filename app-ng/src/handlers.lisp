@@ -101,10 +101,10 @@ Alternatively, the handler function can be called from lisp like so
 (define-rpc-handler (handle-version "version") ()
   "Return QVM-APP-NG version info as a string."
   ;; text/html rather than application/json for backwards compatibility with previous QVM-APP API.
-  (string-right-trim
-   '(#\Newline)
-   (with-output-to-string (*error-output*)
-     (show-version))))
+  (make-text-response (string-right-trim
+                       '(#\Newline)
+                       (with-output-to-string (*error-output*)
+                         (show-version)))))
 
 (define-rpc-handler (handle-create-qvm "create-qvm")
                     ((allocation-method #'parse-allocation-method)
@@ -125,14 +125,15 @@ GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pau
 MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
 
 Return a JSON object containing a \"token\" key with the newly-created persistent QVM's unique ID token."
-  (encode-json (alexandria:plist-hash-table
-                `("token" ,(allocate-persistent-qvm
-                            (make-requested-qvm simulation-method
-                                                allocation-method
-                                                num-qubits
-                                                gate-noise
-                                                measurement-noise)
-                            allocation-method)))))
+  (make-json-response (alexandria:plist-hash-table
+                       `("token" ,(allocate-persistent-qvm
+                                   (make-requested-qvm simulation-method
+                                                       allocation-method
+                                                       num-qubits
+                                                       gate-noise
+                                                       measurement-noise)
+                                   allocation-method))
+                       :test #'equal)))
 
 (define-rpc-handler (handle-qvm-memory-estimate "qvm-memory-estimate")
                     ((allocation-method #'parse-allocation-method)
@@ -157,25 +158,26 @@ GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pau
 MEASUREMENT-NOISE is an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
 
 Return a JSON object with a \"bytes\" key indicating the estimated number of bytes required."
-  (encode-json (alexandria:plist-hash-table
-                `("bytes" ,(memory-required-for-qvm simulation-method
-                                                    allocation-method
-                                                    num-qubits
-                                                    gate-noise
-                                                    measurement-noise)))))
+  (make-json-response (alexandria:plist-hash-table
+                       `("bytes" ,(memory-required-for-qvm simulation-method
+                                                           allocation-method
+                                                           num-qubits
+                                                           gate-noise
+                                                           measurement-noise))
+                       :test #'equal)))
 
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
   "Delete a persistent QVM.
 
 QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
   (delete-persistent-qvm qvm-token)
-  (encode-json (format nil "Deleted persistent QVM ~D" qvm-token)))
+  (make-json-response (format nil "Deleted persistent QVM ~D" qvm-token)))
 
 (define-rpc-handler (handle-qvm-info "qvm-info") ((qvm-token #'parse-qvm-token))
   "Return some basic bookkeeping info about the specified QVM.
 
 QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
-  (encode-json (persistent-qvm-info qvm-token)))
+  (make-json-response (persistent-qvm-info qvm-token)))
 
 (define-rpc-handler (handle-run-program "run-program")
                     ((qvm-token (optionally #'parse-qvm-token))
@@ -208,7 +210,7 @@ Return the contents of the memory registers requested in the ADDRESSES request p
                            measurement-noise))
     (rpc-parameter-parse-error
      "QVM-TOKEN is incompatible with any of the following parameters: ALLOCATION-METHOD, SIMULATION-METHOD, GATE-NOISE, MEASUREMENT-NOISE."))
-  (encode-json
+  (make-json-response
    (if qvm-token
        (run-program-on-persistent-qvm qvm-token compiled-quil addresses)
        (run-program-on-qvm (make-requested-qvm simulation-method
@@ -230,10 +232,11 @@ COMPILED-QUIL is a STRING containing a valid Quil program.
 
 Return true on success."
   ;; TODO(appleby): this should probably return either 201 Created or 202 Accepted.
-  (encode-json
+  (make-json-response
    (alexandria:plist-hash-table
     (list "token" (run-jobbo (lambda ()
-                               (run-program-on-persistent-qvm qvm-token compiled-quil)))))))
+                               (run-program-on-persistent-qvm qvm-token compiled-quil))))
+    :test #'equal)))
 
 (define-rpc-handler (handle-resume-from-wait "resume") ((qvm-token #'parse-qvm-token))
   "Resume execution of a persistent QVM that is in the WAITING state.
@@ -244,7 +247,7 @@ It is an error to try to resume a QVM in any state other than the WAITING state.
 
 Return true on success."
   (resume-persistent-qvm qvm-token)
-  (encode-json t))
+  (make-json-response t))
 
 (define-rpc-handler (handle-read-memory "read-memory")
                     ((qvm-token #'parse-qvm-token)
@@ -258,7 +261,7 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
 
 Return the contents of the memory registers requested by the ADDRESSES request parameter."
-  (encode-json
+  (make-json-response
    (with-persistent-qvm (qvm) qvm-token
      (collect-memory-registers qvm addresses))))
 
@@ -275,22 +278,17 @@ MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory
 
 Return true on success."
   (write-persistent-qvm-memory qvm-token memory-contents)
-  (encode-json t))
+  (make-json-response t))
 
 (define-rpc-handler (handle-job-info "job-info") ((job-token #'parse-job-token))
-  (encode-json (jobbo-info job-token)))
+  (make-json-response (jobbo-info job-token)))
 
 (define-rpc-handler (handle-delete-job "delete-job") ((job-token #'parse-job-token))
   (delete-jobbo job-token)
-  (encode-json (format nil "Deleted async JOB ~D" job-token)))
+  (make-json-response (format nil "Deleted async JOB ~D" job-token)))
 
 (define-rpc-handler (handle-job-result "job-result") ((job-token #'parse-job-token))
-  ;; TODO(appleby): This assumes that the handler for the async job has already encoded it's result
-  ;; in the expected output format (usually JSON); hence, no call to ENCODE-JSON here. This
-  ;; abstraction is insufficient, however, because it means we don't know what to set the
-  ;; CONTENT-TYPE header to here. Probably the Right Thing(TM) is to have handlers return an
-  ;; unencoded lisp object, and do the encoding a higher level, in DISPATCH-RPC-HANDLERS or
-  ;; TBNL:ACCEPTOR-DISPATCH-REQUEST.
+  ;;  No need to MAKE-FOO-RESPONSE here; the JOB result will already be a RESPONSE object.
   (jobbo-result job-token))
 
 (define-rpc-handler (handle-create-job "create-job") ((sub-request #'parse-sub-request))
@@ -302,7 +300,8 @@ Return true on success."
   ;; calls to run async are ones that perform computation (currently only run-program), although
   ;; there doesn't seem to be any harm in allowing someone to run qvm-info, say, asynchronously if
   ;; they want. Whitelisting would at least reduce the API surface for testing. Something to ponder.
-  (encode-json
+  (make-json-response
    (alexandria:plist-hash-table
     (list "token" (run-jobbo (lambda ()
-                               (dispatch-rpc-request sub-request)))))))
+                               (dispatch-rpc-request sub-request))))
+    :test #'equal)))

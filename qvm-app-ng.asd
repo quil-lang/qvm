@@ -41,6 +41,7 @@
                (:file "validators")
                (:file "make-qvm")
                (:file "persistent-qvm")
+               (:file "response")
                (:file "server")
                (:file "handlers")
                (:file "qvm-app-ng-version")
