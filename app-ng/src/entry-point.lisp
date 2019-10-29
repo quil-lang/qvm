@@ -97,7 +97,8 @@
   nil)
 
 (defun run-initial-rpc-request (rpc-request)
-  (format t "~A~%" (dispatch-rpc-request (parse-json-or-lose rpc-request))))
+  (encode-response (dispatch-rpc-request (parse-json-or-lose rpc-request)))
+  (terpri))
 
 (defun generalized-boolean-to-exit-code (successp)
   (cond ((integerp successp) successp)

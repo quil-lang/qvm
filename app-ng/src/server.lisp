@@ -78,6 +78,13 @@ Returns the newly created and running RPC-ACCEPTOR, which is also saved in *RPC-
     (list "error_type" "qvm_error"
           "status" message))))
 
+(defun http-response (response)
+  (when (boundp 'tbnl:*reply*)
+    (setf (tbnl:return-code*) (response-status response))
+    (setf (tbnl:content-type*) (response-content-type response)))
+  (with-output-to-string (s)
+    (encode-response response s)))
+
 (defvar *request-json*)
 (setf (documentation '*request-json* 'variable)
       "The parsed JSON request body while in the context of a request. Guaranteed to be HASH-TABLE when bound. Use the function JSON-PARAMETER to access parameter values.")
@@ -101,7 +108,7 @@ This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-
 (defmethod tbnl:acceptor-dispatch-request ((acceptor rpc-acceptor) request)
   (handler-case
       (let ((*request-json* (parse-json-or-lose (tbnl:raw-post-data :request request :force-text t))))
-        (call-next-method))
+        (http-response (call-next-method)))
     (rpc-error (c)
       (setf (tbnl:return-code*) (rpc-error-http-status c))
       (tbnl:abort-request-handler (error-response (princ-to-string c))))))

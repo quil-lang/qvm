@@ -10,7 +10,7 @@
                                  :allocation-method "native"
                                  :simulation-method "pure-state"
                                  :num-qubits 1))
-                      (token (extract-token response)))
+                      (token (gethash "token" (qvm-app-ng::response-data response))))
                  (lparallel:submit-task channel #'qvm-info token)))
              (qvm-info (token)
                (qvm-app-ng::handle-qvm-info :qvm-token token)
@@ -43,7 +43,7 @@
                                  :allocation-method "native"
                                  :simulation-method "pure-state"
                                  :num-qubits 1))
-                      (token (extract-token response)))
+                      (token (gethash "token" (qvm-app-ng::response-data response))))
                  (lparallel:submit-task channel #'delete-qvm token)))
              (delete-qvm (token)
                (qvm-app-ng::handle-delete-qvm :qvm-token token)))
@@ -64,7 +64,7 @@
          (response (qvm-app-ng::handle-create-qvm :allocation-method "native"
                                                   :simulation-method "pure-state"
                                                   :num-qubits 1))
-         (token (extract-token response)))
+         (token (gethash "token" (qvm-app-ng::response-data response))))
     (unwind-protect
          (lparallel:task-handler-bind ((error  #'lparallel:invoke-transfer-error))
            (loop :repeat num-tasks :do
