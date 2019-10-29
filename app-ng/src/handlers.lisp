@@ -1,3 +1,6 @@
+;;;; app-ng/src/handlers.lisp
+;;;;
+;;;; author: appleby
 (in-package #:qvm-app-ng)
 
 (defvar *rpc-handlers* '()
@@ -27,6 +30,9 @@ Signal an error if no handler is found."
     (error "No handler found for rpc request: ~S"
            (with-output-to-string (*standard-output*)
              (yason:encode request-json)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;; DEFINE-RPC-HANDLER ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun remove-existing-rpc-handlers (rpc-method name)
@@ -98,6 +104,9 @@ Alternatively, the handler function can be called from lisp like so
                                                          (json-parameter "rng-seed"))))
               ,@body-forms))))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; MISC HANDLERS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-rpc-handler (handle-version "version") ()
   "Return a TEXT-RESPONSE that contains the QVM-APP-NG version."
   ;; text/html rather than application/json for backwards compatibility with previous QVM-APP API.
@@ -105,35 +114,6 @@ Alternatively, the handler function can be called from lisp like so
                        '(#\Newline)
                        (with-output-to-string (*error-output*)
                          (show-version)))))
-
-(define-rpc-handler (handle-create-qvm "create-qvm")
-                    ((allocation-method #'parse-allocation-method)
-                     (simulation-method #'parse-simulation-method)
-                     (num-qubits #'parse-num-qubits)
-                     (gate-noise (optionally #'parse-pauli-noise))
-                     (measurement-noise (optionally #'parse-pauli-noise)))
-  "Create the requested persistent QVM.
-
-SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
-
-ALLOCATION-METHOD is a STRING naming the desired allocation method (see *AVAILABLE-ALLOCATION-METHODS*).
-
-NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM.
-
-GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pauli X, Y, or Z gate happening after a gate application or a RESET.
-
-MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
-
-Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created persistent QVM's unique ID token."
-  (make-json-response (alexandria:plist-hash-table
-                       `("token" ,(allocate-persistent-qvm
-                                   (make-requested-qvm simulation-method
-                                                       allocation-method
-                                                       num-qubits
-                                                       gate-noise
-                                                       measurement-noise)
-                                   allocation-method))
-                       :test #'equal)))
 
 (define-rpc-handler (handle-qvm-memory-estimate "qvm-memory-estimate")
                     ((allocation-method #'parse-allocation-method)
@@ -166,6 +146,44 @@ Return a JSON-RESPONSE object that contains a HASH-TABLE with a \"bytes\" key in
                                                            measurement-noise))
                        :test #'equal)))
 
+
+;;;;;;;;;;;;;;;;;;;;;; PERSISTENT QVM HANDLERS ;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-rpc-handler (handle-create-qvm "create-qvm")
+                    ((allocation-method #'parse-allocation-method)
+                     (simulation-method #'parse-simulation-method)
+                     (num-qubits #'parse-num-qubits)
+                     (gate-noise (optionally #'parse-pauli-noise))
+                     (measurement-noise (optionally #'parse-pauli-noise)))
+  "Create the requested persistent QVM.
+
+SIMULATION-METHOD is a STRING naming the desired simulation method (see *AVAILABLE-SIMULATION-METHODS*).
+
+ALLOCATION-METHOD is a STRING naming the desired allocation method (see *AVAILABLE-ALLOCATION-METHODS*).
+
+NUM-QUBITS is a non-negative integer and represents the maximum number of qubits available on the QVM.
+
+GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pauli X, Y, or Z gate happening after a gate application or a RESET.
+
+MEASUREMENT-NOISE is similarly an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
+
+Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created persistent QVM's unique ID token."
+  (make-json-response (alexandria:plist-hash-table
+                       `("token" ,(allocate-persistent-qvm
+                                   (make-requested-qvm simulation-method
+                                                       allocation-method
+                                                       num-qubits
+                                                       gate-noise
+                                                       measurement-noise)
+                                   allocation-method))
+                       :test #'equal)))
+
+(define-rpc-handler (handle-qvm-info "qvm-info") ((qvm-token #'parse-qvm-token))
+  "Return some basic bookkeeping info about the specified QVM.
+
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
+  (make-json-response (persistent-qvm-info qvm-token)))
+
 (define-rpc-handler (handle-delete-qvm "delete-qvm") ((qvm-token #'parse-qvm-token))
   "Delete a persistent QVM.
 
@@ -173,11 +191,50 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
   (delete-persistent-qvm qvm-token)
   (make-json-response (format nil "Deleted persistent QVM ~D" qvm-token)))
 
-(define-rpc-handler (handle-qvm-info "qvm-info") ((qvm-token #'parse-qvm-token))
-  "Return some basic bookkeeping info about the specified QVM.
+(define-rpc-handler (handle-resume-from-wait "resume") ((qvm-token #'parse-qvm-token))
+  "Resume execution of a persistent QVM that is in the WAITING state.
 
-QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
-  (make-json-response (persistent-qvm-info qvm-token)))
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
+
+It is an error to try to resume a QVM in any state other than the WAITING state.
+
+Return a JSON-RESPONSE that contains T on success."
+  (resume-persistent-qvm qvm-token)
+  (make-json-response t))
+
+(define-rpc-handler (handle-read-memory "read-memory")
+                    ((qvm-token #'parse-qvm-token)
+                     (addresses #'parse-addresses))
+  "Read from a persistent QVM's classical memory registers.
+
+DANGER! DANGER! DANGER! The affects of reading from classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only read from a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
+
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
+
+ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
+
+Return a JSON-RESPONSE that contains a HASH-TABLE of the contents of the memory registers requested in the ADDRESSES request parameter."
+  (make-json-response
+   (with-persistent-qvm (qvm) qvm-token
+     (collect-memory-registers qvm addresses))))
+
+(define-rpc-handler (handle-write-memory "write-memory")
+                    ((qvm-token #'parse-qvm-token)
+                     (memory-contents #'parse-memory-contents))
+  "Write to the classical memory of a persistent QVM.
+
+DANGER! DANGER! DANGER! The affects of writing to classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only write to a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
+
+QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
+
+MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory register name and the corresponding value is a LIST of (INDEX VALUE) pairs indicating that VALUE should be stored at index INDEX in the corresponding memory register.
+
+Return a JSON-RESPONSE that contains T on success."
+  (write-persistent-qvm-memory qvm-token memory-contents)
+  (make-json-response t))
+
+
+;;;;;;;;;;;;;;;;;;;;; PROGRAM EXECUTION HANDLERS ;;;;;;;;;;;;;;;;;;;;;
 
 (define-rpc-handler (handle-run-program "run-program")
                     ((qvm-token (optionally #'parse-qvm-token))
@@ -238,69 +295,8 @@ Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the 
                                (run-program-on-persistent-qvm qvm-token compiled-quil))))
     :test #'equal)))
 
-(define-rpc-handler (handle-resume-from-wait "resume") ((qvm-token #'parse-qvm-token))
-  "Resume execution of a persistent QVM that is in the WAITING state.
 
-QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
-
-It is an error to try to resume a QVM in any state other than the WAITING state.
-
-Return a JSON-RESPONSE that contains T on success."
-  (resume-persistent-qvm qvm-token)
-  (make-json-response t))
-
-(define-rpc-handler (handle-read-memory "read-memory")
-                    ((qvm-token #'parse-qvm-token)
-                     (addresses #'parse-addresses))
-  "Read from a persistent QVM's classical memory registers.
-
-DANGER! DANGER! DANGER! The affects of reading from classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only read from a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
-
-QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
-
-ADDRESSES is a HASH-TABLE where the keys are mem register names and the values are either T to indicate that we should return all indices for the corresponding register, or else a LIST of the desired indices for that register.
-
-Return a JSON-RESPONSE that contains a HASH-TABLE of the contents of the memory registers requested in the ADDRESSES request parameter."
-  (make-json-response
-   (with-persistent-qvm (qvm) qvm-token
-     (collect-memory-registers qvm addresses))))
-
-(define-rpc-handler (handle-write-memory "write-memory")
-                    ((qvm-token #'parse-qvm-token)
-                     (memory-contents #'parse-memory-contents))
-  "Write to the classical memory of a persistent QVM.
-
-DANGER! DANGER! DANGER! The affects of writing to classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only write to a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
-
-QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
-
-MEMORY-CONTENTS is a HASH-TABLE where each key is a string indicating the memory register name and the corresponding value is a LIST of (INDEX VALUE) pairs indicating that VALUE should be stored at index INDEX in the corresponding memory register.
-
-Return a JSON-RESPONSE that contains T on success."
-  (write-persistent-qvm-memory qvm-token memory-contents)
-  (make-json-response t))
-
-(define-rpc-handler (handle-job-info "job-info") ((job-token #'parse-job-token))
-  "Return a JSON-RESPONSE with some basic bookkeeping info about the specified async JOB.
-
-JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
-  (make-json-response (jobbo-info job-token)))
-
-(define-rpc-handler (handle-delete-job "delete-job") ((job-token #'parse-job-token))
-  "Delete a JOB.
-
-JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
-  (delete-jobbo job-token)
-  (make-json-response (format nil "Deleted async JOB ~D" job-token)))
-
-(define-rpc-handler (handle-job-result "job-result") ((job-token #'parse-job-token))
-  "Return a JSON-RESPONSE with result of the given async JOB.
-
-This call will block waiting for the JOB to complete.
-
-JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
-  ;;  No need to MAKE-FOO-RESPONSE here; the JOB result will already be a RESPONSE object.
-  (jobbo-result job-token))
+;;;;;;;;;;;;;;;;;;;;;;;;; ASYNC JOB HANDLERS ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-rpc-handler (handle-create-job "create-job") ((sub-request #'parse-sub-request))
   "Create the request async JOB.
@@ -334,3 +330,25 @@ Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the 
     (list "token" (run-jobbo (lambda ()
                                (dispatch-rpc-request sub-request))))
     :test #'equal)))
+
+(define-rpc-handler (handle-job-info "job-info") ((job-token #'parse-job-token))
+  "Return a JSON-RESPONSE with some basic bookkeeping info about the specified async JOB.
+
+JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
+  (make-json-response (jobbo-info job-token)))
+
+(define-rpc-handler (handle-delete-job "delete-job") ((job-token #'parse-job-token))
+  "Delete a JOB.
+
+JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
+  (delete-jobbo job-token)
+  (make-json-response (format nil "Deleted async JOB ~D" job-token)))
+
+(define-rpc-handler (handle-job-result "job-result") ((job-token #'parse-job-token))
+  "Return a JSON-RESPONSE with result of the given async JOB.
+
+This call will block waiting for the JOB to complete.
+
+JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
+  ;;  No need to MAKE-FOO-RESPONSE here; the JOB result will already be a RESPONSE object.
+  (jobbo-result job-token))
