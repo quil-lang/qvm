@@ -53,7 +53,11 @@ Return (VALUES TOKEN JOB) where TOKEN is the ID of the new job."
   (let* ((token (make-uuid-string))
          (job (make-job job-thunk)))
     (job-start job)
-    (safety-hash:insert-unique token job **jobs**)
+    (handler-case (safety-hash:insert-unique token job **jobs**)
+      (error (c)
+        ;; In the unlikely event of a token collision on insert, kill the job.
+        (kill-job job)
+        (error c)))
     (values token job)))
 
 (defun delete-jobbo (token)
