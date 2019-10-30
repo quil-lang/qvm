@@ -147,7 +147,7 @@
 
     (("check-sdk-version")
      :type boolean
-     :initial-value nil
+     :initial-value t
      :documentation "Check for a new SDK version at launch.")
 
     (("proxy")
@@ -413,8 +413,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
       (when available-p
         (format t "An update is available to the SDK. You have version ~A. ~
 Version ~A is available from https://www.rigetti.com/forest~%"
-                +QVM-VERSION+ version))
-      (uiop:quit (if (and available-p version) 0 1))))
+                +QVM-VERSION+ version))))
 
   (when verbose
     (setf qvm:*transition-verbose* t))

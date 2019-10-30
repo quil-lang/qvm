@@ -38,9 +38,11 @@
 (defun latest-sdk-version (&key (proxy nil))
   "Get the latest SDK qvm version, or NIL if unavailable."
   (handler-case
-      (let* ((s (drakma:http-request "http://downloads.rigetti.com/qcs-sdk/version"
-                                     :want-stream t
-                                     :proxy proxy))
+      (let* ((s (drakma:http-request
+                 (format nil "http://downloads.rigetti.com/qcs-sdk/version?qvm=~A"
+                         +QVM-VERSION+)
+                 :want-stream t
+                 :proxy proxy))
              (p (yason:parse s)))
         (multiple-value-bind (version success)
             (gethash "qvm" p)
