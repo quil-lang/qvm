@@ -147,7 +147,7 @@
 
     (("check-sdk-version")
      :type boolean
-     :initial-value nil
+     :initial-value t
      :documentation "Check for a new SDK version at launch.")
 
     (("proxy")
