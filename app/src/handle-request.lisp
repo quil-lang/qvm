@@ -185,14 +185,17 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                                    :measurement-noise measurement-noise)
            (load-time-value
             (with-output-to-string (s)
-              (yason:encode t s))))))))
+              (yason:encode t s)))))))))
 
-  (when (eq *allocation-description* 'qvm:c-allocation)
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Trigger the garbage collector to ensure that foreign memory is freed
-    ;; (see issue #198).
-    ;;
-    ;; TODO: This is a temporary fix and is not 100% satisfactory because it
-    ;; potentially stops all threads for GC after each request.
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    (tg:gc :full t)))
+(defun handle-post-request-and-cleanup (request)
+  "Call HANDLE-POST-REQUEST and do any necessary cleanup after (like gc)."
+  (unwind-protect (handle-post-request request)
+    (when (eq *allocation-description* 'qvm:c-allocation)
+      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      ;; Trigger the garbage collector to ensure that foreign memory is freed
+      ;; (see issue #198).
+      ;;
+      ;; TODO: This is a temporary fix and is not 100% satisfactory because it
+      ;; potentially stops all threads for GC after each request.
+      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+      (tg:gc :full t))))
