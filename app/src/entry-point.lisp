@@ -699,7 +699,7 @@ Version ~A is available from https://www.rigetti.com/forest~%"
                :taskmaster (make-instance 'tbnl:one-thread-per-connection-taskmaster)))
   (when (null (dispatch-table *app*))
     (push
-     (create-prefix/method-dispatcher "/" ':POST 'handle-post-request)
+     (create-prefix/method-dispatcher "/" ':POST 'handle-post-request-and-cleanup)
      (dispatch-table *app*)))
   (tbnl:start *app*))
 
