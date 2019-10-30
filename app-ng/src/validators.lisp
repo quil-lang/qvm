@@ -93,7 +93,7 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
                                                 (= 2 (length entry))
                                                 (integerp (first entry))
                                                 (not (minusp (first entry)))
-                                                (typep (second entry) '(or integer real complex))))
+                                                (typep (second entry) '(or integer real))))
                                          v)))
                   (return-from valid-memory-contents-query-p nil)))
               memory-contents)

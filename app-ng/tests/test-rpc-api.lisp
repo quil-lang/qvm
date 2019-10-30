@@ -750,6 +750,123 @@ Ensure that the job is deleted afterwards."
       (check-request (simple-request url :type "delete-qvm" :qvm-token qvm-token)
                      :response-re "Deleted persistent QVM"))))
 
+(deftest test-rpc-api-write-memory ()
+  "Test the write-memory API call."
+  (with-rpc-server (url)
+    (let ((qvm-token (extract-and-validate-token
+                      (check-request (job-request url
+                                                  :type "create-qvm"
+                                                  :allocation-method "native"
+                                                  :simulation-method "pure-state"
+                                                  :num-qubits 2)
+                                     :status 201
+                                     :response-re +rpc-response-token-scanner+))))
+
+      ;; error, no classical memory subsystem configured yet
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token qvm-token
+                                     :memory-contents (alist->hash-table '(("ro" . ((0 1))))))
+                     :status 500)
+
+      ;; DECLARE some memory
+      (check-request (simple-request url
+                                     :type "run-program"
+                                     :qvm-token qvm-token
+                                     :compiled-quil "DECLARE ro BIT[2]; DECLARE theta REAL[2]"
+                                     :addresses +empty-hash-table+)
+                     :response-re "{}")
+
+      ;; Wait for the persistent qvm to enter the READY state
+      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
+            :until (string= state "READY")
+            :finally (is (string= state "READY")))
+
+      ;; registers can now be written to and read from
+      (loop :for (write-memory expected)
+              :in '(((("ro" . ((0 1)))) ; r[0] = 1
+                     (("ro" ((1 0)))
+                      ("theta" ((0.0 0.0)))))
+                    ((("ro" . ((1 1))) ; ro[1] = 1
+                      ("theta" . ((0 1.1) (1 2.2)))) ; theta[0] = 1.1; theta[1] = 2.2
+                     (("ro" ((1 1)))
+                      ("theta" ((1.1 2.2))))))
+            :do (check-request (simple-request url
+                                               :type "write-memory"
+                                               :qvm-token qvm-token
+                                               :memory-contents (alist->hash-table write-memory))
+                               :status 200)
+                (check-request (simple-request url
+                                               :type "read-memory"
+                                               :qvm-token qvm-token
+                                               :addresses (alist->hash-table '(("ro" . t)
+                                                                               ("theta" . t))))
+                               :response-callback (response-json-fields-checker expected)))
+
+      ;; 1.0 is not a valid BIT
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token qvm-token
+                                     :memory-contents (alist->hash-table '(("ro" . ((0 1.0))))))
+                     :status 500)
+
+      ;; 2 is not a valid BIT
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token qvm-token
+                                     :memory-contents (alist->hash-table '(("ro" . ((0 2))))))
+                     :status 500)
+
+      ;; 1 is not a valid REAL
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token qvm-token
+                                     :memory-contents (alist->hash-table '(("theta" . ((0 1))))))
+                     :status 500)
+
+      ;; ro[2] is out-of-bounds
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token qvm-token
+                                     :memory-contents (alist->hash-table '(("ro" . ((2 1))))))
+                     :status 500)
+
+      ;; and register "zonk" does not exist
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token qvm-token
+                                     :memory-contents (alist->hash-table '(("zonk" . ((0 1))))))
+                     :status 500)
+
+      ;; invalid qvm-token
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token (invalidate-token qvm-token)
+                                     :memory-contents (alist->hash-table '(("ro" . ((0 1))))))
+                     :status 400)
+
+      ;; invalid memory-contents parameters
+      (dolist (invalid '((("ro" . ((0))))
+                         (("ro" . ((0 1 2))))
+                         (("ro" . ((0.0 1))))
+                         (("ro" . ((-1 1))))
+                         ((0 1))))
+        (check-request (simple-request url
+                                       :type "write-memory"
+                                       :qvm-token qvm-token
+                                       :memory-contents (alist->hash-table invalid))
+                       :status 400))
+
+      (check-request (simple-request url
+                                     :type "write-memory"
+                                     :qvm-token qvm-token
+                                     :memory-contents '(0 1))
+                     :status 400)
+
+      ;; clean up
+      (check-request (simple-request url :type "delete-qvm" :qvm-token qvm-token)
+                     :response-re "Deleted persistent QVM"))))
+
 (deftest test-rpc-api-create-qvm-with-pauli-noise ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and Pauli noise parameters.."
   (with-rpc-server (url)
