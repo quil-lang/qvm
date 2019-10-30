@@ -40,6 +40,14 @@
   (with-output-to-string (*standard-output*)
     (yason:encode-plist (plist-lowercase-keys plist))))
 
+(defun plist->hash-table (plist &key (test 'equal))
+  "Like ALEXANDRIA:PLIST-HASH-TABLE but with TEST defaulting to EQUAL."
+  (alexandria:plist-hash-table plist :test test))
+
+(defun alist->hash-table (alist &key (test 'equal))
+  "Like ALEXANDRIA:ALIST-HASH-TABLE but with TEST defaulting to EQUAL."
+  (alexandria:alist-hash-table alist :test test))
+
 (defun hash-table-fields-checker (fields)
   (lambda (json-data)
     (mapc (lambda (spec)
@@ -424,7 +432,7 @@ Ensure that the job is deleted afterwards."
                      :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
-                     :addresses (alexandria:plist-hash-table '("ro" (0))))
+                     :addresses (plist->hash-table '("ro" (0))))
      :response-callback (response-json-fields-checker `(("ro" ((1))))))
 
     ;; non-consecutive indices + "non ro" named register
@@ -434,7 +442,7 @@ Ensure that the job is deleted afterwards."
                      :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil "DECLARE mem BIT[3]; X 3; MEASURE 0 mem[0]; MEASURE 3 mem[2]"
-                     :addresses (alexandria:plist-hash-table '("mem" (0 2))))
+                     :addresses (plist->hash-table '("mem" (0 2))))
      :response-callback (response-json-fields-checker `(("mem" ((0 1))))))
 
     ;; invalid register index OOB
@@ -444,7 +452,7 @@ Ensure that the job is deleted afterwards."
                      :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
-                     :addresses (alexandria:plist-hash-table '("ro" (0 2))))
+                     :addresses (plist->hash-table '("ro" (0 2))))
      :status 500
      :response-re "qvm_error")
 
@@ -455,7 +463,7 @@ Ensure that the job is deleted afterwards."
                      :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
-                     :addresses (alexandria:plist-hash-table '("ro" (-1))))
+                     :addresses (plist->hash-table '("ro" (-1))))
      :status 400
      :response-re "qvm_error")
 
@@ -466,7 +474,7 @@ Ensure that the job is deleted afterwards."
                      :allocation-method "native"
                      :simulation-method "pure-state"
                      :compiled-quil "DECLARE ro BIT; I 0"
-                     :addresses (alexandria:plist-hash-table '("zonk" t)))
+                     :addresses (plist->hash-table '("zonk" t)))
      :status 500
      :response-re "qvm_error")))
 
@@ -564,8 +572,7 @@ Ensure that the job is deleted afterwards."
       (check-request (simple-request url
                                      :type "write-memory"
                                      :qvm-token qvm-token
-                                     :memory-contents (alexandria:alist-hash-table
-                                                       `(("alpha" . ((0 ,pi))))))
+                                     :memory-contents (alist->hash-table `(("alpha" . ((0 ,pi))))))
                      :status 200)
 
       (check-request (simple-request url :type "resume" :qvm-token qvm-token)
@@ -637,8 +644,7 @@ Ensure that the job is deleted afterwards."
       (check-request (job-request url
                                   :type "write-memory"
                                   :qvm-token qvm-token
-                                  :memory-contents (alexandria:alist-hash-table
-                                                    `(("alpha" . ((0 ,pi))))))
+                                  :memory-contents (alist->hash-table `(("alpha" . ((0 ,pi))))))
                      :status 200)
 
       (check-request (job-request url :type "resume" :qvm-token qvm-token)
@@ -700,7 +706,7 @@ Ensure that the job is deleted afterwards."
       (check-request (simple-request url
                                      :type "run-program"
                                      :qvm-token qvm-token
-                                     :compiled-quil "DECLARE ro BIT[2]"
+                                     :compiled-quil "DECLARE ro BIT[2]; DECLARE theta REAL[2]; MOVE ro[1] 1; MOVE theta[1] 2.0"
                                      :addresses +empty-hash-table+)
                      :response-re "{}")
 
@@ -709,29 +715,41 @@ Ensure that the job is deleted afterwards."
             :until (string= state "READY")
             :finally (is (string= state "READY")))
 
-      ;; ro register can now be read
+      ;; registers can now be read
       (check-request (simple-request url
                                      :type "read-memory"
                                      :qvm-token qvm-token
                                      :addresses +all-ro-addresses+)
-                     :response-callback (response-json-fields-checker '(("ro" ((0 0))))))
+                     :response-callback (response-json-fields-checker '(("ro" ((0 1))))))
+
+      (check-request (simple-request url
+                                     :type "read-memory"
+                                     :qvm-token qvm-token
+                                     :addresses (plist->hash-table '("theta" t)))
+                     :response-callback (response-json-fields-checker '(("theta" ((0.0 2.0))))))
 
       ;; or even a single location
       (check-request (simple-request url :type "read-memory"
                                          :qvm-token qvm-token
-                                         :addresses (alexandria:plist-hash-table '("ro" (1))))
-                     :response-callback (response-json-fields-checker '(("ro" ((0))))))
+                                         :addresses (plist->hash-table '("ro" (1))))
+                     :response-callback (response-json-fields-checker '(("ro" ((1))))))
+
+      (check-request (simple-request url
+                                     :type "read-memory"
+                                     :qvm-token qvm-token
+                                     :addresses (plist->hash-table '("theta" (1))))
+                     :response-callback (response-json-fields-checker '(("theta" ((2.0))))))
 
       ;; but ro[2] is out-of-bounds
       (check-request (simple-request url :type "read-memory"
                                          :qvm-token qvm-token
-                                         :addresses (alexandria:plist-hash-table '("ro" (2))))
+                                         :addresses (plist->hash-table '("ro" (2))))
                      :status 500)
 
       ;; and register "zonk" does not exist
       (check-request (simple-request url :type "read-memory"
                                          :qvm-token qvm-token
-                                         :addresses (alexandria:plist-hash-table '("zonk" t)))
+                                         :addresses (plist->hash-table '("zonk" t)))
                      :status 500)
 
       ;; invalid qvm-token
