@@ -56,11 +56,18 @@
     (rotatef (amplitudes qvm) (%trial-amplitudes qvm))))
 
 
+(defun requires-swapping-p (qvm)
+  "Does the  QVM require swapping of internal pointers?"
+  (and (not (eq (amplitudes qvm) (original-amplitude-pointer qvm)))
+       #+sbcl (eq ':foreign (sb-introspect:allocation-information
+                             (original-amplitude-pointer qvm)))))
+
+
 (defmethod transition ((qvm channel-qvm) (instr quil:gate-application))
   ;; If any noise rules are matched by theinstruction INSTR, apply the
   ;; the kraus operators for that noise rule after applying the gate
   ;; for this instruction.
-  (let* ((gate   (pull-teeth-to-get-a-gate instr))
+  (let* ((gate (pull-teeth-to-get-a-gate instr))
          (params (mapcar (lambda (p) (force-parameter p qvm))
                          (quil:application-parameters instr)))
          (instr-qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
@@ -163,17 +170,6 @@
               (perturb-measurement c p00 p01 p10 p11))))))
 
 
-;;; Don't compile things for the CHANNEL-QVM.
-(defmethod compile-loaded-program ((qvm channel-qvm))
-  qvm)
-
-
-(defmethod compile-instruction ((qvm channel-qvm) isn)
-  (declare (ignore qvm))
-  isn)
-
-
-;; Duplicate fn in noisy-qvm.lisp (deleted in noisy-qvm.lisp)
 (defun perturb-measurement (actual-outcome p00 p01 p10 p11)
   "Given the readout error encoded in the POVM (see documentation of NOISY-QVM), randomly sample the observed (potentially corrupted) measurement outcome."
   (check-type actual-outcome bit)
@@ -197,3 +193,12 @@
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
 
+
+;;; Don't compile things for the CHANNEL-QVM.
+(defmethod compile-loaded-program ((qvm channel-qvm))
+  qvm)
+
+
+(defmethod compile-instruction ((qvm channel-qvm) isn)
+  (declare (ignore qvm))
+  isn)

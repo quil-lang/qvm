@@ -76,19 +76,6 @@ The arguments PX, PY and PZ can be interpreted as probabilities of a X, Y or Z e
       (push (magicl:scale (sqrt (- 1.0 psum)) (magicl:make-identity-matrix 2)) scaled-paulis))
     scaled-paulis))
 
-;; TODO declare inlinable, turn on optimization
-(defun perturb-measurement (actual-outcome p00 p01 p10 p11)
-  "Given the readout error encoded in the POVM (see documentation of NOISY-QVM)
-randomly sample the observed (potentially corrupted) measurement outcome."
-  (check-type actual-outcome bit)
-  (check-type p00 (double-float 0.0d0 1.0d0))
-  (check-type p01 (double-float 0.0d0 1.0d0))
-  (check-type p10 (double-float 0.0d0 1.0d0))
-  (check-type p11 (double-float 0.0d0 1.0d0))
-  (let ((r (random 1.0d0)))
-    (ecase actual-outcome
-      ((0) (if (<= r p00) 0 1))
-      ((1) (if (<= r p01) 0 1)))))
 
 (defun make-pauli-perturbed-1q-gate (gate-name px py pz)
   "Generate a Kraus map that represents a noisy version of the standard gate U identified
@@ -134,16 +121,6 @@ where I is the identity matrix of equal dimensions."
        "The Kraus map must preserve trace or equivalently this matrix ~
         ~S must be equal to the identity" kraus-sum))) t)
 
-(defun check-povm (povm)
-  "Verify that the list POVM contains a valid single qubit diagonal POVM.
-Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
-  (destructuring-bind (p00 p01 p10 p11) povm
-    (check-type p00 (double-float 0.0d0 1.0d0))
-    (check-type p01 (double-float 0.0d0 1.0d0))
-    (check-type p10 (double-float 0.0d0 1.0d0))
-    (check-type p11 (double-float 0.0d0 1.0d0))
-    (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
-    (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
 
 (defgeneric set-noisy-gate (qvm gate-name qubits kraus-ops)
   (:documentation "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
@@ -171,12 +148,6 @@ POVM must be a 4-element list of double-floats."))
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
 
-(defun requires-swapping-p (qvm)
-  "Does the noisy qvm QVM require swapping of internal pointers?"
-  (and (not (eq (amplitudes qvm) (original-amplitude-pointer qvm)))
-       #+sbcl (eq ':foreign (sb-introspect:allocation-information
-                             (original-amplitude-pointer qvm)))
-       #-sbcl t))
 
 (defmethod run :after ((qvm noisy-qvm))
   ;; Only copy if we really need to.
@@ -254,19 +225,13 @@ POVM must be a 4-element list of double-floats."))
        ;; the parent class
        (call-next-method qvm instr)))))
 
-(defun %corrupt-qvm-memory-with-povm (qvm instr)
-  (check-type instr quil:measure)
-  (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
-           (a (quil:measure-address instr))
-           (c (dereference-mref qvm a))
-           (povm (gethash q (readout-povms qvm))))
-      (when povm
-        (destructuring-bind (p00 p01 p10 p11) povm
-          (setf (dereference-mref qvm a)
-                (perturb-measurement c p00 p01 p10 p11))))))
 
 (defgeneric apply-classical-readout-noise (qvm instr)
   (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
+  ;; Make sure readout noise is never applied to a pure-state qvm
+  (:method ((qvm pure-state-qvm) (instr quil:measurement))
+    (declare (ignore qvm instr))
+    nil)
   ;; Readout noise only happens to the resulting classical bit (i.e.,
   ;; it's classical noise). As such, discarding that bit doesn't
   ;; warrant any sort of special treatment.
@@ -280,6 +245,7 @@ POVM must be a 4-element list of double-floats."))
   ;; instruction.
   (:method ((qvm noisy-qvm) (instr compiled-measurement))
     (apply-classical-readout-noise qvm (source-instruction instr))))
+
 
 (defmethod transition :around ((qvm noisy-qvm) (instr quil:measurement))
   ;; perform actual measurement
