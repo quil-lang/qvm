@@ -38,6 +38,6 @@
                (:file "stabilizer-qvm-tests")
                (:file "noise-model-tests")
                (:file "channel-qvm-tests")
-               (:file "approximate-qvm-tests")
+               (:file "basic-noise-qvm-tests")
                (:file "parallel-tests")
                (:file "qvm-avx-intrinsics" :if-feature (:and :qvm-intrinsics :avx2))))

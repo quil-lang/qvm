@@ -240,7 +240,7 @@ POVM must be a 4-element list of double-floats."))
     nil)
   ;; We do have a readout bit, and we want to corrupt it.
   (:method ((qvm noisy-qvm) (instr quil:measure))
-    (%corrupt-readout qvm instr (readout-povms qvm)))
+    (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
   ;; For compiled measurements, refer to the source of that
   ;; instruction.
   (:method ((qvm noisy-qvm) (instr compiled-measurement))

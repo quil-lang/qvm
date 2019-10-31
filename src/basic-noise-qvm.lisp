@@ -1,4 +1,4 @@
-;;;; approximate-qvm.lisp
+;;;; basic-noise-qvm.lisp
 ;;;;
 ;;;; Author: Sophia Ponte
 
@@ -8,13 +8,13 @@
 ;;; after every instruction in a program.
 
 
-;;; The APPROX-QVM supports a QUBIT-level noise model, intended to
+;;; The A-QVM supports a QUBIT-level noise model, intended to
 ;;; approximate the qubit noise on a QPU. The APPROX-QVM allows the
 ;;; specification of T1, T2, DEPOLARIZATION, and READOUT noise for
 ;;; each qubit. During the APPROX-QVM's TRANSITION, qubit-level noise
 ;;; is applied after each instruction for which qubit noise is
 ;;; specified.
-(defclass approx-qvm (channel-qvm)
+(defclass basic-noise-qvm (channel-qvm)
   ((t1-ops
     :initarg :t1-ops
     :accessor t1-ops
@@ -30,7 +30,7 @@
    (avg-gate-time
     :initarg :avg-gate-time
     :reader avg-gate-time
-    :documentation "To calculate the kraus operators for T1, T2, etc.. noise, a gate time value is needed. Ideally, this gate time should be the  duration of the gate preceeding the application of the kraus noise. For now, since I haven't figured out a good way to get a qvm gate's time, I just made the gate time a slot that should represent the average gate time of gates that the qvm will run, and I use this value to calculate T1 and T2 noise. Set the GATE-TIME slot for approx-qvm. This value should represent the average  gate time of the gates that will be run.")
+    :documentation "To calculate the kraus operators for T1, T2, etc.. noise, a gate time value is needed. Ideally, this gate time should be the  duration of the gate preceeding the application of the kraus noise. For now, since I haven't figured out a good way to get a qvm gate's time, I just made the gate time a slot that should represent the average gate time of gates that the qvm will run, and I use this value to calculate T1 and T2 noise. Set the GATE-TIME slot for basic-noise-qvm. This value should represent the average  gate time of the gates that will be run.")
    (readout-povms
     :initarg :readout-povms
     :accessor readout-povms))
@@ -38,13 +38,13 @@
    :t1-ops (make-hash-table :test 'eql)
    :t2-ops (make-hash-table :test 'eql)
    :depol-ops (make-hash-table :test 'eql)
-   :avg-gate-time (error ":AVG-GATE-TIME is a required initarg to APPROX-QVM")
+   :avg-gate-time (error ":AVG-GATE-TIME is a required initarg to BASIC-NOISE-QVM")
    :readout-povms (make-hash-table :test 'eql))
-  (:documentation "APPROX-QVM is a QVM that supports a noise model defined by T1, T2, and readout fidelities on each qubit. At each instruction, T1 noise and T2 noise is applied for the qubits involved in the instruction. Upon MEASURE, the readout noise is also applied for whichever qubit is being measured."))
+  (:documentation "BASIC-NOISE-QVM is a QVM that supports a noise model defined by T1, T2, and readout fidelities on each qubit. At each instruction, T1 noise and T2 noise is applied for the qubits involved in the instruction. Upon MEASURE, the readout noise is also applied for whichever qubit is being measured."))
 
 
-(defmethod initialize-instance :after ((qvm approx-qvm) &rest args)
-  ;; If an approx-qvm is initialized with T1, T2, or READOUT-POVM
+(defmethod initialize-instance :after ((qvm basic-noise-qvm) &rest args)
+  ;; If an basic-noise-qvm is initialized with T1, T2, or READOUT-POVM
   ;; values, check that they are valid.
   (declare (ignore args))
   (maphash #'%check-noise-entry (t1-ops qvm))
@@ -91,7 +91,7 @@
   (setf (gethash qubit (readout-povms qvm)) (list fro (- 1.0d0 fro) (- 1.0d0 fro) fro)))
 
 
-(defmethod apply-all-kraus-maps ((qvm approx-qvm) (instr quil:gate-application) kraus-ops)
+(defmethod apply-all-kraus-maps ((qvm basic-noise-qvm) (instr quil:gate-application) kraus-ops)
   ;; Apply all the kraus operators for each type of noise
   ;; source. KRAUS-OPS is a list of ( (t1-operators) (t2-operators)),
   ;; where t1-operators is a list of t1 noise maps for each qubit in
@@ -103,7 +103,7 @@
                 (apply-kraus-map qvm instr simplified-kraus-ops)))))
 
 
-(defmethod transition ((qvm approx-qvm) (instr quil:gate-application))
+(defmethod transition ((qvm basic-noise-qvm) (instr quil:gate-application))
   ;; For the current instruction in the program, apply the gate
   ;; corresponding to that instruction, and then apply all the kraus
   ;; operators for all the sources of noise following that
@@ -122,9 +122,9 @@
     qvm))
 
 
-(defmethod apply-classical-readout-noise ((qvm approx-qvm) (instr quil:measure))
-  ;; Apply the classical readout noise to the state of an APPROX-QVM
-  (%corrupt-readout qvm instr (readout-povms qvm)))
+(defmethod apply-classical-readout-noise ((qvm basic-noise-qvm) (instr quil:measure))
+  ;; Apply the classical readout noise to the state of an BASIC-NOISE-QVM
+  (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
 
 
 (defun tphi (t1 t2)
