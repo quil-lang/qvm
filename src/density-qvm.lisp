@@ -370,7 +370,7 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
     (values qvm cbit)))
 
 (defmethod apply-classical-readout-noise ((qvm density-qvm) (instr quil:measure))
-  (%corrupt-qvm-memory-with-povm qvm instr))
+  (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
 
 (defmethod transition :around ((qvm density-qvm) (instr quil:measurement))
   ;; perform actual measurement

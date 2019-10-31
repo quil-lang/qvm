@@ -1,4 +1,4 @@
-;;;; approximate-qvm-tests.lisp
+;;;; basic-noise-qvm-tests.lisp
 ;;;;
 ;;;; Author: Sophia Ponte
 
@@ -6,7 +6,7 @@
 (in-package #:qvm-tests)
 
 
-(deftest test-approx-qvm-make-instance ()
+(deftest test-basic-noise-qvm-make-instance ()
   (let* ((avg-gate-time 1)
          (t1 (qvm::generate-damping-kraus-map 5 avg-gate-time))
          (t2 (qvm::generate-dephasing-kraus-map 6 avg-gate-time))
@@ -21,7 +21,7 @@
     (setf (gethash 1 t2-ops) t2)
     (setf (gethash 0 depol-ops) depol)
     (setf (gethash 0 povms) good-povm)
-    (make-instance 'qvm::approx-qvm :number-of-qubits 2
+    (make-instance 'qvm::basic-noise-qvm :number-of-qubits 2
                                     :t1-ops t1-ops
                                     :t2-ops t2-ops
                                     :depol-ops depol-ops
@@ -29,50 +29,50 @@
                                     :avg-gate-time avg-gate-time)
     (setf (gethash 0 t1-ops) '(4 5 3 6))
     (signals error
-      (make-instance 'qvm::approx-qvm :number-of-qubits 2
+      (make-instance 'qvm::basic-noise-qvm :number-of-qubits 2
                                       :t1-ops t1-ops
                                       :t2-ops t2-ops
                                       :readout-povms povms
                                       :avg-gate-time avg-gate-time))
     (setf (gethash 1 povms) bad-povm)
     (signals error
-      (make-instance 'qvm::approx-qvm :number-of-qubits 2
+      (make-instance 'qvm::basic-noise-qvm :number-of-qubits 2
                                       :t1-ops t1-ops
                                       :t2-ops t2-ops
                                       :readout-povms povms
                                       :avg-gate-time avg-gate-time))))
 
 
-(deftest test-approx-qvm ()
+(deftest test-basic-noise-qvm ()
   ;; Test that the correct kraus operators are set for the correct
-  ;; qubits when building an APPROX-QVM.
-  (let* ((approx-qvm (make-instance 'qvm::approx-qvm :number-of-qubits 2 :avg-gate-time 1))
+  ;; qubits when building an BASIC-NOISE-QVM.
+  (let* ((basic-noise-qvm (make-instance 'qvm::basic-noise-qvm :number-of-qubits 2 :avg-gate-time 1))
          (program "DECLARE R0 BIT; X 0; CNOT 0 1; MEASURE 0 R0")
          (parsed-program (quil:parse-quil program)))
-    (load-program approx-qvm parsed-program :supersede-memory-subsystem t)
-    (setf (qvm::qubit-t1 approx-qvm 0) 5
-          (qvm::qubit-t2 approx-qvm 0) 4
-          (qvm::qubit-t1 approx-qvm 1) 2
-          (qvm::qubit-t2 approx-qvm 1) 3)
+    (load-program basic-noise-qvm parsed-program :supersede-memory-subsystem t)
+    (setf (qvm::qubit-t1 basic-noise-qvm 0) 5
+          (qvm::qubit-t2 basic-noise-qvm 0) 4
+          (qvm::qubit-t1 basic-noise-qvm 1) 2
+          (qvm::qubit-t2 basic-noise-qvm 1) 3)
     (let ((t1-q0 (qvm::generate-damping-kraus-map 5 1))
           (t1-q1 (qvm::generate-damping-kraus-map 2 1))
           (t2-q0 (qvm::generate-damping-dephasing-kraus-map 4 1))
           (t2-q1 (qvm::generate-damping-dephasing-kraus-map 3 1)))
-      (is (= 1 (qvm::avg-gate-time approx-qvm)))
-      (is (every #'cl-quil::matrix-equality t1-q0 (gethash 0 (qvm::t1-ops approx-qvm))))
-      (is (every #'cl-quil::matrix-equality t1-q1 (gethash 1 (qvm::t1-ops approx-qvm))))
-      (is (every #'cl-quil::matrix-equality t2-q0 (gethash 0 (qvm::t2-ops approx-qvm))))
-      (is (every #'cl-quil::matrix-equality t2-q1 (gethash 1 (qvm::t2-ops approx-qvm)))))))
+      (is (= 1 (qvm::avg-gate-time basic-noise-qvm)))
+      (is (every #'cl-quil::matrix-equality t1-q0 (gethash 0 (qvm::t1-ops basic-noise-qvm))))
+      (is (every #'cl-quil::matrix-equality t1-q1 (gethash 1 (qvm::t1-ops basic-noise-qvm))))
+      (is (every #'cl-quil::matrix-equality t2-q0 (gethash 0 (qvm::t2-ops basic-noise-qvm))))
+      (is (every #'cl-quil::matrix-equality t2-q1 (gethash 1 (qvm::t2-ops basic-noise-qvm)))))))
 
 
-(deftest test-run-approx-qvm ()
-  ;; Make sure the approx-qvm can run a simple program without errors.
-  (let* ((approx-qvm (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+(deftest test-run-basic-noise-qvm ()
+  ;; Make sure the basic-noise-qvm can run a simple program without errors.
+  (let* ((basic-noise-qvm (make-instance 'qvm::basic-noise-qvm :number-of-qubits 1 :avg-gate-time 1))
          (program "DECLARE R0 BIT; X 0; Z 0; MEASURE 0 R0")
          (parsed-program (quil:parse-quil program)))
-    (setf (qvm::qubit-fro approx-qvm 0) .9d0)
-    (qvm:load-program approx-qvm parsed-program :supersede-memory-subsystem t)
-    (run approx-qvm)))
+    (setf (qvm::qubit-fro basic-noise-qvm 0) .9d0)
+    (qvm:load-program basic-noise-qvm parsed-program :supersede-memory-subsystem t)
+    (run basic-noise-qvm)))
 
 
 (deftest test-tphi-calc ()
@@ -110,12 +110,12 @@
     (is (null (qvm::kraus-kron nil nil)))))
 
 
-(deftest test-approx-qvm-readout-noise ()
+(deftest test-basic-noise-qvm-readout-noise ()
   ;; Test that the readout noise is correctly applied to an
-  ;; APPROX-QVM. Test by applying a program 100 times and evaluating
+  ;; BASIC-NOISE-QVM. Test by applying a program 100 times and evaluating
   ;; the resulting excited state population.
   (with-execution-modes (:interpret)
-    (let* ((q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+    (let* ((q (make-instance 'qvm::basic-noise-qvm :number-of-qubits 1 :avg-gate-time 1))
            (numshots 100)
            (qubit 0)
            (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
@@ -124,13 +124,13 @@
         (is (< 50 ones-measured numshots))))))
 
 
-(deftest test-approx-qvm-t1-noise ()
+(deftest test-basic-noise-qvm-t1-noise ()
   ;; Test that the t1 noise is correctly applied to an
-  ;; APPROX-QVM. Test by applying a program 100 times and evaluating
+  ;; BASIC-NOISE-QVM. Test by applying a program 100 times and evaluating
   ;; the resulting excited state population.
   (with-execution-modes (:interpret)
     (let* ((qubit 0)
-           (q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time .2))
+           (q (make-instance 'qvm::basic-noise-qvm :number-of-qubits 1 :avg-gate-time .2))
            (numshots 100)
            (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
       (setf (qvm::qubit-t1 q qubit) 4)
@@ -138,14 +138,14 @@
         (is (< 85 ones-measured numshots))))))
 
 
-(deftest test-approx-qvm-t2-noise ()
-  ;; Test that the T2 noise is correctly applied to an APPROX-QVM.
+(deftest test-basic-noise-qvm-t2-noise ()
+  ;; Test that the T2 noise is correctly applied to an BASIC-NOISE-QVM.
   ;; Test by applying a program 100 times and evaluating the resulting
   ;; excited state population.
   (with-execution-modes (:interpret)
     (let* (
            (qubit 0)
-           (q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+           (q (make-instance 'qvm::basic-noise-qvm :number-of-qubits 1 :avg-gate-time 1))
            (numshots 100)
            (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
       (setf (qvm::qubit-t2 q qubit) 2)
@@ -153,13 +153,13 @@
         (is (= 100 ones-measured numshots))))))
 
 
-(deftest test-approx-qvm-depol-noise ()
+(deftest test-basic-noise-qvm-depol-noise ()
   ;; Test that the depolarizing noise is correctly applied to an
-  ;; APPROX-QVM Test by applying a program 100 times and evaluating
+  ;; BASIC-NOISE-QVM Test by applying a program 100 times and evaluating
   ;; the resulting excited state population.
   (with-execution-modes (:interpret)
     (let* ((qubit 0)
-           (q (make-instance 'qvm::approx-qvm :number-of-qubits 1 :avg-gate-time 1))
+           (q (make-instance 'qvm::basic-noise-qvm :number-of-qubits 1 :avg-gate-time 1))
            (numshots 100)
            (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
       (setf (qvm::qubit-depolarization q qubit) .2)

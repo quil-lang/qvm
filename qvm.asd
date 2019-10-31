@@ -83,4 +83,4 @@
                (:file "misc")
                (:file "noise-models")
                (:file "channel-qvm")
-               (:file "approximate-qvm")))
+               (:file "basic-noise-qvm")))

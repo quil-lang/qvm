@@ -1,6 +1,6 @@
 ;;;; channel-qvm.lisp
 ;;;;
-;;;; Author: Sophia Ponte, Nikolas Tezak
+;;;; Authors: Sophia Ponte, Nikolas Tezak, Erik Davis
 
 (in-package #:qvm)
 
@@ -150,14 +150,14 @@
 
 
 (defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr quil:measure))
-  (%corrupt-readout qvm instr (readout-povms (noise-model qvm))))
+  (%corrupt-qvm-memory-with-povm qvm instr (readout-povms (noise-model qvm))))
 
 
 (defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr compiled-measurement))
   (apply-classical-readout-noise qvm (source-instruction instr)))
 
 
-(defun %corrupt-readout (qvm instr povm-map)
+(defun %corrupt-qvm-memory-with-povm (qvm instr povm-map)
   "Apply POVM to measurement."
   (check-type instr quil:measure)
   (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
