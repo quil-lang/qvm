@@ -25,8 +25,8 @@ j given actual state k. Note that we model purely classical readout
 error, i.e., the post measurement qubit state is always k, but the
 recorded outcome j may be different.")
    ;; These are initialized in the INITIALIZE-INSTANCE after method.
-   (original-amplitude-pointer
-    :reader original-amplitude-pointer
+   (original-amplitudes
+    :reader original-amplitudes
     :documentation "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation.")
    (trial-amplitudes
     :accessor %trial-amplitudes
@@ -50,7 +50,7 @@ hence should not be otherwise directly accessed.
    ;; size.
    (%trial-amplitudes qvm) (make-lisp-cflonum-vector (expt 2 (number-of-qubits qvm)))
    ;; Save a pointer to the originally provided memory.
-   (slot-value qvm 'original-amplitude-pointer) (amplitudes qvm)))
+   (slot-value qvm 'original-amplitudes) (amplitudes qvm)))
 
 
 (defun make-pauli-noise-map (px py pz)
@@ -153,7 +153,7 @@ POVM must be a 4-element list of double-floats."))
   ;; Only copy if we really need to.
   (when (requires-swapping-p qvm)
     ;; Copy the correct amplitudes into place.
-    (copy-wavefunction (amplitudes qvm) (original-amplitude-pointer qvm))
+    (copy-wavefunction (amplitudes qvm) (original-amplitudes qvm))
     ;; Get the pointer back in home position. We want to swap them,
     ;; not overwrite, because we want the scratch memory to be intact.
     (rotatef (amplitudes qvm) (%trial-amplitudes qvm))))

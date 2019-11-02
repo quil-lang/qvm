@@ -4,69 +4,74 @@
 
 (in-package #:qvm)
 
-;;; Implements a QVM that can interpret a rule-based noise model and
-;;; apply kraus operators to it's state.
+;;; Implements a QVM that can interpret a rule-based NOISE-MODEL and
+;;; apply kraus operators to its state. This NOISE-MODEL is a
+;;; collection of NOISE-RULES that trigger applications of channels
+;;; based on the syntactic properties of instructions in a CHANNEL-QVM
+;;; program. Each NOISE-RULE contains a NOISE-PREDICATE and a list of
+;;; OPERATION-ELEMENTS. The NOISE-PREDICATE describes how to match qvm
+;;; instructions, and which instructions to match. The
+;;; OPERATION-ELEMENTS are the physical description of the channel,
+;;; represented as a list of kraus maps. At each qvm instruction, the
+;;; OPERATION-ELEMENTS of a NOISE-RULE whose NOISE-PREDICATE matches
+;;; that instruction is applied to the state of a the
+;;; CHANNEL-QVM. Only one rule can be matched by an instruction. If
+;;; multiple NOISE-RULES match the current instruction, the rule with
+;;; the highest PRIORITY is applied.
 
 (defgeneric apply-all-kraus-maps (qvm instr kraus-maps)
-  (:documentation "Applies every kraus-map in the list KRAUS-MAPS to the state of the system."))
-
+  (:documentation "Applies every kraus map in the list KRAUS-MAPS to the state of the system."))
 
 (defgeneric apply-kraus-map (qvm instr kraus-ops)
-  (:documentation "Applies noise from a kraus map to the system. Randomly select a kraus operator from the kraus map KRAUS-OPS to apply to the state of the system."))
+  (:documentation "Applies noise from a kraus map to the system. Randomly select a kraus operator from the kraus map KRAUS-OPS using inverse transform sampling to apply to the state of the system."))
 
-
-;;; The CHANNEL-QVM requires an explicitly defined NOISE-MODEL. This
-;;; NOISE-MODEL should be a complete specification of the different
-;;; types of noise that should be applied throughout the execution of
-;;; a QUIL program, as well as when in the program's execution the
-;;; noise should be applied. These decisions are made during
-;;; TRANSITION. At each new instruction, the CHANNEL-QVM checks to see
-;;; if any NOISE-RULES are matched by the instuction, and if so, the
-;;; CHANNEL-QVM applied the corresponding noise.
+;;; The CHANNEL-QVM requires an explicitly defined NOISE-MODEL. At the
+;;; TRANSITION to each new instruction, the CHANNEL-QVM checks to see
+;;; if any NOISE-RULES are matched by the instruction, and if so, the
+;;; CHANNEL-QVM applies the corresponding noise defined by the
+;;; NOISE-RULE.
 (defclass channel-qvm (pure-state-qvm)
-  ((original-amplitude-pointer
-    :reader original-amplitude-pointer)
+  ((original-amplitudes
+    :reader original-amplitudes
+    :documentation "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation.")
    (trial-amplitudes
-    :accessor %trial-amplitudes)
+    :accessor %trial-amplitudes
+    :documentation "A second wavefunction used when applying a noisy quantum channel. Applying a Kraus map generally requires evaluating psi_j = K_j * psi for several different j, making it necessary to keep the original wavefunction around.  This value should be a QUANTUM-STATE whose size is compatible with the number of qubits of the CHANNEL-QVM. The actual values can be initialized in any way because they will be overwritten. As such, it merely is scratch space for intermediate computations, and hence should not be otherwise directly accessed.")
    (noise-model
     :initarg :noise-model
-    :accessor noise-model
-    :initform nil))
-  (:documentation "The CHANNEL-QVM is a QVM that supports a fully explicit NOISE-MODEL. The NOISE-MODEL is a list of NOISE-RULES, where each NOISE-RULE describes a type of noise and at which points in a program's execution that type of noise should be applied."))
-
+    :accessor noise-model))
+  (:default-initargs
+   :noise-model nil)
+  (:documentation "The CHANNEL-QVM is a QVM that supports a fully explicit NOISE-MODEL. The NOISE-MODEL is an explicit definition of where and how different channels should be applied to a program running in the CHANNEL-QVM."))
 
 (defmethod initialize-instance :after ((qvm channel-qvm) &rest args)
-  ;; Initializes an instance of a CHANNEL-QVM"
+  ;; Initializes an instance of a CHANNEL-QVM.
   (declare (ignore args))
   (setf
-   ;; Initialize the trial-amplitudes to an empty array of the correct
+   ;; Initialize the TRIAL-AMPLITUDES to an empty array of the correct
    ;; size
    (%trial-amplitudes qvm) (make-lisp-cflonum-vector (expt 2 (number-of-qubits qvm)))
    ;; Save a pointer to the originally provided memory
-   (slot-value qvm 'original-amplitude-pointer) (amplitudes qvm)))
-
+   (slot-value qvm 'original-amplitudes) (amplitudes qvm)))
 
 (defmethod run :after ((qvm channel-qvm))
   ;; Only copy if we really need to.
   (when (requires-swapping-p qvm)
     ;; Copy the correct amplitudes into place.
-    (copy-wavefunction (amplitudes qvm) (original-amplitude-pointer qvm))
+    (copy-wavefunction (amplitudes qvm) (original-amplitudes qvm))
     ;; Get the pointer back in home position. We want to swap them,
     ;; not overwrite, because we want the scratch memory to be intact.
     (rotatef (amplitudes qvm) (%trial-amplitudes qvm))))
 
-
 (defun requires-swapping-p (qvm)
   "Does the  QVM require swapping of internal pointers?"
-  (and (not (eq (amplitudes qvm) (original-amplitude-pointer qvm)))
+  (and (not (eq (amplitudes qvm) (original-amplitudes qvm)))
        #+sbcl (eq ':foreign (sb-introspect:allocation-information
-                             (original-amplitude-pointer qvm)))))
-
+                             (original-amplitudes qvm)))))
 
 (defmethod transition ((qvm channel-qvm) (instr quil:gate-application))
-  ;; If any noise rules are matched by theinstruction INSTR, apply the
-  ;; the kraus operators for that noise rule after applying the gate
-  ;; for this instruction.
+  ;; If any NOISE-RULES are matched by INSTR, apply the
+  ;; the kraus operators for that rule after applying the current INSTR.
   (let* ((gate (pull-teeth-to-get-a-gate instr))
          (params (mapcar (lambda (p) (force-parameter p qvm))
                          (quil:application-parameters instr)))
@@ -82,40 +87,35 @@
     (incf (pc qvm))
     qvm))
 
-
 (defmethod transition :around ((qvm channel-qvm) (instr quil:measurement))
   (let ((ret-qvm (call-next-method)))
     (apply-classical-readout-noise ret-qvm instr)
     ret-qvm))
 
-
 (defun rule-matches-instr-p (rule instr position)
-  "Check if rule is matched by instruction data and the position of the match request."
+  "Check if RULE is matched by instruction data INSTR and the POSITION of the match request."
   (let* ((noise-predicate (predicate-function (noise-predicate rule)))
          (noise-position (noise-position (noise-predicate rule))))
     (and (funcall noise-predicate instr) (eq position noise-position))))
-
 
 (defun find-matching-rule (rules instr position)
   "Return the first rule that matches INSTR/POSITION in the list RULES."
   (find-if (lambda (rule) (rule-matches-instr-p rule instr position)) rules))
 
-
 (defmethod apply-all-kraus-maps ((qvm channel-qvm) (instr quil:gate-application) kraus-maps)
-  ;; Apply all the kraus operators to the state of the system.
+  ;; Apply each kraus map in the list KRAUS-MAPS to the state of the system.
   (dolist (kraus-map kraus-maps)
     (apply-kraus-map qvm instr kraus-map)))
 
-
 (defmethod apply-kraus-map ((qvm channel-qvm) (instr quil:gate-application) kraus-ops)
-  ;; Randomly select one of the kraus operators in KRAUS-OPS to apply
+  ;; Uniformly at random select one of the kraus operators in KRAUS-OPS to apply
   ;; for the transition.
   (let* ((amps (%trial-amplitudes qvm))
          (r (random 1.0d0))
          (summed 0.0d0)
          (logical-qubits (quil:application-arguments instr))
          (qubits (mapcar #'quil:qubit-index logical-qubits)))
-    (check-type amps quantum-state)
+    (declare (type quantum-state amps))
     ;; Randomly select one of the Kraus operators by inverse transform
     ;; sampling (cf [1]): We divide the unit interval [0,1] into n
     ;; bins where the j-th bin size equals the probability p_j with
@@ -143,22 +143,18 @@
     (rotatef (amplitudes qvm) (%trial-amplitudes qvm))
     (normalize-wavefunction (amplitudes qvm))))
 
-
 (defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr quil:measure-discard))
   (declare (ignore qvm instr))
   nil)
 
-
 (defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr quil:measure))
   (%corrupt-qvm-memory-with-povm qvm instr (readout-povms (noise-model qvm))))
-
 
 (defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr compiled-measurement))
   (apply-classical-readout-noise qvm (source-instruction instr)))
 
-
 (defun %corrupt-qvm-memory-with-povm (qvm instr povm-map)
-  "Apply POVM to measurement."
+  "Apply POVM-MAP to the measured result of the INSTR application."
   (check-type instr quil:measure)
   (let* ((q (quil:qubit-index (quil:measurement-qubit instr)))
          (a (quil:measure-address instr))
@@ -169,9 +165,8 @@
         (setf (dereference-mref qvm a)
               (perturb-measurement c p00 p01 p10 p11))))))
 
-
 (defun perturb-measurement (actual-outcome p00 p01 p10 p11)
-  "Given the readout error encoded in the POVM (see documentation of NOISY-QVM), randomly sample the observed (potentially corrupted) measurement outcome."
+  "Given the readout error encoded in the assignment probabilities P00, P01, P10, P11, randomly sample the observed (potentially corrupted) measurement outcome."
   (check-type actual-outcome bit)
   (check-type p00 (double-float 0.0d0 1.0d0))
   (check-type p01 (double-float 0.0d0 1.0d0))
@@ -181,7 +176,6 @@
     (ecase actual-outcome
       ((0) (if (<= r p00) 0 1))
       ((1) (if (<= r p01) 0 1)))))
-
 
 (defun check-povm (povm)
   "Verify that the list POVM contains a valid single qubit diagonal POVM. Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
@@ -193,11 +187,9 @@
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
 
-
 ;;; Don't compile things for the CHANNEL-QVM.
 (defmethod compile-loaded-program ((qvm channel-qvm))
   qvm)
-
 
 (defmethod compile-instruction ((qvm channel-qvm) isn)
   (declare (ignore qvm))
