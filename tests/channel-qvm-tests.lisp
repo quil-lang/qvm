@@ -5,14 +5,13 @@
 
 (in-package #:qvm-tests)
 
-
 (deftest test-channel-qvm-make-instance ()
   (let* ((p1 (qvm::make-noise-predicate (qvm::match-all-nq-gates 1) 12 :after))
          (p2 (qvm::make-noise-predicate (qvm::match-strict-qubits 0) 18 :after))
          (p3 (qvm::make-noise-predicate (qvm::match-strict-gate "X") 19 :after))
-         (k1 (qvm::generate-damping-kraus-map 5 1))
-         (k2 (qvm::generate-dephasing-kraus-map 5 2))
-         (k3 (qvm::generate-damping-kraus-map 6 1))
+         (k1 (qvm::damping-kraus-map 5 1))
+         (k2 (qvm::dephasing-kraus-map 5 2))
+         (k3 (qvm::damping-kraus-map 6 1))
          (nr1 (qvm::make-noise-rule p1 k1))
          (nr2 (qvm::make-noise-rule p2 k2 k3 k1))
          (nr3 (qvm::make-noise-rule p3 k1 k3))
@@ -29,14 +28,13 @@
     (is (= 3 (length (qvm::operation-elements (nth 1 (qvm::noise-rules (qvm::noise-model q)))))))
     (is (= 1 (length (qvm::operation-elements (nth 2 (qvm::noise-rules (qvm::noise-model q)))))))))
 
-
 (deftest test-rule-matches-instr-p ()
   ;; Test that RULE-MATCHES-INSTR-P correctly finds matches between
   ;; rules and instructions.
   (let* ((posn :after)
          (p1 (qvm::make-noise-predicate (qvm::match-all-nq-gates 1) 12 :after))
          (p2 (qvm::make-noise-predicate (qvm::match-any-n-qubits 2 '(0 2)) 18 :after))
-         (kraus (qvm::generate-damping-kraus-map 5 1))
+         (kraus (qvm::damping-kraus-map 5 1))
          (rule1 (qvm::make-noise-rule p1 kraus))
          (rule2 (qvm::make-noise-rule p2 kraus))
          (test-gate-1 (quil::build-gate "X" () 0))
@@ -46,15 +44,14 @@
     (is (qvm::rule-matches-instr-p rule2 test-gate-2 posn))
     (is (not (qvm::rule-matches-instr-p rule2 test-gate-1 posn)))))
 
-
 (deftest test-find-matching-rule ()
   ;; Test that FIND-MATCHING-RULE correctly returns the matching rule
   ;; of the instruction.
   (let* ((posn :after)
          (p1 (qvm::make-noise-predicate (qvm::match-all-nq-gates 1) 12 posn))
          (p2 (qvm::make-noise-predicate (qvm::match-strict-qubits 1 2) 18 posn))
-         (kraus1 (qvm::generate-damping-kraus-map 5 1))
-         (kraus2 (qvm::generate-damping-kraus-map 6 2))
+         (kraus1 (qvm::damping-kraus-map 5 1))
+         (kraus2 (qvm::damping-kraus-map 6 2))
          (rule1 (qvm::make-noise-rule p1 kraus1))
          (rule2 (qvm::make-noise-rule p2 kraus2))
          (rules (list rule1 rule2))
@@ -69,7 +66,6 @@
     (is (qvm::find-matching-rule rules test-gate-2 posn))
     (is (not (qvm::find-matching-rule rules test-gate-3 posn)))))
 
-
 (deftest test-check-povm ()
   ;; Test that check-povm rejects invalid povms, and accepts valid
   ;; ones.
@@ -80,19 +76,14 @@
     (signals error (qvm::check-povm invalid-povm1))
     (signals error (qvm::check-povm invalid-povm2))))
 
-
 (deftest test-check-kraus-ops ()
   ;; Test that CHECK-KRAUS-OPS rejects invalid kraus ops and accepts
   ;; valid ones.
-  (let ((valid-k1 (qvm::generate-damping-kraus-map 5 1))
-        (valid-k2 (qvm::generate-dephasing-kraus-map 5 2))
-        (invalid-k1 (qvm::generate-damping-kraus-map 2 5)) ; t1 < gate-time
+  (let ((valid-k1 (qvm::damping-kraus-map 5 1))
         (invalid-k2 '(4 3 2 1))) ; not a magicl matrix
     (qvm::check-kraus-ops valid-k1)
-    (qvm::check-kraus-ops valid-k2)
-    (signals error (qvm::check-kraus-ops invalid-k1))
-    (signals error (qvm::check-kraus-ops invalid-k2))))
-
+    (signals error 
+      (qvm::check-kraus-ops invalid-k2))))
 
 (defun run-n-shot-program (nunshots qvm program)
   "Runs an NUMSHOT-shot PROGRAM on the QVM, and returns the number of times that q0 was measured to be 1"
@@ -106,7 +97,6 @@
           :do (incf ones (qvm::dereference-mref qvm (quil:mref "R0" qubit))))
     ones))
 
-
 (deftest test-channel-qvm-noisy-readout ()
   ;; Test that noisy readout works on the channel qvm. Applying a
   ;; program 100 times and evaluate that the resulting excited state
@@ -119,10 +109,8 @@
            (q (make-instance 'qvm::channel-qvm :number-of-qubits 1 :noise-model nm))
            (povm (list .9d0 .1d0 .1d0 .9d0)))
       (setf (gethash qubit (qvm::readout-povms (qvm::noise-model q))) povm)
-      (let ((ones-measured (qvm-tests::run-n-shot-program numshots q program)))
+      (let ((ones-measured (run-n-shot-program numshots q program)))
         (is (< 50 ones-measured numshots))))))
-
-
 
 (deftest test-channel-noise-model-priority ()
   ;; This function tests that the channel-qvm correctly applies rules
@@ -134,8 +122,8 @@
   (with-execution-modes (:interpret)
     (let* ((low-pred (qvm::make-noise-predicate (qvm::match-all-nq-gates 1) 18 :after))
            (high-pred (qvm::make-noise-predicate (qvm::match-strict-gate "X") 1 :after))
-           (low-kraus (qvm::generate-damping-kraus-map 5 4))
-           (high-kraus (qvm::generate-damping-kraus-map 5 1))
+           (low-kraus (qvm::damping-kraus-map 5 4))
+           (high-kraus (qvm::damping-kraus-map 5 1))
            (nrs (list (qvm::make-noise-rule low-pred low-kraus) ; low priority
                       (qvm::make-noise-rule high-pred high-kraus))) ; high priority 
            (nm (make-instance 'qvm::noise-model :noise-rules nrs))
@@ -145,9 +133,8 @@
       ;; if the lower priority rule were applied, ones would be <
       ;; 50. The higher priority rule, which is the one that we want to
       ;; apply, should make ones > 50
-      (let ((ones-measured (qvm-tests::run-n-shot-program numshots q program)))
-        (is (> 50 ones-measured))))))
-
+      (let ((ones-measured (run-n-shot-program numshots q program)))
+        (is (> 70 ones-measured))))))
 
 (deftest test-noise-model-multiplication-names ()
   ;; This test checks that the noise model produced by a
@@ -157,8 +144,8 @@
   ;; multiplication is given the name "Q0-NOISE & X-GATE-NOISE".
   (let* ((p1 (qvm::make-noise-predicate (qvm::match-strict-qubits 0) 18 :after "Q0-NOISE"))
          (p2 (qvm::make-noise-predicate (qvm::match-strict-gate "X") 1 :after "X-GATE-NOISE"))
-         (k1 (qvm::generate-damping-kraus-map 5 4))
-         (k2 (qvm::generate-damping-kraus-map 5 1))
+         (k1 (qvm::damping-kraus-map 5 4))
+         (k2 (qvm::damping-kraus-map 5 1))
          (nr1 (qvm::make-noise-rule p1 k1))
          (nr2 (qvm::make-noise-rule p2 k2))
          (nm1 (make-instance 'qvm::noise-model :noise-rules (list nr1)))
@@ -168,8 +155,6 @@
          (parsed-program (quil:parse-quil "DECLARE R0 BIT; X 0; Y 1; MEASURE 0 R0"))
          (noisy-prog-strings (noisy-program-strings parsed-program q)))
     (is (string= (nth 1 noisy-prog-strings) "(Q0-NOISE & X-GATE-NOISE)"))))
-
-
 
 (defun noisy-program-strings (parsed-program qvm)
   "Return a list of strings representing a noisy program. The returned list consists of the original program instructions as strings interjected with the NOISE-PRED NAMEs of the NOISE-RULES in the QVM's NOISE-MODEL."
@@ -184,13 +169,12 @@
           :when rule-after-instr
             :collect (qvm::name (qvm::noise-predicate rule-after-instr)))))
 
-
 (deftest test-print-noisy-program ()
-  ;; This function tests that QVM::PRINT-NOISY-PROGRAM correctly
+  ;; This function tests that QVM::NOISY-PROG-STRINGS correctly
   ;; prints the instructions of a qvm's program interjected with the
   ;; "noise instructions" from the QVM's NOISE-MODEL.
   (let* ((pred (qvm::make-noise-predicate (qvm::match-all-nq-gates 1) 1 :after))
-         (kraus (qvm::generate-damping-kraus-map 5 1))
+         (kraus (qvm::damping-kraus-map 5 1))
          (nrs (list (qvm::make-noise-rule pred kraus)))
          (nm (make-instance 'qvm::noise-model :noise-rules nrs))
          (q (make-instance 'qvm::channel-qvm :number-of-qubits 2 :noise-model nm))

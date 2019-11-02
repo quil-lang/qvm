@@ -162,6 +162,52 @@
    #:make-density-qvm                   ; FUNCTION
    )
 
+  ;; noise-models
+  (:export
+   #:noise-predicate                    ; CLASS
+   #:predicate-function                 ; READER
+   #:priority                           ; READER
+   #:noise-position                     ; READER
+   #:name                               ; READER 
+   #:make-noise-predicate               ; FUNCTION
+   #:predicate-and                      ; FUNCTION
+   #:predicate-or                       ; FUNCTION
+   #:predicate-not                      ; FUNCTION
+   #:noise-rule                         ; CLASS
+   #:make-noise-rule                    ; FUNCTION
+   #:noise-model                        ; CLASS
+   #:noise-rules                        ; ACCESSOR
+   #:make-noise-model                   ; FUNCTION
+   #:add-noise-models                   ; FUNCTION
+   #:multiply-noise-models              ; FUNCTION
+   #:match-strict-qubits                ; FUNCTION
+   #:match-any-n-qubits                 ; FUNCTION
+   #:match-strict-gate                  ; FUNCTION
+   #:match-any-gates                    ; FUNCTION
+   #:match-all-nq-gates                 ; FUNCTION
+   #:match-all-gates                    ; FUNCTION
+   #:match-measure                      ; FUNCTION
+   #:match-measure-at-strict            ; FUNCTION
+   #:match-measure-at-any               ; FUNCTION
+   #:match-instr-idxs                   ; FUNCTION
+   )               
+  
+  ;; channel-qvm
+  (:export
+   #:channel-qvm                        ; CLASS
+   #:noise-model                        ; ACCESSOR
+   )
+  
+  ;; basic-noise-qvm
+  (:export
+   #:basic-noise-qvm                   ; CLASS
+   #:tphi                              ; FUNCTION
+   #:damping-kraus-map                 ; FUNCTION
+   #:dephasing-kraus-map               ; FUNCTION
+   #:depolarizing-kraus-map            ; FUNCTION
+   #:kraus-kron                        ; FUNCTION
+   )
+  
   ;; path-simulate.lisp
   (:export
    #:path-simulate                      ; FUNCTION
