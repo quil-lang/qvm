@@ -112,7 +112,7 @@ Alternatively, the handler function can be called from lisp like so
   ;; text/html rather than application/json for backwards compatibility with previous QVM-APP API.
   (make-text-response (string-right-trim
                        '(#\Newline)
-                       (with-output-to-string (*error-output*)
+                       (with-output-to-string (*standard-output*)
                          (show-version)))))
 
 (define-rpc-handler (handle-qvm-memory-estimate "qvm-memory-estimate")

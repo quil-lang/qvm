@@ -4,7 +4,7 @@
   (qvm-app-ng::%entry-point (append '("--verbose" "0") argv)))
 
 (deftest test-initial-rpc-request-version ()
-  (is (string= (with-output-to-string (*error-output*)
+  (is (string= (with-output-to-string (*standard-output*)
                  (qvm-app-ng::show-version))
                (with-output-to-string (*standard-output*)
                  (enter-quietly '("--rpc-request" "{\"type\": \"version\"}"))))))
@@ -21,14 +21,14 @@
 
 (deftest test-show-version ()
   (dolist (flag '("-v" "--version"))
-    (is (string= (with-output-to-string (*error-output*)
+    (is (string= (with-output-to-string (*standard-output*)
                    (qvm-app-ng::show-version))
-                 (with-output-to-string (*error-output*)
+                 (with-output-to-string (*standard-output*)
                    (enter-quietly (list flag)))))))
 
 (deftest test-show-help ()
   (dolist (flag '("-h" "--help"))
-    (is (string= (with-output-to-string (*error-output*)
+    (is (string= (with-output-to-string (*standard-output*)
                    (qvm-app-ng::show-help))
-                 (with-output-to-string (*error-output*)
+                 (with-output-to-string (*standard-output*)
                    (enter-quietly (list flag)))))))
