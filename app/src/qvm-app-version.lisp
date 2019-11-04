@@ -39,13 +39,13 @@
   "Get the latest SDK qvm version, or NIL if unavailable."
   (handler-case
       (let* ((s (drakma:http-request
-                 (format nil "http://downloads.rigetti.com/qcs-sdk/version?qvm=~A"
+                 (format nil "http://downloads.rigetti.com/qcs-sdk/versions?qvm=~A"
                          +QVM-VERSION+)
                  :want-stream t
                  :proxy proxy))
              (p (yason:parse s)))
         (multiple-value-bind (version success)
-            (gethash "qvm" p)
+            (gethash "qvm" (gethash "latest" p))
           (when success
             version)))
     (usocket:ns-error (condition)
