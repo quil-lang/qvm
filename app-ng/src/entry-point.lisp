@@ -74,13 +74,13 @@
     #|not reached|#))
 
 (defun show-help ()
-  (format *error-output* "Usage:~%")
-  (format *error-output* "    qvm-ng [<options>...]~%~%")
-  (format *error-output* "Options:~%")
-  (command-line-arguments:show-option-help *option-spec* :stream *error-output* :sort-names t))
+  (format t "Usage:~%")
+  (format t "    qvm-ng [<options>...]~%~%")
+  (format t "Options:~%")
+  (command-line-arguments:show-option-help *option-spec* :sort-names t))
 
 (defun show-version ()
-  (format *error-output* "~A [~A]~%" +QVM-VERSION+ +GIT-HASH+))
+  (format t "~A [~A]~%" +QVM-VERSION+ +GIT-HASH+))
 
 (defun show-welcome ()
   (format *error-output*
