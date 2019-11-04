@@ -181,42 +181,42 @@ DEFCIRCUIT ANSATZ:
     CNOT 1 2
     H 1
     RX(-pi/2) 3
-
 "
   "Parametric UCCSD ansatz.")
 
-(defparameter *coefficients* #1A(0.37983135178095495d0
-                                 0.2139353102452124d0
-                                 0.2139353102452124d0
-                                -0.36914431524376695d0
-                                -0.36914431524376695d0
-                                 0.17992650976405983d0
-                                 0.042217556922433896d0
-                                -0.042217556922433896d0
-                                -0.042217556922433896d0
-                                 0.042217556922433896d0
-                                 0.13459240346368873d0
-                                 0.17680996038612262d0
-                                 0.17680996038612262d0
-                                 0.13459240346368873d0
-                                 0.18620984259247159d0)
+(defparameter *coefficients* '#.(mapcar (lambda (x) (coerce x 'qvm:flonum))
+                                        '(0.37983135178095495d0
+                                          0.2139353102452124d0
+                                          0.2139353102452124d0
+                                         -0.36914431524376695d0
+                                         -0.36914431524376695d0
+                                          0.17992650976405983d0
+                                          0.042217556922433896d0
+                                         -0.042217556922433896d0
+                                         -0.042217556922433896d0
+                                          0.042217556922433896d0
+                                          0.13459240346368873d0
+                                          0.17680996038612262d0
+                                          0.17680996038612262d0
+                                          0.13459240346368873d0
+                                          0.18620984259247159d0))
               "Coefficients of the Pauli operators present in the Hamiltonian.")
 
-(defparameter *operators* (map 'vector #'quil:parse-quil '("I 0"
-                                                           "Z 0"
-                                                           "Z 1"
-                                                           "Z 2"
-                                                           "Z 3"
-                                                           "Z 0; Z 1"
-                                                           "Y 0; X 1; X 2; Y 3"
-                                                           "X 0; X 1; Y 2; Y 3"
-                                                           "Y 0; Y 1; X 2; X 3"
-                                                           "X 0; Y 1; Y 2; X 3"
-                                                           "Z 0; Z 2"
-                                                           "Z 0; Z 3"
-                                                           "Z 1; Z 2"
-                                                           "Z 1; Z 3"
-                                                           "Z 2; Z 3"))
+(defparameter *operators* (mapcar #'quil:parse-quil '("I 0"
+                                                      "Z 0"
+                                                      "Z 1"
+                                                      "Z 2"
+                                                      "Z 3"
+                                                      "Z 0; Z 1"
+                                                      "Y 0; X 1; X 2; Y 3"
+                                                      "X 0; X 1; Y 2; Y 3"
+                                                      "Y 0; Y 1; X 2; X 3"
+                                                      "X 0; Y 1; Y 2; X 3"
+                                                      "Z 0; Z 2"
+                                                      "Z 0; Z 3"
+                                                      "Z 1; Z 2"
+                                                      "Z 1; Z 3"
+                                                      "Z 2; Z 3"))
   "Pauli operators in the Hamiltonian.")
 
 (defparameter *initial-thetas* #(0.0d0 -0.036014483d0)
@@ -225,46 +225,64 @@ DEFCIRCUIT ANSATZ:
 (defun error-missing-initform (initarg)
   (error "The value of ~S must be specified" initarg))
 
+(defclass hamiltonian ()
+  ((coefficients
+    :type list
+    :initarg :coefficients
+    :initform (error-missing-initform :coefficients)
+    :documentation "Coefficients of the operators in the Hamiltonian.")
+   (operators
+    :type list
+    :initarg :operators
+    :initform (error-missing-initform :operators)
+    :documentation "Operators in the Hamiltonian."))
+  (:documentation "Hamiltonian function."))
+
+(defun make-extended-hamiltonian (hamiltonian coefficient operator)
+  "Return a new HAMILTONIAN with an extra term of the form COEFFICIENT times OPERATOR."
+  (declare (type hamiltonian hamiltonian)
+           (type qvm:flonum coefficient)
+           (type quil:parsed-program operator operator))
+  (make-instance 'hamiltonian
+                 :coefficients (cons coefficient (slot-value hamiltonian 'coefficients))
+                 :operators (cons operator (slot-value hamiltonian 'operators))))
+
 (defclass vqe-problem ()
   ((number-of-qubits
-    :type 'alexandria:non-negative-fixnum
+    :type alexandria:non-negative-fixnum
     :initarg :number-of-qubits
     :initform (error-missing-initform :number-of-qubits)
     :documentation "Number of qubits.")
    (reference-state
-    :type 'string
+    :type string
     :initarg :reference-state
     :initform (error-missing-initform :reference-state)
     :documentation "Reference state. A string with a Quil program containing a DEFCIRCUIT form named REFERENCE.")
    (ansatz
-    :type 'string
+    :type string
     :initarg :ansatz
     :initform (error-missing-initform :ansatz)
     :documentation "Ansatz for the eigenproblem. A string with a Quil program containing a DEFCIRCUIT form named ANSATZ.")
-   (coefficients
-    :type '(array double-float (*))
-    :initarg :coefficients
-    :initform (error-missing-initform :coefficients)
-    :documentation "Coefficients of the operators in the Hamiltonian")
-   (operators
-    :type '(array quil:parsed-program (*))
-    :initarg :operators
-    :initform (error-missing-initform :operators)
-    :documentation "Operators in the Hamiltonian")))
+   (hamiltonian
+    :type hamiltonian
+    :initarg :hamiltonian
+    :initform (error-missing-initform :hamiltonian)
+    :documentation "The operators in the Hamiltonian and their coefficients."))
+  (:documentation "Auxiliary class for eigenproblems solved by VQE."))
 
 (defun make-vqe-problem (&key (number-of-qubits *number-of-qubits*)
                            (reference-state *reference-state*)
                            (ansatz *ansatz*)
                            (coefficients *coefficients*)
                            (operators *operators*))
-  (flet ((coerce-to-adjustable-array (x)
-           (make-array (length x) :element-type (type-of (elt x 0)) :adjustable t :initial-contents x)))
+  (let ((hamiltonian (make-instance 'hamiltonian
+                                    :coefficients (copy-seq coefficients)
+                                    :operators (copy-seq operators))))
     (make-instance 'vqe-problem
                    :number-of-qubits number-of-qubits
                    :reference-state reference-state
                    :ansatz ansatz
-                   :coefficients (coerce-to-adjustable-array coefficients)
-                   :operators (coerce-to-adjustable-array operators))))
+                   :hamiltonian hamiltonian)))
 
 (defun make-ansatz-string (thetas &key dagger)
   "Return Quil code that evaluates the values of the sequence THETAS and instantiates an ansatz (or its Hermitian conjugate, if DAGGER is T)."
@@ -274,22 +292,23 @@ DEFCIRCUIT ANSATZ:
           :do (format stream "MOVE theta[~d] ~F~%" i theta))
     (format stream "~:[REFERENCE~%ANSATZ~;DAGGER ANSATZ~%DAGGER REFERENCE~]~%" dagger)))
 
-(defun solve-vqe (vqe-problem &optional (initial-thetas *initial-thetas*))
+(defun solve-vqe-problem (vqe-problem &optional (initial-thetas *initial-thetas*))
   "Run the variational quantum eigensolver algorithm."
-  (let ((number-of-qubits (slot-value vqe-problem 'number-of-qubits))
-        (reference-state (slot-value vqe-problem 'reference-state))
-        (ansatz (slot-value vqe-problem 'ansatz))
-        (operators (slot-value vqe-problem 'operators))
-        (coefficients (slot-value vqe-problem 'coefficients)))
+  (let* ((number-of-qubits (slot-value vqe-problem 'number-of-qubits))
+         (reference-state (slot-value vqe-problem 'reference-state))
+         (ansatz (slot-value vqe-problem 'ansatz))
+         (hamiltonian (slot-value vqe-problem 'hamiltonian))
+         (operators (slot-value hamiltonian 'operators))
+         (coefficients (slot-value hamiltonian 'coefficients)))
 
     (flet ((objective-function (thetas)
              "Compute the energy based on the values of THETAS."
-             (loop :with list-of-operators := (coerce operators 'list)
-                   :with state-prep := (quil:parse-quil
-                                        (format nil "DECLARE theta REAL[2]~%~A~%~A~%~A~%" reference-state ansatz (make-ansatz-string thetas)))
-                   :with expectations := (qvm-app::perform-expectation 'qvm-app::pure-state state-prep list-of-operators number-of-qubits)
-                   :for u :across coefficients :for v :in expectations :sum (* u v))))
-
+             (loop :with quil := (format nil "DECLARE theta REAL[2]~%~A~%~A~%~A~%" reference-state ansatz (make-ansatz-string thetas))
+                   :with state-prep := (quil:parse-quil quil)
+                   :with expectations := (qvm-app::perform-expectation 'qvm-app::pure-state state-prep operators number-of-qubits)
+                   :for u :of-type qvm:flonum :in coefficients
+                   :for v :of-type qvm:flonum :in expectations
+                   :sum (* u v) :of-type qvm:flonum)))
       (cl-grnm:grnm-optimize #'objective-function initial-thetas))))
 
 (defun make-penalty-term (vqe-problem thetas-1 thetas-2 &key dagger)
@@ -306,7 +325,7 @@ In other words, we return a program implementing the operator A(θ₂)† A(θ�
 (defun find-inverse-ansatz (vqe-problem thetas initial-values)
   "Let A = A(θ) be the ANSATZ determined by THETAS. Return the value of η that maximizes ⟨0|A(η) A(θ)|0⟩.
 
-The value of η is used to implement the penalty term in the deflation method. Ideally, one would use A(θ)† instead of A(η), but the original paper states that doing so might be hard if gate fidelities are not good enough. The aim then is to find η such that A(η) ≈ A(θ)†."
+The value of η is used to implement the penalty term in the deflation method. Ideally, one would use A(θ)† instead of A(η), but the original paper states that doing so might be hard if gate fidelities are low. The aim then is to find η such that A(η) ≈ A(θ)†."
   (let ((number-of-qubits (slot-value vqe-problem 'number-of-qubits)))
     (flet ((objective-function (etas)
              (let ((operators (list (make-penalty-term vqe-problem thetas etas :dagger nil)))
