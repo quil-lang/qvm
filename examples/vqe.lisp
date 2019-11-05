@@ -276,8 +276,8 @@ DEFCIRCUIT ANSATZ:
                            (coefficients *coefficients*)
                            (operators *operators*))
   (let ((hamiltonian (make-instance 'hamiltonian
-                                    :coefficients (copy-seq coefficients)
-                                    :operators (copy-seq operators))))
+                                    :coefficients (copy-list coefficients)
+                                    :operators (copy-list operators))))
     (make-instance 'vqe-problem
                    :number-of-qubits number-of-qubits
                    :reference-state reference-state
