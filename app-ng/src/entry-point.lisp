@@ -83,17 +83,31 @@
   (format t "~A [~A]~%" +QVM-VERSION+ +GIT-HASH+))
 
 (defun show-welcome ()
-  (format *error-output*
-          "~&*****************************************~%~
-             * Welcome to the Rigetti QVM (Next Gen) *~%~
-             *****************************************~%~
-             Copyright (c) 2016-2019 Rigetti Computing.~2%~
-             (Configured with ~A MiB of workspace and ~D core~:P.)~2%"
+  (format *error-output* "~&~
+******************************************
+* Welcome to the Rigetti QVM (Next Gen.) *~%~
+******************************************~%~
+Copyright (c) 2016-2019 Rigetti Computing.~2%")
+  (format *error-output* "(Configured with ~A MiB of workspace and ~D worker~:P.)~%"
           #+sbcl
           (floor (sb-ext:dynamic-space-size) (expt 1024 2))
           #-sbcl
           "many many"
           (max 1 (qvm:count-logical-cores)))
+  (format *error-output* "(Gates parallelize at ~D qubit~:P.)~%"
+          qvm::*qubits-required-for-parallelization*)
+  (format *error-output* "(There are ~D kernel~:P and they are used with ~
+              up to ~D qubit~:P.)~%"
+          (length qvm::*available-kernels*)
+          (qvm::qubit-limit-for-using-serial-kernels))
+  (let ((qvm-features
+          (list                         ; List of features
+                #+qvm-intrinsics
+                "qvm-intrinsics"
+                #+(and qvm-intrinsics avx2)
+                "avx2")))
+    (format *error-output* "(Features enabled: ~{~a~^, ~})~2%"
+            (or qvm-features (list "none"))))
   nil)
 
 (defun run-initial-rpc-request (rpc-request)
