@@ -77,6 +77,7 @@ qvm: system-index.txt
 qvm-ng: system-index.txt
 	$(SBCL) $(FOREST_SDK_FEATURE) \
 		--eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
+		$(QVM_FEATURE_FLAGS) \
 		--load build-app-ng.lisp \
 		$(FOREST_SDK_OPTION)
 
