@@ -678,6 +678,27 @@ Ensure that the job is deleted afterwards."
       (check-request (job-request url :type "delete-job" :job-token job-token)
                      :response-re "Deleted async JOB"))))
 
+(deftest test-rpc-api-resume-invalid-requests ()
+  "Test invalid resume API calls."
+  (with-rpc-server (url)
+    ;; non-existent persistent qvm
+    (check-request (job-request url :type "resume"
+                                    :qvm-token (qvm-app-ng::make-persistent-qvm-token))
+                   :status 500)
+    (let ((qvm-token (extract-and-validate-token
+                      (check-request (simple-request url
+                                                     :type "create-qvm"
+                                                     :allocation-method "native"
+                                                     :simulation-method "pure-state"
+                                                     :num-qubits 2)
+                                     :status 201
+                                     :response-re +rpc-response-token-scanner+))))
+
+      ;; cannot resume pqvm in non-waiting state
+      (is (string= "READY" (request-qvm-state url qvm-token)))
+      (check-request (job-request url :type "resume" :qvm-token qvm-token)
+                     :status 500))))
+
 (deftest test-rpc-api-read-memory ()
   "Test the read-memory API call."
   (with-rpc-server (url)
