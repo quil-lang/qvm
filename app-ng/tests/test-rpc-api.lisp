@@ -515,10 +515,10 @@ Ensure that the job is deleted afterwards."
     (dolist (allocation-method +allocation-method-strings+)
       (dolist (simulation-method +simulation-method-strings+)
         (dolist (num-qubits '(0 1 16))
-          ;; EXPECTED-BYTES is duplicating the calculation in QVM-APP-NG::MEMORY-REQUIRED-FOR-QVM.
+          ;; EXPECTED-BYTES is duplicating the calculation in QVM-APP-NG::OCTETS-REQUIRED-FOR-QVM.
           ;; We could just call that function here, but then we'd only be testing the HTTP
           ;; interface, not the calculation. By duplicating the calculation here, this test will
-          ;; still catch any bugs that creep in to QVM-APP-NG::MEMORY-REQUIRED-FOR-QVM, at the
+          ;; still catch any bugs that creep in to QVM-APP-NG::OCTETS-REQUIRED-FOR-QVM, at the
           ;; expense of needing to be separately kept in sync as support for more SIMULATION-METHODs
           ;; and noise models are added.
           (let ((expected-bytes

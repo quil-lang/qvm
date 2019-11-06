@@ -50,25 +50,17 @@ PAULI-NOISE-P indicates the presence or absence of Pauli channel noise."
                     'qvm:pure-state-qvm))
     (full-density-matrix 'qvm:density-qvm)))
 
-(defun memory-required-for-qvm (simulation-method allocation-method num-qubits gate-noise
-                                measurement-noise)
-  "Return the amount of memory required for the persistent state of the corresponding QVM type."
-  (declare (ignore allocation-method))
-  (ecase (simulation-method->qvm-type simulation-method
-                                      :pauli-noise-p (or gate-noise measurement-noise))
-    ((qvm:pure-state-qvm qvm:depolarizing-qvm)
-     ;; Space required for the 2^N AMPLITUDES.
-     (* qvm::+octets-per-cflonum+ (expt 2 num-qubits)))
-    #+(or)
-    ;; TODO(appleby): enable once NOISY-QVM is supported. SBCL is able to infer that
-    ;; SIMULATION-METHOD->QVM-TYPE never returns QVM:NOISY-QVM, and so emits a compilation note here
-    ;; if this clause isn't disabled.
-    (qvm:noisy-qvm
-     ;; Space required for the AMPLITUDES, plus a copy in TRIAL-AMPLITUDES
-     (* qvm::+octets-per-cflonum+ (expt 2 (1+ num-qubits))))
-    (qvm:density-qvm
-     ;; Space required for the 2^N x 2^N density matrix, plus possible duplicate in TEMPORARY-STATE.
-     (* qvm::+octets-per-cflonum+ (expt 2 (1+ (* 2 num-qubits)))))))
+(defgeneric octets-required-for-qvm (qvm-type num-qubits)
+  (:method ((qvm-type (eql 'qvm:pure-state-qvm)) num-qubits)
+    (qvm:octets-required-for-qubits num-qubits))
+  (:method ((qvm-type (eql 'qvm:depolarizing-qvm)) num-qubits)
+    (qvm:octets-required-for-qubits num-qubits))
+  (:method ((qvm-type (eql 'qvm:noisy-qvm)) num-qubits)
+    ;; Space required for the AMPLITUDES, plus a copy in TRIAL-AMPLITUDES
+    (* 2 (qvm:octets-required-for-qubits num-qubits)))
+  (:method ((qvm-type (eql 'qvm:density-qvm)) num-qubits)
+    ;; Space required for the 2^N x 2^N density matrix, plus possible duplicate in TEMPORARY-STATE.
+    (* 2 (qvm:octets-required-for-qubits (* 2 num-qubits)))))
 
 (defun run-program-on-qvm (qvm parsed-program &optional addresses)
   "Load and run PARSED-PROGRAM on the given QVM.
