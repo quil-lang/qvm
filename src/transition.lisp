@@ -173,13 +173,13 @@ the specified QVM."
                :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
                                 expected-qubits
                                 given-qubits))))
-    (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
+    (apply #'apply-gate-state gate (state qvm) (apply #'nat-tuple qubits) params)
     (incf (pc qvm))
     qvm))
 
 (defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.
-  (apply-gate instr (amplitudes qvm) nil)
+  (apply-gate-state instr (state qvm) nil)
   (incf (pc qvm))
   qvm)
 

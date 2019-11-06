@@ -32,55 +32,57 @@
         (not simple-array)))
 
 (defclass density-qvm (pure-state-qvm)
-  ((matrix-view :reader density-matrix-view
-                :type density-operator-matrix-view
-                :documentation "This is a 2D array displaced to the underlying QVM amplitudes.")
-   (temporary-state :accessor temporary-state
-                    :initform nil
-                    :documentation "Sometimes the simulation needs to use some temporary state. We save it so we don't have to alloc/dealloc frequently.")
+  ((state :accessor state
+          :initarg :state)
    (noisy-gate-definitions :initarg :noisy-gate-definitions
                            :accessor noisy-gate-definitions
-                           :initform (make-hash-table :test 'equalp)
-                           :documentation "Noisy gate definitions that, if present, override those stored in GATE-DEFINITIONS.")
+                           :initform (make-hash-table :test 'equalp))
    (readout-povms
     :initarg :readout-povms
     :accessor readout-povms
-    :initform (make-hash-table)
-    :documentation "Noisy readout encoded as diagonal single qubit
-    POVM given as a 4-element list
-
-          (p(0|0) p(0|1)
-           p(1|0) p(1|1))
-
-which for each qubit gives the probability p(j|k) of measuring outcome
-j given actual state k. Note that we model purely classical readout
-error, i.e., the post measurement qubit state is always k, but the
-recorded outcome j may be different."))
+    :initform (make-hash-table)))
   (:documentation "A density matrix simulator."))
 
 
 ;;; Creation and Initialization
+
+(defmethod amplitudes ((qvm density-qvm))
+  (amplitudes (state qvm)))
+
+(defmethod (setf amplitudes) (new-amplitudes qvm)
+  (setf (amplitudes (state qvm)) new-amplitudes))
+
+(defmethod temporary-state ((qvm density-qvm))
+  (temporary-state (state qvm)))
+
+(defmethod (setf temporary-state) (temp-storage (qvm density-qvm))
+  (setf (temporary-state (state qvm)) temp-storage))
+
+(defmethod density-matrix-view ((qvm density-qvm))
+  (matrix-view (state qvm)))
+
 
 (defmethod initialize-instance :after ((qvm density-qvm) &rest args)
   (declare (ignore args))
   ;; PURE-STATE-QVM does its own allocation, which we don't want, so
   ;; here we make sure that the AMPLITUDES slot has a vector of the
   ;; right size (e.g. it was constructed by MAKE-DENSITY-QVM).
-  (assert (and (slot-boundp qvm 'amplitudes)
-               (typep (slot-value qvm 'amplitudes) 'quantum-state))
-          ()
-          "Density QVM cannot be initialized with AMPLITUDES unbound. Consider using MAKE-DENSITY-QVM, or explicitly providing the :AMPLITUDES initarg..")
-  (let* ((num-qubits (number-of-qubits qvm))
-         (dim (expt 2 num-qubits)))
-    (assert (= (length (amplitudes qvm)) (expt dim 2))
-            ()
-            "Density QVM has AMPLITUDES slot initially bound to a vector of length ~D, but expected length ~D."
-            (length (amplitudes qvm))
-            (expt dim 2))
-    (setf (slot-value qvm 'matrix-view)
-          (make-array (list dim dim)
-                      :element-type 'cflonum ; guaranteed to be a QUANTUM-STATE
-                      :displaced-to (amplitudes qvm)))))
+  (when (or (not (slot-boundp qvm 'state))
+            (null (slot-value qvm 'state)))
+      (setf (state qvm) (make-instance 'density-matrix-state :num-qubits (number-of-qubits qvm)))
+      (set-to-zero-state (state qvm))))
+
+
+(defun make-density-qvm (num-qubits)
+  ;; The amplitudes store vec(ρ), i.e. the entries of the density
+  ;; matrix ρ in row-major order. For a system of N qubits, ρ has
+  ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
+  (let* ((state (make-instance 'density-matrix-state :num-qubits num-qubits)))
+    ;; Go into the zero state.
+    (set-to-zero-state state)
+    (setf (aref (amplitudes state) 0) (cflonum 1))
+    (make-instance 'density-qvm :number-of-qubits 2 :state state)))
+
 
 
 (defmethod reset-quantum-state ((qvm density-qvm))
@@ -89,48 +91,10 @@ recorded outcome j may be different."))
   (bring-to-zero-state (amplitudes qvm))
   qvm)
 
-
-(defun make-density-qvm (num-qubits &rest initargs &key allocation &allow-other-keys)
-  ;; The amplitudes store vec(ρ), i.e. the entries of the density
-  ;; matrix ρ in row-major order. For a system of N qubits, ρ has
-  ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
-
-  ;; The initial state is the pure zero state, which is
-  ;; represented by all zero entries except for a 1 in the first
-  ;; position. See also RESET-QUANTUM-STATE, which we avoid
-  ;; calling here because it performs an additional full traversal
-  ;; of the vector.
-  (let* ((expected-size (expt 2 (* 2 num-qubits)))
-         ;; See also MAKE-QVM for this kind of code.
-         (allocation
-           (etypecase allocation
-             (null
-              (make-instance 'lisp-allocation :length expected-size))
-             (string
-              (make-instance 'posix-shared-memory-allocation :length expected-size
-                                                             :name allocation))
-             (t
-              (assert (= (expt 2 (* 2 num-qubits)) (allocation-length allocation)))
-              allocation)))
-         (amplitudes (getf initargs ':amplitudes)))
-    (multiple-value-bind (amps fin)
-        (if (null amplitudes)
-            (allocate-vector allocation)
-            amplitudes)
-      (check-type amps quantum-state)
-      ;; Go into the zero state.
-      (bring-to-zero-state amps)
-      (setf (aref amps 0) (cflonum 1))
-      (let ((density-qvm (apply #'make-instance 'density-qvm
-                                :number-of-qubits num-qubits
-                                :amplitudes amps
-                                initargs)))
-        (unless (null fin) (tg:finalize density-qvm fin))
-        density-qvm))))
-
 (defun full-density-number-of-qubits (vec-density)
   "Computes the number of qubits encoded by a vectorized density matrix."
   (1- (integer-length (isqrt (length vec-density)))))
+
 
 
 ;;; Superoperators

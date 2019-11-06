@@ -16,9 +16,9 @@
 
    ;; We allow AMPLITUDES to be written to so we can do fancy
    ;; memory-saving things.
-   (amplitudes :accessor amplitudes
-               :initarg :amplitudes
-               :type (or null quantum-state)
+   (state :accessor state
+               :initarg :state
+               :type (or null pure-state)
                :documentation "The unpermuted wavefunction in standard order.")
 
    (program-compiled-p :accessor program-compiled-p
@@ -26,30 +26,35 @@
                        :documentation "Has the loaded program been compiled?"))
   (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
 
+
+(defmethod amplitudes ((qvm pure-state-qvm))
+  (amplitudes (state qvm)))
+
+
+(defmethod (setf amplitudes) (new-amplitudes (qvm pure-state-qvm) )
+  (setf (amplitudes (state qvm)) new-amplitudes))
 ;;; Creation and Initialization
 
 (defmethod initialize-instance :after ((qvm pure-state-qvm) &rest args)
   (declare (ignore args))
   (let ((num-qubits (number-of-qubits qvm)))
     (cond
-      ((and (slot-boundp qvm 'amplitudes)
-            (not (null (slot-value qvm 'amplitudes))))
-       ;; Check that amplitudes is of the right type.
-       (check-type (amplitudes qvm) quantum-state)
+      ((and (slot-boundp qvm 'state)
+            (not (null (slot-value qvm 'state))))
        ;; Check that it represents the number of qubits it should.
        (assert (<= num-qubits (wavefunction-qubits (amplitudes qvm)))
                ()
                "The provided amplitudes to the PURE-STATE-QVM ~A represents ~D qubit~:P, ~
                 but the QAM is specified to need ~D qubit~:P."
                qvm
-               (wavefunction-qubits (amplitudes qvm))
+               (wavefunction-qubits (amplitudes (state qvm)))
                num-qubits))
       (t
        ;; If the amplitudes weren't specified, initialize to |...000>.
        ;;
        ;; We explicitly zero out the memory to make sure all pages get
        ;; touched.
-       (setf (slot-value qvm 'amplitudes) (make-lisp-cflonum-vector (expt 2 num-qubits)))
+       (setf (state qvm) (make-instance 'pure-state :num-qubits (number-of-qubits qvm)))
        (bring-to-zero-state (amplitudes qvm))))))
 
 
@@ -67,35 +72,13 @@ ALLOCATION is an optional argument with the following behavior.
 "
   (check-type num-qubits unsigned-byte)
   (check-type classical-memory-model quil:memory-model)
-  (let ((allocation
-          (etypecase allocation
-            (null
-             (make-instance 'lisp-allocation :length (expt 2 num-qubits)))
-            (string
-             (make-instance 'posix-shared-memory-allocation :length (expt 2 num-qubits)
-                                                            :name allocation))
-            (t
-             (assert (= (allocation-length allocation) (expt 2 num-qubits)))
-             allocation))))
-    (multiple-value-bind (amplitudes finalizer)
-        (allocate-vector allocation)
-      ;; Ensure we start in |...000>.
-      (bring-to-zero-state amplitudes)
-      ;; Make the QVM.
-      (let ((qvm (make-instance 'pure-state-qvm
-                                :number-of-qubits num-qubits
-                                :amplitudes amplitudes
-                                :classical-memory-subsystem
-                                (make-instance 'classical-memory-subsystem
-                                               :classical-memory-model
-                                               classical-memory-model))))
-        ;; When the QVM disappears, make sure the shared memory gets
-        ;; deallocated too. XXX: This could cause problems if someone
-        ;; copies out the shared memory. We should enforce the use of
-        ;; MAP-AMPLITUDES and AMPLITUDE-REF and the like.
-        (tg:finalize qvm finalizer)
-        ;; Return the QVM.
-        qvm))))
+  (make-instance 'pure-state-qvm
+                 :number-of-qubits num-qubits
+                 :state (make-pure-state num-qubits :allocation allocation)
+                 :classical-memory-subsystem
+                 (make-instance 'classical-memory-subsystem
+                                :classical-memory-model
+                                classical-memory-model))))
 
 (defmethod compile-loaded-program ((qvm pure-state-qvm))
   "Compile the loaded program on the QVM QVM."

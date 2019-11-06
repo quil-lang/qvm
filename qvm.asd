@@ -68,6 +68,7 @@
                (:file "serial-kernels")
                (:file "wavefunction")
                (:file "subsystem")
+               (:file "state-representation")
                (:file "qvm")
                (:file "compile-gate")
                (:file "apply-gate")
