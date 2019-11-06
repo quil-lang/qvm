@@ -138,13 +138,14 @@ GATE-NOISE is an optional list of three FLOATs giving the probabilities of a Pau
 MEASUREMENT-NOISE is an optional list of three FLOATs giving the probabilities of an X, Y, or Z gate happening before a MEASURE.
 
 Return a JSON-RESPONSE object that contains a HASH-TABLE with a \"bytes\" key indicating the estimated number of bytes required."
-  (make-json-response (alexandria:plist-hash-table
-                       `("bytes" ,(memory-required-for-qvm simulation-method
-                                                           allocation-method
-                                                           num-qubits
-                                                           gate-noise
-                                                           measurement-noise))
-                       :test #'equal)))
+  (declare (ignore allocation-method))
+  (make-json-response
+   (alexandria:plist-hash-table
+    `("bytes" ,(octets-required-for-qvm
+                (simulation-method->qvm-type simulation-method
+                                             :pauli-noise-p (or gate-noise measurement-noise))
+                num-qubits))
+    :test #'equal)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;; PERSISTENT QVM HANDLERS ;;;;;;;;;;;;;;;;;;;;;;;
