@@ -189,6 +189,15 @@ Returns the requested memory registers or signals an error if the given PERSISTE
     (case (persistent-qvm-state pqvm)
       (ready
        (%checked-transition-to-state-locked pqvm 'running :from-state 'ready)
+       ;; TODO(appleby): Maybe we want to HANDLER-CASE here rather than UNWIND-PROTECT, and only
+       ;; attempt the RUNNING -> READY transition if no error is signaled. If an error is signaled,
+       ;; we might instead transition to some explicitly INVALID or ERROR state. For instance, if we
+       ;; are running inside an async job and the user kills the job, we wind up here. If the QVM
+       ;; was executing a WAIT instruction, the %CHECKED-TRANSITION-TO-STATE-LOCKED will signal an
+       ;; error (since :FROM-STATE must be RUNNING). But if QVM was in the RUNNING state when the
+       ;; job was killed (or an error was signaled during normal operation), then we'll happily
+       ;; transition back to the READY state here, even though the underlying QVM might be in an
+       ;; inconsistent state. See also: https://github.com/rigetti/qvm/issues/209.
        (unwind-protect (run-program-on-qvm (persistent-qvm-qvm pqvm) parsed-program addresses)
          (%checked-transition-to-state-locked pqvm 'ready :from-state 'running)))
       (t
