@@ -78,7 +78,7 @@ ALLOCATION is an optional argument with the following behavior.
                  :classical-memory-subsystem
                  (make-instance 'classical-memory-subsystem
                                 :classical-memory-model
-                                classical-memory-model))))
+                                classical-memory-model)))
 
 (defmethod compile-loaded-program ((qvm pure-state-qvm))
   "Compile the loaded program on the QVM QVM."

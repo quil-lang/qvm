@@ -73,16 +73,11 @@
       (set-to-zero-state (state qvm))))
 
 
-(defun make-density-qvm (num-qubits)
-  ;; The amplitudes store vec(ρ), i.e. the entries of the density
-  ;; matrix ρ in row-major order. For a system of N qubits, ρ has
-  ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
-  (let* ((state (make-instance 'density-matrix-state :num-qubits num-qubits)))
-    ;; Go into the zero state.
-    (set-to-zero-state state)
-    (setf (aref (amplitudes state) 0) (cflonum 1))
-    (make-instance 'density-qvm :number-of-qubits 2 :state state)))
-
+(defun make-density-qvm (num-qubits &key (allocation nil))
+  (make-instance 'density-qvm :number-of-qubits num-qubits 
+                              :state (make-density-matrix-state 
+                                      num-qubits  
+                                      :allocation allocation)))
 
 
 (defmethod reset-quantum-state ((qvm density-qvm))
@@ -158,7 +153,7 @@
                                          (apply #'quil:gate-matrix gate parameters))))))
 
 
-(defmethod apply-superoperator (sop vec-density qubits ghost-qubits &key temporary-storage params)
+(defmethod apply-superoperatorr (sop vec-density qubits ghost-qubits state &key temporary-storage params)
   "Apply a superoperator SOP to a vectorized density matrix
 VEC-DENSITY, where QUBITS and GHOST-QUBITS are tuples of qubit indices
 which the superoperator acts on (from the left and right
@@ -176,10 +171,14 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
   (adt:match superoperator sop
     ((single-kraus U)
      ;; (U ⊗ U'ᵀ) = (U ⊗ U*), where * is entrywise conjugate.
-     (let ((U* (conjugate-entrywise U)))
-       (apply #'apply-gate U* vec-density qubits params)
-       (apply #'apply-gate U  vec-density ghost-qubits params)
-       (values vec-density temporary-storage)))
+     (let ((U* (conjugate-entrywise U))
+           (pure-state (make-pure-state (* 2 (num-qubits state)))))
+       (setf (amplitudes pure-state) vec-density)
+       (print (amplitudes pure-state))
+       (print vec-density)
+       (apply #'apply-gate-state U* pure-state qubits params)
+       (apply #'apply-gate-state U  pure-state ghost-qubits params)
+       (values (amplitudes pure-state) temporary-storage)))
     ((kraus-list list)
      (cond
        ;; Empty. Just treat as identity.
@@ -187,7 +186,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
         (values vec-density temporary-storage))
        ;; Degenerate case of just 1 superoperator.
        ((endp (rest list))
-        (apply-superoperator (first list) vec-density qubits ghost-qubits
+        (apply-superoperatorr (first list) vec-density qubits ghost-qubits state
                              :temporary-storage temporary-storage
                              :params params))
        ;; General (and super expensive) case.
@@ -198,7 +197,7 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
               (sum      (fill (or temporary-storage (copy-seq vec-density)) (cflonum 0))))
           (dolist (sub-sop list)
             ;; Apply the operator.
-            (apply-superoperator sub-sop vec-density qubits ghost-qubits :params params)
+            (apply-superoperatorr sub-sop vec-density qubits ghost-qubits state :params params)
             ;; Increment our running sum.
             (map-into sum #'+ sum vec-density)
             ;; Reset vec-density to a pristine state.
@@ -219,26 +218,11 @@ VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
   (assert (typep (quil:application-operator instr) 'quil:named-operator) ; TODO XXX support gate modifiers
           (instr)
           "The density QVM doesn't support gate modifiers.")
-  (let*  ((gate-name (quil::operator-description-name (quil:application-operator instr)))
-          (gate (pull-teeth-to-get-a-gate instr))
+  (let*  ((gate (pull-teeth-to-get-a-gate instr))
           (params (mapcar (lambda (p) (force-parameter p qvm))
                           (quil:application-parameters instr)))
-          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
-          (ghosts (mapcar (alexandria:curry #'+ (number-of-qubits qvm)) qubits))
-          (sop    (or (gethash (list gate-name qubits)
-                               (noisy-gate-definitions qvm))
-                      (single-kraus gate))))
-
-    (multiple-value-bind (new-density temp-storage)
-        (apply-superoperator sop
-                             (amplitudes qvm)
-                             (apply #'nat-tuple qubits)
-                             (apply #'nat-tuple ghosts)
-                             :temporary-storage (temporary-state qvm)
-                             :params params)
-      (declare (ignore new-density))
-      (setf (temporary-state qvm) temp-storage))
-
+          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
+    (apply-gate-state gate (state qvm) qubits params)
     (incf (pc qvm))
     qvm))
 

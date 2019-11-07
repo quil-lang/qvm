@@ -15,7 +15,7 @@
 (defclass quantum-system-state ()
   ((allocation
     :reader allocation
-    :initarg allocation))
+    :initarg :allocation))
   (:metaclass abstract-class))
 
 (defclass pure-state (quantum-system-state)
@@ -111,14 +111,41 @@
                                                       :displaced-to new-value))))
 
 
-
-(defmethod initialize-instance :after ((state density-matrix-state) &key num-qubits &allow-other-keys)
-  (setf (amplitudes state) (make-lisp-cflonum-vector (expt 2 (* 2 num-qubits)))))
-
-
 (defmethod set-to-zero-state ((state density-matrix-state))
   (bring-to-zero-state (amplitudes state)))
 
+
+(defun make-density-matrix-state (num-qubits &key (allocation nil))
+  ;; The amplitudes store vec(ρ), i.e. the entries of the density
+  ;; matrix ρ in row-major order. For a system of N qubits, ρ has
+  ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
+
+  ;; The initial state is the pure zero state, which is
+  ;; represented by all zero entries except for a 1 in the first
+  ;; position. See also RESET-QUANTUM-STATE, which we avoid
+  ;; calling here because it performs an additional full traversal
+  ;; of the vector.
+  (let* ((expected-size (expt 2 (* 2 num-qubits)))
+         ;; See also MAKE-QVM for this kind of code.
+         (allocation
+           (etypecase allocation
+             (null
+              (make-instance 'lisp-allocation :length expected-size))
+             (string
+              (make-instance 'posix-shared-memory-allocation :length expected-size
+                                                             :name allocation))
+             (t
+              (assert (= (expt 2 (* 2 num-qubits)) (allocation-length allocation)))
+              allocation))))
+    (multiple-value-bind (matrix-entries finalizer)
+        (allocate-vector allocation) 
+      ;; Go into the zero state.
+      (setf (aref matrix-entries 0) (cflonum 1)) 
+      (let ((state (make-instance 'density-matrix-state
+                                :amplitudes matrix-entries
+                                :allocation allocation)))
+        (tg:finalize state finalizer)
+        state))))
 
 #|(defmethod apply-gate-to-state ((state density-matrix-state) gate qubits params)  
 ;; Transition will now look like this:
