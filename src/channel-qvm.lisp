@@ -41,12 +41,13 @@
     :initarg :noise-model
     :accessor noise-model))
   (:default-initargs
-   :noise-model nil)
+   :noise-model (make-noise-model nil))
   (:documentation "The CHANNEL-QVM is a QVM that supports a fully explicit NOISE-MODEL. The NOISE-MODEL is an explicit definition of where and how different channels should be applied to a program running in the CHANNEL-QVM."))
 
 (defmethod initialize-instance :after ((qvm channel-qvm) &rest args)
   ;; Initializes an instance of a CHANNEL-QVM.
   (declare (ignore args))
+  (check-type (noise-model qvm) noise-model)
   (setf
    ;; Initialize the TRIAL-AMPLITUDES to an empty array of the correct
    ;; size
