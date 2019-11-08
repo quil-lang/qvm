@@ -20,13 +20,25 @@
          (q (make-instance 'qvm::channel-qvm :number-of-qubits 2  :noise-model nm)))
     (is (= 3 (length (qvm::noise-rules (qvm::noise-model q)))))
     ;; Check noise rules are ordered by priority
-    (is (>= (qvm::priority (qvm::noise-predicate (nth 0 (qvm::noise-rules (qvm::noise-model q)))))
-            (qvm::priority (qvm::noise-predicate (nth 1 (qvm::noise-rules (qvm::noise-model q)))))
-            (qvm::priority (qvm::noise-predicate (nth 2 (qvm::noise-rules (qvm::noise-model q)))))))
+    (is (>= (qvm::priority (qvm::noise-predicate 
+                            (nth 0 (qvm::noise-rules (qvm::noise-model q)))))
+            (qvm::priority (qvm::noise-predicate 
+                            (nth 1 (qvm::noise-rules (qvm::noise-model q)))))
+            (qvm::priority (qvm::noise-predicate 
+                            (nth 2 (qvm::noise-rules (qvm::noise-model q)))))))
     ;; Check that each noise rule has the correct number of operation elements.
-    (is (= 2 (length (qvm::operation-elements (nth 0 (qvm::noise-rules (qvm::noise-model q)))))))
-    (is (= 3 (length (qvm::operation-elements (nth 1 (qvm::noise-rules (qvm::noise-model q)))))))
-    (is (= 1 (length (qvm::operation-elements (nth 2 (qvm::noise-rules (qvm::noise-model q)))))))))
+    (is (= 2 (length (qvm::operation-elements 
+                      (nth 0 (qvm::noise-rules (qvm::noise-model q)))))))
+    (is (= 3 (length (qvm::operation-elements 
+                      (nth 1 (qvm::noise-rules (qvm::noise-model q)))))))
+    (is (= 1 (length (qvm::operation-elements 
+                      (nth 2 (qvm::noise-rules (qvm::noise-model q))))))))
+  ;; Test channel-qvm with no noise-model
+  (let ((channel-qvm (make-instance 'channel-qvm :number-of-qubits 2))
+        (program (quil:parse-quil "DECLARE R0 BIT; H 0; CNOT 0 1")))
+    (load-program channel-qvm program :supersede-memory-subsystem t)
+    (run channel-qvm))
+  (signals error (make-instance 'channel-qvm :number-of-qubits 2 :noise-model nil)))
 
 (deftest test-rule-matches-instr-p ()
   ;; Test that RULE-MATCHES-INSTR-P correctly finds matches between

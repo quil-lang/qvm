@@ -41,8 +41,9 @@
 ;;; instructions.
 (defconstant +maxpriority+ 20)
 (defconstant +minpriority+ 0)
-(deftype noise-priority () `(integer ,+minpriority+ ,+maxpriority+))
 (alexandria:define-constant +default-noise-predicate-name+ "NOISE-NAME" :test #'string=)
+
+(deftype noise-priority () `(integer ,+minpriority+ ,+maxpriority+))
 
 (deftype noise-position ()
   "Describes the position of a noise rule relative to an instruction. Should the noise be applied :BEFORE or :AFTER the instruction is executed?" 
