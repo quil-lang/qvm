@@ -4,32 +4,32 @@
 
 (in-package #:qvm)
 
-(defclass pure-state-qvm (classical-memory-mixin)
-  (
-   ;; --- Machine state
-   (number-of-qubits :reader number-of-qubits
+
+(defclass base-qvm (classical-memory-mixin)
+  ((number-of-qubits :reader number-of-qubits
                      :initarg :number-of-qubits
                      :type alexandria:non-negative-fixnum
-                     :initform (error ":NUMBER-OF-QUBITS is a required initarg ~
-                                       to PURE-STATE-QVM")
-                     :documentation "Number of qubits being simulated.")
-
-   ;; We allow AMPLITUDES to be written to so we can do fancy
-   ;; memory-saving things.
+                     :initform (error ":NUMBER-OF-QUBITS is a required initarg ~ 
+                                       to BASE-QVM.")
+                     :documentation "Number of qubits being simulated by the QVM.")
    (state :accessor state
-               :initarg :state
-               :type (or null pure-state)
-               :documentation "The unpermuted wavefunction in standard order.")
-
+          :initarg :state
+          :documentation "The unpermuted wavefunction in standard order.")
    (program-compiled-p :accessor program-compiled-p
                        :initform nil
                        :documentation "Has the loaded program been compiled?"))
-  (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
+  (:metaclass abstract-class))
 
+
+(defclass pure-state-qvm (base-qvm)
+  ((state :accessor state
+          :initarg :state
+          :type (or null pure-state)
+          :documentation "The unpermuted wavefunction in standard order."))
+  (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
 
 (defmethod amplitudes ((qvm pure-state-qvm))
   (amplitudes (state qvm)))
-
 
 (defmethod (setf amplitudes) (new-amplitudes (qvm pure-state-qvm) )
   (setf (amplitudes (state qvm)) new-amplitudes))
@@ -80,8 +80,9 @@ ALLOCATION is an optional argument with the following behavior.
                                 :classical-memory-model
                                 classical-memory-model)))
 
+
 (defmethod compile-loaded-program ((qvm pure-state-qvm))
-  "Compile the loaded program on the QVM QVM."
+  "Compile the loaded program on the PURE-STATE-QVM QVM."
   (unless (program-compiled-p qvm)
     (when *fuse-gates-during-compilation*
       (setf (program qvm) (quil::fuse-gates-in-executable-code (program qvm))))

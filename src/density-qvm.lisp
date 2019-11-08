@@ -153,67 +153,6 @@
                                          (apply #'quil:gate-matrix gate parameters))))))
 
 
-(defmethod apply-superoperator (sop state qubits ghost-qubits &key temporary-storage params)
-  "Apply a superoperator SOP to a vectorized density matrix
-VEC-DENSITY, where QUBITS and GHOST-QUBITS are tuples of qubit indices
-which the superoperator acts on (from the left and right
-respectively). The computation may require TEMPORARY-STORAGE, a vector
-of the same length as VEC-DENSITY. If no TEMPORARY-STORAGE is
-provided, it will be allocated as needed. Returns the pair of updated
-VEC-DENSITY and (perhaps freshly allocated) TEMPORARY-STORAGE."
-  (check-type sop superoperator)
-  ;; We use the following law to help our calculation:
-  ;;
-  ;;     vec(AρB) = (A ⊗ Bᵀ)vec(ρ)
-  ;;
-  ;; where vec(·) is row-major vectorization. The quantity vec(ρ) is
-  ;; the VEC-DENSITY argument.
-  (adt:match superoperator sop 
-             ((single-kraus U)
-              ;; (U ⊗ U'ᵀ) = (U ⊗ U*), where * is entrywise conjugate.
-              (let ((U* (conjugate-entrywise U))
-                    (pure-state (make-pure-state (* 2 (num-qubits state)))))
-                (setf (amplitudes pure-state) vec-density)
-                (apply #'apply-gate-state U* pure-state qubits params)
-                (apply #'apply-gate-state U  pure-state ghost-qubits params)
-                (values (amplitudes pure-state) temporary-storage)))
-             ((kraus-list list)
-              (cond
-                ;; Empty. Just treat as identity.
-                ((endp list)
-                 (values vec-density temporary-storage))
-                ;; Degenerate case of just 1 superoperator.
-                ((endp (rest list))
-                 (apply-superoperator (first list) state qubits ghost-qubits
-                                      :temporary-storage temporary-storage
-                                      :params params))
-                ;; General (and super expensive) case.
-                (t
-                 ;; XXX FIXME: We could eliminate one copy if our APPLY-GATE
-                 ;; function could understand a source and destination array.
-                 (let ((pristine (copy-seq vec-density))
-                       (sum (fill (or temporary-storage 
-                                      (copy-seq vec-density)) 
-                                  (cflonum 0))))
-                   (dolist (sub-sop list)
-                     ;; Apply the operator.
-                     (apply-superoperator sub-sop state qubits ghost-qubits :params params)
-                     ;; Increment our running sum.
-                     (map-into sum #'+ sum vec-density)
-                     ;; Reset vec-density to a pristine state.
-                     ;;
-                     ;; XXX FIXME: Note that on the last loop, this is
-                     ;; wasteful!
-                     (replace vec-density pristine))
-                   ;; Replace our vec-density with our computed map.
-                   (replace vec-density sum)
-                   ;; Let pristine be wild and free for the GC to catch.
-                   (setf pristine nil)
-                   ;; Return our purchase, including temporary storage we've
-                   ;; allocated.
-                   (values vec-density sum)))))))
-
-
 (defmethod transition ((qvm density-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator) ; TODO XXX support gate modifiers
           (instr)

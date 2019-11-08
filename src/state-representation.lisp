@@ -4,12 +4,9 @@
 (defgeneric set-to-zero-state (state)
   (:documentation "Set the initial state to the pure zero state."))
 
-;; This is the state protocol for applying a gate to a state.
-(defgeneric apply-gate-to-state (state gate qubits params)
-  (:documentation "modifies the state amplitudes by applying the information stored in params."))
+(defgeneric requires-swapping-amps-p (state))
 
-;; This is the state protocol for applying kraus operators to a state. 
-(defgeneric apply-kraus-ops-to-state (state instr kraus-ops params))
+(defgeneric swap-internal-amplitude-pointers (state))
 
 
 (defclass quantum-system-state ()
@@ -23,8 +20,12 @@
     :accessor amplitudes
     :initarg :amplitudes)
    (trial-amplitudes
-    :accessor trial-amplitudes
-    :initarg :trial-amplitudes)))
+    :accessor %trial-amplitudes
+    :initarg :trial-amplitudes
+    :documentation "A second wavefunction used when applying a noisy quantum channel. Applying a Kraus map generally requires evaluating psi_j = K_j * psi for several different j, making it necessary to keep the original wavefunction around.  This value should be a QUANTUM-STATE whose size is compatible with the number of qubits of the CHANNEL-QVM. The actual values can be initialized in any way because they will be overwritten. As such, it merely is scratch space for intermediate computations, and hence should not be otherwise directly accessed.")
+   (original-amplitudes
+    :reader original-amplitudes
+    :documentation  "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation.")))
 
 (defun make-pure-state (num-qubits &key (allocation nil))
   "ALLOCATION is an optional argument with the following behavior.
@@ -50,7 +51,9 @@
         (allocate-vector allocation)
       ;; initialize amplitudes to zero state (efficiently)
       (setf (aref amplitudes 0) (cflonum 1)) 
-      (let ((state (make-instance 'pure-state :num-qubits num-qubits :amplitudes amplitudes :allocation allocation)))
+      (let ((state (make-instance 'pure-state :num-qubits num-qubits 
+                                              :amplitudes amplitudes 
+                                              :allocation allocation)))
         ;; When the state disappears, make sure the shared
         ;; memory gets deallocated too.
         (tg:finalize state finalizer)
@@ -66,10 +69,15 @@
              state
              (wavefunction-qubits (amplitudes state))
              num-qubits))
-     (t
-      (setf
-       (amplitudes state) (make-lisp-cflonum-vector (expt 2 num-qubits))
-       (trial-amplitudes state) (make-lisp-cflonum-vector (expt 2 num-qubits))))))
+    (t
+     (setf
+      ;; Initialize the AMPLITUDES and TRIAL-AMPLITUDES to an empty
+      ;; array of the correct size.
+      (amplitudes state) (make-lisp-cflonum-vector (expt 2 num-qubits)))))
+  (setf
+     (%trial-amplitudes state) (make-lisp-cflonum-vector (expt 2 num-qubits))
+      ;; Save a pointer to the originally provided memory.
+      (slot-value state 'original-amplitudes) (amplitudes state)))
 
 
 
@@ -80,10 +88,21 @@
 (defmethod set-to-zero-state ((state pure-state))
   (bring-to-zero-state (amplitudes state)))
 
+(defmethod requires-swapping-amps-p ((state pure-state))
+  "Does the state require swapping of internal pointers?"
+  (and (not (eq (amplitudes state) (original-amplitudes state)))
+       #+sbcl (eq ':foreign (sb-introspect:allocation-information
+                             (original-amplitudes state)))))
 
-(defmethod apply-gate-to-state ((state pure-state) gate qubits params)
-  (apply #'apply-gate gate (amplitudes state) (apply #'nat-tuple qubits) params))
 
+(defmethod swap-internal-amplitude-pointers ((state pure-state))
+  ;; Copy the correct amplitudes into place.
+  (copy-wavefunction (amplitudes state) (original-amplitudes state))
+  ;; Get the pointer back in home position. We want to swap them,
+  ;; not overwrite, because we want the scratch memory to be intact.
+  (rotatef (amplitudes state) (%trial-amplitudes state)))
+
+  
 
 ;;; DENSITY-MATRIX-STATE class -------------------------------------------------
 (defclass density-matrix-state (quantum-system-state)
@@ -98,6 +117,14 @@
     :initarg :temporary-state
     :initform nil
     :accessor temporary-state)))
+
+(defmethod initialize-instance :after ((state density-matrix-state) &rest args)
+  (declare (ignore args))
+  (let ((dim (expt 2 (num-qubits state))))
+    (setf (slot-value state 'matrix-view)
+          (make-array (list dim dim)
+                      :element-type 'cflonum
+                      :displaced-to (amplitudes state)))))
 
 
 (defmethod num-qubits ((state density-matrix-state))
@@ -146,6 +173,16 @@
                                 :allocation allocation)))
         (tg:finalize state finalizer)
         state))))
+
+
+(defmethod requires-swapping-amps-p ((state density-matrix-state))
+  ;; skip for density-matrix-state
+  (declare (ignore state)))
+
+
+(defmethod swap-internal-amplitude-pointers ((state density-matrix-state))
+  ;; skip for density-matrix-state
+  (declare (ignore state)))
 
 #|(defmethod apply-gate-to-state ((state density-matrix-state) gate qubits params)  
 ;; Transition will now look like this:
