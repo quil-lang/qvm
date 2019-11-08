@@ -142,6 +142,7 @@
   ;; apply-gate.lisp
   (:export
    #:apply-gate                         ; GENERIC, METHOD
+   #:apply-gate-state                   ; GENERIC, METHOD
    )
 
   ;; depolarizing-noise.lisp

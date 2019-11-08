@@ -16,7 +16,6 @@
   
   (:method ((gate quil:simple-gate) (state pure-state) qubits &rest parameters)
     (print "simple gate")
-    (print parameters)
     (assert (null parameters) (parameters) "Parameters don't make sense for simple gates.")
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator (quil:gate-matrix gate))
@@ -93,10 +92,9 @@
           (ghosts (mapcar (alexandria:curry #'+ (num-qubits state)) qubits)))
       (multiple-value-bind (new-density temp-storage)
           ;; parameters gets collected into a list, which we need to unpack:
-          (apply #'apply-superoperatorr sop (amplitudes state)
+          (apply #'apply-superoperator sop state
                  (apply #'nat-tuple qubits)
                  (apply #'nat-tuple ghosts)
-                 state
                  :temporary-storage (temporary-state state)
                  :params parameters)
         (declare (ignore new-density))
