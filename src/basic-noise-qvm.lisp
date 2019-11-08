@@ -38,7 +38,7 @@
 ;;; Now, when QVM runs a program, after each instruction the QVM
 ;;; generates the kraus operators for each type of noise defined (in
 ;;; this case: depolarizing and t1) and applies them to the state.
-(defclass basic-noise-qvm (channel-qvm)
+(defclass basic-noise-qvm (base-qvm)
   ((t1-vals
     :initarg :t1-vals
     :accessor t1-vals
@@ -80,13 +80,16 @@
 (defmethod initialize-instance :after ((qvm basic-noise-qvm) &rest args)
   ;; If a BASIC-NOISE-QVM is initialized with T1-VALS, T2-VALS,
   ;; TPHI-VALS, DEPOLARIZATION-OPS, or READOUT-POVMs, check that they
-  ;; are valid.
+  ;; are valid. If STATE is not specified, default to a PURE-STATE.
   (declare (ignore args))
   (maphash #'%check-noise-entry (t1-vals qvm))
   (maphash #'%check-noise-entry (tphi-vals qvm))
   (maphash #'%check-noise-entry (t2-vals qvm))
   (maphash #'%check-depol-entry (depolarization-ops qvm))
-  (maphash #'%check-povm-entry (readout-povms qvm)))
+  (maphash #'%check-povm-entry (readout-povms qvm))
+  (when (or (not (slot-boundp qvm 'state))
+            (null (slot-value qvm 'state)))
+    (setf (state qvm) (make-pure-state (number-of-qubits qvm)))))
 
 (defun %check-depol-entry (qubit kraus-map)
   "Check that a key value pair in the DEPOLARIZATION-OPS slot is valid. The QUBIT must be a non-negative integer, and the KRAUS-MAP must be a valid kraus map. "
@@ -138,14 +141,20 @@
   ;; kraus operators for each qubit's error sources.
   (loop :for noise-operators :in kraus-ops
         :when noise-operators 
-          :do (let ((simplified-kraus-ops (reduce #'kraus-kron noise-operators)))
+          :do (let ((simplified-kraus-ops (reduce #'kraus-kron noise-operators))
+                    (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
                 (when simplified-kraus-ops
-                  (apply-kraus-map qvm instr simplified-kraus-ops)))))
+                  (apply-noise-to-state simplified-kraus-ops (state qvm) qubits )))))
 
 (defmethod run :before ((qvm basic-noise-qvm))
   ;; Before running a new program on the BASIC-NOISE-QVM, reset the
   ;; ELAPSED-TIME to 0.
   (setf (elapsed-time qvm) 0.0d0))
+
+(defmethod run :after ((qvm basic-noise-qvm))
+  ;; Only copy if we really need to.
+  (when (requires-swapping-amps-p (state qvm))
+    (swap-internal-amplitude-pointers (state qvm))))
 
 (defmethod transition ((qvm basic-noise-qvm) (instr quil:gate-application))
   ;; For the current INSTR, collect and apply all the kraus operators
@@ -174,7 +183,7 @@
                                 :collect it))
          (depol-ops (loop :for q :in qubits 
                           :collect (gethash q (depolarization-ops qvm)))))
-    (apply #'apply-gate gate (amplitudes qvm) (apply #'nat-tuple qubits) params)
+    (apply #'apply-gate-state gate (state qvm) qubits params)
     (apply-all-kraus-maps qvm instr (list damping-ops dephasing-ops depol-ops))
     (setf (elapsed-time qvm) curr-time)
     (incf (pc qvm))
