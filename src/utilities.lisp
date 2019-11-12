@@ -324,17 +324,17 @@ state."
 
 ;;; Macros for parallel processing
 
-(defmacro with-parallel-subdivisions ((start end count &key num-divisions) &body body)
+(defmacro with-parallel-subdivisions ((start end count &key num-divisions force-parallel) &body body)
   (alexandria:with-gensyms (channel num-tasks-submitted)
     (alexandria:once-only (count num-divisions)
       `(when (plusp ,count)
          (flet ((compute-part (,start ,end)
-                  (declare (type fixnum start end))
+                  (declare (type fixnum ,start ,end))
                   ,@body))
            (declare (dynamic-extent #'compute-part))
            (cond
              ;; Do we want to parallelize? Maybe not...
-             ((< ,count (expt 2 *qubits-required-for-parallelization*))
+             ((and (not ,force-parallel) (< ,count (expt 2 *qubits-required-for-parallelization*)))
               (compute-part 0 ,count))
              ;; Fire on all cylinders.
              (t
