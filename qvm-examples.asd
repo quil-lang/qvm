@@ -7,6 +7,7 @@
   :author "Robert Smith <robert@rigetti.com>, Juan M. Bello-Rivas <jbellorivas@rigetti.com>"
   :license "Apache License 2.0 (See LICENSE.txt)"
   :depends-on (
+               (:version #:cl-quil "1.13.1")
                ;; Nelder-Mead
                #:cl-grnm
                ;; Quantum Virtual Machine
@@ -18,4 +19,5 @@
   :serial t
   :components ((:file "package")
                (:file "qft")
-               (:file "vqe")))
+               (:file "vqe")
+               (:file "qaoa")))

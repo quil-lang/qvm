@@ -312,7 +312,6 @@ up to amplitude ordering."
            (inline apply-operator))
   (let* ((n (length wavefunction))
          (k (nat-tuple-cardinality qubits))
-         ;; KERNEL is playing double duty as a kernel and a boolean.
          (use-kernel? (<= n (expt 2 (qubit-limit-for-using-serial-kernels))))
          (kernel (find-serial-kernel k)))
     (cond
