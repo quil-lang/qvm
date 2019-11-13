@@ -67,9 +67,9 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
   (setf (pc qvm) nil)
   qvm)
 
-(defmethod transition ((qvm pure-state-qvm) (instr quil:reset))
+(defmethod transition ((qvm base-qvm) (instr quil:reset))
   (declare (ignore instr))
-  (reset-quantum-state qvm)
+  (set-to-zero-state (state qvm))
   (incf (pc qvm))
   qvm)
 
@@ -85,12 +85,12 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
         (measure qvm q)
       ;; Conditionally do an X.
       (when (= 1 measured-bit)
-        (apply-gate (load-time-value
+        (apply-gate-state (load-time-value
                      (quil:gate-definition-to-gate
                       (quil:lookup-standard-gate "X"))
                      t)
-                    (amplitudes measured-qvm)
-                    (nat-tuple q)))
+                    (state measured-qvm)
+                    (list q)))
       (setf (pc qvm) (1+ (pc measured-qvm)))
       qvm)))
 
@@ -123,18 +123,18 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; MEASURE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod transition ((qvm pure-state-qvm) (instr quil:measure))
+(defmethod transition ((qvm base-qvm) (instr quil:measure))
   (incf (pc qvm))
   (measure-and-store qvm
                      (quil:qubit-index (quil:measurement-qubit instr))
                      (quil:measure-address instr)))
 
-(defmethod transition ((qvm pure-state-qvm) (instr quil:measure-discard))
+(defmethod transition ((qvm base-qvm) (instr quil:measure-discard))
   (incf (pc qvm))
   (measure qvm
            (quil:qubit-index (quil:measurement-qubit instr))))
 
-(defmethod transition ((qvm pure-state-qvm) (instr measure-all))
+(defmethod transition ((qvm base-qvm) (instr measure-all))
   (multiple-value-bind (qvm state) (measure-all qvm)
     (loop :for (qubit . address) :in (measure-all-storage instr)
           :do (setf (dereference-mref qvm address) (nth qubit state)))
@@ -173,7 +173,7 @@ the specified QVM."
                :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
                                 expected-qubits
                                 given-qubits))))
-    (apply #'apply-gate-state gate (state qvm) (apply #'nat-tuple qubits) params)
+    (apply #'apply-gate-state gate (state qvm) qubits params)
     (incf (pc qvm))
     qvm))
 

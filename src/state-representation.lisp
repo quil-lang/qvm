@@ -29,14 +29,10 @@
 
 (defun make-pure-state (num-qubits &key (allocation nil))
   "ALLOCATION is an optional argument with the following behavior.
-
     - If it's NULL (default), then a standard wavefunction in the Lisp heap will be allocated.
-
     - If it's a STRING, then the wavefunction will be allocated as a shared memory object, accessible by that name.
-
     - Otherwise, it's assumed to be an object that is compatible with the ALLOCATION-LENGTH and ALLOCATE-VECTOR methods
-    - will probs have to redo this in multiple places, have a helper function do the allocation stuff
-"
+    - will probs have to redo this in multiple places, have a helper function do the allocation stuff"
   (let ((allocation
           (etypecase allocation
             (null
@@ -79,11 +75,8 @@
       ;; Save a pointer to the originally provided memory.
       (slot-value state 'original-amplitudes) (amplitudes state)))
 
-
-
 (defmethod num-qubits ((state pure-state))
   (quil:ilog2 (length (amplitudes state))))
-
 
 (defmethod set-to-zero-state ((state pure-state))
   (bring-to-zero-state (amplitudes state)))
@@ -93,7 +86,6 @@
   (and (not (eq (amplitudes state) (original-amplitudes state)))
        #+sbcl (eq ':foreign (sb-introspect:allocation-information
                              (original-amplitudes state)))))
-
 
 (defmethod swap-internal-amplitude-pointers ((state pure-state))
   ;; Copy the correct amplitudes into place.
@@ -141,7 +133,6 @@
 (defmethod set-to-zero-state ((state density-matrix-state))
   (bring-to-zero-state (amplitudes state)))
 
-
 (defun make-density-matrix-state (num-qubits &key (allocation nil))
   ;; The amplitudes store vec(ρ), i.e. the entries of the density
   ;; matrix ρ in row-major order. For a system of N qubits, ρ has
@@ -183,44 +174,5 @@
 (defmethod swap-internal-amplitude-pointers ((state density-matrix-state))
   ;; skip for density-matrix-state
   (declare (ignore state)))
-
-#|(defmethod apply-gate-to-state ((state density-matrix-state) gate qubits params)  
-;; Transition will now look like this:
-;;
-;; (def transition
-;;   (assert blah)
-;;   (let (gate-name blah)
-;;        (gate blah)
-;;        (params blah)
-;;        (qubits blah)
-;;        
-;;      (apply-gate-to-state state gate qubits params)
-;;      (incf (pc qvm))  
-;;
-  (let* ((ghosts (mapcar (alexandria:curry #'+ (num-qubits state)) qubits))
-         (superoperator (single-kraus gate)))
-    (multiple-value-bind (new-density temp-storage) (apply-superoperator superoperator
-                                                                         (amplitudes state)
-                                                                         (apply #'nat-tuple qubits)
-                                                                         (apply #'nat-tuple ghosts)
-                                                                         :temporary-storage (temporary-state state)
-                                                                         :params params)
-      (declare (ignore new-density))
-      (setf (temporary-state state) temp-storage))))
-
-
-(defmethod apply-kraus-ops-to-state ((state density-matrix-state) instr kraus-ops params)
-  (let* ((kraus-sops (mapcar #'lift-matrix-to-superoperator kraus-ops))
-         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
-         (ghosts (mapcar (alexandria:curry #'+ (num-qubits state)) qubits)))
-   (multiple-value-bind (new-density temp-storage) (apply-superoperator kraus-sops
-                                                                         (amplitudes state)
-                                                                         (apply #'nat-tuple qubits)
-                                                                         (apply #'nat-tuple ghosts)
-                                                                         :temporary-storage (temporary-state state)
-                                                                         :params params)
-      (declare (ignore new-density))
-      (setf (temporary-state state) temp-storage))))|#
-
 
 

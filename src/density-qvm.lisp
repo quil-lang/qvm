@@ -73,7 +73,7 @@
       (set-to-zero-state (state qvm))))
 
 
-(defun make-density-qvm (num-qubits &key (allocation nil))
+(defun make-density-qvm (num-qubits &key (allocation nil) &allow-other-keys)
   (make-instance 'density-qvm :number-of-qubits num-qubits 
                               :state (make-density-matrix-state 
                                       num-qubits  
@@ -161,7 +161,7 @@
           (params (mapcar (lambda (p) (force-parameter p qvm))
                           (quil:application-parameters instr)))
           (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
-    (apply-gate-state gate (state qvm) qubits params)
+    (apply #'apply-gate-state gate (state qvm) qubits params)
     (incf (pc qvm))
     qvm))
 
@@ -182,17 +182,6 @@
 ;;; force collapse when measurements are needed for classical control,
 ;;; and ii) it is what most people expect anyways.
 
-(defun density-qvm-qubit-probability (qvm qubit)
-  "The probability that the physical qubit addressed by QUBIT is 1."
-  (check-type qvm density-qvm)
-  (let ((rho (density-matrix-view qvm)))
-    (declare (type density-operator-matrix-view rho))
-    ;; This is a sum along the diagonal of the DIM x DIM density matrix
-    ;; Only indices with qubit in excited state contribute
-    (psum-dotimes (k (expt 2 (1- (number-of-qubits qvm))))
-      (let ((i (index-to-address k qubit 1)))
-        (realpart (aref rho i i))))))
-
 (defun density-qvm-measurement-probabilities (qvm)
   "Computes the probability distribution of measurement outcomes (a vector)
   associated with the specified density matrix QVM.
@@ -205,7 +194,7 @@
   results in the outcome i,j. 
   "
   (check-type qvm density-qvm)
-  (let* ((vec-density (amplitudes qvm))
+  (let* ((vec-density (amplitudes (state qvm)))
          (dim (expt 2 (number-of-qubits qvm)))
          (probabilities (make-array dim :element-type 'flonum :initial-element (flonum 0))))
     (loop :for i :below dim
@@ -215,12 +204,11 @@
           :finally (return probabilities))))
 
 
-(defun density-qvm-force-measurement (measured-value qubit qvm excited-probability)
+(defun density-state-force-measurement (measured-value qubit state excited-probability)
   "Force the QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.
 
 EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
 "
-  (check-type qvm density-qvm)
   ;; A measurement of qubit i corresponds to roughly this:
   ;; If outcome = 0, set rows/columns corresponding to i = 1 to zero
   ;; If outcome = 1, set rows/columns corresponding to i = 0 to zero
@@ -233,8 +221,8 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
          (inv-norm (if (zerop annihilated-state)
                        (/ excited-probability)
                        (/ (- (flonum 1) excited-probability))))
-         (num-qubits (number-of-qubits qvm))
-         (vec-density (amplitudes qvm)))
+         (num-qubits (num-qubits state))
+         (vec-density (amplitudes state)))
     (pdotimes (k (length vec-density))
       ;; Check whether the row or column index refers to an annihilated state
       (if (or (= annihilated-state (ldb (byte 1 qubit) k))
@@ -243,18 +231,6 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
           (setf (aref vec-density k) (cflonum 0))
           (setf (aref vec-density k)
                 (* inv-norm (aref vec-density k)))))))
-
-
-(defmethod measure ((qvm density-qvm) q)
-  (let* ((r (random 1.0d0))
-         (excited-probability (density-qvm-qubit-probability qvm q))
-         (cbit (if (<= r excited-probability)
-                   1
-                   0)))
-    ;; Force the non-deterministic measurement.
-    (density-qvm-force-measurement cbit q qvm excited-probability)
-    ;; Return the qvm.
-    (values qvm cbit)))
 
 (defmethod apply-classical-readout-noise ((qvm density-qvm) (instr quil:measure))
   (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
@@ -290,12 +266,6 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
      qam
      measured-bits)))
 
-(defmethod measure-all ((qvm density-qvm))
-  (multiple-value-bind (qvm-ret measured-bits)
-      (naive-measure-all qvm)
-    (values
-     qvm-ret
-     (perturb-measured-bits qvm-ret measured-bits))))
 
 ;;; Don't compile things for the density-qvm.
 (defmethod compile-loaded-program ((qvm density-qvm))
