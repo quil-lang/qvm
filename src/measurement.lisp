@@ -4,7 +4,7 @@
 
 (in-package #:qvm)
 
-(defun force-measurement (measured-value qubit qvm excited-probability)
+(defun force-measurement (measured-value qubit state excited-probability)
   "Force the quantum system QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly.
 
 EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
@@ -13,18 +13,18 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
            (type bit measured-value)
            (type (flonum 0) excited-probability)
            (type nat-tuple-element qubit))
-  (let* ((wavefunction (amplitudes qvm))
+  (let* ((wavefunction (amplitudes state))
          (annihilated-state (- 1 measured-value))
          (inv-norm (if (zerop annihilated-state)
                        (/ (sqrt excited-probability))
                        (/ (sqrt (- (flonum 1) excited-probability))))))
-    (declare (type quantum-state wavefunction)
+    (declare
              (type bit annihilated-state)
              (type (flonum 0) inv-norm))
     ;; Here we step through all of the wavefunction amplitudes,
     ;; simultaneously doing the projection ( psi[i] = 0 ) and the
     ;; wavefunction renormalization ( psi[i] *= inv-norm ).
-    (if (<= *qubits-required-for-parallelization* (number-of-qubits qvm))
+    (if (<= *qubits-required-for-parallelization* (num-qubits state))
         (lparallel:pdotimes (i (length wavefunction))
           (declare (type amplitude-address i))
           (if (= annihilated-state (ldb (byte 1 qubit) i))
@@ -37,40 +37,76 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
               (setf (aref wavefunction i) (* inv-norm (aref wavefunction i)))))))
 
   ;; Return the QVM.
-  qvm)
+  state)
 
-(defmethod measure ((qvm pure-state-qvm) q)
+(defgeneric force-measurement-on-state (measured-value qubit state excited-probability)
+  
+  (:method (measured-value qubit (state pure-state) excited-probability)
+    (force-measurement measured-value qubit state excited-probability))
+  
+  (:method (measured-value qubit (state density-matrix-state) excited-probability)
+    (density-state-force-measurement measured-value qubit state excited-probability)))
+
+
+(defgeneric get-excited-state-probability (state qubit)
+  
+  (:method ((state pure-state) qubit)
+    (wavefunction-excited-state-probability (amplitudes state) qubit))
+  
+  (:method ((state density-matrix-state) qubit)
+    (check-type state density-matrix-state)
+    (let ((rho (matrix-view state)))
+      (declare (type density-operator-matrix-view rho))
+      ;; This is a sum along the diagonal of the DIM x DIM density matrix
+      ;; Only indices with qubit in excited state contribute
+      (psum-dotimes (k (expt 2 (1- (num-qubits state))))
+        (let ((i (index-to-address k qubit 1)))
+          (realpart (aref rho i i)))))))
+
+(defmethod measure ((qvm base-qvm) q)
   (check-type q nat-tuple-element)
   (assert (< q (number-of-qubits qvm)) (qvm q)
           "Trying to measure qubit ~D on a QVM with only ~D qubit~:P."
           q
           (number-of-qubits qvm))
   (let* ((r (random 1.0d0))
-         (excited-probability (wavefunction-excited-state-probability (amplitudes qvm) q))
+         (excited-probability (get-excited-state-probability (state qvm) q))
          (cbit (if (<= r excited-probability)
                    1
                    0)))
     ;; Force the non-deterministic measurement.
-    (force-measurement cbit q qvm excited-probability)
+    (force-measurement-on-state cbit q (state qvm) excited-probability)
     ;; Return the qvm.
     (values qvm cbit)))
 
-(defmethod measure-all ((qvm pure-state-qvm))
-  (flet ((index-to-bits (n)
-           (loop :for i :below (number-of-qubits qvm)
-                 :collect (ldb (byte 1 i) n))))
-    (let* ((wf (amplitudes qvm))
-           (basis-state (sample-wavefunction-as-distribution-in-parallel-truly
-                         wf
-                         (flonum (random 1.0d0)))))
-      ;; Reset to |0>
-      (bring-to-zero-state wf)
-      ;; Rotate the amplitude to BASIS-STATE.
-      (rotatef (aref wf 0)
-               (aref wf basis-state))
 
-      ;; Return.
-      (values qvm (index-to-bits basis-state)))))
+(defgeneric measure-all-state (state qvm)
+  
+  (:method ((state pure-state) qvm)
+    (flet ((index-to-bits (n)
+             (loop :for i :below (number-of-qubits qvm)
+                   :collect (ldb (byte 1 i) n))))
+      (let* ((wf (amplitudes state))
+             (basis-state (sample-wavefunction-as-distribution-in-parallel-truly
+                           wf
+                           (flonum (random 1.0d0)))))
+        (bring-to-zero-state wf) ;; Reset to |0>
+        (rotatef (aref wf 0)
+                 (aref wf basis-state)) ;; Rotate the amplitude to BASIS-STATE.
+        (values qvm (index-to-bits basis-state)))))
+  
+  (:method ((state density-matrix-state) qvm)
+    (multiple-value-bind (qvm-ret measured-bits)
+        (naive-measure-all qvm)
+      (values
+       qvm-ret
+       (perturb-measured-bits qvm-ret measured-bits)))))
+
+
+(defmethod measure-all ((qvm base-qvm))
+
+  (measure-all-state (state qvm) qvm))
+
 
 (defun sample-wavefunction-as-distribution-in-parallel (wf p)
   (sample-wavefunction-as-distribution wf

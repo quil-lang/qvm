@@ -77,6 +77,12 @@
    :elapsed-time 0.0d0)
   (:documentation "BASIC-NOISE-QVM is a QVM that supports a noise model defined by T1, T2, T-phi, depolarization probability, and readout fidelities on each qubit. At each instruction, damping, dephasing, and depolarizing noise is applied for the qubits involved in the instruction. If READOUT-POVMS are defined for a qubit, the readout noise is applied after a MEASURE instruction on that qubit."))
 
+(defmethod amplitudes ((qvm basic-noise-qvm))
+  (amplitudes (state qvm)))
+
+(defmethod (setf amplitudes) (new-amplitudes (qvm basic-noise-qvm) )
+  (setf (amplitudes (state qvm)) new-amplitudes))
+
 (defmethod initialize-instance :after ((qvm basic-noise-qvm) &rest args)
   ;; If a BASIC-NOISE-QVM is initialized with T1-VALS, T2-VALS,
   ;; TPHI-VALS, DEPOLARIZATION-OPS, or READOUT-POVMs, check that they
@@ -184,10 +190,17 @@
          (depol-ops (loop :for q :in qubits 
                           :collect (gethash q (depolarization-ops qvm)))))
     (apply #'apply-gate-state gate (state qvm) qubits params)
+    (check-type gate quil:static-gate)
     (apply-all-kraus-maps qvm instr (list damping-ops dephasing-ops depol-ops))
     (setf (elapsed-time qvm) curr-time)
     (incf (pc qvm))
     qvm))
+
+
+(defmethod transition :around ((qvm basic-noise-qvm) (instr quil:measurement))
+  (let ((ret-qvm (call-next-method)))
+    (apply-classical-readout-noise ret-qvm instr)
+    ret-qvm))
 
 (defun calculate-dephasing-map (qubit-tphi qubit-t1 qubit-t2 elapsed-time)
   "Build the dephasing map. If TPHI is not null, use that to calculate the dephasing map. In the absence of a TPHI value, use T1 and T2 to calculate TPHI if those values exist. T2 is upper bounded by 2 * T1."
@@ -206,6 +219,9 @@
 (defmethod apply-classical-readout-noise ((qvm basic-noise-qvm) (instr quil:measure))
   ;; Apply the classical readout noise to the state of an BASIC-NOISE-QVM.
   (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
+
+(defmethod apply-classical-readout-noise ((qvm basic-noise-qvm) (instr compiled-measurement))
+  (apply-classical-readout-noise qvm (source-instruction instr)))
 
 (defun tphi (t1 t2)
   "Calculate t_phi from T1 and T2. T-PHI = (2*T1*T2) / (2*T1 + T2). T2 must be strictly less than 2 * T1."

@@ -7,7 +7,7 @@
 
 (defun check-noisy-pointer-is-correct (qvm)
   (when (typep qvm 'qvm:noisy-qvm)
-    (is (or (not (qvm::requires-swapping-p qvm))
+    (is (or (not (qvm::requires-swapping-amps-p (qvm::state qvm)))
             (eq (qvm::amplitudes qvm)
                 (qvm::original-amplitudes qvm))))))
 
@@ -40,6 +40,7 @@
                             :y 1/3
                             :z 1/3)))
     (qvm:load-program qvm p :supersede-memory-subsystem t)
+    (qvm::reset-quantum-state qvm)
     (loop :while (and (plusp (length results-desired))
                       (plusp tries))
           :do (decf tries)

@@ -23,35 +23,16 @@
 which for each qubit gives the probability p(j|k) of measuring outcome
 j given actual state k. Note that we model purely classical readout
 error, i.e., the post measurement qubit state is always k, but the
-recorded outcome j may be different.")
-   ;; These are initialized in the INITIALIZE-INSTANCE after method.
-   (original-amplitudes
-    :reader original-amplitudes
-    :documentation "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation.")
-   (trial-amplitudes
-    :accessor %trial-amplitudes
-    :documentation "A second wavefunction used when applying a noisy
-quantum channel. Applying a Kraus map generally requires evaluating
-psi_j = K_j * psi for several different j, making it necessary to keep
-the original wavefunction around.
+recorded outcome j may be different.")))
 
-This value should be a QUANTUM-STATE whose size is compatible with the
-number of qubits of the NOISY-QVM. The actual values can be
-initialized in any way, however, because it will be overwritten. As
-such, it merely is scratch space for intermediate computations, and
-hence should not be otherwise directly accessed.
-"))
-  (:documentation "A quantum virtual machine with noisy gates and readout."))
+(defmethod amplitudes ((qvm noisy-qvm))
+  (amplitudes (state qvm)))
 
-(defmethod initialize-instance :after ((qvm noisy-qvm) &rest args)
-  (declare (ignore args))
-  (setf
-   ;; Initialize the trial-amplitudes to an empty array of the correct
-   ;; size.
-   (%trial-amplitudes qvm) (make-lisp-cflonum-vector (expt 2 (number-of-qubits qvm)))
-   ;; Save a pointer to the originally provided memory.
-   (slot-value qvm 'original-amplitudes) (amplitudes qvm)))
+(defmethod %trial-amplitudes ((qvm noisy-qvm))
+  (%trial-amplitudes (state qvm)))
 
+(defmethod (setf amplitudes) (new-amplitudes (qvm noisy-qvm))
+  (setf (amplitudes (state qvm)) new-amplitudes))
 
 (defun make-pauli-noise-map (px py pz)
   "Generates a Kraus map for a noisy identity channel:
@@ -148,15 +129,11 @@ POVM must be a 4-element list of double-floats."))
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
 
-
 (defmethod run :after ((qvm noisy-qvm))
   ;; Only copy if we really need to.
-  (when (requires-swapping-p qvm)
-    ;; Copy the correct amplitudes into place.
-    (copy-wavefunction (amplitudes qvm) (original-amplitudes qvm))
-    ;; Get the pointer back in home position. We want to swap them,
-    ;; not overwrite, because we want the scratch memory to be intact.
-    (rotatef (amplitudes qvm) (%trial-amplitudes qvm))))
+  (when (requires-swapping-amps-p (state qvm))
+    (swap-internal-amplitude-pointers (state qvm))))
+
 
 (defmethod transition ((qvm noisy-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator)
@@ -173,52 +150,9 @@ POVM must be a 4-element list of double-floats."))
        ;; select one of several Kraus operators to apply for the
        ;; transition
        (check-type gate quil:static-gate)
-       (let ((amps (%trial-amplitudes qvm))
-             (r (random 1.0d0))
-             (summed-p 0.0d0))
-         (check-type amps quantum-state)
-         ;; Randomly select one of the Kraus operators by inverse
-         ;; transform sampling (cf [1]): We divide the unit interval
-         ;; [0,1] into n bins where the j-th bin size equals the
-         ;; probability p_j with which the j-th Kraus operator k_j
-         ;; should be applied. We know that the Kraus operators are
-         ;; normalized such that p_j = <psi|k_j^H k_j |psi> where x^H
-         ;; denotes hermitian conjugation of x and can therefore
-         ;; perform this sampling lazily: First generate a uniformly
-         ;; sampled random number r in [0,1]. Next, find j such that
-         ;;
-         ;;       sum_{k=1}^{j-1} p_k < r <= sum_{k=1}^{j} p_k
-         ;;
-         ;; This is possible by evaluating only all p_k for k<=j. Then
-         ;; pick this j as the choice of Kraus operator to apply.
-         ;;
-         ;; [1]: https://en.wikipedia.org/wiki/Inverse_transform_sampling
-         (loop :for kj :in kraus-ops
-               :do
-                  ;; initialize amps total the current wavefunction
-                  (replace amps (amplitudes qvm))
-                  ;; apply the current Kraus operator KJ to amps
-                  ;; in-place |AMPS> -> KJ |AMPS>
-                  (apply-matrix-operator
-                   (magicl-matrix-to-quantum-operator kj)
-                   amps
-                   (apply #'nat-tuple qubits))
-                  ;; compute <AMPS|KJ^H KJ|AMPS> = p_j and increase
-                  ;; SUMMED-PY by this value to facilitate randomly
-                  ;; selecting one transition
-                  (incf summed-p (psum #'probability amps))
-               :until (>= summed-p r))
-
-         ;; Avoid unnecessary copying by swapping pointers to
-         ;; amplitudes and trial-amplitudes. However, whenever we have
-         ;; finished RUNning a program, we should get the amplitudes
-         ;; back into original memory. See the :AFTER method above.
-         (rotatef (amplitudes qvm) (%trial-amplitudes qvm))
-
-         (normalize-wavefunction (amplitudes qvm))
-
-         (incf (pc qvm))
-	 qvm))
+       (apply-noise-to-state kraus-ops (state qvm) qubits)
+       (incf (pc qvm))
+       qvm)
       (t
        ;; if we cannot find a noise model for the gate forward args to
        ;; the original (transition ...) call defined for

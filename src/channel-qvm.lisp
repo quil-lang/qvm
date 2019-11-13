@@ -38,6 +38,13 @@
    :noise-model (make-noise-model ()))
   (:documentation "The CHANNEL-QVM is a QVM that supports a fully explicit NOISE-MODEL. The NOISE-MODEL is an explicit definition of where and how different channels should be applied to a program running in the CHANNEL-QVM."))
 
+;move these to base
+(defmethod amplitudes ((qvm channel-qvm))
+  (amplitudes (state qvm)))
+
+(defmethod (setf amplitudes) (new-amplitudes (qvm pure-state-qvm) )
+  (setf (amplitudes (state qvm)) new-amplitudes))
+
 (defmethod initialize-instance :after ((qvm channel-qvm) &rest args)
   ;; Initializes an instance of a CHANNEL-QVM. If the STATE is not specified, default to a PURE-STATE. 
   (declare (ignore args))
@@ -62,6 +69,7 @@
          (append-matched-rule (find-matching-rule noise-rules instr ':after)))
     (when prepend-matched-rule
       (apply-all-kraus-maps qvm instr (operation-elements prepend-matched-rule)))
+    (check-type gate quil:static-gate)
     (apply #'apply-gate-state gate (state qvm) instr-qubits params)
     (when append-matched-rule
       (apply-all-kraus-maps qvm instr (operation-elements append-matched-rule)))
