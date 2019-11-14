@@ -30,7 +30,7 @@
                ;; Finalizers and portable GC calls
                #:trivial-garbage
                ;; Quil parsing and analysis
-               (:version #:cl-quil "1.12.0")
+               (:version #:cl-quil "1.13.0")
                ;; Portable random number generator
                #:mt19937
                ;; For allocation info.
