@@ -112,6 +112,20 @@
       (run qvm)
       (is (double-float= 1 (probability (aref amps 0)) 1/10000)))))
 
+(deftest test-xy-gate ()
+  "Test that XY gates are supported, and are equivalent to PISWAP gates."
+  (dotimes (i 10)
+    (let ((amps (qvm::randomize-wavefunction (qvm::wf 1.0 0.0 0.0 0.0))))
+      (flet ((eval-prog (quil-string)
+               (let ((qvm (make-qvm 2)))
+                 (load-program qvm (with-output-to-quil
+                                     quil-string))
+                 (setf (qvm::amplitudes qvm) (qvm::copy-wavefunction amps))
+                 (setf qvm (run qvm))
+                 (qvm::amplitudes qvm))))
+        (let ((xy-wf (eval-prog "XY(pi/2) 1 0"))
+              (piswap-wf (eval-prog "PISWAP(pi/2) 1 0")))
+          (is (every #'cflonum= xy-wf piswap-wf)))))))
 
 (defun fourier-test-program (type)
   "Generate a test program for the QFT algorithm for two qubits. The types are as follows:
