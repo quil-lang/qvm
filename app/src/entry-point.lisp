@@ -407,14 +407,6 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (when check-libraries
     (check-libraries))
 
-  (when check-sdk-version
-    (multiple-value-bind (available-p version)
-        (sdk-update-available-p +QVM-VERSION+ :proxy proxy)
-      (when available-p
-        (format t "An update is available to the SDK. You have version ~A. ~
-Version ~A is available from https://www.rigetti.com/forest~%"
-                +QVM-VERSION+ version))))
-
   (when verbose
     (setf qvm:*transition-verbose* t))
 
@@ -540,6 +532,9 @@ Version ~A is available from https://www.rigetti.com/forest~%"
 
     ;; Server mode.
     (server
+     (when check-sdk-version
+       (asynchronously-indicate-update-availability +QVM-VERSION+ :proxy proxy))
+     
      (when execute
        (format-log "Warning: Ignoring execute option: ~S" execute)
        (setf execute nil))
