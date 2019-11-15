@@ -235,6 +235,33 @@
                     (is (every #'= bits measured-bits))
                     (is (= 1 (qvm::nth-amplitude qvm i)))))))))
 
+
+(deftest test-measure-all-basic-noise-qvm ()
+  "Test that we can measure all qubits successfully in a few cases."
+  (with-execution-modes (:compile :interpret)
+    (let ((px (list
+               (with-output-to-quil "I 0" "I 1" "I 2")
+               (with-output-to-quil "X 0" "I 1" "I 2")
+               (with-output-to-quil "I 0" "X 1" "I 2")
+               (with-output-to-quil "X 0" "X 1" "I 2")
+               (with-output-to-quil "I 0" "I 1" "X 2")
+               (with-output-to-quil "X 0" "I 1" "X 2")
+               (with-output-to-quil "I 0" "X 1" "X 2")
+               (with-output-to-quil "X 0" "X 1" "X 2"))))
+      (loop :for i :from 0
+            :for p :in px
+            :for bits := (list (ldb (byte 1 0) i)
+                               (ldb (byte 1 1) i)
+                               (ldb (byte 1 2) i))
+            :do (let ((qvm (make-instance 'basic-noise-qvm :number-of-qubits 3 
+                                                           :avg-gate-time 1)))
+                  (qvm:load-program qvm p)
+                  (qvm:run qvm)
+                  (multiple-value-bind (qvm measured-bits)
+                      (qvm:measure-all qvm)
+                    (is (every #'= bits measured-bits))
+                    (is (= 1 (qvm::nth-amplitude qvm i)))))))))
+
 (deftest test-out-of-bounds-measurement ()
   "Test that measuring a qubit out-of-bounds is an error."
   (signals error (qvm:measure (qvm:make-qvm 1) -1))

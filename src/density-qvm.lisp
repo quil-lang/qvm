@@ -7,7 +7,6 @@
 
 ;;; This file implements density matrix evolution.
 
-
 ;;; General Overview
 
 ;;; The general approach taken here is that the DENSITY-QVM inherits
@@ -107,14 +106,6 @@
 ;;; tracks only a specific realization of the gate noise.
 
 
-(adt:defdata superoperator
-  "Representation of a linear operator on density operators."
-  ;; Let ' mean † aka conjugate transpose.
-  ;;
-  ;; ρ ↦ U ρ U'
-  (single-kraus quil:gate)
-  ;; ρ ↦ ∑ᵢ Aᵢ ρ Aᵢ'
-  (kraus-list list))
 
 (defmethod set-noisy-gate ((qvm density-qvm) gate-name qubits kraus-ops)
   (check-kraus-ops kraus-ops)
