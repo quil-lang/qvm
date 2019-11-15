@@ -4,20 +4,30 @@
 
 (in-package #:qvm)
 
-;;; Implements a QVM that can interpret a rule-based NOISE-MODEL and
-;;; apply kraus operators to its state. This NOISE-MODEL is a
-;;; collection of NOISE-RULES that trigger applications of channels
-;;; based on the syntactic properties of instructions in a CHANNEL-QVM
-;;; program. Each NOISE-RULE contains a NOISE-PREDICATE and a list of
-;;; OPERATION-ELEMENTS. The NOISE-PREDICATE describes how to match qvm
-;;; instructions, and which instructions to match. The
-;;; OPERATION-ELEMENTS are the physical description of the channel,
-;;; represented as a list of kraus maps. At each qvm instruction, the
-;;; OPERATION-ELEMENTS of a NOISE-RULE whose NOISE-PREDICATE matches
-;;; that instruction is applied to the state of a the
-;;; CHANNEL-QVM. Only one rule can be matched by an instruction. If
-;;; multiple NOISE-RULES match the current instruction, the rule with
-;;; the highest PRIORITY is applied.
+;;; General Overview:
+
+;;; This file implements a CHANNEL-QVM which can interpret a rule-based
+;;; NOISE-MODEL and apply kraus operators to its state. This
+;;; NOISE-MODEL is a collection of NOISE-RULES that trigger
+;;; applications of channels based on the syntactic properties of
+;;; instructions in a CHANNEL-QVM program. Each NOISE-RULE contains a
+;;; NOISE-PREDICATE and a list of OPERATION-ELEMENTS. The
+;;; NOISE-PREDICATE describes how to match qvm instructions, and which
+;;; instructions to match. The OPERATION-ELEMENTS are the physical
+;;; description of the channel, represented as a list of kraus
+;;; maps. At each qvm instruction, the OPERATION-ELEMENTS of a
+;;; NOISE-RULE whose NOISE-PREDICATE matches that instruction is
+;;; applied to the state of a the CHANNEL-QVM. Only one rule can be
+;;; matched by an instruction. If multiple NOISE-RULES match the
+;;; current instruction, the rule with the highest PRIORITY is
+;;; applied.
+
+;;; The CHANNEL-QVM supports both PURE-STATEs and
+;;; DENSITY-MATRIX-STATEs. For a PURE-STATE STATE, the CHANNEL-QVM
+;;; stochastically applies kraus operators by selecting one at
+;;; random. Instead, if the CHANNEL-QVM uses a DENSITY-MATRIX-STATE,
+;;; the kraus operators are converted to superoperators before they
+;;; are applied to the density matrix.
 
 (defgeneric apply-all-kraus-maps (qvm instr kraus-maps)
   (:documentation "Applies every kraus map in the list KRAUS-MAPS to the state of the system."))
@@ -38,13 +48,6 @@
    :noise-model (make-noise-model ()))
   (:documentation "The CHANNEL-QVM is a QVM that supports a fully explicit NOISE-MODEL. The NOISE-MODEL is an explicit definition of where and how different channels should be applied to a program running in the CHANNEL-QVM."))
 
-;move these to base
-(defmethod amplitudes ((qvm channel-qvm))
-  (amplitudes (state qvm)))
-
-(defmethod (setf amplitudes) (new-amplitudes (qvm pure-state-qvm) )
-  (setf (amplitudes (state qvm)) new-amplitudes))
-
 (defmethod initialize-instance :after ((qvm channel-qvm) &rest args)
   ;; Initializes an instance of a CHANNEL-QVM. If the STATE is not specified, default to a PURE-STATE. 
   (declare (ignore args))
@@ -52,28 +55,24 @@
             (null (slot-value qvm 'state)))
     (setf (state qvm) (make-pure-state (number-of-qubits qvm)))))
 
-(defmethod run :after ((qvm channel-qvm))
-  ;; Only copy if we really need to.
-  (when (requires-swapping-amps-p (state qvm))
-    (swap-internal-amplitude-pointers (state qvm))))
+(defmethod transition :before ((qvm channel-qvm) (instr quil:gate-application))
+  ;; Before applying the current instruction INSTR, check if any
+  ;; NOISE-RULES match the current instruction, and if they do apply
+  ;; the noise associated with the first matching NOISE-RULE.
+  (let* ((noise-rules (noise-rules (noise-model qvm)))
+         (first-matching-rule (find-matching-rule noise-rules instr ':before)))
+    (when first-matching-rule
+      (apply-all-kraus-maps qvm instr (operation-elements first-matching-rule)))
+    qvm))
 
-(defmethod transition ((qvm channel-qvm) (instr quil:gate-application))
-  ;; If any NOISE-RULES are matched by INSTR, apply the
-  ;; the kraus operators for that rule after applying the current INSTR.
-  (let* ((gate (pull-teeth-to-get-a-gate instr))
-         (params (mapcar (lambda (p) (force-parameter p qvm))
-                         (quil:application-parameters instr)))
-         (instr-qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
-         (noise-rules (noise-rules (noise-model qvm)))
-         (prepend-matched-rule (find-matching-rule noise-rules instr ':before))
-         (append-matched-rule (find-matching-rule noise-rules instr ':after)))
-    (when prepend-matched-rule
-      (apply-all-kraus-maps qvm instr (operation-elements prepend-matched-rule)))
-    (check-type gate quil:static-gate)
-    (apply #'apply-gate-state gate (state qvm) instr-qubits params)
-    (when append-matched-rule
-      (apply-all-kraus-maps qvm instr (operation-elements append-matched-rule)))
-    (incf (pc qvm))
+(defmethod transition :after ((qvm channel-qvm) (instr quil:gate-application))
+  ;; After applying the current instruction INSTR, check if any
+  ;; NOISE-RULES match the instruction. If there is a match, apply the
+  ;; noise associated with the first matching NOISE-RULE.
+  (let* ((noise-rules (noise-rules (noise-model qvm)))
+         (first-matching-rule (find-matching-rule noise-rules instr ':after)))
+    (when first-matching-rule
+      (apply-all-kraus-maps qvm instr (operation-elements first-matching-rule)))
     qvm))
 
 (defmethod transition :around ((qvm channel-qvm) (instr quil:measurement))
@@ -131,6 +130,7 @@
       ((0) (if (<= r p00) 0 1))
       ((1) (if (<= r p01) 0 1)))))
 
+
 (defun check-povm (povm)
   "Verify that the list POVM contains a valid single qubit diagonal POVM. Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
   (destructuring-bind (p00 p01 p10 p11) povm
@@ -148,3 +148,36 @@
 (defmethod compile-instruction ((qvm channel-qvm) isn)
   (declare (ignore qvm))
   isn)
+
+(defun perturb-measured-bits (qvm measured-bits readout-povms)
+  "Randomly perturb the values of the bits in MEASURED-BITS in
+accordance with any available readout POVMs on the QVM. Returns an
+updated list of measured bits."
+  ;; This models purely classical bit flips of the measurement record
+  ;; which captures the reality of noisy low power dispersive
+  ;; measurements of superconducting qubits very well. Here the
+  ;; dominant source of error is misclassifying a readout signal due
+  ;; to thermal noise that corrupts the signal on its return path out
+  ;; of the cryostat.
+  (loop :for i :below (number-of-qubits qvm)
+        :for c :in measured-bits
+        :collect (let ((povm (gethash i readout-povms)))
+                   (if povm
+                       (destructuring-bind (p00 p01 p10 p11) povm
+                         (perturb-measurement c p00 p01 p10 p11))
+                       c))))
+
+(defmethod measure-all-state ((state pure-state) (qvm channel-qvm))
+  (declare (ignore qvm))
+  (multiple-value-bind (qvm-ret measured-bits)
+      (call-next-method)
+    (values
+     qvm-ret
+     (perturb-measured-bits qvm-ret measured-bits (readout-povms (noise-model qvm))))))
+
+(defmethod measure-all-state ((state density-matrix-state) (qvm channel-qvm))
+  (multiple-value-bind (qvm-ret measured-bits)
+      (naive-measure-all qvm)
+    (values
+     qvm-ret
+     (perturb-measured-bits qvm-ret measured-bits (readout-povms (noise-model qvm))))))

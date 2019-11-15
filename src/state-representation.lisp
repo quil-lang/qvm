@@ -4,10 +4,15 @@
 (defgeneric set-to-zero-state (state)
   (:documentation "Set the initial state to the pure zero state."))
 
+;; This is the state protocol that determines whether the correct
+;; amplitudes are in the right place. This is only relevant for
+;; PURE-STATE.
 (defgeneric requires-swapping-amps-p (state))
 
+;; This is the state protocol that determines whether internal
+;; amplitudes pointers need to be swapped. This is only relevant for
+;; PURE-STATE.
 (defgeneric swap-internal-amplitude-pointers (state))
-
 
 (defclass quantum-system-state ()
   ((allocation
@@ -15,10 +20,13 @@
     :initarg :allocation))
   (:metaclass abstract-class))
 
+;;; The PURE-STATE is a representation of a pure state quantum system
+;;; that can be operated upon by a QVM.
 (defclass pure-state (quantum-system-state)
   ((amplitudes
     :accessor amplitudes
-    :initarg :amplitudes)
+    :initarg :amplitudes
+    :documentation "The wavefunction of a pure state.")
    (trial-amplitudes
     :accessor %trial-amplitudes
     :initarg :trial-amplitudes
@@ -55,7 +63,6 @@
         (tg:finalize state finalizer)
         state))))
 
-
 (defmethod initialize-instance :after ((state pure-state) &key num-qubits &allow-other-keys)
   (cond 
     ((and (slot-boundp state 'amplitudes)
@@ -76,13 +83,17 @@
       (slot-value state 'original-amplitudes) (amplitudes state)))
 
 (defmethod num-qubits ((state pure-state))
+  ;; Return the number of qubits that the STATE represents.
   (quil:ilog2 (length (amplitudes state))))
 
 (defmethod set-to-zero-state ((state pure-state))
+  ;; Return the STATE to the ground state.
   (bring-to-zero-state (amplitudes state)))
 
 (defmethod requires-swapping-amps-p ((state pure-state))
-  "Does the state require swapping of internal pointers?"
+  ;; Does the STATE require swapping of internal pointers? This
+  ;; function is used after stochastic state evolution occurs to a
+  ;; PURE-STATE.
   (and (not (eq (amplitudes state) (original-amplitudes state)))
        #+sbcl (eq ':foreign (sb-introspect:allocation-information
                              (original-amplitudes state)))))
@@ -94,13 +105,14 @@
   ;; not overwrite, because we want the scratch memory to be intact.
   (rotatef (amplitudes state) (%trial-amplitudes state)))
 
-  
 
-;;; DENSITY-MATRIX-STATE class -------------------------------------------------
+;;; The DENSITY-MATRIX-STATE is a representation of a density matrix
+;;; quantum state that can be operated upon by a QVM.
 (defclass density-matrix-state (quantum-system-state)
   ((amplitudes
     :accessor amplitudes
-    :initarg :amplitudes) 
+    :initarg :amplitudes
+    :documentation "The contents of the density matrix as a one-dimensional vector.") 
    (matrix-view
     :initarg :matrix-view
     :reader matrix-view
@@ -108,7 +120,8 @@
    (temporary-state
     :initarg :temporary-state
     :initform nil
-    :accessor temporary-state)))
+    :accessor temporary-state
+    :documentation "A placeholder for computations on the amplitudes of a DENSITY-MATRIX-STATE.")))
 
 (defmethod initialize-instance :after ((state density-matrix-state) &rest args)
   (declare (ignore args))
@@ -120,10 +133,13 @@
 
 
 (defmethod num-qubits ((state density-matrix-state))
+  ;; Returns the number of qubits represented by the DENSITY-MATRIX-STATE STATE.
   (/ (quil:ilog2 (length (amplitudes state))) 2))
 
 
 (defmethod (setf amplitudes) :after (new-value (state density-matrix-state))
+  ;; Displace the MATRIX-VIEW of the STATE whenever the AMPLITUDES are
+  ;; set to a NEW-VALUE.
   (let ((dim (expt 2 (num-qubits state))))
     (setf (slot-value state 'matrix-view) (make-array (list dim dim)
                                                       :element-type 'cflonum
@@ -131,6 +147,7 @@
 
 
 (defmethod set-to-zero-state ((state density-matrix-state))
+  ;; Bring the STATE DENSITY-MATRIX-STATE to the ground state.
   (bring-to-zero-state (amplitudes state)))
 
 (defun make-density-matrix-state (num-qubits &key (allocation nil))
@@ -167,12 +184,12 @@
 
 
 (defmethod requires-swapping-amps-p ((state density-matrix-state))
-  ;; skip for density-matrix-state
+  ;; Skip for density-matrix-state
   (declare (ignore state)))
 
 
 (defmethod swap-internal-amplitude-pointers ((state density-matrix-state))
-  ;; skip for density-matrix-state
+  ;; Skip for density-matrix-state
   (declare (ignore state)))
 
 

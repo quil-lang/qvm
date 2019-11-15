@@ -159,11 +159,21 @@ the specified QVM."
        (lambda (mref)
          (memory-ref qvm (quil:memory-ref-name mref) (quil:memory-ref-position mref))))))))
 
-(defmethod transition ((qvm pure-state-qvm) (instr quil:gate-application))
-  (let ((gate   (pull-teeth-to-get-a-gate instr))
-        (params (mapcar #'(lambda (p) (force-parameter p qvm))
-                        (quil:application-parameters instr)))
-        (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
+(defmethod transition ((qvm base-qvm) (instr quil:gate-application))
+  ;; Apply the GATE-APPLICATION INSTR to the QVM. This
+  ;; GATE-APPLICATION can either be a superoperator if there are
+  ;; SUPEROPERATOR-DEFINITIONS associated with the INSTR, or a QUIL
+  ;; gate.
+  (let* ((gate   (pull-teeth-to-get-a-gate instr))
+         ;; modified gates don't have operator names -- this errors. 
+         (gate-name (quil::operator-description-root-name (quil:application-operator instr)))
+         (params (mapcar #'(lambda (p) (force-parameter p qvm))
+                         (quil:application-parameters instr)))
+         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
+         ;; If there are SUPEROPERATOR-DEFINITIONS for INSTR, apply
+         ;; those, else, apply the GATE.
+         (operator (or (gethash (list gate-name qubits) (superoperator-definitions qvm))
+                       gate)))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
           (expected-qubits (1- (integer-length (quil:gate-dimension gate)))))
@@ -173,7 +183,7 @@ the specified QVM."
                :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
                                 expected-qubits
                                 given-qubits))))
-    (apply #'apply-gate-state gate (state qvm) qubits params)
+    (apply #'apply-gate-state operator (state qvm) qubits params)
     (incf (pc qvm))
     qvm))
 
