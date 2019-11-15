@@ -66,6 +66,6 @@ This will call RESPONSE-ENCODER on the RESPONSE-DATA and STREAM."
 (defgeneric response-content-type (response)
   (:documentation "Return an appropriate http content-type for RESPONSE.")
   (:method ((response json-response))
-    (setf (tbnl:content-type*) "application/json; charset=utf-8"))
+    "application/json; charset=utf-8")
   (:method ((response text-response))
-    (setf (tbnl:content-type*) "text/plain; charset=utf-8")))
+    "text/plain; charset=utf-8"))
