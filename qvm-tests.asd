@@ -36,6 +36,7 @@
                (:file "stress-tests")
                (:file "path-simulate-tests")
                (:file "stabilizer-qvm-tests")
+               (:file "state-representation-tests")
                (:file "noise-model-tests")
                (:file "channel-qvm-tests")
                (:file "basic-noise-qvm-tests")

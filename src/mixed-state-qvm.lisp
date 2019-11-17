@@ -76,7 +76,6 @@
   (incf (pc qvm))
   qvm)
 
-
 ;;; Superoperators 
 
 ;;; Ordinary gates, as well as user-specified "Kraus operators" in
@@ -95,13 +94,17 @@
 ;;; only a specific realization of the gate noise in a stochastic
 ;;; process.
 
+(defun mixed-state-qvm-measurement-probabilities (qvm)
+  "Computes the probability distribution of measurement outcomes (a vector)
+  associated with the STATE of the DENSITY-QVM."
+  (density-matrix-state-measurement-probabilities (state qvm)))
+
 (defun lift-matrix-to-superoperator (mat)
   "Converts a magicl matrix MAT into a superoperator."
   (single-kraus
    (make-instance 'quil:simple-gate
                   :name (string (gensym "KRAUS-TEMP"))
                   :matrix mat)))
-
 
 (defgeneric conjugate-entrywise (gate)
   (:documentation "Construct a new gate from GATE with corresponding matrix entries conjugated.")
@@ -120,44 +123,6 @@
                    :matrix-function #'(lambda (&rest parameters)
                                         (magicl:conjugate-entrywise
                                          (apply #'quil:gate-matrix gate parameters))))))
-
-;;; Measurement
-
-;;; In the PURE-STATE-QVM there is only one sensible meaning for a
-;;; measurement: outcomes are sampled according to their respective
-;;; probabilities, and then wavefunction collapse occurs. In the
-;;; MIXED-STATE-QVM, this could in principle be augmented by a second
-;;; notion of measurement: namely, the outcome probabilities allow us
-;;; to compute an "expected" outcome, which is generically a mixed
-;;; state. The situation here is analogous to the question of gate
-;;; noise, where one must choose between working with a specific
-;;; realization of the noise process or its entire
-;;; distribution. Whereas for noise we prefer the latter, for
-;;; measurement we prefer the former, because i) it is necessary to
-;;; force collapse when measurements are needed for classical control,
-;;; and ii) it is what most people expect anyways.
-
-(defun density-qvm-measurement-probabilities (qvm)
-  "Computes the probability distribution of measurement outcomes (a vector)
-  associated with the specified density matrix state in the MIXED-STATE-QVM.
-
-  For example, if (NUMBER-OF-QUBITS QVM) is 2, then this will return a vector
-  
-  #(p[0,0] p[0,1] p[1,0] p[1,1]) 
-
-  where p[i,j] denotes the probability that a simultaneous measurement of qubits 0,1
-  results in the outcome i,j. 
-  "
-  (check-type qvm density-qvm)
-  (let* ((vec-density (amplitudes (state qvm)))
-         (dim (expt 2 (number-of-qubits qvm)))
-         (probabilities (make-array dim :element-type 'flonum :initial-element (flonum 0))))
-    (loop :for i :below dim
-          :do (setf (aref probabilities i)
-                    (realpart
-                     (aref vec-density (+ i (* i dim)))))
-          :finally (return probabilities))))
-
 
 ;;; Don't compile things for the mixed-state-qvm.
 (defmethod compile-loaded-program ((qvm mixed-state-qvm))

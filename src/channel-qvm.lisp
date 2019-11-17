@@ -96,15 +96,22 @@
     (dolist (kraus-map kraus-maps)
       (apply-noise-to-state kraus-map (state qvm) qubits))))
 
-(defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr quil:measure-discard))
-  (declare (ignore qvm instr))
-  nil)
-
-(defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr quil:measure))
-  (%corrupt-qvm-memory-with-povm qvm instr (readout-povms (noise-model qvm))))
-
-(defmethod apply-classical-readout-noise ((qvm channel-qvm) (instr compiled-measurement))
-  (apply-classical-readout-noise qvm (source-instruction instr)))
+(defgeneric apply-classical-readout-noise (qvm instr)
+  (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
+  ;; Make sure readout noise is never applied to a pure-state qvm
+  (:method ((qvm pure-state-qvm) (instr quil:measurement))
+    (declare (ignore qvm instr))
+    nil)
+  ;; Ignore for a measure-discard
+  (:method ((qvm channel-qvm) (instr quil:measure-discard))
+    (declare (ignore qvm instr))
+    nil)
+  ;; Apply POVM from noise model to qvm
+  (:method ((qvm channel-qvm) (instr quil:measure))
+    (%corrupt-qvm-memory-with-povm qvm instr (readout-povms (noise-model qvm))))
+  ;; Source instruction before application.
+  (:method ((qvm channel-qvm) (instr compiled-measurement))
+    (apply-classical-readout-noise qvm (source-instruction instr))))
 
 (defun %corrupt-qvm-memory-with-povm (qvm instr povm-map)
   "Apply POVM-MAP to the measured result of the INSTR application."
@@ -130,6 +137,39 @@
       ((0) (if (<= r p00) 0 1))
       ((1) (if (<= r p01) 0 1)))))
 
+(defun check-kraus-ops (kraus-ops)
+  "Verify that a list KRAUS-OPS of Kraus operators given as MAGICL:MATRIX objects encodes a proper
+Kraus map. In particular, we require that the Kraus operators are all of equal matrix dimension with equal numbers
+of rows and columns. Furthermore, to ensure that the Kraus map preserves trace, they must be normalized such that
+
+  sum_{j=1}^n K_j^H K_j = I
+
+where I is the identity matrix of equal dimensions."
+  (let* ((m (magicl:matrix-rows (first kraus-ops)))
+         (n (magicl:matrix-cols (first kraus-ops)))
+         (kraus-sum (magicl:make-zero-matrix m n)))
+    (assert (= m n) ((first kraus-ops)) "The Kraus operators be square matrices.")
+    (loop :for k :in kraus-ops
+          :do
+             (assert (= m (magicl:matrix-rows k) (magicl:matrix-cols k))
+                     (k)
+                     "All Kraus operators must have matching dimensions")
+             ;; This MAGICL provided BLAS:ZGEMM call effectively performs the following operation
+             ;; KRAUS-SUM -> KRAUS-SUM + K^H . K
+             (magicl.blas-cffi:%zgemm
+              "C" "N" m m m
+              (complex 1d0) (magicl::matrix-data k) m (magicl::matrix-data k) m
+              (complex 1d0) (magicl::matrix-data kraus-sum) m))
+
+    ;; Warning, if this consistently leads to assertion errors increase the
+    ;; tolerance *DEFAULT-ZERO-COMPARISON-EPSILON*
+    (let ((magicl::*default-zero-comparison-epsilon* 1d-5))
+      (assert
+       (magicl:identityp kraus-sum)
+       (kraus-sum)
+       "The Kraus map must preserve trace or equivalently this matrix ~
+        ~S must be equal to the identity" kraus-sum))) t)
+
 
 (defun check-povm (povm)
   "Verify that the list POVM contains a valid single qubit diagonal POVM. Also see the documentation for the READOUT-POVMS slot of NOISY-QVM."
@@ -148,24 +188,6 @@
 (defmethod compile-instruction ((qvm channel-qvm) isn)
   (declare (ignore qvm))
   isn)
-
-(defun perturb-measured-bits (qvm measured-bits readout-povms)
-  "Randomly perturb the values of the bits in MEASURED-BITS in
-accordance with any available readout POVMs on the QVM. Returns an
-updated list of measured bits."
-  ;; This models purely classical bit flips of the measurement record
-  ;; which captures the reality of noisy low power dispersive
-  ;; measurements of superconducting qubits very well. Here the
-  ;; dominant source of error is misclassifying a readout signal due
-  ;; to thermal noise that corrupts the signal on its return path out
-  ;; of the cryostat.
-  (loop :for i :below (number-of-qubits qvm)
-        :for c :in measured-bits
-        :collect (let ((povm (gethash i readout-povms)))
-                   (if povm
-                       (destructuring-bind (p00 p01 p10 p11) povm
-                         (perturb-measurement c p00 p01 p10 p11))
-                       c))))
 
 (defmethod measure-all-state ((state pure-state) (qvm channel-qvm))
   (declare (ignore qvm))

@@ -4,7 +4,7 @@
 
 (in-package #:qvm)
 
-
+;;2 Not sure if here is the best place to define this ... 
 (adt:defdata superoperator
   "Representation of a linear operator on density operators."
   ;; Let ' mean † aka conjugate transpose.
@@ -208,15 +208,15 @@
     (funcall (compiled-gate-apply-operator gate) (amplitudes state)))
   
   (:method ((gate superoperator) (state pure-state) qubits &rest parameters)
-   ;; Apply a superoperator GATE to a pure state STATE using
-   ;; stochastic pure state evolution.
+    ;; Apply a superoperator GATE to a PURE-STATE STATE using
+    ;; stochastic pure state evolution.
     (declare (ignore parameters))
     (adt:match superoperator gate
-      ((kraus-list kraus-map)
-       (stochastic-pure-state-evolution kraus-map 
-                                         state
-                                         qubits))
-      (_ (error "GATE must be a KRAUS-LIST."))))
+               ((kraus-list kraus-map)
+                (stochastic-pure-state-evolution kraus-map 
+                                                 state
+                                                 qubits))
+               (_ (error "GATE must be a KRAUS-LIST."))))
      
   (:method ((gate superoperator) (state density-matrix-state) qubits &rest parameters)
     ;; Apply a superoperator GATE to a DENSITY-MATRIX-STATE STATE
@@ -232,7 +232,8 @@
 
   (:method (gate (state density-matrix-state) qubits &rest parameters)
     ;; Apply a GATE to a DENSITY-MATRIX-STATE by converting the GATE
-    ;; into a SUPEROPERATOR and then applying the SUPEROPERATOR.
+    ;; into a SINGLE-KRAUS SUPEROPERATOR and then applying the
+    ;; SUPEROPERATOR.
     (let ((sop (single-kraus gate))
           (ghosts (mapcar (alexandria:curry #'+ (num-qubits state)) qubits)))
       (multiple-value-bind (new-density temp-storage)

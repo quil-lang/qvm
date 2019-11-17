@@ -1,5 +1,26 @@
 (in-package #:qvm)
 
+;;; This file implements pure and density matrix states for the QVM. 
+
+;;; General Overview
+
+;;; This file implements classes to represent two different types of
+;;; quantum states: pure states and density matrix states. These
+;;; states support the application of QUIL gates, superoperators, and
+;;; noisy quantum channels.
+
+;;;A PURE-STATE of n qubits is represented as a length 2^n vector of
+;;;AMPLITUDES. The PURE-STATE object also contains a %TRIAL-AMPLITUDES
+;;;slot, which is a second wavefunction used when applying noisy
+;;;channels to the state.
+
+;;;On the other hand, a DENSITY-MATRIX-STATE ρ of n qubits is
+;;;represented by an AMPLITUDES vector of length 2 ^ (2n). The
+;;;DENSITY-MATRIX-STATE has a similar placeholder slot,
+;;;TEMPORARY-STATE, which is used as an intermediate placeholder for
+;;;computations on the state. Finally, the DENSITY-MATRIX-STATE has a
+;;;MATRIX-VIEW which is displaced to the AMPLITUDES.
+
 ;; This is the state protocol for setting the initial state to the zero state.
 (defgeneric set-to-zero-state (state)
   (:documentation "Set the initial state to the pure zero state."))
@@ -112,7 +133,7 @@
   ((amplitudes
     :accessor amplitudes
     :initarg :amplitudes
-    :documentation "The contents of the density matrix as a one-dimensional vector.") 
+    :documentation "The contents of the density matrix as a one-dimensional vector. For a state of n qubits, this vector should be of length 2^(2*n).") 
    (matrix-view
     :initarg :matrix-view
     :reader matrix-view
@@ -144,7 +165,6 @@
     (setf (slot-value state 'matrix-view) (make-array (list dim dim)
                                                       :element-type 'cflonum
                                                       :displaced-to new-value))))
-
 
 (defmethod set-to-zero-state ((state density-matrix-state))
   ;; Bring the STATE DENSITY-MATRIX-STATE to the ground state.
@@ -182,6 +202,25 @@
         (tg:finalize state finalizer)
         state))))
 
+(defun density-matrix-state-measurement-probabilities (state)
+  "Computes the probability distribution of measurement outcomes (a vector)
+  associated with the specified density matrix state in the MIXED-STATE-QVM.
+
+  For example, if (NUMBER-OF-QUBITS QVM) is 2, then this will return a vector
+  
+  #(p[0,0] p[0,1] p[1,0] p[1,1]) 
+
+  where p[i,j] denotes the probability that a simultaneous measurement of qubits 0,1
+  results in the outcome i,j."
+  (check-type state density-matrix-state)
+  (let* ((vec-density (amplitudes state))
+         (dim (expt 2 (num-qubits state)))
+         (probabilities (make-array dim :element-type 'flonum :initial-element (flonum 0))))
+    (loop :for i :below dim
+          :do (setf (aref probabilities i)
+                    (realpart
+                     (aref vec-density (+ i (* i dim)))))
+          :finally (return probabilities))))
 
 (defmethod requires-swapping-amps-p ((state density-matrix-state))
   ;; Skip for density-matrix-state

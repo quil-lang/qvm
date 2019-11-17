@@ -57,7 +57,6 @@ The arguments PX, PY and PZ can be interpreted as probabilities of a X, Y or Z e
       (push (magicl:scale (sqrt (- 1.0 psum)) (magicl:make-identity-matrix 2)) scaled-paulis))
     scaled-paulis))
 
-
 (defun make-pauli-perturbed-1q-gate (gate-name px py pz)
   "Generate a Kraus map that represents a noisy version of the standard gate U identified
 by GATE-NAME. The resulting gate is equivalent to I' * U, i.e., the ideal gate U followed by
@@ -68,40 +67,6 @@ a noisy identity gate I' as defined in MAKE-PAULI-NOISE-MAP.
             (quil:gate-definition-to-gate
              (quil:lookup-standard-gate gate-name)))))
     (mapcar (lambda (v) (magicl:multiply-complex-matrices v u)) kraus-ops)))
-
-(defun check-kraus-ops (kraus-ops)
-  "Verify that a list KRAUS-OPS of Kraus operators given as MAGICL:MATRIX objects encodes a proper
-Kraus map. In particular, we require that the Kraus operators are all of equal matrix dimension with equal numbers
-of rows and columns. Furthermore, to ensure that the Kraus map preserves trace, they must be normalized such that
-
-  sum_{j=1}^n K_j^H K_j = I
-
-where I is the identity matrix of equal dimensions."
-  (let* ((m (magicl:matrix-rows (first kraus-ops)))
-         (n (magicl:matrix-cols (first kraus-ops)))
-         (kraus-sum (magicl:make-zero-matrix m n)))
-    (assert (= m n) ((first kraus-ops)) "The Kraus operators be square matrices.")
-    (loop :for k :in kraus-ops
-          :do
-             (assert (= m (magicl:matrix-rows k) (magicl:matrix-cols k))
-                     (k)
-                     "All Kraus operators must have matching dimensions")
-             ;; This MAGICL provided BLAS:ZGEMM call effectively performs the following operation
-             ;; KRAUS-SUM -> KRAUS-SUM + K^H . K
-             (magicl.blas-cffi:%zgemm
-              "C" "N" m m m
-              (complex 1d0) (magicl::matrix-data k) m (magicl::matrix-data k) m
-              (complex 1d0) (magicl::matrix-data kraus-sum) m))
-
-    ;; Warning, if this consistently leads to assertion errors increase the
-    ;; tolerance *DEFAULT-ZERO-COMPARISON-EPSILON*
-    (let ((magicl::*default-zero-comparison-epsilon* 1d-5))
-      (assert
-       (magicl:identityp kraus-sum)
-       (kraus-sum)
-       "The Kraus map must preserve trace or equivalently this matrix ~
-        ~S must be equal to the identity" kraus-sum))) t)
-
 
 (defgeneric set-noisy-gate (qvm gate-name qubits kraus-ops)
   (:documentation "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
@@ -134,7 +99,6 @@ POVM must be a 4-element list of double-floats."))
   (when (requires-swapping-amps-p (state qvm))
     (swap-internal-amplitude-pointers (state qvm))))
 
-
 (defmethod transition ((qvm noisy-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator)
           (instr)
@@ -159,34 +123,27 @@ POVM must be a 4-element list of double-floats."))
        ;; the parent class
        (call-next-method qvm instr)))))
 
-
-(defgeneric apply-classical-readout-noise (qvm instr)
-  (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
-  ;; Make sure readout noise is never applied to a pure-state qvm
-  (:method ((qvm pure-state-qvm) (instr quil:measurement))
-    (declare (ignore qvm instr))
-    nil)
-  ;; Readout noise only happens to the resulting classical bit (i.e.,
-  ;; it's classical noise). As such, discarding that bit doesn't
-  ;; warrant any sort of special treatment.
-  (:method ((qvm noisy-qvm) (instr quil:measure-discard))
-    (declare (ignore qvm instr))
-    nil)
-  ;; We do have a readout bit, and we want to corrupt it.
-  (:method ((qvm noisy-qvm) (instr quil:measure))
-    (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
-  ;; For compiled measurements, refer to the source of that
-  ;; instruction.
-  (:method ((qvm noisy-qvm) (instr compiled-measurement))
-    (apply-classical-readout-noise qvm (source-instruction instr))))
-
-
 (defmethod transition :around ((qvm noisy-qvm) (instr quil:measurement))
   ;; perform actual measurement
   (let ((ret-qvm (call-next-method)))
     (apply-classical-readout-noise ret-qvm instr)
     ret-qvm))
 
+(defmethod apply-classical-readout-noise ((qvm noisy-qvm) (instr quil:measure-discard))
+  ;; Readout noise only happens to the resulting classical bit (i.e.,
+  ;; it's classical noise). As such, discarding that bit doesn't
+  ;; warrant any sort of special treatment.
+    (declare (ignore qvm instr))
+    nil)
+
+(defmethod apply-classical-readout-noise ((qvm noisy-qvm) (instr quil:measure))
+  ;; We do have a readout bit, and we want to corrupt it.
+  (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
+
+(defmethod apply-classical-readout-noise ((qvm noisy-qvm) (instr compiled-measurement))
+  ;; For compiled measurements, refer to the source of that
+  ;; instruction.
+    (apply-classical-readout-noise qvm (source-instruction instr)))
 
 (defmethod measure-all ((qvm noisy-qvm))
   (declare (ignore qvm))

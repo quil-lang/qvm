@@ -72,7 +72,10 @@
   ;; Wrap a gate defined by GATE-NAME and QUBITS in a superoperator
   ;; defined by KRAUS-OPS. When the QVM reads an instruction with
   ;; GATE-NAME on QUBITS, the superoperator made from the KRAUS-OPS
-  ;; will be applied to the state of the QVM.
+  ;; will be applied to the state of the QVM.  Note: if we are
+  ;; applying superoperators, we do not want to compile the QVM
+  ;; program before running it
+  (setf qvm:*compile-before-running* nil)
   (check-kraus-ops kraus-ops)
   (setf (gethash (list gate-name qubits) (superoperator-definitions qvm))
         (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))

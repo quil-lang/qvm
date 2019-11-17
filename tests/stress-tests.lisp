@@ -100,7 +100,7 @@
           ;; per iteration.
           :with qvm := nil
           :for seq :below 16
-          :for name := (format nil "yTEST_C__~D" (mod seq 8)) ; make sure we repeat names
+          :for name := (format nil "TEST_C__~D" (mod seq 8)) ; make sure we repeat names
           :do (setf qvm (qvm:make-qvm big-qubit-amount :allocation name))
               (write-char #\a) (finish-output)
               (qvm::reset-quantum-state qvm) ; Do something with the
