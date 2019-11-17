@@ -39,7 +39,6 @@
   ;; Return the QVM.
   state)
 
-
 (defmethod force-measurement (measured-value qubit (state density-matrix-state) 
                               excited-probability)
   "Force the density-matrix-state STATE to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
@@ -142,7 +141,6 @@
      qam
      measured-bits)))
 
-
 (defun sample-wavefunction-as-distribution-in-parallel (wf p)
   (sample-wavefunction-as-distribution wf
                                        (make-array 1
@@ -205,6 +203,25 @@ Specifically, let C(b) = \sum_{k=0}^{b} |wf[k]|^2. Compute the smallest b' such 
                  (t
                   (setf max mid)))))
     min))
+
+
+(defun perturb-measured-bits (qvm measured-bits readout-povms)
+  "Randomly perturb the values of the bits in MEASURED-BITS in
+accordance with any available readout POVMs on the QVM. Returns an
+updated list of measured bits."
+  ;; This models purely classical bit flips of the measurement record
+  ;; which captures the reality of noisy low power dispersive
+  ;; measurements of superconducting qubits very well. Here the
+  ;; dominant source of error is misclassifying a readout signal due
+  ;; to thermal noise that corrupts the signal on its return path out
+  ;; of the cryostat.
+  (loop :for i :below (number-of-qubits qvm)
+        :for c :in measured-bits
+        :collect (let ((povm (gethash i readout-povms)))
+                   (if povm
+                       (destructuring-bind (p00 p01 p10 p11) povm
+                         (perturb-measurement c p00 p01 p10 p11))
+                       c))))
 
 (defun sample-wavefunction-multiple-times (wf num-samples)
   "Produce NUM-SAMPLES bitstring samples of the wavefunction WF according to its interpretation as a probability distribution."

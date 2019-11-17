@@ -168,6 +168,29 @@
          (noisy-prog-strings (noisy-program-strings parsed-program q)))
     (is (string= (nth 1 noisy-prog-strings) "(Q0-NOISE & X-GATE-NOISE)"))))
 
+(defun make-test-noise-model  ()
+  (let* ((priority 10)
+         (position :after)
+         (np (qvm::make-noise-predicate (qvm::match-all-gates) priority position))
+        (depol-prob .2)
+        (kraus (qvm::depolarizing-kraus-map depol-prob))
+        (noise-rules (list (qvm::make-noise-rule np kraus))))
+    (qvm::make-noise-model noise-rules)))
+
+(deftest test-channel-qvm-with-density-matrix ()
+ ;; Test that a depolarizing NOISE-MODEL applied to the CHANNEL-QVM
+ ;; with a DENSITY-MATRIX-STATE correctly depolarizes the state.
+  (let* ((noise-model (qvm-tests::make-test-noise-model))
+         (num-qubits 2)
+         (numshots 100)
+         (density-matrix-state (qvm::make-density-matrix-state num-qubits))
+         (dms-channel-qvm (make-instance 'channel-qvm :number-of-qubits num-qubits
+                                                      :state density-matrix-state
+                                                      :noise-model noise-model))
+         (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
+    (let ((ones-measured (qvm-tests::run-n-shot-program numshots dms-channel-qvm program)))
+      (is (< ones-measured numshots)))))
+
 (defun noisy-program-strings (parsed-program qvm)
   "Return a list of strings representing a noisy program. The returned list consists of the original program instructions as strings interjected with the NOISE-PRED NAMEs of the NOISE-RULES in the QVM's NOISE-MODEL."
   (let ((parsed-instructions (cl-quil::parsed-program-executable-code parsed-program))

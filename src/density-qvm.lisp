@@ -105,8 +105,6 @@
 ;;; density matrix, whereas the NOISY-QVM is nondeterministic and
 ;;; tracks only a specific realization of the gate noise.
 
-
-
 (defmethod set-noisy-gate ((qvm density-qvm) gate-name qubits kraus-ops)
   (check-kraus-ops kraus-ops)
   ;; Wrap a matrix in a gate in a superoperator...
@@ -117,13 +115,6 @@
   (check-povm povm)
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
-
-(defun lift-matrix-to-superoperator (mat)
-  "Converts a magicl matrix MAT into a superoperator."
-  (single-kraus
-   (make-instance 'quil:simple-gate
-                  :name (string (gensym "KRAUS-TEMP"))
-                  :matrix mat)))
 
 (defgeneric conjugate-entrywise (gate)
   (:documentation "Construct a new gate from GATE with corresponding matrix entries conjugated.")
@@ -175,53 +166,8 @@
 
 (defun density-qvm-measurement-probabilities (qvm)
   "Computes the probability distribution of measurement outcomes (a vector)
-  associated with the specified density matrix QVM.
-
-  For example, if (NUMBER-OF-QUBITS QVM) is 2, then this will return a vector
-  
-  #(p[0,0] p[0,1] p[1,0] p[1,1]) 
-
-  where p[i,j] denotes the probability that a simultaneous measurement of qubits 0,1
-  results in the outcome i,j. 
-  "
-  (check-type qvm density-qvm)
-  (let* ((vec-density (amplitudes (state qvm)))
-         (dim (expt 2 (number-of-qubits qvm)))
-         (probabilities (make-array dim :element-type 'flonum :initial-element (flonum 0))))
-    (loop :for i :below dim
-          :do (setf (aref probabilities i)
-                    (realpart
-                     (aref vec-density (+ i (* i dim)))))
-          :finally (return probabilities))))
-
-
-(defun density-state-force-measurement (measured-value qubit state excited-probability)
-  "Force the QVM to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the density matrix appropriately.
-
-EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
-"
-  ;; A measurement of qubit i corresponds to roughly this:
-  ;; If outcome = 0, set rows/columns corresponding to i = 1 to zero
-  ;; If outcome = 1, set rows/columns corresponding to i = 0 to zero
-
-  ;; The normalization condition on the density matrix is that the
-  ;; diagonal entries sum to 1, so we have to rescale the remaining
-  ;; nonzero entries. This is easier than the wavefunction case, where
-  ;; the normalization condition is that the sum of squares is 1.
-  (let* ((annihilated-state (- 1 measured-value))
-         (inv-norm (if (zerop annihilated-state)
-                       (/ excited-probability)
-                       (/ (- (flonum 1) excited-probability))))
-         (num-qubits (num-qubits state))
-         (vec-density (amplitudes state)))
-    (pdotimes (k (length vec-density))
-      ;; Check whether the row or column index refers to an annihilated state
-      (if (or (= annihilated-state (ldb (byte 1 qubit) k))
-              (= annihilated-state (ldb (byte 1 (+ qubit num-qubits)) ; in the above parlance, a "ghost" qubit
-                                        k)))
-          (setf (aref vec-density k) (cflonum 0))
-          (setf (aref vec-density k)
-                (* inv-norm (aref vec-density k)))))))
+  associated with the STATE of the DENSITY-QVM."
+  (density-matrix-state-measurement-probabilities (state qvm)))
 
 (defmethod apply-classical-readout-noise ((qvm density-qvm) (instr quil:measure))
   (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
@@ -231,7 +177,6 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   (let ((ret-qvm (call-next-method)))
     (apply-classical-readout-noise ret-qvm instr)
     ret-qvm))
-
 
 (defmethod transition ((qvm density-qvm) (instr quil:measure-discard))
   (let ((ρ (density-matrix-view qvm))
@@ -245,18 +190,12 @@ EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regard
   (incf (pc qvm))
   qvm)
 
-;;; This is what the QAM does.
-(defun naive-measure-all (qam)
-  (let ((measured-bits nil))
-    (loop :for q :from (1- (number-of-qubits qam)) :downto 0
-          :do (multiple-value-bind (ret-qam bit)
-                  (measure qam q)
-                (push bit measured-bits)
-                (setf qam ret-qam)))
+(defmethod measure-all ((qvm density-qvm))
+  (multiple-value-bind (qvm-ret measured-bits)
+      (naive-measure-all qvm)
     (values
-     qam
-     measured-bits)))
-
+     qvm-ret
+     (perturb-measured-bits qvm-ret measured-bits (readout-povms qvm)))))
 
 ;;; Don't compile things for the density-qvm.
 (defmethod compile-loaded-program ((qvm density-qvm))

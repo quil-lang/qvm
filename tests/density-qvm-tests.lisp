@@ -136,8 +136,7 @@
                   (declare (ignore qvm-final))
                   (setf results-desired
                         (remove measured-bits results-desired :test #'equalp)))))
-   ; (is (plusp tries))
-    ))
+    (is (plusp tries))))
 
 (deftest test-density-qvm-1q-measure-discard ()
   "Test that measure discard behaves as expected."

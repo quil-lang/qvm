@@ -20,7 +20,7 @@
 ;;; state.
 
 ;;; The BASIC-NOISE-QVM supports both PURE-STATEs and
-;;; DENSITY-MATRIX-STATEs. For a PURE-STATE STATE, the BASIC-NOISE-QVM
+;;; DENSITY-MATRIX-STATEs. For a PURE-STATE state, the BASIC-NOISE-QVM
 ;;; stochastically applies kraus operators by selecting one at
 ;;; random. Instead, if the BASIC-NOISE-QVM uses a
 ;;; DENSITY-MATRIX-STATE, the kraus operators are converted to
