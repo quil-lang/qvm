@@ -118,8 +118,7 @@
     (let ((amps (qvm::randomize-wavefunction (qvm::wf 1.0 0.0 0.0 0.0))))
       (flet ((eval-prog (quil-string)
                (let ((qvm (make-qvm 2)))
-                 (load-program qvm (with-output-to-quil
-                                     quil-string))
+                 (load-program qvm (quil:parse-quil quil-string))
                  (setf (qvm::amplitudes qvm) (qvm::copy-wavefunction amps))
                  (setf qvm (run qvm))
                  (qvm::amplitudes qvm))))
