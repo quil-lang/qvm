@@ -129,7 +129,10 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
   noise)
 
 (defun parse-sub-request (sub-request)
-  (let ((json (parse-json-or-lose sub-request)))
-    (when (member (gethash "type" json) '("create-job" "run-program-async") :test #'string=)
-      (rpc-bad-request-error "Invalid create-job SUB-REQUEST: ~S." sub-request))
-    json))
+  (unless (hash-table-p sub-request)
+    (rpc-bad-request-error "Invalid create-job SUB-REQUEST: not a valid JSON object: ~A" sub-request))
+  (when (member (gethash "type" sub-request) '("create-job" "run-program-async") :test #'string=)
+    (rpc-bad-request-error "Invalid create-job SUB-REQUEST type field: ~S."
+                           (with-output-to-string (*standard-output*)
+                             (yason:encode sub-request))))
+  sub-request)
