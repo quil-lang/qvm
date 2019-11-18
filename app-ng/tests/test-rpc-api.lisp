@@ -41,8 +41,10 @@
     (yason:encode-plist (plist-lowercase-keys plist))))
 
 (defun plist->hash-table (plist &key (test 'equal))
-  "Like ALEXANDRIA:PLIST-HASH-TABLE but with TEST defaulting to EQUAL."
-  (alexandria:plist-hash-table plist :test test))
+  "Like ALEXANDRIA:PLIST-HASH-TABLE but with TEST defaulting to EQUAL.
+
+Also calls PLIST-LOWERCASE-KEYS to STRING-DOWNCASE the PLIST keys."
+  (alexandria:plist-hash-table (plist-lowercase-keys plist) :test test))
 
 (defun alist->hash-table (alist &key (test 'equal))
   "Like ALEXANDRIA:ALIST-HASH-TABLE but with TEST defaulting to EQUAL."
@@ -161,7 +163,7 @@ The CREATE-JOB request is expected to return with status 200 OK.
 Ensure that the job is deleted afterwards."
   (let ((job-token (extract-and-validate-token
                     (check-request (simple-request url :type "create-job"
-                                                       :sub-request (plist->json json-plist))
+                                                       :sub-request (plist->hash-table json-plist))
                                    :status 202))))
     (unwind-protect
          (simple-request url :type "job-result" :job-token job-token)
@@ -621,10 +623,11 @@ Ensure that the job is deleted afterwards."
                        (check-request (simple-request url
                                                       :type "create-job"
                                                       :sub-request
-                                                      (plist->json `(:type "run-program"
-                                                                     :qvm-token ,qvm-token
-                                                                     :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro"
-                                                                     :addresses ,+all-ro-addresses+)))
+                                                      (plist->hash-table
+                                                       `(:type "run-program"
+                                                         :qvm-token ,qvm-token
+                                                         :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro"
+                                                         :addresses ,+all-ro-addresses+)))
                                       :status 202))))
 
       (check-request (job-request url :type "qvm-info" :qvm-token qvm-token)
@@ -1155,14 +1158,15 @@ Ensure that the job is deleted afterwards."
                                        `(("bytes" ,(lambda (bytes) (plusp bytes))))))
     ;; create-job: check that attempting a nested create-job returns 400 Bad Request
     (check-request (simple-request url :type "create-job"
-                                       :sub-request (plist->json
+                                       :sub-request (plist->hash-table
                                                      `(:type "create-job"
-                                                       :sub-request ,(plist->json '(:type "version")))))
+                                                       :sub-request ,(plist->hash-table
+                                                                      '(:type "version")))))
                    :status 400)
 
     ;; run-program-async: check that attempting run-program-async returns 400 Bad Request
     (check-request (simple-request url :type "create-job"
-                                       :sub-request (plist->json
+                                       :sub-request (plist->hash-table
                                                      '(:type "run-program-async"
                                                        :qvm-token "irrelevant"
                                                        :compiled-quil "irrelevant")))
@@ -1173,8 +1177,8 @@ Ensure that the job is deleted afterwards."
                       (check-request
                        (simple-request url
                                        :type "create-job"
-                                       :sub-request (plist->json '(:type "qvm-info"
-                                                                   :qvm-token "bogus")))
+                                       :sub-request (plist->hash-table '(:type "qvm-info"
+                                                                         :qvm-token "bogus")))
                        :status 202))))
 
       (check-request (simple-request url :type "job-info" :job-token job-token)
@@ -1197,7 +1201,7 @@ Ensure that the job is deleted afterwards."
                       (check-request
                        (simple-request url
                                        :type "create-job"
-                                       :sub-request (plist->json '(:type "version")))
+                                       :sub-request (plist->hash-table '(:type "version")))
                        :status 202))))
 
       (check-request (job-request url :type "job-info" :job-token job-token)
