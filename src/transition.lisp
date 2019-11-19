@@ -131,8 +131,8 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
 
 (defmethod transition ((qvm base-qvm) (instr quil:measure-discard))
   (incf (pc qvm))
-  (measure qvm
-           (quil:qubit-index (quil:measurement-qubit instr))))
+  (apply-measure-discard-to-state qvm (state qvm) instr)
+  qvm)
 
 (defmethod transition ((qvm base-qvm) (instr measure-all))
   (multiple-value-bind (qvm state) (measure-all qvm)
@@ -141,7 +141,7 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
     (incf (pc qvm))
     qvm))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;; Gate Application ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; The word "force" here is borrowed from the functional programming
 ;;; world, where a promise or delayed expression may be "forced"

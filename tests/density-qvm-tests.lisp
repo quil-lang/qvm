@@ -7,7 +7,7 @@
 (defun density-matrix-trace (qvm)
   "Compute the trace of the density matrix associated with density qvm."
   (let ((sum (flonum 0))
-        (density-matrix (qvm::density-matrix-view qvm)))
+        (density-matrix (qvm::matrix-view (qvm::state qvm))))
     ;; This is a sum along the diagonal of the density-matrix
     (dotimes (i (expt 2 (qvm::number-of-qubits qvm)) sum)
       (incf sum (realpart (aref density-matrix i i))))))
@@ -29,7 +29,7 @@
                           "    -sin(%a), cos(%a)"
                           "G(0.0) 0"))
       (run qvm)
-      (is (double-float= 1 (realpart (aref (qvm::density-matrix-view qvm) 0 0)) 1/10000))))
+      (is (double-float= 1 (realpart (aref (qvm::matrix-view (qvm::state qvm)) 0 0)) 1/10000))))
 
 (deftest test-density-qvm-force-measurement-1q ()
   "Measurement on 1q density matrix qvm behaves as expected."
@@ -39,7 +39,7 @@
     (qvm::force-measurement 1 0 (qvm::state qvm) 0.5)
     (is (double-float= 1 (density-matrix-trace qvm)))
     (is (double-float= 1 (realpart
-                          (aref (qvm::density-matrix-view qvm) 1 1))))))
+                          (aref (qvm::matrix-view (qvm::state qvm)) 1 1))))))
 
 (deftest test-density-qvm-force-measurement-4q ()
   "Measurement on 4q density matrix qvm is trace preserving."
@@ -59,11 +59,11 @@
 (defun load-density-from-matrix (qvm mat)
   "Overwrites the density matrix of the density-qvm QVM with values from the magicl matrix MAT."
   (check-type mat magicl:matrix)
-  (assert (equal (array-dimensions (qvm::density-matrix-view qvm))
+  (assert (equal (array-dimensions (qvm::matrix-view (qvm::state qvm)))
                  (list (magicl:matrix-rows mat) (magicl:matrix-cols mat)))
           (mat)
           "Density matrix is of wrong size")
-  (let ((density-matrix (qvm::density-matrix-view qvm)))
+  (let ((density-matrix (qvm::matrix-view (qvm::state qvm))))
     (destructuring-bind (rows cols) (array-dimensions density-matrix)
       (dotimes (i rows qvm)
         (dotimes (j cols)
@@ -150,6 +150,6 @@ MEASURE 0"))
         (qvm (make-density-qvm 1)))
     (load-program qvm p)
     (run qvm)
-    (let ((mat (qvm::density-matrix-view qvm)))
+    (let ((mat (qvm::matrix-view (qvm::state qvm))))
       (is (double-float= (realpart (aref mat 1 1)) 0.5))
       (is (double-float= (realpart (aref mat 0 0)) 0.5)))))

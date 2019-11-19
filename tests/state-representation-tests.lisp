@@ -3,7 +3,7 @@
 (deftest test-make-pure-state ()
   (let* ((num-qubits (+ 1 (random 8)))
         (ps (qvm::make-pure-state num-qubits)))
-    (is (= (length (qvm::amplitudes ps)) (expt 2 num-qubits)))
+    (is (= (length (qvm::state-elements ps)) (expt 2 num-qubits)))
     (is (= (length (qvm::%trial-amplitudes ps)) (expt 2 num-qubits))))
   (signals error
     (qvm::make-pure-state 1.5)))
@@ -11,8 +11,7 @@
 (deftest test-make-density-matrix-state ()
   (let* ((num-qubits (+ 1 (random 8)))
          (dms (qvm::make-density-matrix-state num-qubits)))
-    (is (= (length (qvm::amplitudes dms)) (expt 2 (* 2 num-qubits))))
-    (print num-qubits)
+    (is (= (length (qvm::state-elements dms)) (expt 2 (* 2 num-qubits))))
     (is (equal (list (expt 2 num-qubits) 
                      (expt 2 num-qubits)) 
                (array-dimensions (qvm::matrix-view dms)))))
@@ -36,8 +35,8 @@
          (cnot (qvm::pull-teeth-to-get-a-gate  (quil::build-gate "CNOT" () 0 1))))
     (qvm::apply-gate-state h state (list 0))
     (qvm::apply-gate-state cnot state (list 0 1))
-    (is (= #C(0.7071067811865475d0 0.0d0) (aref (qvm::amplitudes state) 0)))
-    (is (= #C(0.7071067811865475d0 0.0d0) (aref (qvm::amplitudes state) 3)))))
+    (is (= #C(0.7071067811865475d0 0.0d0) (aref (qvm::state-elements state) 0)))
+    (is (= #C(0.7071067811865475d0 0.0d0) (aref (qvm::state-elements state) 3)))))
 
 (deftest test-density-matrix-state-apply-gate ()
   ;; produce the bell state with quantum gates and check that the
@@ -48,10 +47,10 @@
          (expected-amplitude-entry #C(0.4999999999999999d0 0.0d0)))
     (qvm::apply-gate-state h state (list 0))
     (qvm::apply-gate-state cnot state (list 0 1))
-    (is (= expected-amplitude-entry (aref (qvm::amplitudes state) 0)))
-    (is (= expected-amplitude-entry (aref (qvm::amplitudes state) 3)))
-    (is (= expected-amplitude-entry (aref (qvm::amplitudes state) 12)))
-    (is (= expected-amplitude-entry (aref (qvm::amplitudes state) 15)))))
+    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 0)))
+    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 3)))
+    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 12)))
+    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 15)))))
 
 (deftest test-qvm-with-superoperator ()
   ;; Replace the I 0 instruction with a depolarizing
@@ -135,7 +134,7 @@
 (defun density-matrix-trace (qvm)
   "Compute the trace of the density matrix associated with density qvm."
   (let ((sum (flonum 0))
-        (density-matrix (qvm::density-matrix-view qvm)))
+        (density-matrix (qvm::matrix-view (qvm::state qvm))))
     ;; This is a sum along the diagonal of the density-matrix
     (dotimes (i (expt 2 (qvm::number-of-qubits qvm)) sum)
       (incf sum (realpart (aref density-matrix i i))))))
@@ -157,7 +156,7 @@
                           "    -sin(%a), cos(%a)"
                           "G(0.0) 0"))
       (run qvm)
-      (is (double-float= 1 (realpart (aref (qvm::density-matrix-view qvm) 0 0)) 1/10000))))
+      (is (double-float= 1 (realpart (aref (qvm::matrix-view (qvm::state qvm)) 0 0)) 1/10000))))
 
 (deftest test-mixed-state-qvm-force-measurement-1q ()
   "Measurement on 1q density matrix qvm behaves as expected."
@@ -167,7 +166,7 @@
     (qvm::force-measurement 1 0 (qvm::state qvm) 0.5)
     (is (double-float= 1 (density-matrix-trace qvm)))
     (is (double-float= 1 (realpart
-                          (aref (qvm::density-matrix-view qvm) 1 1))))))
+                          (aref (qvm::matrix-view (qvm::state qvm)) 1 1))))))
 
 (deftest test-mixed-state-qvm-force-measurement-4q ()
   "Measurement on 4q density matrix qvm is trace preserving."
@@ -187,11 +186,11 @@
 (defun load-density-from-matrix (qvm mat)
   "Overwrites the density matrix of the density-qvm QVM with values from the magicl matrix MAT."
   (check-type mat magicl:matrix)
-  (assert (equal (array-dimensions (qvm::density-matrix-view qvm))
+  (assert (equal (array-dimensions (qvm::matrix-view (qvm::state qvm)))
                  (list (magicl:matrix-rows mat) (magicl:matrix-cols mat)))
           (mat)
           "Density matrix is of wrong size")
-  (let ((density-matrix (qvm::density-matrix-view qvm)))
+  (let ((density-matrix (qvm::matrix-view (qvm::state qvm))))
     (destructuring-bind (rows cols) (array-dimensions density-matrix)
       (dotimes (i rows qvm)
         (dotimes (j cols)
@@ -246,6 +245,23 @@ MEASURE 0"))
         (qvm (qvm::make-mixed-state-qvm 1)))
     (load-program qvm p)
     (run qvm)
-    (let ((mat (qvm::density-matrix-view qvm)))
+    (let ((mat (qvm::matrix-view (qvm::state qvm))))
       (is (double-float= (realpart (aref mat 1 1)) 0.5))
       (is (double-float= (realpart (aref mat 0 0)) 0.5)))))
+
+(deftest mixed-state-qvm-1q-measure-discard ()
+  "Test that measure discard behaves as expected."
+  ;; We prepare the pure state (1/sqrt(2))(|0> - |1>). If we were to
+  ;; measure and record the outcome, we would know with certainty
+  ;; which of |0> or |1> the state had collapsed into. If we discard
+  ;; that outcome (in some sense) then we should find ourselves in the
+  ;; mixed state |ψ> = 1/2 (|0><0| + |1><1|)
+  (let ((p (quil:parse-quil "H 0
+MEASURE 0"))
+        (qvm (qvm::make-mixed-state-qvm 1)))
+    (load-program qvm p)
+    (run qvm)
+    (let ((mat (qvm::matrix-view (qvm::state qvm))))
+      (is (double-float= (realpart (aref mat 1 1)) 0.5))
+      (is (double-float= (realpart (aref mat 0 0)) 0.5)))))
+

@@ -30,7 +30,7 @@
   `(and (array cflonum (* *))
         (not simple-array)))
 
-(defclass density-qvm (pure-state-qvm)
+(defclass density-qvm (base-qvm)
   ((state :accessor state
           :initarg :state)
    (noisy-gate-definitions :initarg :noisy-gate-definitions
@@ -46,20 +46,10 @@
 ;;; Creation and Initialization
 
 (defmethod amplitudes ((qvm density-qvm))
-  (amplitudes (state qvm)))
+  (state-elements (state qvm)))
 
 (defmethod (setf amplitudes) (new-amplitudes qvm)
-  (setf (amplitudes (state qvm)) new-amplitudes))
-
-(defmethod temporary-state ((qvm density-qvm))
-  (temporary-state (state qvm)))
-
-(defmethod (setf temporary-state) (temp-storage (qvm density-qvm))
-  (setf (temporary-state (state qvm)) temp-storage))
-
-(defmethod density-matrix-view ((qvm density-qvm))
-  (matrix-view (state qvm)))
-
+  (setf (state-elements (state qvm)) new-amplitudes))
 
 (defmethod initialize-instance :after ((qvm density-qvm) &rest args)
   (declare (ignore args))
@@ -172,23 +162,10 @@
 (defmethod apply-classical-readout-noise ((qvm density-qvm) (instr quil:measure))
   (%corrupt-qvm-memory-with-povm qvm instr (readout-povms qvm)))
 
-(defmethod transition :around ((qvm density-qvm) (instr quil:measurement))
-  ;; perform actual measurement
-  (let ((ret-qvm (call-next-method)))
-    (apply-classical-readout-noise ret-qvm instr)
-    ret-qvm))
-
-(defmethod transition ((qvm density-qvm) (instr quil:measure-discard))
-  (let ((ρ (density-matrix-view qvm))
-        (q (quil:qubit-index (quil:measurement-qubit instr))))
-    (dotimes (i (array-dimension ρ 0))
-      (dotimes (j (array-dimension ρ 1))
-        ;; Zeroing out the non-basis state projectors (the
-        ;; off-diagonal projectors: |0><1| and |1><0|)
-        (unless (logbitp q (logeqv i j))
-          (setf (aref ρ i j) (cflonum 0))))))
-  (incf (pc qvm))
-  qvm)
+(defmethod apply-classical-readout-noise ((qvm density-qvm) (instr quil:measure-discard))
+  ;; Don't apply readout noise for a MEASURE-DISCARD.
+  (declare (ignore qvm instr))
+  nil)
 
 (defmethod measure-all ((qvm density-qvm))
   (multiple-value-bind (qvm-ret measured-bits)
@@ -196,6 +173,12 @@
     (values
      qvm-ret
      (perturb-measured-bits qvm-ret measured-bits (readout-povms qvm)))))
+
+(defmethod transition :around ((qvm density-qvm) (instr quil:measurement))
+  ;; perform actual measurement
+  (let ((ret-qvm (call-next-method)))
+    (apply-classical-readout-noise ret-qvm instr)
+    ret-qvm))
 
 ;;; Don't compile things for the density-qvm.
 (defmethod compile-loaded-program ((qvm density-qvm))

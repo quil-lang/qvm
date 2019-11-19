@@ -5,7 +5,7 @@
 (in-package #:qvm)
 
 (defgeneric force-measurement (measured-value qubit state excited-probability)
-  (:documentation " Manipulate the STATE as to force the QUBIT in STATE to collapse to the MEASURED-VALUE. ECTIED-PROBABILITY is the probability that the specified QUBIT measures to |1>, regardless of the MEASURED-VALUE it is being forced to."))
+  (:documentation "Manipulate the STATE as to force the QUBIT in STATE to collapse to the MEASURED-VALUE. ECTIED-PROBABILITY is the probability that the specified QUBIT measures to |1>, regardless of the MEASURED-VALUE it is being forced to."))
 
 (defmethod force-measurement (measured-value qubit (state pure-state) excited-probability)
   "Force the quantum system of the PURE-STATE STATE to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly. EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
@@ -14,7 +14,7 @@
            (type bit measured-value)
            (type (flonum 0) excited-probability)
            (type nat-tuple-element qubit))
-  (let* ((wavefunction (amplitudes state))
+  (let* ((wavefunction (state-elements state))
          (annihilated-state (- 1 measured-value))
          (inv-norm (if (zerop annihilated-state)
                        (/ (sqrt excited-probability))
@@ -56,7 +56,7 @@
                        (/ excited-probability)
                        (/ (- (flonum 1) excited-probability))))
          (num-qubits (num-qubits state))
-         (vec-density (amplitudes state)))
+         (vec-density (state-elements state)))
     (pdotimes (k (length vec-density))
       ;; Check whether the row or column index refers to an annihilated state
       (if (or (= annihilated-state (ldb (byte 1 qubit) k))
@@ -71,7 +71,7 @@
   (:documentation "Get the excited state probability from the wavefunction (if PURE-STATE) or density matrix (if DENSITY-MATRIX-STATE).")
   
   (:method ((state pure-state) qubit)
-    (wavefunction-excited-state-probability (amplitudes state) qubit))
+    (wavefunction-excited-state-probability (state-elements state) qubit))
   
   (:method ((state density-matrix-state) qubit)
     (check-type state density-matrix-state)
@@ -99,11 +99,26 @@
     ;; Return the qvm.
     (values qvm cbit)))
 
+(defmethod apply-measure-discard-to-state (qvm (state pure-state) instr)
+  ;; Simply measure the qubit in INSTR on the QVM.
+  (measure qvm (quil:qubit-index (quil:measurement-qubit instr))))
+
+(defmethod apply-measure-discard-to-state (qvm (state density-matrix-state) instr)
+  (let ((ρ (matrix-view (state qvm)))
+        (q (quil:qubit-index (quil:measurement-qubit instr))))
+    (dotimes (i (array-dimension ρ 0))
+      (dotimes (j (array-dimension ρ 1))
+        ;; Zeroing out the non-basis state projectors (the
+        ;; off-diagonal projectors: |0><1| and |1><0|)
+        (unless (logbitp q (logeqv i j))
+          (setf (aref ρ i j) (cflonum 0))))))
+  qvm)
 
 (defmethod measure-all ((qvm base-qvm))
   (measure-all-state (state qvm) qvm))
 
-(defgeneric measure-all-state (state qvm))
+(defgeneric measure-all-state (state qvm)
+  (:documentation "The protocol for MEASURE-ALL differs by the STATE type of the QVM."))
 
 (defmethod measure-all-state ((state pure-state) (qvm base-qvm))
   (flet ((index-to-bits (n)
