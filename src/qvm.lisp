@@ -13,8 +13,8 @@
 ;;; both pure state wavefunctions and density matrices by means of its
 ;;; STATE field, which can be either a PURE-STATE or DENSITY-MATRIX
 ;;; STATE. Furthermore, the BASE-QVM supports the application of
-;;; SUPEROPERATORS, which can be applied to both types of state
-;;; representations when added to QUIL programs via the
+;;; superoperators, which can be applied to both types of state
+;;; representation when added to QUIL programs via the
 ;;; ADD-KRAUS-PRAGMA.
 
 (defclass base-qvm (classical-memory-mixin)
@@ -27,7 +27,7 @@
    (state 
     :accessor state
     :initarg :state
-    :documentation "The unpermuted wavefunction in standard order.")
+    :documentation "The state of the quantum system simulated by the QVM.")
    (program-compiled-p 
     :accessor program-compiled-p
     :initform nil
@@ -41,13 +41,19 @@
 
 ;;; Fundamental Manipulation of the QVM
 
+;; Note: AMPLITUDES refers to the STATE-ELEMENTS of the STATE of the
+;; QVM for both PURE-STATEs and DENSITY-MATRIX-STATEs. The name
+;; AMPLITUDES is not technically correct for DMSs, but this name was
+;; chosen and implemented throughout the QVM before
+;; DENSITY-MATRIX-STATES.
+
 (defmethod amplitudes ((qvm base-qvm))
-  ;; Read the amplitudes from the state of the QVM.
-  (amplitudes (state qvm)))
+  ;; Read the STATE-ELEMENTS from the state of the QVM.
+  (state-elements (state qvm)))
 
 (defmethod (setf amplitudes) (new-amplitudes (qvm base-qvm))
-  ;; Set the amplitudes to the state of the QVM.
-  (setf (amplitudes (state qvm)) new-amplitudes))
+  ;; Set the STATE-ELEMENTS to the state of the QVM.
+  (setf (state-elements (state qvm)) new-amplitudes))
 
 (defun nth-amplitude (qvm n)
   "Get the Nth amplitude of the quantum virtual machine QVM."
@@ -58,13 +64,12 @@
   (setf (aref (amplitudes qvm) n) new-value))
 
 (defun map-amplitudes (qvm f)
-  "Apply the function F to the amplitudes of the quantum virtual machine QVM in standard order."
+  "Apply the function F to the amplitudes of the QVM in standard order."
   (map nil f (amplitudes qvm))
   (values))
 
 (defmethod reset-quantum-state ((qvm base-qvm))
-  ;; It just so happens that the pure, zero state is the same in
-  ;; this formalism, i.e., a 1 in the first entry.
+  ;; Reset the quantum state of a BASE-QVM to the ground state.
   (bring-to-zero-state (amplitudes qvm))
   qvm)
 
@@ -72,27 +77,31 @@
   ;; Wrap a gate defined by GATE-NAME and QUBITS in a superoperator
   ;; defined by KRAUS-OPS. When the QVM reads an instruction with
   ;; GATE-NAME on QUBITS, the superoperator made from the KRAUS-OPS
-  ;; will be applied to the state of the QVM.  Note: if we are
-  ;; applying superoperators, we do not want to compile the QVM
-  ;; program before running it
+  ;; will be applied to the state of the QVM. 
+  ;;
+  ;; Note: if we are applying superoperators, we do not want to
+  ;; compile the QVM program before running it.
   (setf qvm:*compile-before-running* nil)
   (check-kraus-ops kraus-ops)
   (setf (gethash (list gate-name qubits) (superoperator-definitions qvm))
         (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))
 
 (defmethod run :after ((qvm base-qvm))
-  ;; Only copy if we really need to.
+  ;; Swap STATE-ELEMENTS pointers if necessary after a
+  ;; computation. This is only relevant for a QVM with a PURE-STATE
+  ;; state.
   (when (requires-swapping-amps-p (state qvm))
     (swap-internal-amplitude-pointers (state qvm))))
 
-;;;;;;;;;;;;;;;;;;;;;;; PURE STATE QVM ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;; PURE STATE QVM ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; The PURE-STATE-QVM is an implementation of a QVM that evolves pure
 ;;; state quantum systems. The STATE of the PURE-STATE-QVM is a
 ;;; PURE-STATE, in which the wavefunction of the quantum system is
-;;; represented by a 2n qubit vector of amplitudes. The PURE-STATE-QVM
-;;; also supports superoperator applications by stochastically
-;;; applying the kraus operators they are represented by.
+;;; represented by a 2^(n qubit) vector of amplitudes. The
+;;; PURE-STATE-QVM also supports superoperator applications by
+;;; stochastically applying the kraus operators they are represented
+;;; by to the STATE.
 
 (defclass pure-state-qvm (base-qvm)
   ((state :accessor state
@@ -102,6 +111,7 @@
   (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
 
 ;;; Creation and Initialization
+
 (defmethod initialize-instance :after ((qvm pure-state-qvm) &rest args)
   (declare (ignore args))
   (let ((num-qubits (number-of-qubits qvm)))
@@ -114,11 +124,10 @@
                "The provided amplitudes to the PURE-STATE-QVM ~A represents ~D qubit~:P, ~
                 but the QAM is specified to need ~D qubit~:P."
                qvm
-               (wavefunction-qubits (amplitudes (state qvm)))
+               (wavefunction-qubits (amplitudes qvm))
                num-qubits))
       (t
        ;; If the amplitudes weren't specified, initialize to |...000>.
-       ;;
        ;; We explicitly zero out the memory to make sure all pages get
        ;; touched.
        (setf (state qvm) (make-instance 'pure-state :num-qubits (number-of-qubits qvm)))
@@ -126,9 +135,9 @@
 
 (defun make-qvm (num-qubits &key (classical-memory-model quil:**empty-memory-model**)
                                  (allocation nil))
-  "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits.ALLOCATION is an optional argument with the following behavior.
-    - If it's NULL (default), then a standard wavefunction in the Lisp heap will be allocated.
-    - If it's a STRING, then the wavefunction will be allocated as a shared memory object, accessible by that name.
+  "Make a new quantum virtual machine with NUM-QUBITS number of qubits and a classical memory size of CLASSICAL-MEMORY-SIZE bits. ALLOCATION is an optional argument with the following behavior.
+    - If NULL (default), then a standard wavefunction in the Lisp heap will be allocated.
+    - If STRING, then the wavefunction will be allocated as a shared memory object, accessible by that name.
     - Otherwise, it's assumed to be an object that is compatible with the ALLOCATION-LENGTH and ALLOCATE-VECTOR methods"
   (check-type num-qubits unsigned-byte)
   (check-type classical-memory-model quil:memory-model)
@@ -141,7 +150,7 @@
                                 classical-memory-model)))
 
 (defmethod compile-loaded-program ((qvm pure-state-qvm))
-  ;; Compile the loaded program on the PURE-STATE-QVM QVM.
+  "Compile the loaded program on the PURE-STATE-QVM QVM."
   (unless (program-compiled-p qvm)
     (when *fuse-gates-during-compilation*
       (setf (program qvm) (quil::fuse-gates-in-executable-code (program qvm))))

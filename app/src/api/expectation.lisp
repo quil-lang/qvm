@@ -93,7 +93,7 @@
 the quil program OP, and ρ is the density matrix represented as the
 amplitudes in PREPARED-STATE."
   (declare (ignore first-time))
-  (destructuring-bind (rows cols) (array-dimensions (qvm::density-matrix-view qvm))
+  (destructuring-bind (rows cols) (array-dimensions (qvm::matrix-view (qvm::state qvm)))
     ;; MAGICL:MAKE-MATRIX constructs a column-major matrix, whereas
     ;; PREPARED-STATE is the row-major vectorization of ρ. We prefer
     ;; to apply the transpose to OP-MATRIX below, since it is

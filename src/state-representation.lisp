@@ -9,37 +9,44 @@
 ;;; states support the application of QUIL gates, superoperators, and
 ;;; noisy quantum channels.
 
-;;;A PURE-STATE of n qubits is represented as a length 2^n vector of
-;;;AMPLITUDES. The PURE-STATE object also contains a %TRIAL-AMPLITUDES
-;;;slot, which is a second wavefunction used when applying noisy
-;;;channels to the state.
+;;; A PURE-STATE of n qubits is represented as a length 2^n vector of
+;;; AMPLITUDES. The PURE-STATE object also contains a %TRIAL-AMPLITUDES
+;;; slot, which is a second wavefunction used when applying noisy
+;;; channels to the state.
 
-;;;On the other hand, a DENSITY-MATRIX-STATE ρ of n qubits is
-;;;represented by an AMPLITUDES vector of length 2 ^ (2n). The
-;;;DENSITY-MATRIX-STATE has a similar placeholder slot,
-;;;TEMPORARY-STATE, which is used as an intermediate placeholder for
-;;;computations on the state. Finally, the DENSITY-MATRIX-STATE has a
-;;;MATRIX-VIEW which is displaced to the AMPLITUDES.
+;;; On the other hand, a DENSITY-MATRIX-STATE ρ of n qubits is
+;;; represented by an ELEMENT-VECTOR of length 2 ^ (2n). The
+;;; DENSITY-MATRIX-STATE has a similar placeholder slot,
+;;; TEMPORARY-STATE, which is used as an intermediate placeholder for
+;;; computations on the state. Finally, the DENSITY-MATRIX-STATE has a
+;;; MATRIX-VIEW which is displaced to the STATE-ELEMENTS.
+
+;; This is the state protocol for extracting the state's vector of elements.
+(defgeneric state-elements (state)
+  (:documentation "Extract the state data from the STATE. This is AMPLITUDES for a PURE-STATE, or ELEMENTS-VECTOR for a DENSITY-MATRIX-STATE."))
 
 ;; This is the state protocol for setting the initial state to the zero state.
 (defgeneric set-to-zero-state (state)
   (:documentation "Set the initial state to the pure zero state."))
 
 ;; This is the state protocol that determines whether the correct
-;; amplitudes are in the right place. This is only relevant for
+;; state-elements are in the right place. This is only relevant for
 ;; PURE-STATE.
-(defgeneric requires-swapping-amps-p (state))
+(defgeneric requires-swapping-amps-p (state)
+  (:documentation "Determine whether the state-elements are in the correct QVM slot after doing a computation that requires the additional space. This is only relevant for a PURE-STATE."))
 
-;; This is the state protocol that determines whether internal
-;; amplitudes pointers need to be swapped. This is only relevant for
+;; This is the state protocol that swaps internal
+;; state-elements pointers. This is only relevant for
 ;; PURE-STATE.
-(defgeneric swap-internal-amplitude-pointers (state))
+(defgeneric swap-internal-amplitude-pointers (state)
+  (:documentation "Only relevant for PURE-STATE -- swap AMPLITUDES with TRIAL-AMPLITUDES."))
 
 (defclass quantum-system-state ()
   ((allocation
     :reader allocation
     :initarg :allocation))
-  (:metaclass abstract-class))
+  (:metaclass abstract-class)
+  (:documentation "A QUANTUM-SYSTEM-STATE contains the quantum mechanical state of the QVM and any additional helper objects used in performing computations on the state."))
 
 ;;; The PURE-STATE is a representation of a pure state quantum system
 ;;; that can be operated upon by a QVM.
@@ -54,14 +61,15 @@
     :documentation "A second wavefunction used when applying a noisy quantum channel. Applying a Kraus map generally requires evaluating psi_j = K_j * psi for several different j, making it necessary to keep the original wavefunction around.  This value should be a QUANTUM-STATE whose size is compatible with the number of qubits of the CHANNEL-QVM. The actual values can be initialized in any way because they will be overwritten. As such, it merely is scratch space for intermediate computations, and hence should not be otherwise directly accessed.")
    (original-amplitudes
     :reader original-amplitudes
-    :documentation  "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation.")))
+    :documentation  "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation."))
+  (:documentation "A PURE-STATE contains the quantum mechanical state for a system that can be described by a vector |ψ> of N qubits with unit length in a Hilbert space. The elements of this length 2^N vector is represented by AMPLITUDES."))
 
 (defun make-pure-state (num-qubits &key (allocation nil))
   "ALLOCATION is an optional argument with the following behavior.
-    - If it's NULL (default), then a standard wavefunction in the Lisp heap will be allocated.
-    - If it's a STRING, then the wavefunction will be allocated as a shared memory object, accessible by that name.
-    - Otherwise, it's assumed to be an object that is compatible with the ALLOCATION-LENGTH and ALLOCATE-VECTOR methods
-    - will probs have to redo this in multiple places, have a helper function do the allocation stuff"
+    - If NULL (default), then a standard wavefunction in the Lisp heap will be allocated.
+    - If STRING, then the wavefunction will be allocated as a shared memory object, accessible by that name.
+    - Otherwise, it's assumed to be an object that is compatible with the ALLOCATION-LENGTH and ALLOCATE-VECTOR methods.
+    - will probs have to redo this in multiple places, have a helper function do the allocation stuff."
   (let ((allocation
           (etypecase allocation
             (null
@@ -85,6 +93,11 @@
         state))))
 
 (defmethod initialize-instance :after ((state pure-state) &key num-qubits &allow-other-keys)
+  ;; If AMPLITUDES are provided, assert that the length of the vector
+  ;; is representative of NUM-QUBITS qubits. If AMPLITUDES are not
+  ;; provided, create a vector of AMPLITUDES for NUM-QUBITS
+  ;; qubits. Also, create a TRIAL-AMPLITUDES vector and save a
+  ;; reference to the originally provided memory in AMPLITUDES.
   (cond 
     ((and (slot-boundp state 'amplitudes)
           (not (null (slot-value state 'amplitudes))))
@@ -102,6 +115,14 @@
      (%trial-amplitudes state) (make-lisp-cflonum-vector (expt 2 num-qubits))
       ;; Save a pointer to the originally provided memory.
       (slot-value state 'original-amplitudes) (amplitudes state)))
+
+(defmethod (setf state-elements) (new-value (state pure-state))
+  ;; Set the AMPLITUDES of the PURE-STATE
+  (setf (amplitudes state) new-value))
+
+(defmethod state-elements ((state pure-state))
+  ;; Extract the AMPLITUDES of the PURE-STATE.
+  (amplitudes state))
 
 (defmethod num-qubits ((state pure-state))
   ;; Return the number of qubits that the STATE represents.
@@ -129,37 +150,59 @@
 
 ;;; The DENSITY-MATRIX-STATE is a representation of a density matrix
 ;;; quantum state that can be operated upon by a QVM.
+
 (defclass density-matrix-state (quantum-system-state)
-  ((amplitudes
-    :accessor amplitudes
-    :initarg :amplitudes
-    :documentation "The contents of the density matrix as a one-dimensional vector. For a state of n qubits, this vector should be of length 2^(2*n).") 
+  ((elements-vector
+    :accessor elements-vector
+    :initarg :elements-vector
+    :documentation "The contents of a density matrix ρ as a one-dimensional vector. For a state of N qubits, this vector should be of length 2^(2*N).") 
    (matrix-view
     :initarg :matrix-view
     :reader matrix-view
-    :documentation "2D array displaced to amplitudes")
+    :documentation "2D array displaced to ELEMENTS-VECTOR")
    (temporary-state
     :initarg :temporary-state
     :initform nil
     :accessor temporary-state
-    :documentation "A placeholder for computations on the amplitudes of a DENSITY-MATRIX-STATE.")))
+    :documentation "A placeholder for computations on the elements-vector of a DENSITY-MATRIX-STATE."))
+  (:documentation "A DENSITY-MATRIX-STATE is a general quantum state of N qubits described by a density matrix ρ, representing a statistical mixture of PURE-STATEs. The elements of ρ are represented by the length 2^(2*N) vector ELEMENTS-VECTOR, with MATRIX-VIEW being the 2D 'traditional' matrix representation of ρ."))
 
-(defmethod initialize-instance :after ((state density-matrix-state) &rest args)
-  (declare (ignore args))
+(defmethod initialize-instance :after ((state density-matrix-state) &key num-qubits &allow-other-keys)
+  ;; Ensure that MATRIX-VIEW is displaced to the ELEMENTS-VECTOR
+  ;; density matrix of the DENSITY-MATRIX-STATE state.  
+  (cond 
+    ((and (slot-boundp state 'elements-vector)
+          (not (null (slot-value state 'elements-vector))))
+     (assert (<= num-qubits (wavefunction-qubits (elements-vector state)))
+        ()
+        state
+        (wavefunction-qubits (elements-vector state))
+        num-qubits))
+    (t
+     (setf
+      ;; Initialize the ELEMENTS-VECTOR to an empty array of the
+      ;; correct size.
+      (elements-vector state) (make-lisp-cflonum-vector (expt 2 num-qubits)))))
   (let ((dim (expt 2 (num-qubits state))))
     (setf (slot-value state 'matrix-view)
           (make-array (list dim dim)
                       :element-type 'cflonum
-                      :displaced-to (amplitudes state)))))
+                      :displaced-to (elements-vector state)))))
+  
+(defmethod state-elements ((state density-matrix-state))
+  ;; extracts the ELEMENTS-VECTOR of the PURE-STATE.
+  (elements-vector state))
 
+(defmethod (setf state-elements) (new-value (state density-matrix-state))
+  ;; set the ELEMENTS-VECTOR of the DENSITY-MATRIX-STATE
+  (setf (elements-vector state) new-value))
 
 (defmethod num-qubits ((state density-matrix-state))
   ;; Returns the number of qubits represented by the DENSITY-MATRIX-STATE STATE.
-  (/ (quil:ilog2 (length (amplitudes state))) 2))
+  (/ (quil:ilog2 (length (elements-vector state))) 2))
 
-
-(defmethod (setf amplitudes) :after (new-value (state density-matrix-state))
-  ;; Displace the MATRIX-VIEW of the STATE whenever the AMPLITUDES are
+(defmethod (setf elements-vector) :after (new-value (state density-matrix-state))
+  ;; Displace the MATRIX-VIEW of the STATE whenever the ELEMENTS-VECTOR are
   ;; set to a NEW-VALUE.
   (let ((dim (expt 2 (num-qubits state))))
     (setf (slot-value state 'matrix-view) (make-array (list dim dim)
@@ -168,10 +211,10 @@
 
 (defmethod set-to-zero-state ((state density-matrix-state))
   ;; Bring the STATE DENSITY-MATRIX-STATE to the ground state.
-  (bring-to-zero-state (amplitudes state)))
+  (bring-to-zero-state (elements-vector state)))
 
 (defun make-density-matrix-state (num-qubits &key (allocation nil))
-  ;; The amplitudes store vec(ρ), i.e. the entries of the density
+  ;; The elements-vector store vec(ρ), i.e. the entries of the density
   ;; matrix ρ in row-major order. For a system of N qubits, ρ has
   ;; dimension 2^N x 2^N, hence a total of 2^(2N) entries.
 
@@ -197,7 +240,8 @@
       ;; Go into the zero state.
       (setf (aref matrix-entries 0) (cflonum 1)) 
       (let ((state (make-instance 'density-matrix-state
-                                :amplitudes matrix-entries
+                                  :num-qubits num-qubits
+                                :elements-vector matrix-entries
                                 :allocation allocation)))
         (tg:finalize state finalizer)
         state))))
@@ -213,7 +257,7 @@
   where p[i,j] denotes the probability that a simultaneous measurement of qubits 0,1
   results in the outcome i,j."
   (check-type state density-matrix-state)
-  (let* ((vec-density (amplitudes state))
+  (let* ((vec-density (elements-vector state))
          (dim (expt 2 (num-qubits state)))
          (probabilities (make-array dim :element-type 'flonum :initial-element (flonum 0))))
     (loop :for i :below dim
@@ -225,7 +269,6 @@
 (defmethod requires-swapping-amps-p ((state density-matrix-state))
   ;; Skip for density-matrix-state
   (declare (ignore state)))
-
 
 (defmethod swap-internal-amplitude-pointers ((state density-matrix-state))
   ;; Skip for density-matrix-state

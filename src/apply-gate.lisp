@@ -45,7 +45,7 @@
       (setf (temporary-state state) temp-storage))))
 
 
-(defmethod stochastic-pure-state-evolution (kraus-map (state pure-state) qubits)
+(defun stochastic-pure-state-evolution (kraus-map state qubits)
   ;; Uniformly at random select one of the kraus operators in KRAUS-OPS to apply
   ;; for the PURE-STATE STATE.
   ;; Randomly select one of the Kraus operators by inverse transform
@@ -71,20 +71,20 @@
                                 ((single-kraus U) U)
                                 (_ (error "The elements of KRAUS-MAP must be SINGLE-KRAUS.")))
           :do
-             (replace (%trial-amplitudes state) (amplitudes state))
+             (replace (%trial-amplitudes state) (state-elements state))
              (apply-matrix-operator (magicl-matrix-to-quantum-operator (quil:gate-matrix kj))
                                     (%trial-amplitudes state)
                                     (apply #'nat-tuple qubits))
              (incf summed (psum #'probability (%trial-amplitudes state)))
           :until (>= summed r))
-    (rotatef (amplitudes state) (%trial-amplitudes state))
-    (normalize-wavefunction (amplitudes state))))
+    (rotatef (state-elements state) (%trial-amplitudes state))
+    (normalize-wavefunction (state-elements state))))
 
 
 (defmethod apply-superoperator (sop (state density-matrix-state) qubits ghost-qubits &key temporary-storage params)
   "Apply a superoperator SOP to a vectorized density matrix given in the DENSITY-MATRIX-STATE STATE, where QUBITS and GHOST-QUBITS are tuples of qubit indices which the superoperator acts on (from the left and right respectively). The computation may require TEMPORARY-STORAGE, a vector of the same length as the AMPLITUDES of the STATE. If no TEMPORARY-STORAGE is provided, it will be allocated as needed. Returns the pair of updated STATE and (perhaps freshly allocated) TEMPORARY-STORAGE."
   (check-type sop superoperator)
-  (let ((vec-density (amplitudes state)))
+  (let ((vec-density (state-elements state)))
     ;; We use the following law to help our calculation:
     ;;
     ;;     vec(AρB) = (A ⊗ Bᵀ)vec(ρ)
@@ -148,42 +148,42 @@
     (assert (null parameters) (parameters) "Parameters don't make sense for simple gates.")
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator (quil:gate-matrix gate))
-     (amplitudes state)
+     (state-elements state)
      (apply #'nat-tuple qubits)))
   
   (:method ((gate quil:parameterized-gate) (state pure-state) qubits &rest parameters)
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator
       (apply #'quil:gate-matrix gate parameters))
-     (amplitudes state)
+     (state-elements state)
      (apply #'nat-tuple qubits)))
   
   (:method ((gate quil:permutation-gate) (state pure-state) qubits &rest parameters)
     (assert (null parameters) (parameters) "Parameters don't make sense for simple gates.")
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator (quil:gate-matrix gate))
-     (amplitudes state)
+     (state-elements state)
      (apply #'nat-tuple qubits)))
   
   (:method ((gate quil:controlled-gate) (state pure-state) qubits &rest parameters)
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator
       (apply #'quil:gate-matrix gate parameters))
-     (amplitudes state)
+     (state-elements state)
      (apply #'nat-tuple qubits)))
   
   (:method ((gate quil:forked-gate) (state pure-state) qubits &rest parameters)
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator
       (apply #'quil:gate-matrix gate parameters))
-     (amplitudes state)
+     (state-elements state)
      (apply #'nat-tuple qubits)))
   
   (:method ((gate quil:dagger-gate) (state pure-state) qubits &rest parameters)
     (apply-matrix-operator
      (magicl-matrix-to-quantum-operator
       (apply #'quil:gate-matrix gate parameters))
-     (amplitudes state)
+     (state-elements state)
      (apply #'nat-tuple qubits)))
   
   (:method ((gate compiled-matrix-gate-application) 
@@ -192,20 +192,20 @@
     (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-MATRIX-GATE-APPLICATIONs.")
     (funcall (compiled-gate-apply-operator gate)
              (compiled-matrix gate)
-             (amplitudes state)))
+             (state-elements state)))
   
   (:method ((gate compiled-inlined-matrix-gate-application) 
             (state pure-state) qubits &rest parameters)
     (declare (ignore qubits))
     (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-INLINED-MATRIX-GATE-APPLICATIONs.")
     (funcall (compiled-gate-apply-operator gate)
-             (amplitudes state)))
+             (state-elements state)))
   
   (:method ((gate compiled-permutation-gate-application) 
             (state pure-state) qubits &rest parameters)
     (declare (ignore qubits))
     (assert (null parameters) (parameters) "Parameters don't make sense for a COMPILED-PERMUTATION-GATE-APPLICATIONs.")
-    (funcall (compiled-gate-apply-operator gate) (amplitudes state)))
+    (funcall (compiled-gate-apply-operator gate) (state-elements state)))
   
   (:method ((gate superoperator) (state pure-state) qubits &rest parameters)
     ;; Apply a superoperator GATE to a PURE-STATE STATE using
