@@ -5,7 +5,7 @@
 (in-package #:qvm)
 
 (defgeneric force-measurement (measured-value qubit state excited-probability)
-  (:documentation "Manipulate the STATE as to force the QUBIT in STATE to collapse to the MEASURED-VALUE. ECTIED-PROBABILITY is the probability that the specified QUBIT measures to |1>, regardless of the MEASURED-VALUE it is being forced to."))
+  (:documentation "Manipulate the STATE as to force the QUBIT in STATE to collapse to the MEASURED-VALUE. EXCTIED-PROBABILITY is the probability that the specified QUBIT measures to |1>, regardless of the MEASURED-VALUE it is being forced to."))
 
 (defmethod force-measurement (measured-value qubit (state pure-state) excited-probability)
   "Force the quantum system of the PURE-STATE STATE to have the qubit QUBIT collapse/measure to MEASURED-VALUE. Modify the amplitudes of all other qubits accordingly. EXCITED-PROBABILITY should be the probability that QUBIT measured to |1>, regardless of what it's being forced as.
@@ -19,7 +19,8 @@
          (inv-norm (if (zerop annihilated-state)
                        (/ (sqrt excited-probability))
                        (/ (sqrt (- (flonum 1) excited-probability))))))
-    (declare
+
+    (declare (type quantum-state wavefunction)
              (type bit annihilated-state)
              (type (flonum 0) inv-norm))
     ;; Here we step through all of the wavefunction amplitudes,
@@ -36,7 +37,7 @@
           (if (= annihilated-state (ldb (byte 1 qubit) i))
               (setf (aref wavefunction i) (cflonum 0))
               (setf (aref wavefunction i) (* inv-norm (aref wavefunction i)))))))
-  ;; Return the QVM.
+  ;; Return the STATE.
   state)
 
 (defmethod force-measurement (measured-value qubit (state density-matrix-state) 
@@ -57,7 +58,7 @@
                        (/ (- (flonum 1) excited-probability))))
          (num-qubits (num-qubits state))
          (vec-density (state-elements state)))
-    (pdotimes (k (length vec-density))
+    (pdotimes (k (length vec-density) state)
       ;; Check whether the row or column index refers to an annihilated state
       (if (or (= annihilated-state (ldb (byte 1 qubit) k))
               (= annihilated-state (ldb (byte 1 (+ qubit num-qubits)) ; in the above parlance, a "ghost" qubit
@@ -99,11 +100,11 @@
     ;; Return the qvm.
     (values qvm cbit)))
 
-(defmethod apply-measure-discard-to-state (qvm (state pure-state) instr)
+(defmethod apply-measure-discard-to-state (qvm (state pure-state) (instr quil:measure-discard))
   ;; Simply measure the qubit in INSTR on the QVM.
   (measure qvm (quil:qubit-index (quil:measurement-qubit instr))))
 
-(defmethod apply-measure-discard-to-state (qvm (state density-matrix-state) instr)
+(defmethod apply-measure-discard-to-state (qvm (state density-matrix-state) (instr quil:measure-discard))
   (let ((ρ (matrix-view (state qvm)))
         (q (quil:qubit-index (quil:measurement-qubit instr))))
     (dotimes (i (array-dimension ρ 0))

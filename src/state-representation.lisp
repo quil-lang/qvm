@@ -268,10 +268,8 @@
 
 (defmethod requires-swapping-amps-p ((state density-matrix-state))
   ;; Skip for density-matrix-state
-  (declare (ignore state)))
+  (declare (ignore state))
+  nil)
 
-(defmethod swap-internal-amplitude-pointers ((state density-matrix-state))
-  ;; Skip for density-matrix-state
-  (declare (ignore state)))
 
 

@@ -115,7 +115,7 @@
     ;; Time to convert
     (loop :for key :being :the :hash-keys :of kraus-ops
           :do (setf (gethash key kraus-ops)
-                    (qvm::kraus-list (mapcar #'qvm::lift-matrix-to-superoperator
+                    (qvm::kraus-list (mapcar #'qvm::ensure-superoperator
                                              (gethash key kraus-ops)))))
 
     (let ((memory (make-instance 'qvm:classical-memory-subsystem

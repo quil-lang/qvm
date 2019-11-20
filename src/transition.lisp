@@ -164,9 +164,8 @@ the specified QVM."
   ;; GATE-APPLICATION can either be a superoperator if there are
   ;; SUPEROPERATOR-DEFINITIONS associated with the INSTR, or a QUIL
   ;; gate.
-  (let* ((gate   (pull-teeth-to-get-a-gate instr))
-         ;; modified gates don't have operator names -- this errors. 
-         (gate-name (quil::operator-description-root-name (quil:application-operator instr)))
+  (let* ((gate   (pull-teeth-to-get-a-gate instr)) 
+         (gate-name (quil::application-operator-root-name instr))
          (params (mapcar #'(lambda (p) (force-parameter p qvm))
                          (quil:application-parameters instr)))
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
