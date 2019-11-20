@@ -31,9 +31,7 @@
         (not simple-array)))
 
 (defclass density-qvm (base-qvm)
-  ((state :accessor state
-          :initarg :state)
-   (noisy-gate-definitions :initarg :noisy-gate-definitions
+  ((noisy-gate-definitions :initarg :noisy-gate-definitions
                            :accessor noisy-gate-definitions
                            :initform (make-hash-table :test 'equalp))
    (readout-povms
@@ -58,7 +56,8 @@
   ;; right size (e.g. it was constructed by MAKE-DENSITY-QVM).
   (when (or (not (slot-boundp qvm 'state))
             (null (slot-value qvm 'state)))
-      (setf (state qvm) (make-instance 'density-matrix-state :num-qubits (number-of-qubits qvm)))
+    (%set-state (make-instance 'density-matrix-state :num-qubits (number-of-qubits qvm))
+                qvm)
       (set-to-zero-state (state qvm))))
 
 
@@ -99,7 +98,7 @@
   (check-kraus-ops kraus-ops)
   ;; Wrap a matrix in a gate in a superoperator...
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm))
-        (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))
+        (kraus-list (mapcar #'ensure-superoperator kraus-ops))))
 
 (defmethod set-readout-povm ((qvm density-qvm) qubit povm)
   (check-povm povm)

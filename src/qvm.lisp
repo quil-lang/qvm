@@ -11,21 +11,23 @@
 ;;; The BASE-QVM is base class that implements the fundamental
 ;;; functionality that every QVM will use. The BASE-QVM can evolve
 ;;; both pure state wavefunctions and density matrices by means of its
-;;; STATE field, which can be either a PURE-STATE or DENSITY-MATRIX
-;;; STATE. Furthermore, the BASE-QVM supports the application of
-;;; superoperators, which can be applied to both types of state
-;;; representation when added to QUIL programs via the
-;;; ADD-KRAUS-PRAGMA.
+;;; STATE slot, which can be either a PURE-STATE or DENSITY-MATRIX
+;;; STATE or any state matching the protocols defined in MEASURE,
+;;; APPLY-GATE, and STATE-REPRESENTATION. Furthermore, the BASE-QVM
+;;; supports the application of superoperators, which can be applied
+;;; to both types of state representation when added to QUIL programs
+;;; via the ADD-KRAUS PRAGMA.
 
 (defclass base-qvm (classical-memory-mixin)
-  ((number-of-qubits 
+  ((number-of-qubits ; XXX: Should we just compute the number of qubits from the STATE? 
     :reader number-of-qubits
     :initarg :number-of-qubits
     :type alexandria:non-negative-fixnum
-    :initform (error ":NUMBER-OF-QUBITS is a required initarg ~ to BASE-QVM.")
+    :initform (error ":NUMBER-OF-QUBITS is a required initarg to BASE-QVM.")
     :documentation "Number of qubits being simulated by the QVM.")
    (state 
-    :accessor state
+    :reader state
+    :writer %set-state
     :initarg :state
     :documentation "The state of the quantum system simulated by the QVM.")
    (program-compiled-p 
@@ -81,17 +83,11 @@
   ;;
   ;; Note: if we are applying superoperators, we do not want to
   ;; compile the QVM program before running it.
-  (setf qvm:*compile-before-running* nil)
+  (when qvm:*compile-before-running*
+    (warn "SUPEROPERATOR operations will not work with compiled programs!"))
   (check-kraus-ops kraus-ops)
   (setf (gethash (list gate-name qubits) (superoperator-definitions qvm))
-        (kraus-list (mapcar #'lift-matrix-to-superoperator kraus-ops))))
-
-(defmethod run :after ((qvm base-qvm))
-  ;; Swap STATE-ELEMENTS pointers if necessary after a
-  ;; computation. This is only relevant for a QVM with a PURE-STATE
-  ;; state.
-  (when (requires-swapping-amps-p (state qvm))
-    (swap-internal-amplitude-pointers (state qvm))))
+        (kraus-list (mapcar #'ensure-superoperator kraus-ops))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; PURE STATE QVM ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -104,9 +100,10 @@
 ;;; by to the STATE.
 
 (defclass pure-state-qvm (base-qvm)
-  ((state :accessor state
+  ((state :reader state
+          :writer %set-state
           :initarg :state
-          :type (or null pure-state)
+          :type (or null pure-state) ; TODO: Should we nix the NULL possibility?
           :documentation "The unpermuted wavefunction in standard order."))
   (:documentation "An pure-state implementation of the Quantum Abstract Machine."))
 
@@ -130,7 +127,8 @@
        ;; If the amplitudes weren't specified, initialize to |...000>.
        ;; We explicitly zero out the memory to make sure all pages get
        ;; touched.
-       (setf (state qvm) (make-instance 'pure-state :num-qubits (number-of-qubits qvm)))
+       (%set-state (make-instance 'pure-state :num-qubits (number-of-qubits qvm))
+                   qvm)
        (bring-to-zero-state (amplitudes qvm))))))
 
 (defun make-qvm (num-qubits &key (classical-memory-model quil:**empty-memory-model**)
@@ -150,7 +148,6 @@
                                 classical-memory-model)))
 
 (defmethod compile-loaded-program ((qvm pure-state-qvm))
-  "Compile the loaded program on the PURE-STATE-QVM QVM."
   (unless (program-compiled-p qvm)
     (when *fuse-gates-during-compilation*
       (setf (program qvm) (quil::fuse-gates-in-executable-code (program qvm))))

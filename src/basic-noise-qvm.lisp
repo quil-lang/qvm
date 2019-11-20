@@ -96,7 +96,8 @@
   (maphash #'%check-povm-entry (readout-povms qvm))
   (when (or (not (slot-boundp qvm 'state))
             (null (slot-value qvm 'state)))
-    (setf (state qvm) (make-pure-state (number-of-qubits qvm)))))
+    (%set-state (make-pure-state (number-of-qubits qvm))
+                qvm)))
 
 (defun %check-depol-entry (qubit kraus-map)
   "Check that a key value pair in the DEPOLARIZATION-OPS slot is valid. The QUBIT must be a non-negative integer, and the KRAUS-MAP must be a valid kraus map. "
@@ -151,7 +152,9 @@
           :do (let ((simplified-kraus-ops (reduce #'kraus-kron noise-operators))
                     (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
                 (when simplified-kraus-ops
-                  (apply-noise-to-state simplified-kraus-ops (state qvm) qubits )))))
+                  (apply-gate-state (convert-to-kraus-list simplified-kraus-ops)
+                                    (state qvm)
+                                    qubits)))))
 
 (defmethod run :before ((qvm basic-noise-qvm))
   ;; Before running a new program on the BASIC-NOISE-QVM, reset the

@@ -199,3 +199,57 @@ The function will just return NIL, and modify the contents of RESULT."
   (psum-dotimes (i (length state))
     (funcall f (aref state i))))
 
+;;; Superoperators 
+
+;;; Ordinary gates, as well as user-specified "Kraus operators" in
+;;; SUPEROPERATOR-DEFINITIONS, can represented by a SUPEROPERATOR
+;;; type. The quil syntax for specifying superoperators is done
+;;; through pragmas where a user may specify a
+;;; "SUPEROPERATOR-DEFINTION" on a gate and a specific set of
+;;; qubits. During the QVM evaluation, such a user defined
+;;; SUPEROPERATOR definition will replace the usual gate.
+;;;
+;;; The primary difference between the DENSITY-MATRIX-STATE's
+;;; superoperator application and the PURE-STATE's is that application
+;;; of a superoperator to a DENSITY-MATRIX-STATE is completely
+;;; deterministic and "folds all of the noisy" into the density
+;;; matrix, whereas the application to a PURE-STATE is
+;;; nondeterministic and tracks only a specific realization of the
+;;; gate noise in a stochastic process.
+
+(adt:defdata superoperator
+  "Representation of a linear operator on density operators."
+  ;; Let ' mean † aka conjugate transpose.
+  ;;
+  ;; ρ ↦ U ρ U'
+  (single-kraus quil:gate)
+  ;; ρ ↦ ∑ᵢ Aᵢ ρ Aᵢ'
+  (kraus-list list))
+
+(defun ensure-superoperator (mat)
+  "Converts a magicl matrix MAT into a SINGLE-KRAUS SUPEROPERATOR."
+  (etypecase mat
+    (superoperator mat)
+    (quil:gate (single-kraus mat))
+    (magicl:matrix (single-kraus 
+                    (make-instance 'quil:simple-gate
+                                   :name (string (gensym "KRAUS-TEMP"))
+                                   :matrix mat)))))
+
+(defgeneric conjugate-entrywise (gate)
+  (:documentation "Construct a new gate from GATE with corresponding matrix entries conjugated.")
+  (:method ((gate quil:simple-gate))
+    (make-instance 'quil:simple-gate
+                   :name (concatenate 'string (quil:gate-name gate) "*")
+                   :matrix (magicl:conjugate-entrywise (quil:gate-matrix gate))))
+  (:method ((gate quil:permutation-gate))
+    (make-instance 'quil:permutation-gate
+                   :name (concatenate 'string (quil:gate-name gate) "*")
+                   :permutation (quil:permutation-gate-permutation gate)))
+  (:method ((gate quil:parameterized-gate))
+    (make-instance 'quil:parameterized-gate
+                   :name (concatenate 'string (quil:gate-name gate) "*")
+                   :dimension (quil:gate-dimension gate)
+                   :matrix-function #'(lambda (&rest parameters)
+                                        (magicl:conjugate-entrywise
+                                         (apply #'quil:gate-matrix gate parameters))))))

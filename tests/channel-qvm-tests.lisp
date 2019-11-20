@@ -172,9 +172,9 @@
   (let* ((priority 10)
          (position :after)
          (np (qvm::make-noise-predicate (qvm::match-all-gates) priority position))
-        (depol-prob .2)
-        (kraus (qvm::depolarizing-kraus-map depol-prob))
-        (noise-rules (list (qvm::make-noise-rule np kraus))))
+         (depol-prob .2)
+         (kraus (qvm::depolarizing-kraus-map depol-prob))
+         (noise-rules (list (qvm::make-noise-rule np kraus))))
     (qvm::make-noise-model noise-rules)))
 
 (deftest test-channel-qvm-with-density-matrix ()

@@ -168,16 +168,16 @@
         (is (< 0 ones-measured numshots))))))
 
 (deftest test-basic-noise-qvm-with-density-matrix ()
- ;; Test that a depolarizing BASIC-NOISE-QVM
- ;; with a DENSITY-MATRIX-STATE correctly depolarizes the state.
+  ;; Test that a depolarizing BASIC-NOISE-QVM
+  ;; with a DENSITY-MATRIX-STATE correctly depolarizes the state.
   (let* ((num-qubits 1)
          (qubit 0)
          (depolarization-prob .5d0)
          (numshots 100)
          (density-matrix-state (qvm::make-density-matrix-state num-qubits))
          (dms-basic-noise-qvm (make-instance 'basic-noise-qvm :number-of-qubits num-qubits
-                                                      :state density-matrix-state
-                                                      :avg-gate-time 1))
+                                                              :state density-matrix-state
+                                                              :avg-gate-time 1))
          (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
     (setf (qvm::qubit-depolarization dms-basic-noise-qvm qubit) depolarization-prob)
     (let ((ones-measured (qvm-tests::run-n-shot-program numshots dms-basic-noise-qvm program)))

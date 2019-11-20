@@ -54,7 +54,8 @@
   (declare (ignore args))
   (when (or (not (slot-boundp qvm 'state))
             (null (slot-value qvm 'state)))
-    (setf (state qvm) (make-pure-state (number-of-qubits qvm)))))
+    (%set-state (make-pure-state (number-of-qubits qvm))
+                qvm)))
 
 (defmethod transition :before ((qvm channel-qvm) (instr quil:gate-application))
   ;; Before applying the current instruction INSTR, check if any
@@ -85,7 +86,9 @@
   ;; Apply each kraus map in the list KRAUS-MAPS to the state of the system, using the qubits from the current instruction INSTR.
   (let ((qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
     (dolist (kraus-map kraus-maps)
-      (apply-noise-to-state kraus-map (state qvm) qubits))))
+      (apply-gate-state (convert-to-kraus-list kraus-map)
+                        (state qvm)
+                        qubits))))
 
 (defun rule-matches-instr-p (rule instr position)
   "Check if RULE is matched by instruction data INSTR and the POSITION of the match request."
@@ -148,10 +151,6 @@
 
 (defgeneric apply-classical-readout-noise (qvm instr)
   (:documentation "Given a QVM and a (measurement) instruction INSTR, corrupt the readout bit according to the POVM specifications of QVM.")
-  ;; Make sure readout noise is never applied to a pure-state qvm
-  (:method ((qvm pure-state-qvm) (instr quil:measurement))
-    (declare (ignore qvm instr))
-    nil)
   ;; Ignore for a measure-discard
   (:method ((qvm channel-qvm) (instr quil:measure-discard))
     (declare (ignore qvm instr))

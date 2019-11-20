@@ -94,11 +94,6 @@ POVM must be a 4-element list of double-floats."))
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
 
-(defmethod run :after ((qvm noisy-qvm))
-  ;; Only copy if we really need to.
-  (when (requires-swapping-amps-p (state qvm))
-    (swap-internal-amplitude-pointers (state qvm))))
-
 (defmethod transition ((qvm noisy-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator)
           (instr)
@@ -114,7 +109,7 @@ POVM must be a 4-element list of double-floats."))
        ;; select one of several Kraus operators to apply for the
        ;; transition
        (check-type gate quil:static-gate)
-       (apply-noise-to-state kraus-ops (state qvm) qubits)
+       (apply-gate-state (convert-to-kraus-list kraus-ops) (state qvm) qubits)
        (incf (pc qvm))
        qvm)
       (t

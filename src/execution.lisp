@@ -36,6 +36,13 @@
 		(transition qvm (current-instruction qvm)))
         :finally (return qvm)))
 
+(defmethod run :after ((qvm base-qvm))
+  ;; Swap STATE-ELEMENTS pointers if necessary after a
+  ;; computation. This is only relevant for a QVM with a PURE-STATE
+  ;; state.
+  (when (requires-swapping-amps-p (state qvm))
+    (swap-internal-amplitude-pointers (state qvm))))
+
 (defun run-program (num-qubits program)
   "Run the program PROGRAM on a QVM of NUM-QUBITS qubits."
   (check-type num-qubits unsigned-byte)

@@ -33,10 +33,10 @@
   (let* ((state (qvm::make-pure-state 2))
          (h (qvm::pull-teeth-to-get-a-gate (quil::build-gate "H" () 0)))
          (cnot (qvm::pull-teeth-to-get-a-gate  (quil::build-gate "CNOT" () 0 1))))
-    (qvm::apply-gate-state h state (list 0))
-    (qvm::apply-gate-state cnot state (list 0 1))
-    (is (= #C(0.7071067811865475d0 0.0d0) (aref (qvm::state-elements state) 0)))
-    (is (= #C(0.7071067811865475d0 0.0d0) (aref (qvm::state-elements state) 3)))))
+    (qvm::apply-gate-state h state '(0))
+    (qvm::apply-gate-state cnot state '(0 1))
+    (is (cflonum= (/ (sqrt 2) 2) (aref (qvm::state-elements state) 0)))
+    (is (cflonum= (/ (sqrt 2) 2) (aref (qvm::state-elements state) 3)))))
 
 (deftest test-density-matrix-state-apply-gate ()
   ;; produce the bell state with quantum gates and check that the
@@ -44,13 +44,13 @@
   (let* ((state (qvm::make-density-matrix-state 2))
          (h (qvm::pull-teeth-to-get-a-gate (quil::build-gate "H" () 0)))
          (cnot (qvm::pull-teeth-to-get-a-gate  (quil::build-gate "CNOT" () 0 1)))
-         (expected-amplitude-entry #C(0.4999999999999999d0 0.0d0)))
-    (qvm::apply-gate-state h state (list 0))
-    (qvm::apply-gate-state cnot state (list 0 1))
-    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 0)))
-    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 3)))
-    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 12)))
-    (is (= expected-amplitude-entry (aref (qvm::state-elements state) 15)))))
+         (expected-amplitude-entry .5))
+    (qvm::apply-gate-state h state '(0))
+    (qvm::apply-gate-state cnot state '(0 1))
+    (is (cflonum= expected-amplitude-entry (aref (qvm::state-elements state) 0)))
+    (is (cflonum= expected-amplitude-entry (aref (qvm::state-elements state) 3)))
+    (is (cflonum= expected-amplitude-entry (aref (qvm::state-elements state) 12)))
+    (is (cflonum= expected-amplitude-entry (aref (qvm::state-elements state) 15)))))
 
 (deftest test-qvm-with-superoperator ()
   ;; Replace the I 0 instruction with a depolarizing
@@ -149,14 +149,14 @@
 
 (deftest test-mixed-state-qvm-parametric-gate ()
   "Density qvm can apply parametric gates."
-    (let* ((qvm (qvm::make-mixed-state-qvm 1)))
-      (load-program qvm (with-output-to-quil
-                          "DEFGATE G(%a):"
-                          "    cos(%a), sin(%a)"
-                          "    -sin(%a), cos(%a)"
-                          "G(0.0) 0"))
-      (run qvm)
-      (is (double-float= 1 (realpart (aref (qvm::matrix-view (qvm::state qvm)) 0 0)) 1/10000))))
+  (let* ((qvm (qvm::make-mixed-state-qvm 1)))
+    (load-program qvm (with-output-to-quil
+                        "DEFGATE G(%a):"
+                        "    cos(%a), sin(%a)"
+                        "    -sin(%a), cos(%a)"
+                        "G(0.0) 0"))
+    (run qvm)
+    (is (double-float= 1 (realpart (aref (qvm::matrix-view (qvm::state qvm)) 0 0)) 1/10000))))
 
 (deftest test-mixed-state-qvm-force-measurement-1q ()
   "Measurement on 1q density matrix qvm behaves as expected."
@@ -240,28 +240,10 @@
   ;; which of |0> or |1> the state had collapsed into. If we discard
   ;; that outcome (in some sense) then we should find ourselves in the
   ;; mixed state |ψ> = 1/2 (|0><0| + |1><1|)
-  (let ((p (quil:parse-quil "H 0
-MEASURE 0"))
+  (let ((p (quil:parse-quil "H 0; MEASURE 0"))
         (qvm (qvm::make-mixed-state-qvm 1)))
     (load-program qvm p)
     (run qvm)
     (let ((mat (qvm::matrix-view (qvm::state qvm))))
       (is (double-float= (realpart (aref mat 1 1)) 0.5))
       (is (double-float= (realpart (aref mat 0 0)) 0.5)))))
-
-(deftest mixed-state-qvm-1q-measure-discard ()
-  "Test that measure discard behaves as expected."
-  ;; We prepare the pure state (1/sqrt(2))(|0> - |1>). If we were to
-  ;; measure and record the outcome, we would know with certainty
-  ;; which of |0> or |1> the state had collapsed into. If we discard
-  ;; that outcome (in some sense) then we should find ourselves in the
-  ;; mixed state |ψ> = 1/2 (|0><0| + |1><1|)
-  (let ((p (quil:parse-quil "H 0
-MEASURE 0"))
-        (qvm (qvm::make-mixed-state-qvm 1)))
-    (load-program qvm p)
-    (run qvm)
-    (let ((mat (qvm::matrix-view (qvm::state qvm))))
-      (is (double-float= (realpart (aref mat 1 1)) 0.5))
-      (is (double-float= (realpart (aref mat 0 0)) 0.5)))))
-
