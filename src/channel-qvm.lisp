@@ -55,7 +55,13 @@
   (when (or (not (slot-boundp qvm 'state))
             (null (slot-value qvm 'state)))
     (%set-state (make-pure-state (number-of-qubits qvm))
-                qvm)))
+                qvm))
+  ;; The the NOISE-MODEL is not empty, allocate space for
+  ;; TRIAL-AMPLITUDES in a PURE-STATE state. (This method is not
+  ;; defined for a DMS)
+  (when (or (noise-rules (noise-model qvm))
+            (plusp (hash-table-count (superoperator-definitions qvm))))
+    (check-allocate-computation-space (state qvm))))
 
 (defmethod transition :before ((qvm channel-qvm) (instr quil:gate-application))
   ;; Before applying the current instruction INSTR, check if any

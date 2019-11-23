@@ -85,6 +85,7 @@
   ;; compile the QVM program before running it.
   (when qvm:*compile-before-running*
     (warn "SUPEROPERATOR operations will not work with compiled programs!"))
+  (check-allocate-computation-space (state qvm))
   (check-kraus-ops kraus-ops)
   (setf (gethash (list gate-name qubits) (superoperator-definitions qvm))
         (kraus-list (mapcar #'ensure-superoperator kraus-ops))))
@@ -129,7 +130,11 @@
        ;; touched.
        (%set-state (make-instance 'pure-state :num-qubits (number-of-qubits qvm))
                    qvm)
-       (bring-to-zero-state (amplitudes qvm))))))
+       (bring-to-zero-state (amplitudes qvm))))
+    ;; If there are SUPEROPERATOR-DEFINITIONS, allocate the
+    ;; %TRIAL-AMPLITUDES of the STATE
+    (when (plusp (hash-table-count (superoperator-definitions qvm)))
+      (check-allocate-computation-space (state qvm)))))
 
 (defun make-qvm (num-qubits &key (classical-memory-model quil:**empty-memory-model**)
                                  (allocation nil))

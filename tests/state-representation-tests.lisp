@@ -4,7 +4,7 @@
   (let* ((num-qubits (+ 1 (random 8)))
         (ps (qvm::make-pure-state num-qubits)))
     (is (= (length (qvm::state-elements ps)) (expt 2 num-qubits)))
-    (is (= (length (qvm::%trial-amplitudes ps)) (expt 2 num-qubits))))
+    (is (not (qvm::%trial-amplitudes ps))))
   (signals error
     (qvm::make-pure-state 1.5)))
 

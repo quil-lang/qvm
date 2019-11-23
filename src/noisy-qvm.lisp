@@ -25,6 +25,13 @@ j given actual state k. Note that we model purely classical readout
 error, i.e., the post measurement qubit state is always k, but the
 recorded outcome j may be different.")))
 
+(defmethod initialize-instance :after ((qvm noisy-qvm) &rest args)
+  ;; If any noisy gates are defined on the QVM, allocate trial
+  ;; amplitudes for the state evolution computations.
+  (declare (ignore args))
+  (when (plusp (hash-table-count (noisy-gate-definitions qvm)))
+      (check-allocate-computation-space (state qvm))))
+
 (defmethod amplitudes ((qvm noisy-qvm))
   (amplitudes (state qvm)))
 
@@ -80,6 +87,7 @@ MAGICL matrices '(K1 K2 ... Kn)."))
 
 (defmethod set-noisy-gate ((qvm noisy-qvm) gate-name qubits kraus-ops)
   (check-kraus-ops kraus-ops)
+  (check-allocate-computation-space (state qvm))
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm)) kraus-ops)
   nil)
 

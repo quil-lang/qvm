@@ -97,7 +97,15 @@
   (when (or (not (slot-boundp qvm 'state))
             (null (slot-value qvm 'state)))
     (%set-state (make-pure-state (number-of-qubits qvm))
-                qvm)))
+                qvm))
+  ;; If any noise values are defined in the QVM, allocate
+  ;; TRIAL-AMPLITUDES for the PURE-STATE state.
+  (when (or (plusp (hash-table-count (t1-vals qvm)))
+            (plusp (hash-table-count (t2-vals qvm)))
+            (plusp (hash-table-count (tphi-vals qvm)))
+            (plusp (hash-table-count (depolarization-ops qvm)))
+            (plusp (hash-table-count (superoperator-definitions qvm))))
+    (check-allocate-computation-space (state qvm))))
 
 (defun %check-depol-entry (qubit kraus-map)
   "Check that a key value pair in the DEPOLARIZATION-OPS slot is valid. The QUBIT must be a non-negative integer, and the KRAUS-MAP must be a valid kraus map. "
@@ -117,21 +125,25 @@
 (defun (setf qubit-t1) (t1 qvm qubit)
   "Evaluate that T1 is valid, and save it for the specified QUBIT in the QVM."
   (check-type t1 valid-noise-value)
+  (check-allocate-computation-space(state qvm))
   (setf (gethash qubit (t1-vals qvm)) t1))
 
 (defun (setf qubit-t2) (t2 qvm qubit)
   "Evaluate that T2 is valid and save it for the specified QUBIT in the QVM."
   (check-type t2 valid-noise-value)
+  (check-allocate-computation-space (state qvm))
   (setf (gethash qubit (t2-vals qvm)) t2))
 
 (defun (setf qubit-tphi) (tphi qvm qubit)
   "Evaluate that TPHI is valid and save it for the specified QUBIT in the QVM."
   (check-type tphi valid-noise-value)  
+  (check-allocate-computation-space (state qvm))
   (setf (gethash qubit (tphi-vals qvm)) tphi))
 
 (defun (setf qubit-depolarization) (depolarization-probability qvm qubit)
   "Save the DEPOLARIZATION-PROBABILITY for QUBIT. The depolarizing channel represents the average gate over-rotation/under-rotation noise. It is specified by DEPOLARIZATION-PROBABILITY, which is the probability of overrotation/underrotation for the given QUBIT."
   (check-type depolarization-probability probability)
+  (check-allocate-computation-space (state qvm))
   (let ((kraus-ops (depolarizing-kraus-map depolarization-probability)))
     (check-kraus-ops kraus-ops)
     (setf (gethash qubit (depolarization-ops qvm)) kraus-ops)))

@@ -62,6 +62,10 @@
    (original-amplitudes
     :reader original-amplitudes
     :documentation  "A reference to the original pointer of amplitude memory, so the amplitudes can sit in the right place at the end of a computation."))
+  (:default-initargs
+   :amplitudes nil
+   :trial-amplitudes nil
+   :original-amplitudes nil)
   (:documentation "A PURE-STATE contains the quantum mechanical state for a system that can be described by a vector |ψ> of N qubits with unit length in a Hilbert space. The elements of this length 2^N vector is represented by AMPLITUDES."))
 
 (defun make-pure-state (num-qubits &key (allocation nil))
@@ -111,10 +115,19 @@
       ;; Initialize the AMPLITUDES and TRIAL-AMPLITUDES to an empty
       ;; array of the correct size.
       (amplitudes state) (make-lisp-cflonum-vector (expt 2 num-qubits)))))
-  (setf
-     (%trial-amplitudes state) (make-lisp-cflonum-vector (expt 2 num-qubits))
-      ;; Save a pointer to the originally provided memory.
-      (slot-value state 'original-amplitudes) (amplitudes state)))
+  ;; Save a pointer to the originally provided memory.
+  (setf (slot-value state 'original-amplitudes) (amplitudes state)))
+
+(defmethod check-allocate-computation-space ((state pure-state))
+  ;; Allocate the TRIAL-AMPLITUDES of the PURE-STATE, if not already
+  ;; allocated. This is necessary for any non-unitary operation on the
+  ;; pure state, as in with superoperators or noise via kraus
+  ;; operators. 
+  
+  ;; XXX: Should we be using the state's ALLOCATION here?
+  ;; I am confused abt this
+  (when (not (%trial-amplitudes state))
+    (setf (%trial-amplitudes state) (make-lisp-cflonum-vector (expt 2 (num-qubits state))))))
 
 (defmethod (setf state-elements) (new-value (state pure-state))
   ;; Set the AMPLITUDES of the PURE-STATE
@@ -162,9 +175,12 @@
     :documentation "2D array displaced to ELEMENTS-VECTOR")
    (temporary-state
     :initarg :temporary-state
-    :initform nil
     :accessor temporary-state
     :documentation "A placeholder for computations on the elements-vector of a DENSITY-MATRIX-STATE."))
+  (:default-initargs
+   :elements-vector nil
+   :matrix-view nil
+   :temporary-state nil)
   (:documentation "A DENSITY-MATRIX-STATE is a general quantum state of N qubits described by a density matrix ρ, representing a statistical mixture of PURE-STATEs. The elements of ρ are represented by the length 2^(2*N) vector ELEMENTS-VECTOR, with MATRIX-VIEW being the 2D 'traditional' matrix representation of ρ."))
 
 (defmethod initialize-instance :after ((state density-matrix-state) &key num-qubits &allow-other-keys)
@@ -267,9 +283,15 @@
           :finally (return probabilities))))
 
 (defmethod requires-swapping-amps-p ((state density-matrix-state))
-  ;; Skip for density-matrix-state
+  ;; Skip for DENSITY-MATRIX-STATE
   (declare (ignore state))
   nil)
 
+(defmethod check-allocate-computation-space ((state density-matrix-state))
+  ;; Skip for DENSITY-MATRIX-STATE: extra computational space gets
+  ;; allocated during %APPLY-SUPEROPERATOR, as it is needed for every
+  ;; computation.
+  (declare (ignore state))
+  nil)
 
 
