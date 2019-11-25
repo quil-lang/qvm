@@ -86,11 +86,11 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
       ;; Conditionally do an X.
       (when (= 1 measured-bit)
         (apply-gate-state (load-time-value
-                     (quil:gate-definition-to-gate
-                      (quil:lookup-standard-gate "X"))
-                     t)
-                    (state measured-qvm)
-                    (list q)))
+                           (quil:gate-definition-to-gate
+                            (quil:lookup-standard-gate "X"))
+                           t)
+                          (state measured-qvm)
+                          (list q)))
       (setf (pc qvm) (1+ (pc measured-qvm)))
       qvm)))
 

@@ -116,11 +116,11 @@
     (make-noise-predicate disjunction priority noise-position new-name)))
 
 (defmethod predicate-not (noise-predicate)
- "Logical NOT of a NOISE-PREDICATE. The PRIORITY of the predicate is 'inverted', by taking the difference between itself and +MAXPRIORITY+."
+  "Logical NOT of a NOISE-PREDICATE. The PRIORITY of the predicate is 'inverted', by taking the difference between itself and +MAXPRIORITY+."
   (make-noise-predicate (complement (predicate-function noise-predicate))
-                   (- +maxpriority+ (priority noise-predicate))
-                   (noise-position noise-predicate)
-                   (not-predicate-name (name noise-predicate))))
+                        (- +maxpriority+ (priority noise-predicate))
+                        (noise-position noise-predicate)
+                        (not-predicate-name (name noise-predicate))))
 
 (defun and-predicate-names (name1 name2)
   "Returns the concatenated predicate name (NAME1 & NAME2)"

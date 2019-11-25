@@ -54,48 +54,48 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
     ;; where vec(·) is row-major vectorization. The quantity vec(ρ) is
     ;; the VEC-DENSITY argument.
     (adt:match superoperator sop 
-      ((single-kraus U)
-       ;; (U ⊗ U'ᵀ) = (U ⊗ U*), where * is entrywise conjugate.
-       (let ((U* (conjugate-entrywise U))
-             (pure-state (make-pure-state (* 2 (num-qubits state)))))
-         (setf (amplitudes pure-state) vec-density)
-         (apply #'apply-gate-state U* pure-state qubits params)
-         (apply #'apply-gate-state U  pure-state ghost-qubits params)
-         (values (amplitudes pure-state) (temporary-state state))))
-      ((kraus-list list)
-       (cond
-         ;; Empty. Just treat as identity.
-         ((endp list)
-          (values vec-density (temporary-state state)))
-         ;; Degenerate case of just 1 superoperator.
-         ((endp (rest list))
-          (%evolve-density-matrix-with-superoperator (first list) state qubits ghost-qubits
-                               :params params))
-         ;; General (and super expensive) case.
-         (t
-          ;; XXX FIXME: We could eliminate one copy if our APPLY-GATE
-          ;; function could understand a source and destination array.
-          (let ((pristine (copy-seq vec-density))
-                (sum (fill (or (temporary-state state) 
-                               (copy-seq vec-density)) 
-                           (cflonum 0))))
-            (dolist (sub-sop list)
-              ;; Apply the operator.
-              (%evolve-density-matrix-with-superoperator sub-sop state qubits ghost-qubits :params params)
-              ;; Increment our running sum.
-              (map-into sum #'+ sum vec-density)
-              ;; Reset vec-density to a pristine state.
-              ;;
-              ;; XXX FIXME: Note that on the last loop, this is
-              ;; wasteful!
-              (replace vec-density pristine))
-            ;; Replace our vec-density with our computed map.
-            (replace vec-density sum)
-            ;; Let pristine be wild and free for the GC to catch.
-            (setf pristine nil)
-            ;; Return our purchase, including temporary storage we've
-            ;; allocated.
-            (values vec-density sum))))))))
+               ((single-kraus U)
+                ;; (U ⊗ U'ᵀ) = (U ⊗ U*), where * is entrywise conjugate.
+                (let ((U* (conjugate-entrywise U))
+                      (pure-state (make-pure-state (* 2 (num-qubits state)))))
+                  (setf (amplitudes pure-state) vec-density)
+                  (apply #'apply-gate-state U* pure-state qubits params)
+                  (apply #'apply-gate-state U  pure-state ghost-qubits params)
+                  (values (amplitudes pure-state) (temporary-state state))))
+               ((kraus-list list)
+                (cond
+                  ;; Empty. Just treat as identity.
+                  ((endp list)
+                   (values vec-density (temporary-state state)))
+                  ;; Degenerate case of just 1 superoperator.
+                  ((endp (rest list))
+                   (%evolve-density-matrix-with-superoperator (first list) state qubits ghost-qubits
+                                                              :params params))
+                  ;; General (and super expensive) case.
+                  (t
+                   ;; XXX FIXME: We could eliminate one copy if our APPLY-GATE
+                   ;; function could understand a source and destination array.
+                   (let ((pristine (copy-seq vec-density))
+                         (sum (fill (or (temporary-state state) 
+                                        (copy-seq vec-density)) 
+                                    (cflonum 0))))
+                     (dolist (sub-sop list)
+                       ;; Apply the operator.
+                       (%evolve-density-matrix-with-superoperator sub-sop state qubits ghost-qubits :params params)
+                       ;; Increment our running sum.
+                       (map-into sum #'+ sum vec-density)
+                       ;; Reset vec-density to a pristine state.
+                       ;;
+                       ;; XXX FIXME: Note that on the last loop, this is
+                       ;; wasteful!
+                       (replace vec-density pristine))
+                     ;; Replace our vec-density with our computed map.
+                     (replace vec-density sum)
+                     ;; Let pristine be wild and free for the GC to catch.
+                     (setf pristine nil)
+                     ;; Return our purchase, including temporary storage we've
+                     ;; allocated.
+                     (values vec-density sum))))))))
 
 (defun convert-to-kraus-list (kraus-ops)
   "Converts a list of magicl matrices KRAUS-OPS to a SUPEROPERATOR KRAUS-LIST, which is a list of SINGLE-KRAUS."
@@ -180,7 +180,7 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
                ((single-kraus kraus-operator)
                 (prog1 (apply-gate-state kraus-operator state qubits)  
                   (normalize-wavefunction (state-elements state))))))
-     
+  
   (:method ((gate superoperator) (state density-matrix-state) qubits &rest parameters)
     ;; Apply a superoperator GATE to a DENSITY-MATRIX-STATE STATE
     (let ((ghosts (mapcar (alexandria:curry #'+ (num-qubits state)) qubits)))
@@ -197,4 +197,3 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
     ;; into a SINGLE-KRAUS SUPEROPERATOR and then applying the
     ;; SUPEROPERATOR.
     (apply #'apply-gate-state (single-kraus gate) state qubits parameters)))
-
