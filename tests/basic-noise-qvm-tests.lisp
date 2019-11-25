@@ -174,9 +174,9 @@
          (qubit 0)
          (depolarization-prob .5d0)
          (numshots 100)
-         (density-matrix-state (qvm::make-density-matrix-state num-qubits))
+         (dms (qvm::make-density-matrix-state num-qubits))
          (dms-basic-noise-qvm (make-instance 'basic-noise-qvm :number-of-qubits num-qubits
-                                                              :state density-matrix-state
+                                                              :state dms
                                                               :avg-gate-time 1))
          (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
     (setf (qvm::qubit-depolarization dms-basic-noise-qvm qubit) depolarization-prob)
