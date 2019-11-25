@@ -41,6 +41,11 @@
 (defgeneric swap-internal-amplitude-pointers (state)
   (:documentation "Only relevant for PURE-STATE -- swap AMPLITUDES with TRIAL-AMPLITUDES."))
 
+;; This is the state protocol that returns the number of qubits
+;; represented by the state.
+(defgeneric num-qubits (state)
+  (:documentation "Return the number of qubits represented by the STATE."))
+
 (defclass quantum-system-state ()
   ((allocation
     :reader allocation

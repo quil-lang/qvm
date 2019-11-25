@@ -183,9 +183,9 @@
   (let* ((noise-model (qvm-tests::make-test-noise-model))
          (num-qubits 2)
          (numshots 100)
-         (density-matrix-state (qvm::make-density-matrix-state num-qubits))
+         (dms (qvm::make-density-matrix-state num-qubits))
          (dms-channel-qvm (make-instance 'channel-qvm :number-of-qubits num-qubits
-                                                      :state density-matrix-state
+                                                      :state dms
                                                       :noise-model noise-model))
          (program "DECLARE R0 BIT; X 0; MEASURE 0 R0"))
     (let ((ones-measured (qvm-tests::run-n-shot-program numshots dms-channel-qvm program)))

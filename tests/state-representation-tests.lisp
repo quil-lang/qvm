@@ -81,12 +81,12 @@
   ;; BASIC-NOISE-QVM.  
   ;; CHANNEL-QVM:
   (let* ((num-qubits 2)
-         (pure-state (qvm::make-pure-state num-qubits))
-         (density-matrix-state (qvm::make-density-matrix-state num-qubits))
+         (ps (qvm::make-pure-state num-qubits))
+         (dms (qvm::make-density-matrix-state num-qubits))
          (ps-channel-qvm (make-instance 'channel-qvm :number-of-qubits num-qubits
-                                                     :state pure-state))
+                                                     :state ps))
          (dms-channel-qvm (make-instance 'channel-qvm :number-of-qubits num-qubits
-                                                      :state density-matrix-state))
+                                                      :state dms))
          (program "DECLARE R0 BIT; I 0; MEASURE 0 R0")
          (numshots 100))
     (qvm::set-superoperator ps-channel-qvm "I" '(0) (qvm::depolarizing-kraus-map .5))
@@ -105,13 +105,13 @@
   
   ;; BASIC-NOISE-QVM
   (let* ((num-qubits 2)
-         (pure-state (qvm::make-pure-state num-qubits))
-         (density-matrix-state (qvm::make-density-matrix-state num-qubits))
+         (ps (qvm::make-pure-state num-qubits))
+         (dms (qvm::make-density-matrix-state num-qubits))
          (ps-basic-noise-qvm (make-instance 'basic-noise-qvm :number-of-qubits num-qubits
-                                                             :state pure-state
+                                                             :state ps
                                                              :avg-gate-time 1))
          (dms-basic-noise-qvm (make-instance 'basic-noise-qvm :number-of-qubits num-qubits
-                                                              :state density-matrix-state
+                                                              :state dms
                                                               :avg-gate-time 1))
          (program "DECLARE R0 BIT; I 0; MEASURE 0 R0")
          (numshots 100))

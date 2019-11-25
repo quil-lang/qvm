@@ -109,6 +109,16 @@
   (:export
    #:warm-apply-matrix-operator-cache   ; FUNCTION
    )
+  
+  ;; state-representation.lisp
+  (:export
+   #:pure-state                         ; CLASS
+   #:density-matrix-state               ; CLASS
+   #:state-elements                     ; GENERIC, METHOD 
+   #:set-to-zero-state                  ; GENERIC, METHOD
+   #:make-pure-state                    ; FUNCTION
+   #:make-density-matrix-state          ; FUNCTION
+   )
 
   ;; qvm.lisp
   (:export
