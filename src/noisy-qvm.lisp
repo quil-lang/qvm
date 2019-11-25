@@ -30,7 +30,7 @@ recorded outcome j may be different.")))
   ;; amplitudes for the state evolution computations.
   (declare (ignore args))
   (when (plusp (hash-table-count (noisy-gate-definitions qvm)))
-      (check-allocate-computation-space (state qvm))))
+    (check-allocate-computation-space (state qvm))))
 
 (defmethod amplitudes ((qvm noisy-qvm))
   (amplitudes (state qvm)))
@@ -136,8 +136,8 @@ POVM must be a 4-element list of double-floats."))
   ;; Readout noise only happens to the resulting classical bit (i.e.,
   ;; it's classical noise). As such, discarding that bit doesn't
   ;; warrant any sort of special treatment.
-    (declare (ignore qvm instr))
-    nil)
+  (declare (ignore qvm instr))
+  nil)
 
 (defmethod apply-classical-readout-noise ((qvm noisy-qvm) (instr quil:measure))
   ;; We do have a readout bit, and we want to corrupt it.
@@ -146,7 +146,7 @@ POVM must be a 4-element list of double-floats."))
 (defmethod apply-classical-readout-noise ((qvm noisy-qvm) (instr compiled-measurement))
   ;; For compiled measurements, refer to the source of that
   ;; instruction.
-    (apply-classical-readout-noise qvm (source-instruction instr)))
+  (apply-classical-readout-noise qvm (source-instruction instr)))
 
 (defmethod measure-all ((qvm noisy-qvm))
   (declare (ignore qvm))

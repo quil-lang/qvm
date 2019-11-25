@@ -58,7 +58,7 @@
             (null (slot-value qvm 'state)))
     (%set-state (make-instance 'density-matrix-state :num-qubits (number-of-qubits qvm))
                 qvm)
-      (set-to-zero-state (state qvm))))
+    (set-to-zero-state (state qvm))))
 
 
 (defun make-density-qvm (num-qubits &key (allocation nil) &allow-other-keys)

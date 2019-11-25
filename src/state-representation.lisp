@@ -119,15 +119,15 @@
   (setf (slot-value state 'original-amplitudes) (amplitudes state)))
 
 (defmethod check-allocate-computation-space ((state pure-state))
-  ;; Allocate the TRIAL-AMPLITUDES of the PURE-STATE, if not already
-  ;; allocated. This is necessary for any non-unitary operation on the
-  ;; pure state, as in with superoperators or noise via kraus
-  ;; operators. 
+  ;; Create a vector for the TRIAL-AMPLITUDES of the PURE-STATE, if
+  ;; not already created. This is only created if necessary for
+  ;; non-unitary operation on the pure state, as in with
+  ;; superoperators or noise via kraus operators.
   
   ;; XXX: Should we be using the state's ALLOCATION here?
-  ;; I am confused abt this
   (when (not (%trial-amplitudes state))
-    (setf (%trial-amplitudes state) (make-lisp-cflonum-vector (expt 2 (num-qubits state))))))
+    (setf (%trial-amplitudes state) 
+          (make-lisp-cflonum-vector (expt 2 (num-qubits state))))))
 
 (defmethod (setf state-elements) (new-value (state pure-state))
   ;; Set the AMPLITUDES of the PURE-STATE
@@ -190,10 +190,10 @@
     ((and (slot-boundp state 'elements-vector)
           (not (null (slot-value state 'elements-vector))))
      (assert (<= num-qubits (wavefunction-qubits (elements-vector state)))
-        ()
-        state
-        (wavefunction-qubits (elements-vector state))
-        num-qubits))
+             ()
+             state
+             (wavefunction-qubits (elements-vector state))
+             num-qubits))
     (t
      (setf
       ;; Initialize the ELEMENTS-VECTOR to an empty array of the
@@ -204,7 +204,7 @@
           (make-array (list dim dim)
                       :element-type 'cflonum
                       :displaced-to (elements-vector state)))))
-  
+
 (defmethod state-elements ((state density-matrix-state))
   ;; extracts the ELEMENTS-VECTOR of the PURE-STATE.
   (elements-vector state))
@@ -257,8 +257,8 @@
       (setf (aref matrix-entries 0) (cflonum 1)) 
       (let ((state (make-instance 'density-matrix-state
                                   :num-qubits num-qubits
-                                :elements-vector matrix-entries
-                                :allocation allocation)))
+                                  :elements-vector matrix-entries
+                                  :allocation allocation)))
         (tg:finalize state finalizer)
         state))))
 
@@ -293,5 +293,3 @@
   ;; computation.
   (declare (ignore state))
   nil)
-
-
