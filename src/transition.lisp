@@ -85,12 +85,12 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
         (measure qvm q)
       ;; Conditionally do an X.
       (when (= 1 measured-bit)
-        (apply-gate-state (load-time-value
-                           (quil:gate-definition-to-gate
-                            (quil:lookup-standard-gate "X"))
-                           t)
-                          (state measured-qvm)
-                          (list q)))
+        (apply-gate-to-state (load-time-value
+                              (quil:gate-definition-to-gate
+                               (quil:lookup-standard-gate "X"))
+                              t)
+                             (state measured-qvm)
+                             (list q)))
       (setf (pc qvm) (1+ (pc measured-qvm)))
       qvm)))
 
@@ -182,13 +182,13 @@ the specified QVM."
                :because (format nil "I attempted to apply the ~D-qubit gate to ~D qubit~:P"
                                 expected-qubits
                                 given-qubits))))
-    (apply #'apply-gate-state operator (state qvm) qubits params)
+    (apply #'apply-gate-to-state operator (state qvm) qubits params)
     (incf (pc qvm))
     qvm))
 
 (defmethod transition ((qvm pure-state-qvm) (instr compiled-gate-application))
   ;; The instruction itself is a gate.
-  (apply-gate-state instr (state qvm) nil)
+  (apply-gate-to-state instr (state qvm) nil)
   (incf (pc qvm))
   qvm)
 

@@ -132,7 +132,7 @@
           (params (mapcar (lambda (p) (force-parameter p qvm))
                           (quil:application-parameters instr)))
           (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
-    (apply #'apply-gate-state gate (state qvm) qubits params)
+    (apply #'apply-gate-to-state gate (state qvm) qubits params)
     (incf (pc qvm))
     qvm))
 

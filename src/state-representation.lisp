@@ -129,7 +129,8 @@
   ;; non-unitary operation on the pure state, as in with
   ;; superoperators or noise via kraus operators.
   
-  ;; XXX: Should we be using the state's ALLOCATION here?
+  ;; XXX: Right now, temporary space is allocated as a Lisp vector. We
+  ;; might want to allow this default to be configured.
   (when (not (%trial-amplitudes state))
     (setf (%trial-amplitudes state) 
           (make-lisp-cflonum-vector (expt 2 (num-qubits state))))))
@@ -175,7 +176,6 @@
     :initarg :elements-vector
     :documentation "The contents of a density matrix ρ as a one-dimensional vector. For a state of N qubits, this vector should be of length 2^(2*N).") 
    (matrix-view
-    :initarg :matrix-view
     :reader matrix-view
     :documentation "2D array displaced to ELEMENTS-VECTOR")
    (temporary-state
@@ -184,9 +184,8 @@
     :documentation "A placeholder for computations on the elements-vector of a DENSITY-MATRIX-STATE."))
   (:default-initargs
    :elements-vector nil
-   :matrix-view nil
    :temporary-state nil)
-  (:documentation "A DENSITY-MATRIX-STATE is a general quantum state of N qubits described by a density matrix ρ, representing a statistical mixture of PURE-STATEs. The elements of ρ are represented by the length 2^(2*N) vector ELEMENTS-VECTOR, with MATRIX-VIEW being the 2D 'traditional' matrix representation of ρ."))
+  (:documentation "A DENSITY-MATRIX-STATE is a general quantum state of N qubits described by a density matrix ρ, representing a statistical mixture of PURE-STATEs. The elements of ρ are represented by the length 2^(2*N) vector ELEMENTS-VECTOR which is in row-major order. MATRIX-VIEW is the 2D 'traditional' matrix representation of ρ."))
 
 (defmethod initialize-instance :after ((state density-matrix-state) &key num-qubits &allow-other-keys)
   ;; Ensure that MATRIX-VIEW is displaced to the ELEMENTS-VECTOR
@@ -211,7 +210,6 @@
                       :displaced-to (elements-vector state)))))
 
 (defmethod state-elements ((state density-matrix-state))
-  ;; extracts the ELEMENTS-VECTOR of the PURE-STATE.
   (elements-vector state))
 
 (defmethod (setf state-elements) (new-value (state density-matrix-state))

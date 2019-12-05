@@ -2,7 +2,7 @@
 
 (deftest test-make-pure-state ()
   (let* ((num-qubits (+ 1 (random 8)))
-        (ps (qvm::make-pure-state num-qubits)))
+         (ps (qvm::make-pure-state num-qubits)))
     (is (= (length (qvm::state-elements ps)) (expt 2 num-qubits)))
     (is (not (qvm::%trial-amplitudes ps))))
   (signals error
@@ -33,8 +33,8 @@
   (let* ((state (qvm::make-pure-state 2))
          (h (qvm::pull-teeth-to-get-a-gate (quil::build-gate "H" () 0)))
          (cnot (qvm::pull-teeth-to-get-a-gate  (quil::build-gate "CNOT" () 0 1))))
-    (qvm::apply-gate-state h state '(0))
-    (qvm::apply-gate-state cnot state '(0 1))
+    (qvm::apply-gate-to-state h state '(0))
+    (qvm::apply-gate-to-state cnot state '(0 1))
     (is (cflonum= (/ (sqrt 2) 2) (aref (qvm::state-elements state) 0)))
     (is (cflonum= (/ (sqrt 2) 2) (aref (qvm::state-elements state) 3)))))
 
@@ -45,8 +45,8 @@
          (h (qvm::pull-teeth-to-get-a-gate (quil::build-gate "H" () 0)))
          (cnot (qvm::pull-teeth-to-get-a-gate  (quil::build-gate "CNOT" () 0 1)))
          (expected-amplitude-entry .5))
-    (qvm::apply-gate-state h state '(0))
-    (qvm::apply-gate-state cnot state '(0 1))
+    (qvm::apply-gate-to-state h state '(0))
+    (qvm::apply-gate-to-state cnot state '(0 1))
     (is (cflonum= expected-amplitude-entry (aref (qvm::state-elements state) 0)))
     (is (cflonum= expected-amplitude-entry (aref (qvm::state-elements state) 3)))
     (is (cflonum= expected-amplitude-entry (aref (qvm::state-elements state) 12)))
@@ -128,7 +128,7 @@
                                  program)))
       (is (< ones-measured-on-pure-state numshots))
       (is (< ones-measured-on-dms numshots)))))
-   
+
 ;; Mixed State Tests
 
 (defun density-matrix-trace (qvm)

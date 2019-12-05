@@ -58,15 +58,15 @@ It should be that PX + PY + PZ <= 1.
       (let ((r (random 1.0))
             (pure-state (state qvm)))
         (when (< r px)
-          (apply-gate-state X pure-state qubits)
+          (apply-gate-to-state X pure-state qubits)
           (return-from add-depolarizing-noise))
         (decf r px)
         (when (< r py)
-          (apply-gate-state Y pure-state qubits)
+          (apply-gate-to-state Y pure-state qubits)
           (return-from add-depolarizing-noise))
         (decf r py)
         (when (< r pz)
-          (apply-gate-state Z pure-state qubits)
+          (apply-gate-to-state Z pure-state qubits)
           (return-from add-depolarizing-noise))))))
 
 ;;; Noise gets added to only the qubits being changed.
