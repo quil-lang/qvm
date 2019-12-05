@@ -92,9 +92,9 @@
   ;; Apply each kraus map in the list KRAUS-MAPS to the state of the system, using the qubits from the current instruction INSTR.
   (let ((qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
     (dolist (kraus-map kraus-maps)
-      (apply-gate-state (convert-to-kraus-list kraus-map)
-                        (state qvm)
-                        qubits))))
+      (apply-gate-to-state (convert-to-kraus-list kraus-map)
+                           (state qvm)
+                           qubits))))
 
 (defun rule-matches-instr-p (rule instr position)
   "Check if RULE is matched by instruction data INSTR and the POSITION of the match request."

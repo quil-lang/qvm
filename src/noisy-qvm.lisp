@@ -117,7 +117,7 @@ POVM must be a 4-element list of double-floats."))
        ;; select one of several Kraus operators to apply for the
        ;; transition
        (check-type gate quil:static-gate)
-       (apply-gate-state (convert-to-kraus-list kraus-ops) (state qvm) qubits)
+       (apply-gate-to-state (convert-to-kraus-list kraus-ops) (state qvm) qubits)
        (incf (pc qvm))
        qvm)
       (t

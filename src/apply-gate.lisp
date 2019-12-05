@@ -6,7 +6,7 @@
 
 ;;; This file implements the functionality for applying operators to
 ;;; different quantum STATEs using the protocol defined by
-;;; APPLY-GATE-STATE.  If a new quantum STATE is defined, define new
+;;; APPLY-GATE-TO-STATE.  If a new quantum STATE is defined, define new
 ;;; protocol methods for that STATE type.
 
 ;;; Warm the cache at compile time.
@@ -39,13 +39,14 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
     (normalize-wavefunction (state-elements state))))
 
 
-(defmethod %evolve-density-matrix-with-superoperator (sop 
-                                                      (state density-matrix-state) 
-                                                      qubits
-                                                      ghost-qubits 
-                                                      &key params)
+(defun %evolve-density-matrix-with-superoperator (sop 
+                                                  state
+                                                  qubits
+                                                  ghost-qubits 
+                                                  &key params)
   "Apply a superoperator SOP to a vectorized density matrix given in the DENSITY-MATRIX-STATE STATE, where QUBITS and GHOST-QUBITS are tuples of qubit indices which the superoperator acts on (from the left and right respectively). The computation may require the STATE's TEMPORARY-STATE, a vector of the same length as the AMPLITUDES of the STATE. Returns the pair of updated STATE and (perhaps freshly allocated) TEMPORARY-STORAGE."
   (check-type sop superoperator)
+  (check-type state density-matrix-state)
   (let ((vec-density (state-elements state)))
     ;; We use the following law to help our calculation:
     ;;
@@ -59,8 +60,8 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
                 (let ((U* (conjugate-entrywise U))
                       (pure-state (make-pure-state (* 2 (num-qubits state)))))
                   (setf (amplitudes pure-state) vec-density)
-                  (apply #'apply-gate-state U* pure-state qubits params)
-                  (apply #'apply-gate-state U  pure-state ghost-qubits params)
+                  (apply #'apply-gate-to-state U* pure-state qubits params)
+                  (apply #'apply-gate-to-state U  pure-state ghost-qubits params)
                   (values (amplitudes pure-state) (temporary-state state))))
                ((kraus-list list)
                 (cond
@@ -102,7 +103,7 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
   (check-kraus-ops kraus-ops)
   (kraus-list (mapcar #'ensure-superoperator kraus-ops)))
 
-(defgeneric apply-gate-state (gate state qubits &rest parameters)
+(defgeneric apply-gate-to-state (gate state qubits &rest parameters)
   (:documentation "Apply a gate GATE to the state STATE on the sub-Hilbert space defined by the NAT-TUPLE of qubit indexes QUBITS. PARAMETERS is a list of numeric parameters passed to a dynamic gate.")
   
   (:method ((gate quil:simple-gate) (state pure-state) qubits &rest parameters)
@@ -178,7 +179,7 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
                                                    state
                                                    qubits))
                ((single-kraus kraus-operator)
-                (prog1 (apply-gate-state kraus-operator state qubits)  
+                (prog1 (apply-gate-to-state kraus-operator state qubits)  
                   (normalize-wavefunction (state-elements state))))))
   
   (:method ((gate superoperator) (state density-matrix-state) qubits &rest parameters)
@@ -190,10 +191,11 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
                                                      ghosts
                                                      :params parameters)
         (declare (ignore new-density))
-        (setf (temporary-state state) temp-storage))))
+        (setf (temporary-state state) temp-storage)))
+    state)
   
   (:method ((gate quil:gate) (state density-matrix-state) qubits &rest parameters)
     ;; Apply a GATE to a DENSITY-MATRIX-STATE by converting the GATE
     ;; into a SINGLE-KRAUS SUPEROPERATOR and then applying the
     ;; SUPEROPERATOR.
-    (apply #'apply-gate-state (single-kraus gate) state qubits parameters)))
+    (apply #'apply-gate-to-state (single-kraus gate) state qubits parameters)))

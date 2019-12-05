@@ -164,9 +164,9 @@
           :do (let ((simplified-kraus-ops (reduce #'kraus-kron noise-operators))
                     (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
                 (when simplified-kraus-ops
-                  (apply-gate-state (convert-to-kraus-list simplified-kraus-ops)
-                                    (state qvm)
-                                    qubits)))))
+                  (apply-gate-to-state (convert-to-kraus-list simplified-kraus-ops)
+                                       (state qvm)
+                                       qubits)))))
 
 (defmethod run :before ((qvm basic-noise-qvm))
   ;; Before running a new program on the BASIC-NOISE-QVM, reset the
@@ -196,8 +196,7 @@
          (depol-ops (loop :for q :in qubits 
                           :collect (gethash q (depolarization-ops qvm)))))
     (apply-all-kraus-maps qvm instr (list damping-ops dephasing-ops depol-ops))
-    (setf (elapsed-time qvm) curr-time)
-    qvm))
+    (setf (elapsed-time qvm) curr-time)))
 
 (defmethod transition :around ((qvm basic-noise-qvm) (instr quil:measurement))
   (let ((ret-qvm (call-next-method)))
