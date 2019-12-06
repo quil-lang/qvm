@@ -74,11 +74,6 @@
   (bring-to-zero-state (amplitudes qvm))
   qvm)
 
-(defun full-density-number-of-qubits (vec-density)
-  "Computes the number of qubits encoded by a vectorized density matrix."
-  (1- (integer-length (isqrt (length vec-density)))))
-
-
 
 ;;; Superoperators
 
@@ -104,25 +99,6 @@
   (check-povm povm)
   (setf (gethash qubit (readout-povms qvm)) povm)
   nil)
-
-(defgeneric conjugate-entrywise (gate)
-  (:documentation "Construct a new gate from GATE with corresponding matrix entries conjugated.")
-  (:method ((gate quil:simple-gate))
-    (make-instance 'quil:simple-gate
-                   :name (concatenate 'string (quil:gate-name gate) "*")
-                   :matrix (magicl:conjugate-entrywise (quil:gate-matrix gate))))
-  (:method ((gate quil:permutation-gate))
-    (make-instance 'quil:permutation-gate
-                   :name (concatenate 'string (quil:gate-name gate) "*")
-                   :permutation (quil:permutation-gate-permutation gate)))
-  (:method ((gate quil:parameterized-gate))
-    (make-instance 'quil:parameterized-gate
-                   :name (concatenate 'string (quil:gate-name gate) "*")
-                   :dimension (quil:gate-dimension gate)
-                   :matrix-function #'(lambda (&rest parameters)
-                                        (magicl:conjugate-entrywise
-                                         (apply #'quil:gate-matrix gate parameters))))))
-
 
 (defmethod transition ((qvm density-qvm) (instr quil:gate-application))
   (assert (typep (quil:application-operator instr) 'quil:named-operator) ; TODO XXX support gate modifiers
