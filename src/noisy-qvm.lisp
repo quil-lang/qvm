@@ -75,27 +75,11 @@ a noisy identity gate I' as defined in MAKE-PAULI-NOISE-MAP.
              (quil:lookup-standard-gate gate-name)))))
     (mapcar (lambda (v) (magicl:multiply-complex-matrices v u)) kraus-ops)))
 
-(defgeneric set-noisy-gate (qvm gate-name qubits kraus-ops)
-  (:documentation "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
-GATE-NAME in terms of the Kraus operator representation
-
-   rho -> sum_{j=1}^n K_j rho K_j^H.
-
-The argument KRAUS-OPS should hold the Kraus operators as list of
-MAGICL matrices '(K1 K2 ... Kn)."))
-
-
 (defmethod set-noisy-gate ((qvm noisy-qvm) gate-name qubits kraus-ops)
   (check-kraus-ops kraus-ops)
   (check-allocate-computation-space (state qvm))
   (setf (gethash (list gate-name qubits) (noisy-gate-definitions qvm)) kraus-ops)
   nil)
-
-(defgeneric set-readout-povm (qvm qubit povm)
-  (:documentation "For a QUBIT belonging to a QVM specify a POVM to encode
-possible readout errors.
-
-POVM must be a 4-element list of double-floats."))
 
 (defmethod set-readout-povm ((qvm noisy-qvm) qubit povm)
   (check-povm povm)

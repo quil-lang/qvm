@@ -89,6 +89,25 @@
 ;;; density matrix, whereas the NOISY-QVM is nondeterministic and
 ;;; tracks only a specific realization of the gate noise.
 
+;;; XXX: These generics are specialized by NOISY-QVM as well. Maybe
+;;; this should be defined as a protocol in another, separate file for
+;;; ease of reading (so that folks writing new QVMs know to implement
+;;; them).
+(defgeneric set-noisy-gate (qvm gate-name qubits kraus-ops)
+  (:documentation "Add noisy gate definition to QVM for a SIMPLE-GATE specified by
+GATE-NAME in terms of the Kraus operator representation
+
+   rho -> sum_{j=1}^n K_j rho K_j^H.
+
+The argument KRAUS-OPS should hold the Kraus operators as list of
+MAGICL matrices '(K1 K2 ... Kn)."))
+
+(defgeneric set-readout-povm (qvm qubit povm)
+  (:documentation "For a QUBIT belonging to a QVM specify a POVM to encode
+possible readout errors.
+
+POVM must be a 4-element list of double-floats."))
+
 (defmethod set-noisy-gate ((qvm density-qvm) gate-name qubits kraus-ops)
   (check-kraus-ops kraus-ops)
   ;; Wrap a matrix in a gate in a superoperator...
