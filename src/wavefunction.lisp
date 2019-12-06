@@ -399,6 +399,11 @@ If the length/norm of WAVEFUNCTION is known, it can be passed as the LENGTH para
   "Return a complex number with Gaussian-random real and imaginary parts."
   (multiple-value-bind (re im)
       (alexandria:gaussian-random)
+    ;; NOTE: This type declaration is valid only because it is
+    ;; specified by Alexandria's documentation. I could imagine
+    ;; breakage happening here if Alexandria changed, though it
+    ;; probably won't.
+    (declare (type flonum re im))
     (complex re im)))
 
 (defun randomize-wavefunction (wavefunction)
