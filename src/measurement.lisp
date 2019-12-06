@@ -295,12 +295,13 @@ updated list of measured bits."
   (let* ((cumsum (flonum 0))
          (len (length ps))
          (sampled-indices (make-array len :initial-element 0
-                                          :element-type 'amplitude-address
-                                          :fill-pointer 0)))
+                                          :element-type 'amplitude-address)))
     (declare (type flonum cumsum)
-             (type (vector amplitude-address) sampled-indices))
+             (type alexandria:array-length len)
+             (type (simple-array amplitude-address (*)) sampled-indices))
     (dotimes (idx (length wf) sampled-indices)
       (incf cumsum (probability (aref wf idx)))
-      (loop :while (and (< (length sampled-indices) len)
-                        (< (aref ps (length sampled-indices)) cumsum))
-            :do (vector-push idx sampled-indices)))))
+      (loop :with i :of-type alexandria:array-index := 0
+            :while (and (< i len) (< (aref ps i) cumsum))
+            :do (setf (aref sampled-indices i) idx)
+                (incf i)))))
