@@ -76,7 +76,7 @@
                                                                             :classical-memory-model
                                                                             classical-memory-model)
                                  :state state)))
-           (when fin (tg:finalize q fin))
+           (when fin (tg:finalize state fin))
            q)))
       (t
        (let ((gate-noise (or gate-noise '(0.0 0.0 0.0)))
@@ -96,7 +96,7 @@
                                     :measure-y (elt measurement-noise 1)
                                     :measure-z (elt measurement-noise 2)
                                     :state state)))
-             (when fin (tg:finalize q fin))
+             (when fin (tg:finalize state fin))
              q)))))))
 
 
