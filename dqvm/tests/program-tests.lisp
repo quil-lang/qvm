@@ -22,10 +22,12 @@
   "Run PARSED-PROGRAM on a PURE-STATE-QVM with qubit size NUMBER-OF-QUBITS and return the wavefunction."
   (let* ((qvm:*compile-before-running* nil)
          (number-of-amplitudes (expt 2 number-of-qubits))
+         (state (make-instance 'qvm:pure-state :num-qubits number-of-qubits
+                                               :amplitudes (or initial-wavefunction
+                                                               (make-debug-wavefunction number-of-amplitudes))))
          (qvm (make-instance 'qvm:pure-state-qvm
                              :number-of-qubits number-of-qubits
-                             :amplitudes (or initial-wavefunction
-                                             (make-debug-wavefunction number-of-amplitudes)))))
+                             :state state)))
     (qvm:load-program qvm parsed-program)
     (qvm:run qvm)
     (qvm::amplitudes qvm)))
