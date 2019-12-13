@@ -29,9 +29,6 @@
                                measurement-noise)
   (let ((gate-noise (or gate-noise (load-time-value '(0.0 0.0 0.0))))
         (measurement-noise (or measurement-noise (load-time-value '(0.0 0.0 0.0)))))
-    ;; TODO(appleby): Perhaps we should add QVM:MAKE-DEPOLARIZING-QVM similar to QVM:MAKE-QVM and
-    ;; QVM:MAKE-DENSITY-QVM. Along the way, it would be good to homogenize the interfaces and also
-    ;; add QVM:MAKE-NOISY-QVM for completeness.
     (make-instance 'qvm:depolarizing-qvm
                    :number-of-qubits num-qubits
                    :state (qvm::make-pure-state num-qubits
