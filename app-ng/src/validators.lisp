@@ -9,30 +9,24 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
   (lambda (parameter)
     (and parameter (funcall parameter-parser parameter))))
 
-(defun parse-qvm-token (qvm-token)
+(defun %parse-uuid-token (token token-type-name)
   ;; Ensure it's a STRING before attempting to canonicalize the case. Otherwise, we'll get a
   ;; not-so-helpful error message.
-  (unless (typep qvm-token 'string)
-    (rpc-parameter-parse-error "Invalid persistent QVM token. Expected a v4 UUID string. Got ~S"
-                               qvm-token))
+  (unless (typep token 'string)
+    (rpc-parameter-parse-error "Invalid ~A token. Expected a v4 UUID string. Got ~S"
+                               token-type-name token))
 
-  (let ((canonicalized-token (canonicalize-persistent-qvm-token qvm-token)))
-    (unless (valid-persistent-qvm-token-p canonicalized-token)
-      (rpc-parameter-parse-error "Invalid persistent QVM token. Expected a v4 UUID. Got ~S"
-                                 qvm-token))
+  (let ((canonicalized-token (canonicalize-uuid-string token)))
+    (unless (valid-uuid-string-p canonicalized-token)
+      (rpc-parameter-parse-error "Invalid ~A token. Expected a v4 UUID. Got ~S"
+                                 token-type-name token))
     canonicalized-token))
+
+(defun parse-qvm-token (qvm-token)
+  (%parse-uuid-token qvm-token "persistent QVM"))
 
 (defun parse-job-token (job-token)
-  ;; TODO(appleby): unify PARSE-JOB-TOKEN and PARSE-QVM-TOKEN.
-  ;; Ensure it's a STRING before attempting to canonicalize the case. Otherwise, we'll get a
-  ;; not-so-helpful error message.
-  (unless (typep job-token 'string)
-    (rpc-parameter-parse-error "Invalid JOB token. Expected a v4 UUID string. Got ~S" job-token))
-
-  (let ((canonicalized-token (canonicalize-uuid-string job-token)))
-    (unless (valid-uuid-string-p canonicalized-token)
-      (rpc-parameter-parse-error "Invalid JOB token. Expected a v4 UUID. Got ~S" job-token))
-    canonicalized-token))
+  (%parse-uuid-token job-token "JOB"))
 
 (defun %parse-string-to-known-symbol (parameter-name parameter-string known-symbols
                                       &optional (package 'qvm-app-ng))
