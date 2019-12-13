@@ -142,19 +142,9 @@ BODY is executed with the persistent QVM's lock held, and an error is signaled i
     (%checked-transition-to-state-locked pqvm 'dying))
   (safety-hash:remhash token **persistent-qvms**))
 
-(defun canonicalize-persistent-qvm-token (token)
-  "Canonicalize the TOKEN string into the case expected by VALID-PERSISTENT-QVM-TOKEN-P."
-  (canonicalize-uuid-string token))
-
 (defun make-persistent-qvm-token ()
   "Return a new persistent QVM token."
   (make-uuid-string))
-
-(defun valid-persistent-qvm-token-p (token)
-  "True if TOKEN is a valid string representation of a v4 UUID.
-
-Note that this function requires that any hexadecimal digits in TOKEN are lowercased."
-  (valid-uuid-string-p token))
 
 (defun allocate-persistent-qvm (qvm allocation-method)
   "Allocate a new PERSISTENT-QVM.
