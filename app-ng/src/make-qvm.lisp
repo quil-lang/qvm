@@ -32,20 +32,18 @@
     ;; TODO(appleby): Perhaps we should add QVM:MAKE-DEPOLARIZING-QVM similar to QVM:MAKE-QVM and
     ;; QVM:MAKE-DENSITY-QVM. Along the way, it would be good to homogenize the interfaces and also
     ;; add QVM:MAKE-NOISY-QVM for completeness.
-    (multiple-value-bind (amplitudes finalizer)
-        (qvm:allocate-vector (make-requested-allocation-descriptor allocation-method
-                                                                   (expt 2 num-qubits)))
-      (qvm::bring-to-zero-state amplitudes)
-      (tg:finalize (make-instance 'qvm:depolarizing-qvm
-                                  :number-of-qubits num-qubits
-                                  :amplitudes amplitudes
-                                  :x (first gate-noise)
-                                  :y (second gate-noise)
-                                  :z (third gate-noise)
-                                  :measure-x (first measurement-noise)
-                                  :measure-y (second measurement-noise)
-                                  :measure-z (third measurement-noise))
-                   finalizer))))
+    (make-instance 'qvm:depolarizing-qvm
+                   :number-of-qubits num-qubits
+                   :state (qvm::make-pure-state num-qubits
+                                                :allocation (make-requested-allocation-descriptor
+                                                             allocation-method
+                                                             (expt 2 num-qubits)))
+                   :x (first gate-noise)
+                   :y (second gate-noise)
+                   :z (third gate-noise)
+                   :measure-x (first measurement-noise)
+                   :measure-y (second measurement-noise)
+                   :measure-z (third measurement-noise))))
 
 (defmethod make-requested-qvm ((simulation-method (eql 'full-density-matrix))
                                allocation-method
