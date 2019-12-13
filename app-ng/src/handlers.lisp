@@ -325,9 +325,6 @@ It is an error to attempt to nest \"create-job\" requests by specifying \"create
 JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call.
 
 Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created JOB's unique ID token."
-  ;; TODO(appleby): should we attempt to LOOKUP-RPC-HANDLER-FOR-REQUEST here as a sanity check and
-  ;; early warning? Seems like an edge-case that's not worth special-casing.
-
   ;; TODO(appleby): should we whitelist rather than blacklist "asyncable" methods? Currently, we
   ;; allow creating a job for any RPC call other than create-job. Probably the only really useful
   ;; calls to run async are ones that perform computation (currently only run-program), although
