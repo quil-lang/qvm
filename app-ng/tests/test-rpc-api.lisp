@@ -361,7 +361,7 @@ Ensure that the job is deleted afterwards."
                                    :simulation-method "pure-state"
                                    :compiled-quil "(defgate FOO (:as :permutation) #(0 2 3 1))"
                                    :addresses +empty-hash-table+)
-                   :status 500)
+                   :status 400)
 
     ;; NB: the :ADDRESSES parameter is complicated enough that it gets a separate test in
     ;; TEST-RPC-API-RUN-PROGRAM-ADDRESSES.
