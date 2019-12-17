@@ -46,7 +46,7 @@ Signal an error if no handler is found."
 
   (defun make-parsed-binding (parameter-spec)
     (destructuring-bind (var parse-function) parameter-spec
-      `(,var (funcall (alexandria:ensure-function ,parse-function) ,var))))
+      `(,var (call-with-rewrapped-simple-errors 'rpc-parameter-parse-error ,parse-function ,var))))
 
   (defun valid-rpc-handler-lambda-list-p (lambda-list)
     (every (lambda (parameter-spec)

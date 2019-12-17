@@ -13,13 +13,13 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
   ;; Ensure it's a STRING before attempting to canonicalize the case. Otherwise, we'll get a
   ;; not-so-helpful error message.
   (unless (typep token 'string)
-    (rpc-parameter-parse-error "Invalid ~A token. Expected a v4 UUID string. Got ~S"
-                               token-type-name token))
+    (user-input-error "Invalid ~A token. Expected a v4 UUID string. Got ~S"
+                      token-type-name token))
 
   (let ((canonicalized-token (canonicalize-uuid-string token)))
     (unless (valid-uuid-string-p canonicalized-token)
-      (rpc-parameter-parse-error "Invalid ~A token. Expected a v4 UUID. Got ~S"
-                                 token-type-name token))
+      (user-input-error "Invalid ~A token. Expected a v4 UUID. Got ~S"
+                        token-type-name token))
     canonicalized-token))
 
 (defun parse-qvm-token (qvm-token)
@@ -31,10 +31,10 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
 (defun %parse-string-to-known-symbol (parameter-name parameter-string known-symbols
                                       &optional (package 'qvm-app-ng))
   (flet ((%error ()
-           (rpc-parameter-parse-error "Invalid ~A. Expected one of: ~{~S~^, ~}. Got ~S"
-                                      parameter-name
-                                      (mapcar #'string-downcase known-symbols)
-                                      parameter-string)))
+           (user-input-error "Invalid ~A. Expected one of: ~{~S~^, ~}. Got ~S"
+                             parameter-name
+                             (mapcar #'string-downcase known-symbols)
+                             parameter-string)))
     (unless (typep parameter-string 'string)
       (%error))
     (let ((symbol (find-symbol (string-upcase parameter-string) package)))
@@ -46,10 +46,6 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
   (%parse-string-to-known-symbol 'simulation-method simulation-method +available-simulation-methods+))
 
 (defun parse-log-level (log-level)
-  ;; TODO(appleby): This is only called when parsing command-line args, but returns an
-  ;; RPC-PARAMETER-PARSE-ERROR on failure. As more command line options are added, these PARSE-*
-  ;; functions should be converted to return a generic PARAMETER-ERROR, which DEFINE-RPC-HANDLER
-  ;; arranges to convert to an RPC-PARAMETER-PARSE-ERROR.
   (%parse-string-to-known-symbol 'log-level log-level +available-log-levels+ 'keyword))
 
 (defun parse-allocation-method (allocation-method)
@@ -57,8 +53,8 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
 
 (defun parse-num-qubits (num-qubits)
   (unless (typep num-qubits `(integer 0))
-    (rpc-parameter-parse-error "Invalid NUM-QUBITS. Expected a non-negative integer. Got ~S"
-                               num-qubits))
+    (user-input-error "Invalid NUM-QUBITS. Expected a non-negative integer. Got ~S"
+                      num-qubits))
   num-qubits)
 
 (defun valid-address-query-p (addresses)
@@ -95,7 +91,7 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
 
 (defun parse-addresses (addresses)
   (unless (valid-address-query-p addresses)
-    (rpc-parameter-parse-error
+    (user-input-error
      "Invalid ADDRESSES parameter. The requested addresses should be a JSON object whose keys are ~
       DECLAREd memory names, and whose values are either the true value to request all memory, or ~
       a list of non-negative integer indexes to request some memory."))
@@ -103,13 +99,13 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
 
 (defun parse-memory-contents (memory-contents)
   (unless (valid-memory-contents-query-p memory-contents)
-    (rpc-parameter-parse-error "Invalid MEMORY-CONTENTS."))
+    (user-input-error "Invalid MEMORY-CONTENTS."))
   memory-contents)
 
 (defun parse-quil-string (string)
   "Safely parse a Quil string STRING."
   (flet ((no-includes (path)
-           (rpc-parameter-parse-error
+           (user-input-error
             "Invalid Quil string. INCLUDE is disabled. Refusing to include ~A" path)))
     (let ((quil:*resolve-include-pathname* #'no-includes)
           (quil::*allow-unresolved-applications* t))
@@ -119,14 +115,14 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
   (unless (and (alexandria:proper-list-p noise)
                (= 3 (length noise))
                (every #'floatp noise))
-    (rpc-parameter-parse-error "Invalid Pauli noise. Expected a LIST of three FLOATs. Got ~S" noise))
+    (user-input-error "Invalid Pauli noise. Expected a LIST of three FLOATs. Got ~S" noise))
   noise)
 
 (defun parse-sub-request (sub-request)
   (unless (hash-table-p sub-request)
-    (rpc-bad-request-error "Invalid create-job SUB-REQUEST: not a valid JSON object: ~A" sub-request))
+    (user-input-error "Invalid create-job SUB-REQUEST: not a valid JSON object: ~A" sub-request))
   (when (member (gethash "type" sub-request) '("create-job" "run-program-async") :test #'string=)
-    (rpc-bad-request-error "Invalid create-job SUB-REQUEST type field: ~S."
-                           (with-output-to-string (*standard-output*)
-                             (yason:encode sub-request))))
+    (user-input-error "Invalid create-job SUB-REQUEST type field: ~S."
+                      (with-output-to-string (*standard-output*)
+                        (yason:encode sub-request))))
   sub-request)
