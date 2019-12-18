@@ -286,23 +286,6 @@ Return a JSON-RESPONSE that contains a HASH-TABLE of the contents of the memory 
                            compiled-quil
                            addresses))))
 
-(define-rpc-handler (handle-run-program/async "run-program-async")
-                    ((qvm-token #'parse-qvm-token)
-                     (compiled-quil #'parse-quil-string))
-  "Run COMPILED-QUIL asynchronously on the persistent QVM given by QVM-TOKEN.
-
-QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
-
-COMPILED-QUIL is a STRING containing a valid Quil program.
-
-Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the newly-created async JOB's unique ID token."
-  (make-json-response
-   (alexandria:plist-hash-table
-    (list "token" (run-jobbo (lambda ()
-                               (run-program-on-persistent-qvm qvm-token compiled-quil))))
-    :test #'equal)
-   :status +http-accepted+))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; ASYNC JOB HANDLERS ;;;;;;;;;;;;;;;;;;;;;;;;;
 

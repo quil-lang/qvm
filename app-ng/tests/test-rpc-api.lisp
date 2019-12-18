@@ -552,16 +552,24 @@ Ensure that the job is deleted afterwards."
                                       :response-re +rpc-response-token-scanner+)))
            (job-token (extract-and-validate-token
                        (check-request (simple-request url
-                                                      :type "run-program-async"
-                                                      :qvm-token qvm-token
-                                                      :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro")
+                                                      :type "create-job"
+                                                      :sub-request
+                                                      (plist->hash-table
+                                                       `(:type "run-program"
+                                                         :qvm-token ,qvm-token
+                                                         :compiled-quil "DECLARE ro BIT; DECLARE alpha REAL; MOVE alpha 0.0; WAIT; RX(alpha) 0; MEASURE 0 ro"
+                                                         :addresses ,+all-ro-addresses+)))
                                       :status 202))))
 
-      (check-request (simple-request url :type "qvm-info" :qvm-token qvm-token)
-                     :response-callback (response-json-fields-checker '(("state" "WAITING"))))
+      ;; Wait for the persistent qvm to enter the READY state
+      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
+            :until (string= state "WAITING")
+            :finally (is (string= state "WAITING")))
 
-      (check-request (simple-request url :type "job-info" :job-token job-token)
-                     :response-callback (response-json-fields-checker '(("status" "RUNNING"))))
+      ;; the associated JOB should now be RUNNING
+      (loop :repeat 10 :for state = (request-job-status url job-token)
+            :until (string= state "RUNNING")
+            :finally (is (string= state "RUNNING")))
 
       ;; run-program on a persistent qvm in a non-READY state is disallowed
       (check-request (simple-request url
@@ -600,6 +608,10 @@ Ensure that the job is deleted afterwards."
                                      :type "read-memory"
                                      :qvm-token qvm-token
                                      :addresses +all-ro-addresses+)
+                     :response-callback (response-json-fields-checker '(("ro" ((1))))))
+
+      ;; job-result returns the same data as read-memory
+      (check-request (simple-request url :type "job-result" :job-token job-token)
                      :response-callback (response-json-fields-checker '(("ro" ((1))))))
 
       ;; cleanup
@@ -673,6 +685,10 @@ Ensure that the job is deleted afterwards."
                                   :type "read-memory"
                                   :qvm-token qvm-token
                                   :addresses +all-ro-addresses+)
+                     :response-callback (response-json-fields-checker '(("ro" ((1))))))
+
+      ;; job-result returns the same data as read-memory
+      (check-request (job-request url :type "job-result" :job-token job-token)
                      :response-callback (response-json-fields-checker '(("ro" ((1))))))
 
       ;; cleanup
@@ -1162,14 +1178,6 @@ Ensure that the job is deleted afterwards."
                                                      `(:type "create-job"
                                                        :sub-request ,(plist->hash-table
                                                                       '(:type "version")))))
-                   :status 400)
-
-    ;; run-program-async: check that attempting run-program-async returns 400 Bad Request
-    (check-request (simple-request url :type "create-job"
-                                       :sub-request (plist->hash-table
-                                                     '(:type "run-program-async"
-                                                       :qvm-token "irrelevant"
-                                                       :compiled-quil "irrelevant")))
                    :status 400)
 
     ;; qvm-info: check that errors are propagated for invalid requests
