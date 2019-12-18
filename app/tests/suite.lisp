@@ -75,7 +75,7 @@ I 2")
   "Test that we handle out-of-bounds measurements correctly, even with relabelings."
   ;; Version #1
   (multiple-value-bind (p relabeling) (qvm-app::process-quil
-                                       (qvm-app::safely-parse-quil-string "X 0"))
+                                       (quil:safely-parse-quil "X 0"))
     ;; Case 1.A. We have a relabeling, and the thing appropriately
     ;; handles it.
     (let ((answer (mute
@@ -89,7 +89,7 @@ I 2")
       (mute
         (qvm-app::perform-multishot-measure 'qvm-app::pure-state p 1 '(0 1) 10 nil))))
   ;; Version #2
-  (let* ((p (qvm-app::safely-parse-quil-string "X 0"))
+  (let* ((p (quil:safely-parse-quil "X 0"))
          (q (qvm:make-qvm (quil::qubits-needed p))))
     (qvm:load-program q p)
     (qvm:run q)
@@ -97,7 +97,7 @@ I 2")
 
 (deftest test-multishot-measure-disjoint-measurement-qubits ()
   (dolist (simulation-method '(qvm-app::pure-state  qvm-app::full-density-matrix))
-    (let ((quil (qvm-app::safely-parse-quil-string "X 0")))
+    (let ((quil (quil:safely-parse-quil "X 0")))
       (let ((answer (mute
                       ;; measure qubits 1 and 2 which have not been
                       ;; affected by program
@@ -110,7 +110,7 @@ I 2")
 
 (deftest test-multishot-simulation-methods ()
   (dolist (simulation-method '(qvm-app::pure-state qvm-app::full-density-matrix))
-    (let ((quil (qvm-app::safely-parse-quil-string
+    (let ((quil (quil:safely-parse-quil
                  "DECLARE ro BIT[1]
 X 0
 MEASURE 0 ro[0]"))
@@ -127,8 +127,8 @@ MEASURE 0 ro[0]"))
 
 (deftest test-expectation-hadamard-plus ()
   (dolist (simulation-method '(qvm-app::pure-state qvm-app::full-density-matrix))
-    (let ((state-prep (qvm-app::safely-parse-quil-string "H 0")) ; we are in the |+> state
-          (ops (mapcar #'qvm-app::safely-parse-quil-string
+    (let ((state-prep (quil:safely-parse-quil "H 0")) ; we are in the |+> state
+          (ops (mapcar #'quil:safely-parse-quil
                        (list "X 0"
                              "Y 0"
                              "Z 0"))))
@@ -140,9 +140,9 @@ MEASURE 0 ro[0]"))
 
 (deftest test-expectation-hadamard-minus ()
   (dolist (simulation-method '(qvm-app::pure-state qvm-app::full-density-matrix))
-    (let ((state-prep (qvm-app::safely-parse-quil-string "X 0
+    (let ((state-prep (quil:safely-parse-quil "X 0
 H 0")) ; we are in the |-> state
-          (ops (mapcar #'qvm-app::safely-parse-quil-string
+          (ops (mapcar #'quil:safely-parse-quil
                        (list "X 0"
                              "Y 0"
                              "Z 0"))))
@@ -155,8 +155,8 @@ H 0")) ; we are in the |-> state
 
 (deftest test-expectation-mixed-op ()
   (dolist (simulation-method '(qvm-app::pure-state qvm-app::full-density-matrix))
-    (let ((state-prep (qvm-app::safely-parse-quil-string "H 0"))
-          (ops (list (qvm-app::safely-parse-quil-string "X 0
+    (let ((state-prep (quil:safely-parse-quil "H 0"))
+          (ops (list (quil:safely-parse-quil "X 0
 Y 1"))))
       (let ((answer (mute
                       ;; we run on 5 qubits, just to make sure matrices are forced
