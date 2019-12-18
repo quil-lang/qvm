@@ -300,7 +300,7 @@ SUB-REQUEST is a valid json object that indicates what RPC request should be run
      \"allocation-method\": \"native\",
      \"num-qubits\": 10,
      \"compiled-quil\": \"X 0\",
-     \"addresses\": {\"ro\": t}
+     \"addresses\": {\"ro\": true}
     }
 
 It is an error to attempt to nest \"create-job\" requests by specifying \"create-job\" as the \"type\" field of SUB-REQUEST.
