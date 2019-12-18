@@ -32,11 +32,11 @@
   (safety-hash:hash-table-count **persistent-qvms**))
 
 (alexandria:define-constant +valid-pqvm-state-transitions+
-    '((ready    running           dying)
-      (running  ready    waiting  dying)
-      (waiting  resuming          dying)
-      (resuming running           dying)
-      (dying                      dying))
+    '((ready    . (running           dying))
+      (running  . (ready    waiting  dying))
+      (waiting  . (resuming          dying))
+      (resuming . (running           dying))
+      (dying    . (                  dying)))
   :test #'equal
   :documentation "An alist of valid state transitions for a PERSISTENT-QVM. The alist is keyed on the current state. The value for each key is list of states that can be transitioned to from the corresponding current state.")
 
