@@ -121,7 +121,7 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
 (defun parse-sub-request (sub-request)
   (unless (hash-table-p sub-request)
     (user-input-error "Invalid create-job SUB-REQUEST: not a valid JSON object: ~A" sub-request))
-  (when (member (gethash "type" sub-request) '("create-job" "run-program-async") :test #'string=)
+  (when (string= "create-job" (gethash "type" sub-request))
     (user-input-error "Invalid create-job SUB-REQUEST type field: ~S."
                       (with-output-to-string (*standard-output*)
                         (yason:encode sub-request))))
