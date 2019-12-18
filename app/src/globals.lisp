@@ -8,7 +8,6 @@
 (defvar *qubit-limit* nil)              ; Maximum no. of qubits.
 (defvar *num-workers* nil)
 (defvar *time-limit* nil)
-(defvar *safe-include-directory* nil)
 (defvar *app* nil)
 (defvar *debug* nil)
 

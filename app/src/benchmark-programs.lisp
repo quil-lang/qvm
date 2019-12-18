@@ -5,7 +5,7 @@
 (in-package #:qvm-app)
 
 (defun bell-program (n)
-  (safely-parse-quil-string
+  (quil:safely-parse-quil
    (with-output-to-string (*standard-output*)
      (format t "DECLARE ro BIT[~D]~%" n)
      (format t "H 0~%")
@@ -73,7 +73,7 @@
     (qft-circuit (loop :for i :below n :collect i))))
 
 (defun hadamard-program (n)
-  (safely-parse-quil-string
+  (quil:safely-parse-quil
    (with-output-to-string (*standard-output*)
      (dotimes (i n)
        (format t "H ~D~%" i)))))
@@ -82,7 +82,7 @@
   "Create a loop that has NUM-LOOPS iterations and NUM-NOPS NOP instructions per iteration."
   (check-type num-loops unsigned-byte)
   (check-type num-nops unsigned-byte)
-  (safely-parse-quil-string
+  (quil:safely-parse-quil
    (with-output-to-string (*standard-output*)
      (write-line "DECLARE counter INTEGER")
      (write-line "DECLARE done BIT")
@@ -107,7 +107,7 @@
 
 We are assuming the CNOTs are dense on an even number of qubits."
   (assert (plusp rx-layers))
-  (safely-parse-quil-string
+  (quil:safely-parse-quil
    (with-output-to-string (*standard-output*)
      ;; Initial RX layer.
      (loop :for q :below n :do
@@ -127,7 +127,7 @@ We are assuming the CNOTs are dense on an even number of qubits."
 
 (defun interleaved-measurements-program (n)
   (assert (>= n 2))
-  (safely-parse-quil-string
+  (quil:safely-parse-quil
    (with-output-to-string (*standard-output*)
      (dotimes (q n)
        (format t "RX(~F) ~D~%" (random (* 2 pi)) q))

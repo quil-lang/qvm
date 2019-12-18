@@ -67,9 +67,10 @@ GRAPH should be a list of edges, each represented as a pair (A B) of integer ver
 
 (defun cut-weight (graph cut)
   "Given a graph GRAPH and a cut (a list of vertices), compute the cut weight."
-  (loop :for (from to) :in graph
-        :sum (logxor (ldb (byte 1 from) cut)
-                     (ldb (byte 1 to) cut))))
+  (let ((val (loop :for (from to) :in graph
+                   :sum (logxor (ldb (byte 1 from) cut)
+                                (ldb (byte 1 to) cut)))))
+    val))
 
 ;;; Test fixtures
 

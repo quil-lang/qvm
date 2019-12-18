@@ -252,44 +252,9 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
       (t                                ; equiv: (minusp im)
        (format stream "~F-~Fi" re (- im))))))
 
-(defun resolve-safely (filename)
-  (flet ((contains-up (filename)
-           (member-if (lambda (obj)
-                        (or (eql ':UP obj)
-                            (eql ':BACK obj)))
-                      (pathname-directory filename))))
-    (cond
-      ((uiop:absolute-pathname-p filename)
-       (error "Not allowed to specify absolute paths to INCLUDE."))
-
-      ((uiop:relative-pathname-p filename)
-       ;; Only files allowed.
-       (unless (uiop:file-pathname-p filename)
-         (error "INCLUDE requires a pathname to a file."))
-       (when (contains-up filename)
-         (error "INCLUDE can't refer to files above."))
-       (if (null *safe-include-directory*)
-           filename
-           (merge-pathnames filename *safe-include-directory*)))
-
-      (t
-       (error "Invalid pathname: ~S" filename)))))
-
-(defun safely-parse-quil-string (string)
-  "Safely parse a Quil string STRING."
-  (flet ((parse-it (string)
-           (let* ((quil::*allow-unresolved-applications* t)
-                  (parse-results
-                    (quil:parse-quil string)))
-             parse-results)))
-    (if (null *safe-include-directory*)
-        (parse-it string)
-        (let ((quil:*resolve-include-pathname* #'resolve-safely))
-          (parse-it string)))))
-
 (defun safely-read-quil (&optional (stream *standard-input*))
   "Safely read the Quil from the stream STREAM, defaulting to *STANDARD-INPUT*."
-  (safely-parse-quil-string (slurp-lines stream)))
+  (quil:safely-parse-quil (slurp-lines stream)))
 
 (defgeneric make-shared-wavefunction (simulation-method num-qubits name))
 
@@ -438,14 +403,13 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
   (when debug
     (setf *debug* t))
 
-  (unless (or (null *safe-include-directory*)
-              (uiop:directory-pathname-p *safe-include-directory*))
+  (unless (or (null safe-include-directory)
+              (uiop:directory-pathname-p safe-include-directory))
     (error "--safe-include-directory must point to a directory. Got ~S. Did you ~
             forget a trailing slash?"
-           *safe-include-directory*))
+           safe-include-directory))
 
-  (setf *safe-include-directory* safe-include-directory)
-
+  (setf quil::*safe-include-directory* safe-include-directory)
 
   (cond
     ((zerop num-workers)

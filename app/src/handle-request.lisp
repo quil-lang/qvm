@@ -82,7 +82,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                 (num-trials (gethash "trials" js))
                 (isns (get-quil-instrs-field js))
                 (quil (let ((quil::*allow-unresolved-applications* t))
-                        (process-quil (safely-parse-quil-string isns))))
+                        (process-quil (quil:safely-parse-quil isns))))
                 (num-qubits (cl-quil:qubits-needed quil))
                 (results (perform-multishot *simulation-method* quil num-qubits addresses num-trials
                                             :gate-noise gate-noise
@@ -99,7 +99,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
                 (qubits (gethash "qubits" js))
                 (num-trials (gethash "trials" js)))
            (multiple-value-bind (quil relabeling)
-               (process-quil (safely-parse-quil-string
+               (process-quil (quil:safely-parse-quil
                               (get-quil-instrs-field js)))
              (let* ((num-qubits (cl-quil:qubits-needed quil))
                     (results (perform-multishot-measure
@@ -116,9 +116,9 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
         ((:expectation)
          (check-required-fields js "state-preparation" "operators")
          (let* ((quil:*allow-unresolved-applications* t)
-                (state-prep (safely-parse-quil-string
+                (state-prep (quil:safely-parse-quil
                              (gethash "state-preparation" js)))
-                (operators (map 'list #'safely-parse-quil-string
+                (operators (map 'list #'quil:safely-parse-quil
                                 (gethash "operators" js)))
                 (num-qubits (loop :for p :in (cons state-prep operators)
                                   :maximize (cl-quil:qubits-needed p)))
@@ -133,7 +133,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
                 (quil (let ((quil:*allow-unresolved-applications* t))
-                        (process-quil (safely-parse-quil-string isns))))
+                        (process-quil (quil:safely-parse-quil isns))))
                 (num-qubits (cl-quil:qubits-needed quil)))
            (let ((qvm (perform-wavefunction *simulation-method* quil num-qubits
                                             :gate-noise gate-noise
@@ -155,7 +155,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
                 (quil (let ((quil:*allow-unresolved-applications* t))
-                        (process-quil (safely-parse-quil-string isns))))
+                        (process-quil (quil:safely-parse-quil isns))))
                 (num-qubits (cl-quil:qubits-needed quil)))
            (let (send-response-time)
              (multiple-value-bind (qvm probabilities)
@@ -178,7 +178,7 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
          (check-for-quil-instrs-field js)
          (let* ((isns (get-quil-instrs-field js))
                 (quil (let ((quil:*allow-unresolved-applications* t))
-                        (process-quil (safely-parse-quil-string isns))))
+                        (process-quil (quil:safely-parse-quil isns))))
                 (num-qubits (cl-quil:qubits-needed quil)))
            (perform-run-for-effect *simulation-method* quil num-qubits
                                    :gate-noise gate-noise
