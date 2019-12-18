@@ -197,7 +197,7 @@ QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
 
 QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call."
   (delete-persistent-qvm qvm-token)
-  (make-json-response (format nil "Deleted persistent QVM ~D" qvm-token)))
+  (make-json-response (format nil "Deleted persistent QVM ~A" qvm-token)))
 
 (define-rpc-handler (handle-resume-from-wait "resume") ((qvm-token #'parse-qvm-token))
   "Resume execution of a persistent QVM that is in the WAITING state.
@@ -330,7 +330,7 @@ JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
 
 JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
   (delete-jobbo job-token)
-  (make-json-response (format nil "Deleted async JOB ~D" job-token)))
+  (make-json-response (format nil "Deleted async JOB ~A" job-token)))
 
 (define-rpc-handler (handle-job-result "job-result") ((job-token #'parse-job-token))
   "Return a JSON-RESPONSE with result of the given async JOB.
