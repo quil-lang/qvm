@@ -34,7 +34,7 @@ Signals an error if the lookup of TOKEN fails."
 
 (defun reset-jobs-db ()
   "Reset the **JOBS** database."
-  (safety-hash:clrhash **JOBS**))
+  (safety-hash:clrhash **jobs**))
 
 (defun jobbo-info (token)
   "Return a HASH-TABLE of info about the state of the JOB corresponding to TOKEN."
