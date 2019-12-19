@@ -1,6 +1,6 @@
 # This is a version of the app-ng Dockerfile that is compatible with
-# crusty old versions of docker that do not support ARG directives or
-# COPY --from. Humph.
+# crusty old versions of docker (like the one installed on big-qvm)
+# that do not support ARG directives or COPY --from. Humph.
 
 FROM rigetti/quilc:1.11.1
 FROM rigetti/lisp:2019-07-11
