@@ -80,7 +80,7 @@
 
 This function only returns a new PERSISTENT-QVM object. External callers probably want ALLOCATE-PERSISTENT-QVM, instead.
 
-QVM is any QVM type (PURE-STATE-QVM, NOISY-QVM, etc).
+QVM is an instance of any QVM type (PURE-STATE-QVM, NOISY-QVM, etc).
 
 ALLOCATION-METHOD is one of +AVAILABLE-ALLOCATION-METHODS+. This only provided so that it can be recorded in the PERSISTENT-QVM's metadata.
 
