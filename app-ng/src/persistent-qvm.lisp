@@ -174,7 +174,7 @@ TOKEN is a PERSISTENT-QVM-TOKEN."
 
 The optional ADDRESSES are passed along to RUN-PROGRAM-ON-QVM and specify which memory register contents you want back.
 
-Returns the requested memory registers or signals an error if the given PERSISTENT-QVM is not in the READY state."
+Return the requested memory registers or signal an error if the given PERSISTENT-QVM is not in the READY state."
   (with-locked-pqvm (pqvm) token
     (case (persistent-qvm-state pqvm)
       (ready
