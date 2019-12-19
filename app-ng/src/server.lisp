@@ -20,7 +20,7 @@
    :persistent-connections-p t))
 
 (defvar *rpc-acceptor* nil
-  "*RPC-ACCEPTOR* holds a reference to the RPC-ACCEPTOR instance created by last invocation of START-SERVER.")
+  "*RPC-ACCEPTOR* holds a reference to the RPC-ACCEPTOR instance created by the last invocation of START-SERVER.")
 
 (defun start-server-mode (&key (host +default-server-address+) (port +default-server-port+))
   "Start the HTTP server on the indicated HOST and PORT. Does not return."
