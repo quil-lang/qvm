@@ -3,11 +3,11 @@
 ;;;; author: appleby
 (in-package #:qvm-app-ng)
 
-(defvar *rpc-handlers* '()
-  "An alist of (rpc-method-name . handler-function) conses defined by DEFINE-RPC-HANDLER.")
+(defvar *rpc-handlers* (make-hash-table :test #'equal)
+  "A HASH-TABLE mapping an RPC method name (a STRING) to a SYMBOL that names a handler function defined by DEFINE-RPC-HANDLER.")
 
 (defun lookup-rpc-handler-for-request (request-params)
-  (cdr (assoc (gethash "type" request-params) *rpc-handlers* :test #'string=)))
+  (gethash (gethash "type" request-params) *rpc-handlers*))
 
 (defun dispatch-rpc-handlers (request)
   "Called by TBNL:ACCEPTOR-DISPATCH-REQUEST to determine if any of the handlers in *RPC-HANDLERS* should handle the given REQUEST."
@@ -35,11 +35,18 @@ Signal an error if no handler is found."
 ;;;;;;;;;;;;;;;;;;;;;;;;; DEFINE-RPC-HANDLER ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun remove-existing-rpc-handlers (rpc-method name)
-    (remove-if (lambda (handler-spec)
-                 (or (eq name (cdr handler-spec))
-                     (string= rpc-method (car handler-spec))))
-               *rpc-handlers*))
+  (defun remove-existing-rpc-handlers (rpc-method handler-name &optional (handler-table *rpc-handlers*))
+    "Remove any entries matching RPC-METHOD and/or HANDLER-NAME from HANDLER-TABLE."
+    (maphash (lambda (key value)
+               (when (or (eq handler-name value)
+                         (string= rpc-method key))
+                 (remhash key handler-table)))
+             handler-table))
+
+  (defun register-rpc-handler (rpc-method handler-name &optional (handler-table *rpc-handlers*))
+    ;; This removes entries from the table if *either* rpc-method or handler-name matches.
+    (remove-existing-rpc-handlers rpc-method handler-name handler-table)
+    (setf (gethash rpc-method handler-table) handler-name))
 
   (defun make-json-parameter (var)
     `(,var (and (boundp '*request-json*) (json-parameter ,(string-downcase (symbol-name var))))))
@@ -92,17 +99,16 @@ Alternatively, the handler function can be called from lisp like so
   (assert (valid-rpc-handler-lambda-list-p lambda-list))
   (multiple-value-bind (body-forms declarations docstring)
       (alexandria:parse-body body :documentation t)
-   `(progn
-      (setf *rpc-handlers* (acons ,rpc-method ',handler-name
-                                  (remove-existing-rpc-handlers ,rpc-method ',handler-name)))
-      (defun ,handler-name (&key ,@(mapcar (alexandria:compose #'make-json-parameter #'first)
-                                           lambda-list))
-        ,@(when docstring (list docstring))
-        (let (,@(mapcar #'make-parsed-binding lambda-list))
-          ,@(when declarations declarations)
-          (qvm:with-random-state ((get-random-state (and (boundp '*request-json*)
-                                                         (json-parameter "rng-seed"))))
-              ,@body-forms))))))
+    `(progn
+       (register-rpc-handler ,rpc-method ',handler-name)
+       (defun ,handler-name (&key ,@(mapcar (alexandria:compose #'make-json-parameter #'first)
+                                            lambda-list))
+         ,@(when docstring (list docstring))
+         (let (,@(mapcar #'make-parsed-binding lambda-list))
+           ,@(when declarations declarations)
+           (qvm:with-random-state ((get-random-state (and (boundp '*request-json*)
+                                                          (json-parameter "rng-seed"))))
+             ,@body-forms))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; MISC HANDLERS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
