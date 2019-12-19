@@ -15,7 +15,7 @@ Slots:
 
     STATUS - an HTTP-STATUS for the response.
 
-    ENCODER - a FUNCTION of two arguments, the RESPONSE-DATA to encode and an optional stream on which to encode it. "
+    ENCODER - a FUNCTION of two arguments, the RESPONSE-DATA to encode and an optional stream on which to encode it."
   (data nil :read-only t)
   (status +http-ok+ :read-only t :type http-status)
   ;; Encoding could also be handled via generic function dispatch on the response type, but then you
