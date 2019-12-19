@@ -70,7 +70,7 @@
                       (persistent-qvm-token pqvm)))))))
 
 (defun make-persistent-qvm-metadata (allocation-method)
-  "Make a hash-table suitable a new PERSISTENT-QVM's METADATA slot."
+  "Make a hash-table suitable for use as a new PERSISTENT-QVM's METADATA slot."
   (alexandria:plist-hash-table (list "allocation-method" (symbol-name allocation-method)
                                      "created" (iso-time))
                                :test 'equal))
