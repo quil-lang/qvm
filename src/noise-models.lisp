@@ -155,7 +155,7 @@
 
 (defun make-noise-rule (predicate &rest kraus-maps)
   "Returns a noise rule with the specified PREDICATE and list KRAUS-MAPS."
-  (mapc #'check-kraus-ops kraus-maps)
+  (check-all-kraus-ops kraus-maps)
   (make-instance 'noise-rule :noise-predicate predicate
                              :operation-elements kraus-maps))
 
