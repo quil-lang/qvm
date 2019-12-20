@@ -94,9 +94,8 @@ a noisy identity gate I' as defined in MAKE-PAULI-NOISE-MAP.
           "The noisy QVM doesn't support gate modifiers.")
   (let* ((gate-name (quil::operator-description-name (quil:application-operator instr)))
          (gate (pull-teeth-to-get-a-gate instr))
-         (logical-qubits (quil:application-arguments instr))
-         (qubits (mapcar #'quil:qubit-index logical-qubits))
-         (kraus-ops (gethash (list gate-name (mapcar #'quil:qubit-index logical-qubits)) (noisy-gate-definitions qvm))))
+         (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr)))
+         (kraus-ops (gethash (list gate-name qubits) (noisy-gate-definitions qvm))))
     (cond
       (kraus-ops
        ;; Found noisy realization of current gate, need to randomly
