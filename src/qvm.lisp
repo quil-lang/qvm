@@ -43,6 +43,17 @@
 
 ;;; Fundamental Manipulation of the QVM
 
+(defun check-superoperators (superoperators)
+  "Convert each SUPEROPERATOR in SUPEROPERATORS to a matrix and call CHECK-ALL-KRAUS-OPS on the resulting list."
+  (check-all-kraus-ops (mapcar (lambda (sop)
+                                 (alexandria:ensure-list (superoperator-to-matrix sop)))
+                               superoperators)))
+
+(defmethod initialize-instance :after ((qvm base-qvm) &rest args)
+  (declare (ignore args))
+  (assert (typep (number-of-qubits qvm) 'alexandria:non-negative-fixnum))
+  (check-superoperators (alexandria:hash-table-values (superoperator-definitions qvm))))
+
 ;; Note: AMPLITUDES refers to the STATE-ELEMENTS of the STATE of the
 ;; QVM for both PURE-STATEs and DENSITY-MATRIX-STATEs. The name
 ;; AMPLITUDES is not technically correct for DMSs, but this name was

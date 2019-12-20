@@ -134,6 +134,10 @@
         ~S must be equal to the identity" 
        kraus-sum))) t)
 
+(defun check-all-kraus-ops (seq)
+  "Call CHECK-KRAUS-OPS on each element of SEQ."
+  (map nil #'check-kraus-ops seq))
+
 ;;; Measurement
 
 (defmethod measure-all-state ((state pure-state) (qvm channel-qvm))
@@ -201,6 +205,10 @@
     (check-type p11 (double-float 0.0d0 1.0d0))
     (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
     (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
+
+(defun check-all-povms (seq)
+  "Call CHECK-POVM on each element of SEQ."
+  (map nil #'check-povm seq))
 
 ;;; Don't compile things for the CHANNEL-QVM.
 (defmethod compile-loaded-program ((qvm channel-qvm))
