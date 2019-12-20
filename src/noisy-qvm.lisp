@@ -29,6 +29,8 @@ recorded outcome j may be different.")))
   ;; If any noisy gates are defined on the QVM, allocate trial
   ;; amplitudes for the state evolution computations.
   (declare (ignore args))
+  (check-all-kraus-ops (alexandria:hash-table-values (noisy-gate-definitions qvm)))
+  (check-all-povms (alexandria:hash-table-values (readout-povms qvm)))
   (when (plusp (hash-table-count (noisy-gate-definitions qvm)))
     (check-allocate-computation-space (state qvm))))
 

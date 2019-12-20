@@ -51,6 +51,8 @@
 
 (defmethod initialize-instance :after ((qvm density-qvm) &rest args)
   (declare (ignore args))
+  (check-superoperators (alexandria:hash-table-values (noisy-gate-definitions qvm)))
+  (check-all-povms (alexandria:hash-table-values (readout-povms qvm)))
   ;; PURE-STATE-QVM does its own allocation, which we don't want, so
   ;; here we make sure that the AMPLITUDES slot has a vector of the
   ;; right size (e.g. it was constructed by MAKE-DENSITY-QVM).
