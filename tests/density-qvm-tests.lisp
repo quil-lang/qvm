@@ -153,3 +153,16 @@ MEASURE 0"))
     (let ((mat (qvm::matrix-view (qvm::state qvm))))
       (is (double-float= (realpart (aref mat 1 1)) 0.5))
       (is (double-float= (realpart (aref mat 0 0)) 0.5)))))
+
+(deftest test-density-qvm-noisy-x-gate ()
+  "Test a noisy X gate with bit flip probability px = 1.0 on the DENSITY-QVM."
+  (let ((p (with-output-to-quil
+             "DECLARE ro BIT"
+             "X 0"
+             "MEASURE 0 ro"))
+        (qvm (make-instance 'qvm:density-qvm :classical-memory-subsystem nil
+                                             :number-of-qubits 2)))
+    (set-noisy-gate qvm "X" '(0) (qvm::make-pauli-perturbed-1q-gate "X" 1.0 0.0 0.0))
+    (qvm:load-program qvm p :supersede-memory-subsystem t)
+    (run qvm)
+    (is (= 0 (memory-ref qvm "ro" 0)))))
