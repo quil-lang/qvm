@@ -183,6 +183,38 @@ Ensure that the job is deleted afterwards."
                      :status 400
                      :response-re "Bad Request"))))
 
+(deftest test-rpc-error-response ()
+  "Test that error responses have the expected JSON structure and content."
+  (flet ((response-error-checker (message)
+           (response-json-fields-checker
+            `(("error_type" "qvm_error")
+              ("status" ,message)))))
+    (with-rpc-server (url)
+      ;; error before handler dispatch
+      (check-request (http-request url :method ':POST :content "")
+                     :status 400
+                     :response-callback (response-error-checker "QVM RPC Error: Bad Request
+Failed to parse JSON object from request body: NIL"))
+
+      ;; error during parameter parsing
+      (check-request (simple-request url
+                                     :type "qvm-info"
+                                     ;; invalid token
+                                     :qvm-token "5e2e05f0-f91c-5f02-96ef-361ffc55a0fa")
+                     :status 400
+                     :response-callback (response-error-checker "QVM RPC Error: Bad Request
+Invalid persistent QVM token. Expected a v4 UUID. Got \"5e2e05f0-f91c-5f02-96ef-361ffc55a0fa\""))
+
+      ;; error during handler execution
+      (check-request (simple-request url
+                                     :type "qvm-info"
+                                     ;; syntactically valid but non-existent token
+                                     :qvm-token "5e2e05f0-f91c-4f02-96ef-361ffc55a0fa")
+                     :status 500
+                     :response-callback (response-error-checker "QVM RPC Error: Internal Server Error
+Failed to find persistent QVM #1=5e2e05f0-f91c-4f02-96ef-361ffc55a0fa
+Failed to find key #1# in SAFETY-HASH")))))
+
 (deftest test-rpc-api-404 ()
   "Requests for URIs other than \"/\" or for non-existent RPC methods return 404 Not Found."
   (with-rpc-server (url)
@@ -455,8 +487,7 @@ Ensure that the job is deleted afterwards."
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
                      :addresses (plist->hash-table '("ro" (0 2))))
-     :status 500
-     :response-re "qvm_error")
+     :status 500)
 
     ;; invalid negative register index
     (check-request
@@ -466,8 +497,7 @@ Ensure that the job is deleted afterwards."
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
                      :addresses (plist->hash-table '("ro" (-1))))
-     :status 400
-     :response-re "qvm_error")
+     :status 400)
 
     ;; non-existent named register
     (check-request
@@ -477,8 +507,7 @@ Ensure that the job is deleted afterwards."
                      :simulation-method "pure-state"
                      :compiled-quil "DECLARE ro BIT; I 0"
                      :addresses (plist->hash-table '("zonk" t)))
-     :status 500
-     :response-re "qvm_error")))
+     :status 500)))
 
 (deftest test-rpc-api-create-qvm ()
   "Test create-qvm for various combinations of SIMULATION-METHOD and NUM-QUBITS."
