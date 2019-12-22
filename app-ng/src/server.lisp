@@ -64,21 +64,20 @@ Returns the newly created and running RPC-ACCEPTOR, which is also saved in *RPC-
               (tbnl:session-remote-addr tbnl:*session*)
               (tbnl:session-id tbnl:*session*))))
 
-(defun encode-json (object)
-  "Encode OBJECT to a JSON string."
-  (when (boundp 'tbnl:*reply*)
-    (setf (tbnl:content-type*) "application/json; charset=utf-8"))
-  (with-output-to-string (s)
-    (yason:encode object s)))
-
-(defun error-response (message)
-  "Return a JSON string of structured error MESSAGE of type qvm_error."
-  (encode-json
-   (alexandria:plist-hash-table
-    (list "error_type" "qvm_error"
-          "status" message))))
+(defun error-response (the-error)
+  "Return a JSON string representing a qvm_error response for THE-ERROR."
+  (http-response
+   ;; The format of this JSON response is chosen to maintain backwards compatibility with the
+   ;; previous qvm-app.
+   (make-json-response (list "error_type" "qvm_error"
+                             "status" (princ-to-string the-error))
+                       :status (or (and (typep the-error 'rpc-error)
+                                        (rpc-error-http-status the-error))
+                                   +http-internal-server-error+)
+                       :encoder #'yason:encode-plist)))
 
 (defun http-response (response)
+  "Encode and return RESPONSE as a STRING and set the HTTP return code and content-type header appropriately."
   (when (boundp 'tbnl:*reply*)
     (setf (tbnl:return-code*) (response-status response))
     (setf (tbnl:content-type*) (response-content-type response)))
@@ -110,12 +109,12 @@ This function is analgous to hunchentoot's TBNL:GET-PARAMETER and and TBNL:POST-
       (let ((*request-json* (parse-json-or-lose (tbnl:raw-post-data :request request :force-text t))))
         (http-response (call-next-method)))
     (rpc-error (c)
-      (setf (tbnl:return-code*) (rpc-error-http-status c))
-      (tbnl:abort-request-handler (error-response (princ-to-string c))))))
+      (tbnl:abort-request-handler (error-response c)))))
 
 (defmethod tbnl:acceptor-status-message ((acceptor rpc-acceptor) http-status-code &key error &allow-other-keys)
   (if (eql http-status-code +http-internal-server-error+)
-      (error-response error)
+      (error-response (make-condition 'rpc-error :format-control "~A"
+                                                 :format-arguments (list error)))
       (call-next-method)))
 
 (defmethod tbnl:acceptor-log-access ((acceptor rpc-acceptor) &key return-code)
