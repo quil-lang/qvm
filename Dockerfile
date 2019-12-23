@@ -1,5 +1,5 @@
 # specify the dependency versions (can be overriden with --build_arg)
-ARG quilc_version=1.15.1
+ARG quilc_version=1.15.2
 ARG quicklisp_version=2019-11-30
 
 # use multi-stage builds to independently pull dependency versions
