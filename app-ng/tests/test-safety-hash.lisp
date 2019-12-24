@@ -116,7 +116,6 @@
       (is (member (safety-hash:gethash 0 h)
                   (alexandria:iota num-tasks))))))
 
-
 (deftest test-safety-hash-concurrent-writers-many-unique-keys ()
   (qvm:prepare-for-parallelization)
   (let ((num-tasks (max 2 (lparallel:kernel-worker-count)))
