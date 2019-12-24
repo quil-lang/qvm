@@ -58,6 +58,9 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
   num-qubits)
 
 (defun valid-address-query-p (addresses)
+  "Is ADDRESSES a valid address query HASH-TABLE?
+
+Return T if ADDRESSES is a HASH-TABLE whose keys are STRINGs denoting DECLAREd memory names and whose values are either T or else a list of non-negative integers."
   (cond
     ((not (hash-table-p addresses)) nil)
     (t
@@ -72,6 +75,9 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
      t)))
 
 (defun valid-memory-contents-query-p (memory-contents)
+  "Is MEMORY-CONTENTS a valid memory-contents query HASH-TABLE?
+
+Return T if MEMORY-CONTENTS is a HASH-TABLE whose keys are STRINGs denoting DECLAREd memory names and whose values are a LIST of LISTs of length 2 where the first element of each pair is a non-negative INTEGER and the second element is either an INTEGER or REAL."
   (cond
     ((not (hash-table-p memory-contents)) nil)
     (t
@@ -94,12 +100,18 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
     (user-input-error
      "Invalid ADDRESSES parameter. The requested addresses should be a JSON object whose keys are ~
       DECLAREd memory names, and whose values are either the true value to request all memory, or ~
-      a list of non-negative integer indexes to request some memory."))
+      a list of non-negative integer indexes to request only the memory locations corresponding ~
+      to the given indexes."))
   addresses)
 
 (defun parse-memory-contents (memory-contents)
   (unless (valid-memory-contents-query-p memory-contents)
-    (user-input-error "Invalid MEMORY-CONTENTS."))
+    (user-input-error
+     "Invalid MEMORY-CONTENTS. The requested MEMORY-CONTENTS should be a JSON object whose keys are ~
+      DECLAREd memory names and whose values are a list of pairs where the first element of each ~
+      pair is a non-negative integer index into the memory region and the second element is either ~
+      an INTEGER or REAL value that should be stored at the corresponding index of the corresponding ~
+      memory region."))
   memory-contents)
 
 (defun parse-quil-string (string)
