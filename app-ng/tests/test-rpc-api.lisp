@@ -64,11 +64,6 @@ Also calls PLIST-LOWERCASE-KEYS to STRING-DOWNCASE the PLIST keys."
     (funcall (hash-table-fields-checker fields)
              (yason:parse response-string))))
 
-(defun plist-downcase-keys (plist)
-  (assert (evenp (length plist)))
-  (loop :for (key value) :on plist :by #'cddr
-        :nconc (list (string-downcase key) value)))
-
 (defun invalidate-token (qvm-token)
   (substitute #\5 #\4 qvm-token))
 
