@@ -457,7 +457,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
                      :addresses +all-ro-addresses+)
-     :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
+     :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
 
     ;; explicit index list
     (check-request
@@ -467,7 +467,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                      :simulation-method "pure-state"
                      :compiled-quil +generic-x-0-quil-program+
                      :addresses (plist->hash-table '("ro" (0))))
-     :response-callback (response-json-fields-checker `(("ro" ((1))))))
+     :response-callback (response-json-fields-checker '(("ro" ((1))))))
 
     ;; non-consecutive indices + "non ro" named register
     (check-request
@@ -477,7 +477,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                      :simulation-method "pure-state"
                      :compiled-quil "DECLARE mem BIT[3]; X 3; MEASURE 0 mem[0]; MEASURE 3 mem[2]"
                      :addresses (plist->hash-table '("mem" (0 2))))
-     :response-callback (response-json-fields-checker `(("mem" ((0 1))))))
+     :response-callback (response-json-fields-checker '(("mem" ((0 1))))))
 
     ;; invalid register index OOB
     (check-request
@@ -1126,6 +1126,9 @@ Failed to find key #1# in SAFETY-HASH")))))
 
       ;; upper case token also accepted
       (check-request (simple-request url :type "qvm-info" :qvm-token (string-upcase token))
+
+
+
                      :response-re "PURE-STATE-QVM")
 
       ;; delete on existing token
@@ -1166,7 +1169,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                                         :qvm-token token
                                         :compiled-quil +generic-x-0-quil-program+
                                         :addresses +all-ro-addresses+)
-                        :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
+                        :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
 
          ;; I 0: qubit 0 remains in excited state
          (check-request (simple-request url
@@ -1174,7 +1177,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                                         :qvm-token token
                                         :compiled-quil "DECLARE ro BIT[2]; I 0; MEASURE 0 ro[0]"
                                         :addresses +all-ro-addresses+)
-                        :response-callback (response-json-fields-checker `(("ro" ((1 0))))))
+                        :response-callback (response-json-fields-checker '(("ro" ((1 0))))))
 
          ;; X 0: flips qubit 0 back to ground state
          (check-request (simple-request url
@@ -1182,7 +1185,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                                         :qvm-token token
                                         :compiled-quil +generic-x-0-quil-program+
                                         :addresses +all-ro-addresses+)
-                        :response-callback (response-json-fields-checker `(("ro" ((0 0))))))
+                        :response-callback (response-json-fields-checker '(("ro" ((0 0))))))
 
          ;; cleanup
          (check-request (simple-request url :type "delete-qvm" :qvm-token token)
