@@ -11,7 +11,7 @@ RIGETTI_LISP_LIBRARY_HOME=../
 SBCL_BIN=sbcl
 SBCL=$(SBCL_BIN) --dynamic-space-size $(QVM_WORKSPACE) --noinform --non-interactive --no-userinit --no-sysinit
 
-QUICKLISP_HOME=$(HOME)/quicklisp
+QUICKLISP_HOME ?= $(HOME)/quicklisp
 QUICKLISP_SETUP=$(QUICKLISP_HOME)/setup.lisp
 QUICKLISP=$(SBCL) --load $(QUICKLISP_HOME)/setup.lisp \
 	--eval '(push (truename ".") asdf:*central-registry*)' \
@@ -170,7 +170,7 @@ clean-cache:
 	@echo "Deleting $(LISP_CACHE)"
 	$(QUICKLISP) \
              --eval "(ql:register-local-projects)"
-	rm -rf $(LISP_CACHE)
+	rm -rf "$(LISP_CACHE)"
 
 clean-quicklisp:
 	@echo "Cleaning up old projects in Quicklisp"
