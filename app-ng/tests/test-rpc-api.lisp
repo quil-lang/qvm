@@ -990,7 +990,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                          :response-re "Deleted persistent QVM"))))))
 
 (deftest test-rpc-api-create-qvm-invalid-requests ()
-  "Test input validate for the create-qvm call."
+  "Test input validation for the create-qvm call."
   (with-rpc-server (url)
     ;; invalid simulation-method
     (check-request (simple-request url
