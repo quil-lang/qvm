@@ -65,6 +65,8 @@ Also calls PLIST-LOWERCASE-KEYS to STRING-DOWNCASE the PLIST keys."
              (yason:parse response-string))))
 
 (defun invalidate-token (qvm-token)
+  ;; Replacing all 4's with 5's is guaranteed to produce an invalid v4 UUID, since it will overwrite
+  ;; the version field.
   (substitute #\5 #\4 qvm-token))
 
 (defun extract-token (response)
