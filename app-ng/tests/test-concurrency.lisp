@@ -23,7 +23,7 @@
              (delete-qvm (token)
                (qvm-app-ng::handle-delete-qvm :qvm-token token)))
 
-      (lparallel:task-handler-bind ((error  #'lparallel:invoke-transfer-error))
+      (lparallel:task-handler-bind ((error #'lparallel:invoke-transfer-error))
         (loop :repeat num-tasks :do
           (lparallel:submit-task channel #'create-qvm))
         (loop :repeat (* 4 num-tasks) :do
@@ -48,7 +48,7 @@
              (delete-qvm (token)
                (qvm-app-ng::handle-delete-qvm :qvm-token token)))
 
-      (lparallel:task-handler-bind ((error  #'lparallel:invoke-transfer-error))
+      (lparallel:task-handler-bind ((error #'lparallel:invoke-transfer-error))
         (loop :repeat num-tasks :do
           (lparallel:submit-task channel #'create-qvm))
         (loop :repeat (* 2 num-tasks) :do
@@ -66,7 +66,7 @@
                                                   :num-qubits 1))
          (token (gethash "token" (qvm-app-ng::response-data response))))
     (unwind-protect
-         (lparallel:task-handler-bind ((error  #'lparallel:invoke-transfer-error))
+         (lparallel:task-handler-bind ((error #'lparallel:invoke-transfer-error))
            (loop :repeat num-tasks :do
              (lparallel:submit-task channel
                                     (lambda ()
