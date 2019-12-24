@@ -52,7 +52,7 @@ Return a function that accepts a single PARAMETER and calls PARAMETER-PARSER on 
   (%parse-string-to-known-symbol 'allocation-method allocation-method +available-allocation-methods+))
 
 (defun parse-num-qubits (num-qubits)
-  (unless (typep num-qubits `(integer 0))
+  (unless (typep num-qubits '(integer 0))
     (user-input-error "Invalid NUM-QUBITS. Expected a non-negative integer. Got ~S"
                       num-qubits))
   num-qubits)
