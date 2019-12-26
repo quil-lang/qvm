@@ -1,4 +1,4 @@
-;;;; qvm-app-ng-version.lisp
+;;;; app-ng/src/qvm-app-ng-version.lisp
 ;;;;
 ;;;; Author: Robert Smith
 

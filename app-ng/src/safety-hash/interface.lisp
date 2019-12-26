@@ -1,4 +1,4 @@
-;;;; app-ng/src/safety-hash/impl-sbcl.lisp
+;;;; app-ng/src/safety-hash/interface.lisp
 ;;;;
 ;;;; Author: appleby
 ;;;;

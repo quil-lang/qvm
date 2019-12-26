@@ -1,6 +1,7 @@
 ;;;; app-ng/src/entry-point.lisp
 ;;;;
 ;;;; Author: Robert Smith
+;;;;         appleby
 
 (in-package #:qvm-app-ng)
 

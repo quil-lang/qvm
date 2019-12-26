@@ -1,6 +1,8 @@
 ;;;; app-ng/src/package.lisp
 ;;;;
 ;;;; Author: Robert Smith
+;;;;         Mark Skilbeck
+;;;;         appleby
 
 (defpackage #:qvm-app-ng
   (:use #:cl #:qvm)

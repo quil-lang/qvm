@@ -1,3 +1,6 @@
+;;;; app-ng/src/errors.lisp
+;;;;
+;;;; Author: appleby
 (in-package #:qvm-app-ng)
 
 (define-condition rpc-error (simple-error)
