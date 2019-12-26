@@ -1,6 +1,7 @@
 ;;;; src/make-qvm.lisp
 ;;;;
-;;;; Author: appleby
+;;;; Author: Nikolas Tezak
+;;;;         appleby
 
 (in-package #:qvm-app-ng)
 

@@ -1,3 +1,6 @@
+;;;; app-ng/src/logging.lisp
+;;;;
+;;;; author: appleby
 (in-package #:qvm-app-ng)
 
 (defvar *logger* (make-instance 'cl-syslog:rfc5424-logger
