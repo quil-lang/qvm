@@ -221,7 +221,7 @@ Return a JSON-RESPONSE that contains T on success."
                      (addresses #'parse-addresses))
   "Read from a persistent QVM's classical memory registers.
 
-DANGER! DANGER! DANGER! The affects of reading from classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only read from a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
+DANGER! DANGER! DANGER! The effects of reading from classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only read from a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
 
 QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 
@@ -237,7 +237,7 @@ Return a JSON-RESPONSE that contains a HASH-TABLE of the contents of the memory 
                      (memory-contents #'parse-memory-contents))
   "Write to the classical memory of a persistent QVM.
 
-DANGER! DANGER! DANGER! The affects of writing to classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only write to a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
+DANGER! DANGER! DANGER! The effects of writing to classical memory while a persistent QVM is running are undefined. Although this restriction is not (currently) enforced, for safety you should only write to a QVM's memory when it is in the READY state or the WAITING state due to executing a WAIT instruction.
 
 QVM-TOKEN is a valid persistent QVM token returned by the CREATE-QVM RPC call.
 
