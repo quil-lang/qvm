@@ -46,7 +46,7 @@
 (defun check-superoperators (superoperators)
   "Convert each SUPEROPERATOR in SUPEROPERATORS to a matrix and call CHECK-ALL-KRAUS-OPS on the resulting list."
   (check-all-kraus-ops (mapcar (lambda (sop)
-                                 (alexandria:ensure-list (superoperator-to-matrix sop)))
+                                 (alexandria:ensure-list (superoperator-to-component-matrices sop)))
                                superoperators)))
 
 (defmethod initialize-instance :after ((qvm base-qvm) &rest args)

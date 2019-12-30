@@ -236,13 +236,13 @@ The function will just return NIL, and modify the contents of RESULT."
                                    :name (string (gensym "KRAUS-TEMP"))
                                    :matrix mat)))))
 
-(defun superoperator-to-matrix (sop)
+(defun superoperator-to-component-matrices (sop)
   "Convert SOP into a MAGICL:MATRIX or a LIST of them."
   (adt:match superoperator sop
     ((single-kraus U)
      (quil::gate-matrix U))
     ((kraus-list list)
-     (mapcar #'superoperator-to-matrix list))))
+     (mapcar #'superoperator-to-component-matrices list))))
 
 (defgeneric conjugate-entrywise (gate)
   (:documentation "Construct a new gate from GATE with corresponding matrix entries conjugated.")
