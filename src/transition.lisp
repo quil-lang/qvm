@@ -94,13 +94,6 @@ Return just the resulting (possibly modified) QVM after executing INSTR. (Histor
       (setf (pc qvm) (1+ (pc measured-qvm)))
       qvm)))
 
-(defmethod transition ((qvm classical-memory-mixin) (instr quil:wait))
-  (declare (ignore instr))
-  (when *transition-verbose*
-    (warn "WAIT executed. Nothing to wait on."))
-  (incf (pc qvm))
-  qvm)
-
 
 ;;;;;;;;;;;;;;;;;;;; JUMP, JUMP-WHEN, JUMP-UNLESS ;;;;;;;;;;;;;;;;;;;;
 

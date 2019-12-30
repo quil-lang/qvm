@@ -4,6 +4,10 @@
 
 (in-package #:qvm)
 
+(defun warning-wait-function (qvm)
+  (declare (ignore qvm))
+  (warn "WAIT executed. Nothing to wait on."))
+
 ;;; The non-quantum parts of a QVM (the program, the pc, and the
 ;;; classical memory subsystem) don't really change from QVM to QVM,
 ;;; so that state is stored in an abstract mixin class.
@@ -22,11 +26,15 @@
    (program :accessor program
             :initform #()
             :documentation "The program to be executed.")
+   (wait-function :reader wait-function
+                  :initarg :wait-function
+                  :documentation "A unary function taking a QVM and implementing Quil's WAIT logic. (The default does nothing and just warns.)")
    (gate-definitions :accessor gate-definitions
                      :initarg :gate-definitions
                      :documentation "A table mapping gate names to their GATE-instance definition."))
   (:default-initargs
    :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem)
+   :wait-function 'warning-wait-function
    ;; XXX FIXME: To be superseded by some notion of environments.
    :gate-definitions (copy-hash-table quil::**default-gate-definitions**))
   (:metaclass abstract-class)

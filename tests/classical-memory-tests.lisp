@@ -331,3 +331,20 @@ MEASURE 0 ro[0]
 PRAGMA CURRENT_REWIRING \"#(0 1 2 5 3 4)\"
 ")))
     (not-signals error (qvm:run-program 6 valid-quil))))
+
+(deftest test-wait-function-poke-memory ()
+  (let* ((p (quil:parse-quil "DECLARE hold-up BIT; WAIT"))
+         (q (make-instance 'pure-state-qvm
+                           :number-of-qubits 1
+                           :classical-memory-subsystem
+                           (make-instance 'classical-memory-subsystem
+                                          :classical-memory-model
+                                          (qvm:memory-descriptors-to-qvm-memory-model
+                                           (quil:parsed-program-memory-definitions p)))
+                           :wait-function
+                           (lambda (qvm)
+                             (setf (qvm:memory-ref qvm "hold-up" 0) 1)))))
+    (is (= 0 (qvm::memory-ref q "hold-up" 0)))
+    (qvm:load-program q p)
+    (qvm:run q)
+    (is (= 1 (qvm::memory-ref q "hold-up" 0)))))
