@@ -373,3 +373,11 @@
   quil:classical-greater-equal-bit/octet/immediate
   quil:classical-greater-equal-bit/integer/immediate
   quil:classical-greater-equal-bit/real/immediate)
+
+;;; WAIT!
+
+(defmethod transition ((qvm classical-memory-mixin) (instr quil:wait))
+  (declare (ignore instr))
+  (funcall (wait-function qvm) qvm)
+  (incf (pc qvm))
+  qvm)
