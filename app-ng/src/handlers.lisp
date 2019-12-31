@@ -320,8 +320,8 @@ Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the 
   ;; there doesn't seem to be any harm in allowing someone to run qvm-info, say, asynchronously if
   ;; they want. Whitelisting would at least reduce the API surface for testing. Something to ponder.
   (make-json-response (alexandria:plist-hash-table
-                       (list "token" (run-jobbo (lambda ()
-                                                  (dispatch-rpc-request sub-request))))
+                       (list "token" (run-job (lambda ()
+                                                (dispatch-rpc-request sub-request))))
                        :test #'equal)
                       :status +http-accepted+))
 
@@ -329,13 +329,13 @@ Return a JSON-RESPONSE that contains a HASH-TABLE with a \"token\" key with the 
   "Return a JSON-RESPONSE with some basic bookkeeping info about the specified async JOB.
 
 JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
-  (make-json-response (jobbo-info job-token)))
+  (make-json-response (job-info job-token)))
 
 (define-rpc-handler (handle-delete-job "delete-job") ((job-token #'parse-job-token))
   "Delete a JOB.
 
 JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
-  (delete-jobbo job-token)
+  (delete-job job-token)
   (make-json-response (format nil "Deleted async JOB ~A" job-token)))
 
 (define-rpc-handler (handle-job-result "job-result") ((job-token #'parse-job-token))
@@ -345,4 +345,4 @@ This call will block waiting for the JOB to complete.
 
 JOB-TOKEN is a valid JOB token returned by the CREATE-JOB RPC call."
   ;;  No need to MAKE-FOO-RESPONSE here; the JOB result will already be a RESPONSE object.
-  (jobbo-result job-token))
+  (lookup-job-result job-token))
