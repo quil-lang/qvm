@@ -10,7 +10,7 @@
 ;;; of NOISE-RULES, where each NOISE-RULE is a NOISE-PREDICATE and a
 ;;; list of OPERATION-ELEMENTS. The NOISE-PREDICATE defines how to
 ;;; match QUIL instructions around which to apply the kraus operators
-;;; defined by the OPERATION-ELEMENTS. 
+;;; defined by the OPERATION-ELEMENTS.
 ;;;
 ;;; Example: A common noise model is the depolarization channel. To
 ;;; model depolarization on a qubit, inject depolarization operators
@@ -46,7 +46,7 @@
 (deftype noise-priority () `(integer ,+minpriority+ ,+maxpriority+))
 
 (deftype noise-position ()
-  "Describes the position of a noise rule relative to an instruction. Should the noise be applied :BEFORE or :AFTER the instruction is executed?" 
+  "Describes the position of a noise rule relative to an instruction. Should the noise be applied :BEFORE or :AFTER the instruction is executed?"
   '(member :before :after))
 
 ;;; A NOISE-PREDICATE describes how and when to match instructions in
@@ -100,7 +100,7 @@
 (defun predicate-and (noise-predicate1 noise-predicate2)
   "Logical AND of 2 noise predicates. The NOISE-POSITION is taken from NOISE-PREDICATE1 and the priority is taken to be the max PRIORITY between the two predicates."
   (let* ((new-name (and-predicate-names (name noise-predicate1) (name noise-predicate2)))
-         (conjunction (alexandria:conjoin (predicate-function noise-predicate1) 
+         (conjunction (alexandria:conjoin (predicate-function noise-predicate1)
                                           (predicate-function noise-predicate2)))
          (priority (max (priority noise-predicate1) (priority noise-predicate2)))
          (noise-position (noise-position noise-predicate1)))
@@ -109,7 +109,7 @@
 (defun predicate-or (noise-predicate1 noise-predicate2)
   "Logical OR of 2 noise predicates. The NOISE-POSITION is taken from NOISE-PREDICATE1 and the priority is taken to be the max PRIORITY between the two predicates."
   (let* ((new-name (or-predicate-names (name noise-predicate1) (name noise-predicate2)))
-         (disjunction (alexandria:disjoin (predicate-function noise-predicate1) 
+         (disjunction (alexandria:disjoin (predicate-function noise-predicate1)
                                           (predicate-function noise-predicate2)))
          (priority (max (priority noise-predicate1) (priority noise-predicate2)))
          (noise-position (noise-position noise-predicate1)))
@@ -208,11 +208,11 @@
                                        (append (operation-elements r1)
                                                (operation-elements r2)))
                        :collect (apply #'make-noise-rule
-                                       (predicate-and (noise-predicate r1)                
+                                       (predicate-and (noise-predicate r1)
                                                       (predicate-not (noise-predicate r2)))
                                        (operation-elements r1))
                        :collect (apply #'make-noise-rule
-                                       (predicate-and (noise-predicate r2)                   
+                                       (predicate-and (noise-predicate r2)
                                                       (predicate-not (noise-predicate r1)))
                                        (operation-elements r2))))))
 
@@ -227,50 +227,50 @@
 
 (defun match-any-n-qubits (n qubit-list)
   "The returned function is true if there is any intersection between the instruction's qubits and the QUBIT-LIST for an N-qubit operation. We need to specify N in the rule because a 2 qubit gate CNOT 0 1 could match a rule with qubits that has operation elements for a 1q gate. We want to prevent this, so we require the user to specify the number of qubits expected in the gate."
-  (lambda (instr) 
+  (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (= n (length (mapcar #'quil:qubit-index (quil:application-arguments instr))))
          (intersection qubit-list (mapcar #'quil:qubit-index (quil:application-arguments instr))))))
 
 (defun match-strict-gate (gate)
   "The returned function is true if the instruction is a GATE-APPLICATION that is exactly equal to GATE."
-  (lambda (instr) 
+  (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (quil::plain-operator-p (quil:application-operator instr))
          (string= gate (cl-quil::application-operator-root-name instr)))))
 
 (defun match-any-gates (&rest gates)
   "The returned function is true if there is any intersection between the instruction's gate and GATES."
-  (lambda (instr) 
+  (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (quil::plain-operator-p (quil:application-operator instr))
          (member (cl-quil::application-operator-root-name instr) gates :test #'string=))))
 
 (defun match-all-nq-gates (n)
   "The returned function is true if the instruction operates on N qubits."
-  (lambda (instr) 
+  (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (= n (length (quil:application-arguments instr))))))
 
 (defun match-all-gates ()
   "The returned function is true if the instruction contains a gate (not a MEASURE)."
-  (lambda (instr) 
+  (lambda (instr)
     (typep instr 'quil:gate-application)))
 
 (defun match-measure ()
   "The returned function is true if the instruction is a MEASURE."
-  (lambda (instr) 
+  (lambda (instr)
     (typep instr 'quil:measurement)))
 
 (defun match-measure-at-strict (qubit)
   "The returned function is true if the instruciton is a MEASURE on the specified QUBIT."
-  (lambda (instr) 
+  (lambda (instr)
     (and (typep instr 'quil:measurement)
          (= qubit (quil:qubit-index (quil:measurement-qubit instr))))))
 
 (defun match-measure-at-any (&rest qubits)
   "The returned function is true if the instruciton is a MEASURE on any of the specified QUBITS."
-  (lambda (instr) 
+  (lambda (instr)
     (and (typep instr 'quil:measurement)
          (member (quil:qubit-index (quil:measurement-qubit instr)) qubits))))
 
