@@ -37,7 +37,7 @@
 ;;; (setf (qubit-depolarization qvm 0) depolarization-prob-q0)
 ;;; (setf (qubit-depolarization qvm 1) depolarization-prob-q1)
 ;;;
-;;; If we later wanted to add T1 noise, we can continue by doing the following: 
+;;; If we later wanted to add T1 noise, we can continue by doing the following:
 ;;;
 ;;; (setf (qubit-t1 qvm 0) t1-for-q0)
 ;;; (setf (qubit-t1 qvm 1) t1-for-q1)
@@ -108,7 +108,7 @@
     (check-allocate-computation-space (state qvm))))
 
 (defun %check-depol-entry (qubit kraus-map)
-  "Check that a key value pair in the DEPOLARIZATION-OPS slot is valid. The QUBIT must be a non-negative integer, and the KRAUS-MAP must be a valid kraus map. "
+  "Check that a key value pair in the DEPOLARIZATION-OPS slot is valid. The QUBIT must be a non-negative integer, and the KRAUS-MAP must be a valid kraus map."
   (check-type qubit nat-tuple-element)
   (check-kraus-ops kraus-map))
 
@@ -136,7 +136,7 @@
 
 (defun (setf qubit-tphi) (tphi qvm qubit)
   "Evaluate that TPHI is valid and save it for the specified QUBIT in the QVM."
-  (check-type tphi valid-noise-value)  
+  (check-type tphi valid-noise-value)
   (check-allocate-computation-space (state qvm))
   (setf (gethash qubit (tphi-vals qvm)) tphi))
 
@@ -160,7 +160,7 @@
   ;; instruction involves more than one qubit, we need to tensor the
   ;; kraus operators for each qubit's error sources.
   (loop :for noise-operators :in kraus-ops
-        :when noise-operators 
+        :when noise-operators
           :do (let ((simplified-kraus-ops (reduce #'kraus-kron noise-operators))
                     (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
                 (when simplified-kraus-ops
@@ -191,9 +191,9 @@
                               :for q-tphi := (gethash q (tphi-vals qvm))
                               :for q-t1 := (gethash q (t1-vals qvm))
                               :for q-t2 := (gethash q (t2-vals qvm))
-                              :when (calculate-dephasing-map q-tphi q-t1 q-t2 curr-time) 
+                              :when (calculate-dephasing-map q-tphi q-t1 q-t2 curr-time)
                                 :collect it))
-         (depol-ops (loop :for q :in qubits 
+         (depol-ops (loop :for q :in qubits
                           :collect (gethash q (depolarization-ops qvm)))))
     (apply-all-kraus-maps qvm instr (list damping-ops dephasing-ops depol-ops))
     (setf (elapsed-time qvm) curr-time)))
@@ -205,13 +205,13 @@
 
 (defun calculate-dephasing-map (qubit-tphi qubit-t1 qubit-t2 elapsed-time)
   "Build the dephasing map. If TPHI is not null, use that to calculate the dephasing map. In the absence of a TPHI value, use T1 and T2 to calculate TPHI if those values exist. T2 is upper bounded by 2 * T1."
-  (cond 
+  (cond
     ;; First, try to use T-PHI to calculate the dephasing operators
-    (qubit-tphi 
+    (qubit-tphi
      (dephasing-kraus-map qubit-tphi elapsed-time))
     ;; Next, if there are values for QUBIT-T1 and QUBIT-T2,
     ;; calculate T-PHI
-    ((and qubit-t2 qubit-t1) 
+    ((and qubit-t2 qubit-t1)
      (dephasing-kraus-map (tphi qubit-t1 qubit-t2) elapsed-time))
     ;; If either T1 or T2 is missing, an no T-PHI, return no kraus
     ;; operators.
@@ -219,7 +219,7 @@
 
 (defun tphi (t1 t2)
   "Calculate t_phi from T1 and T2. T-PHI = (2*T1*T2) / (2*T1 + T2). T2 must be strictly less than 2 * T1."
-  (assert (< t2 (* 2.0d0 t1)) 
+  (assert (< t2 (* 2.0d0 t1))
           (t1 t2)
           "T2  must be upper bounded by 2*T1")
   (check-type t1 valid-noise-value)
@@ -258,7 +258,7 @@
                             :collect (magicl:kron identity-matrix k)))
           ((endp k2s) (loop :for k :in k1s
                             :collect (magicl:kron k identity-matrix)))
-          (t  (loop :for k1 :in k1s 
+          (t  (loop :for k1 :in k1s
                     :append (loop :for k2 :in k2s
                                   :collect (magicl:kron k1 k2)))))))
 

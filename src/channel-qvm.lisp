@@ -56,7 +56,7 @@
             (null (slot-value qvm 'state)))
     (%set-state (make-pure-state (number-of-qubits qvm))
                 qvm))
-  ;; The the NOISE-MODEL is not empty, allocate space for
+  ;; The NOISE-MODEL is not empty, allocate space for
   ;; TRIAL-AMPLITUDES in a PURE-STATE state. (This method is not
   ;; defined for a DMS)
   (when (or (noise-rules (noise-model qvm))
@@ -131,7 +131,7 @@
        (magicl:identityp kraus-sum)
        (kraus-sum)
        "The Kraus map must preserve trace or equivalently this matrix ~
-        ~S must be equal to the identity" 
+        ~S must be equal to the identity"
        kraus-sum))) t)
 
 (defun check-all-kraus-ops (seq)
@@ -141,7 +141,7 @@
 ;;; Measurement
 
 (defmethod measure-all-state ((state pure-state) (qvm channel-qvm))
-  ;; Measure all QUBITS in PURE-STATE state of the the CHANNEL-QVM QVM
+  ;; Measure all QUBITS in PURE-STATE state of the CHANNEL-QVM QVM
   ;; and apply readout noise if necessary.
   (declare (ignore qvm))
   (multiple-value-bind (qvm-ret measured-bits)
