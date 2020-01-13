@@ -8,8 +8,7 @@ variables:
 .test:
   stage: test
   tags:
-    - github
-    - dockerd
+    - ec2-github
   only:
     - branches
   image:
