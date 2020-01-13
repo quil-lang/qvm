@@ -19,22 +19,22 @@
 ;;; via the ADD-KRAUS PRAGMA.
 
 (defclass base-qvm (classical-memory-mixin)
-  ((number-of-qubits ; XXX: Should we just compute the number of qubits from the STATE? 
+  ((number-of-qubits ; XXX: Should we just compute the number of qubits from the STATE?
     :reader number-of-qubits
     :initarg :number-of-qubits
     :type alexandria:non-negative-fixnum
     :initform (error ":NUMBER-OF-QUBITS is a required initarg to BASE-QVM.")
     :documentation "Number of qubits being simulated by the QVM.")
-   (state 
+   (state
     :reader state
     :writer %set-state
     :initarg :state
     :documentation "The state of the quantum system simulated by the QVM.")
-   (program-compiled-p 
+   (program-compiled-p
     :accessor program-compiled-p
     :initform nil
     :documentation "Has the loaded program been compiled?")
-   (superoperator-definitions 
+   (superoperator-definitions
     :initarg :superoperator-definitions
     :accessor superoperator-definitions
     :initform (make-hash-table :test 'equalp)
@@ -90,7 +90,7 @@
   ;; Wrap a gate defined by GATE-NAME and QUBITS in a superoperator
   ;; defined by KRAUS-OPS. When the QVM reads an instruction with
   ;; GATE-NAME on QUBITS, the superoperator made from the KRAUS-OPS
-  ;; will be applied to the state of the QVM. 
+  ;; will be applied to the state of the QVM.
   ;;
   ;; Note: if we are applying superoperators, we do not want to
   ;; compile the QVM program before running it.

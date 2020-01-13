@@ -44,9 +44,9 @@
 (defun make-mixed-state-qvm (num-qubits &key (allocation nil) &allow-other-keys)
   "Build a MIXED-STATE-QVM with a DENSITY-MATRIX-STATE representing NUM-QUBITS qubits."
   (check-type num-qubits unsigned-byte)
-  (make-instance 'mixed-state-qvm :number-of-qubits num-qubits 
-                                  :state (make-density-matrix-state 
-                                          num-qubits  
+  (make-instance 'mixed-state-qvm :number-of-qubits num-qubits
+                                  :state (make-density-matrix-state
+                                          num-qubits
                                           :allocation allocation)))
 
 (defun full-density-number-of-qubits (vec-density)
