@@ -39,12 +39,12 @@
 (defun magicl-matrix-to-quantum-operator (m)
   "Convert a MAGICL matrix M to a QUANTUM-OPERATOR."
   (check-type m magicl:matrix)
-  (let* ((rows (magicl:matrix-rows m))
-         (cols (magicl:matrix-cols m))
+  (let* ((rows (magicl:nrows m))
+         (cols (magicl:ncols m))
          (op   (make-matrix rows cols)))
     (dotimes (r rows op)
       (dotimes (c cols)
-        (setf (aref op r c) (cflonum (magicl:ref m r c)))))))
+        (setf (aref op r c) (cflonum (magicl:tref m r c)))))))
 
 
 ;;; Quantum Operator Operations/Manipulations
@@ -249,7 +249,7 @@ The function will just return NIL, and modify the contents of RESULT."
   (:method ((gate quil:simple-gate))
     (make-instance 'quil:simple-gate
                    :name (concatenate 'string (quil:gate-name gate) "*")
-                   :matrix (magicl:conjugate-entrywise (quil:gate-matrix gate))))
+                   :matrix (magicl:map! #'conjugate (quil:gate-matrix gate))))
   (:method ((gate quil:permutation-gate))
     (make-instance 'quil:permutation-gate
                    :name (concatenate 'string (quil:gate-name gate) "*")
@@ -259,5 +259,5 @@ The function will just return NIL, and modify the contents of RESULT."
                    :name (concatenate 'string (quil:gate-name gate) "*")
                    :dimension (quil:gate-dimension gate)
                    :matrix-function #'(lambda (&rest parameters)
-                                        (magicl:conjugate-entrywise
-                                         (apply #'quil:gate-matrix gate parameters))))))
+                                        (magicl:map! #'conjugate
+                                                     (apply #'quil:gate-matrix gate parameters))))))

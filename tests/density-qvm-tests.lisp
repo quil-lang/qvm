@@ -16,9 +16,11 @@
 (defun density-matrix-purity (qvm)
   "Compute the purity aka tr(ρ^2)."
   (let* ((n (expt 2 (number-of-qubits qvm)))
-         (density-mat (magicl:make-matrix :rows n :cols n :data (qvm::amplitudes qvm)))
-         (squared     (magicl:multiply-complex-matrices density-mat density-mat)))
-    (realpart (reduce #'+ (magicl:matrix-diagonal squared)))))
+         (density-mat (magicl:from-list (qvm::amplitudes qvm)
+                                        (list n n)
+                                        :type '(complex double-float)))
+         (squared     (magicl:@ density-mat density-mat)))
+    (realpart (magicl:trace squared))))
 
 (deftest test-density-qvm-parametric-gate ()
   "Density qvm can apply parametric gates."
@@ -60,7 +62,7 @@
   "Overwrites the density matrix of the density-qvm QVM with values from the magicl matrix MAT."
   (check-type mat magicl:matrix)
   (assert (equal (array-dimensions (qvm::matrix-view (qvm::state qvm)))
-                 (list (magicl:matrix-rows mat) (magicl:matrix-cols mat)))
+                 (list (magicl:nrows mat) (magicl:ncols mat)))
           (mat)
           "Density matrix is of wrong size")
   (let ((density-matrix (qvm::matrix-view (qvm::state qvm))))
@@ -68,21 +70,20 @@
       (dotimes (i rows qvm)
         (dotimes (j cols)
           (setf (aref density-matrix i j)
-                (cflonum (magicl:ref mat i j))))))))
+                (cflonum (magicl:tref mat i j))))))))
 
 (defun make-1q-mixture (p)
   (check-type p (real 0 1))
   (let ((qvm (qvm::make-density-qvm 1))
-        (mat (magicl:diag 2 2
-                          (list (- 1 p) p))))
+        (mat (magicl:from-diag (list (- 1 p) p))))
     (load-density-from-matrix qvm mat)))
 
 (defun make-2q-with-1q-mixed (p)
   (check-type p (real 0 1))
   (let* ((qvm (qvm::make-density-qvm 2))
          (q   (- 1 p))
-         (mat1 (magicl:diag 2 2 (list q p)))
-         (mat2 (magicl:make-complex-matrix 2 2 '(0.5 0.5 0.5 0.5)))
+         (mat1 (magicl:from-diag (list q p)))
+         (mat2 (magicl:const 0.5 '(2 2) :type '(complex double-float)))
          (mat (magicl:kron mat1 mat2)))
     (load-density-from-matrix qvm mat)))
 

@@ -47,7 +47,7 @@ Return two values:
 
     ;; Read off the entries.
     (loop :for row :below (expt 2 (nat-tuple-cardinality qubits))
-          :collect (magicl:ref m row column) :into amplitudes
+          :collect (magicl:tref m row column) :into amplitudes
           :finally (return (values (list-classical-states classical-state qubits)
                                    amplitudes)))))
 

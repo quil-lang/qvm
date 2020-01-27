@@ -230,8 +230,14 @@
 (defun damping-kraus-map (t1 elapsed-time)
   "Given a value for T1 and a ELAPSED-TIME, generates the kraus operators corresponding to the amplitude damping noise."
   (let* ((prob (- 1 (exp (/ (- elapsed-time) t1))))
-         (k0 (magicl:make-complex-matrix 2 2 (list 0.0d0 0.0d0 (sqrt prob) 0.0d0)))
-         (k1 (magicl:make-complex-matrix 2 2 (list 1.0d0 0.0d0 0.0d0  (sqrt (- 1.0d0 prob))))))
+         (k0 (magicl:from-list (list 0.0d0 0.0d0 (sqrt prob) 0.0d0)
+                               '(2 2)
+                               :type '(complex double-float)
+                               :input-layout :column-major))
+         (k1 (magicl:from-list (list 1.0d0 0.0d0 0.0d0  (sqrt (- 1.0d0 prob)))
+                               '(2 2)
+                               :type '(complex double-float)
+                               :input-layout :column-major)))
     (list k0 k1)))
 
 (defun dephasing-kraus-map (t-phi elapsed-time)
@@ -253,7 +259,7 @@
 
 (defun kraus-kron (k1s k2s)
   "Calculate the tensor product of two kraus maps K1S and K2S by tensoring their elems. If one of the kraus maps is NIL, tensor the other with the identity matrix."
-  (let ((identity-matrix (magicl:make-identity-matrix 2)))
+  (let ((identity-matrix (magicl:eye 2 :type '(complex double-float))))
     (cond ((endp k1s) (loop :for k :in k2s
                             :collect (magicl:kron identity-matrix k)))
           ((endp k2s) (loop :for k :in k1s
@@ -266,9 +272,10 @@
   "Builds a list of kraus operators from the base matrices in STANDARD-MATRICES, each scaled by a corresponding probability in PROBS."
   (loop :for mat :in standard-matrices
         :for prob :in probs
-        :collect (magicl:scale prob (quil:gate-matrix
-                                     (quil:gate-definition-to-gate
-                                      (quil:lookup-standard-gate mat))))))
+        :collect (magicl:scale (quil:gate-matrix
+                                (quil:gate-definition-to-gate
+                                 (quil:lookup-standard-gate mat)))
+                               prob)))
 
 (defmethod apply-classical-readout-noise ((qvm basic-noise-qvm) (instr quil:measure))
   ;; Apply the classical readout noise to the state of an BASIC-NOISE-QVM.
