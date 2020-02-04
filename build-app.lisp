@@ -7,7 +7,7 @@
   (error "This file is meant to be loaded."))
 
 (pushnew :hunchentoot-no-ssl *features*)
-(pushnew :drakma-no-ssl *features*)
+#+forest-sdk (pushnew :drakma-no-ssl *features*)
 
 (require 'asdf)
 
