@@ -18,7 +18,6 @@ QUICKLISP_SETUP=$(QUICKLISP_HOME)/setup.lisp
 QUICKLISP=$(SBCL) --load $(QUICKLISP_HOME)/setup.lisp \
 	--eval '(push (truename ".") asdf:*central-registry*)' \
 	--eval '(push :hunchentoot-no-ssl *features*)' \
-	--eval '(push :drakma-no-ssl *features*)' \
 	--eval "(push (truename \"$(RIGETTI_LISP_LIBRARY_HOME)\") ql:*local-project-directories*)" \
 	$(QVM_FEATURE_FLAGS)
 
@@ -69,7 +68,6 @@ qvm: system-index.txt
 	$(SBCL) $(FOREST_SDK_FEATURE) \
 	        --eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
 		--eval '(push :hunchentoot-no-ssl *features*)' \
-		--eval '(push :drakma-no-ssl *features*)' \
 		$(QVM_FEATURE_FLAGS) \
 		--load build-app.lisp \
                 $(FOREST_SDK_OPTION)
@@ -81,7 +79,8 @@ qvm-ng: system-index.txt
 		--load build-app-ng.lisp \
 		$(FOREST_SDK_OPTION)
 
-qvm-sdk-base: FOREST_SDK_FEATURE=--eval '(pushnew :forest-sdk *features*)'
+qvm-sdk-base: FOREST_SDK_FEATURE=--eval '(pushnew :forest-sdk *features*)' \
+	--eval '(push :drakma-no-ssl *features*)'
 qvm-sdk-base: QVM_WORKSPACE=10240
 qvm-sdk-base: clean clean-cache qvm
 
