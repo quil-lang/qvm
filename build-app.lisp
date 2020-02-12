@@ -9,6 +9,8 @@
 (pushnew :hunchentoot-no-ssl *features*)
 (pushnew :drakma-no-ssl *features*)
 
+1
+
 (require 'asdf)
 
 (let ((*default-pathname-defaults* (make-pathname :type nil
