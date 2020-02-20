@@ -3,6 +3,9 @@
 [![pipeline status](https://gitlab.com/rigetti/qvm/badges/master/pipeline.svg)](https://gitlab.com/rigetti/qvm/commits/master)
 [![github release](https://img.shields.io/github/release/rigetti/qvm.svg)](https://github.com/rigetti/qvm/releases)
 [![docker pulls](https://img.shields.io/docker/pulls/rigetti/qvm.svg)](https://hub.docker.com/r/rigetti/qvm)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3677538.svg)](https://doi.org/10.5281/zenodo.3677538)
+
+The Rigetti Quantum Virtual Machine (QVM) is a flexible and efficient simulator for [Quil](https://github.com/rigetti/quil).
 
 This directory contains two projects. The first, `qvm`, is a classical
 implementation of the Quantum Abstract Machine (QAM), called a
@@ -17,7 +20,7 @@ Practical Quantum Instruction Set Architecture](https://arxiv.org/pdf/1608.03355
 
 The QVM library is contained within `./src/`, and provides the
 implementation of the Quantum Abstract Machine. It evaluates Quil
-programs (parsed and compiled by [quilc](http://github.com/rigetti/quilc)) on a virtual machine that can
+programs (parsed and compiled by [quilc](https://github.com/rigetti/quilc)) on a virtual machine that can
 model various characteristics of (though without needing access to) a
 true quantum computer.
 
