@@ -1,4 +1,4 @@
-# Rigetti Quantum Virtual Machine
+# qvm: The Rigetti Quantum Virtual Machine
 
 [![pipeline status](https://gitlab.com/rigetti/qvm/badges/master/pipeline.svg)](https://gitlab.com/rigetti/qvm/commits/master)
 [![github release](https://img.shields.io/github/release/rigetti/qvm.svg)](https://github.com/rigetti/qvm/releases)
