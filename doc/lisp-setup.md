@@ -167,3 +167,18 @@ allow for structurally correct Lisp code.
 Paredit can be downloaded
 [here](http://mumble.net/~campbell/emacs/paredit.el), and instructions
 for installing are in the same file.
+
+## (Optional) Install Linedit
+
+In order to have completion, parenthesis matching, and history when running
+SBCL from the command line, we recommend using Linedit. To install this
+package, evaluate `(ql:quickload :linedit)` within SBCL and add the following
+snippet to your `$HOME/.sbclrc` file:
+```
+(when (member "--linedit" sb-ext:*posix-argv* :test 'equal)
+  (when (interactive-stream-p *terminal-io*)
+    (require :linedit)
+    (require :terminfo)
+    (funcall (intern "INSTALL-REPL" :linedit) :wrap-current t :eof-quits t)))
+```
+From then on, you can invoke SBCL with `sbcl --linedit` to enable this feature.
