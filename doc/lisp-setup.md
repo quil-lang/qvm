@@ -175,10 +175,10 @@ SBCL from the command line, we recommend using Linedit. To install this
 package, evaluate `(ql:quickload :linedit)` within SBCL and add the following
 snippet to your `$HOME/.sbclrc` file:
 ```
-(when (member "--linedit" sb-ext:*posix-argv* :test 'equal)
-  (when (interactive-stream-p *terminal-io*)
-    (require :linedit)
-    (require :terminfo)
-    (funcall (intern "INSTALL-REPL" :linedit) :wrap-current t :eof-quits t)))
+(when (and (member "--linedit" sb-ext:*posix-argv* :test 'equal)
+           (interactive-stream-p *terminal-io*))
+  (require :linedit)
+  (require :terminfo)
+  (funcall (intern "INSTALL-REPL" :linedit) :wrap-current t :eof-quits t))
 ```
 From then on, you can invoke SBCL with `sbcl --linedit` to enable this feature.
