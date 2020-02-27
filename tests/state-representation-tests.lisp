@@ -131,24 +131,6 @@
 
 ;; Mixed State Tests
 
-(defun density-matrix-trace (qvm)
-  "Compute the trace of the density matrix associated with density qvm."
-  (let ((sum (flonum 0))
-        (density-matrix (qvm::matrix-view (qvm::state qvm))))
-    ;; This is a sum along the diagonal of the density-matrix
-    (dotimes (i (expt 2 (qvm::number-of-qubits qvm)) sum)
-      (incf sum (realpart (aref density-matrix i i))))))
-
-
-(defun density-matrix-purity (qvm)
-  "Compute the purity aka tr(ρ^2)."
-  (let* ((n (expt 2 (number-of-qubits qvm)))
-         (density-mat (magicl:from-array (qvm::amplitudes qvm)
-                                         (list n n)
-                                         :type '(complex double-float)))
-         (squared     (magicl:@ density-mat density-mat)))
-    (realpart (magicl:trace squared))))
-
 (deftest test-mixed-state-qvm-parametric-gate ()
   "Density qvm can apply parametric gates."
   (let* ((qvm (qvm::make-mixed-state-qvm 1)))

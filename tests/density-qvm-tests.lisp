@@ -16,7 +16,7 @@
 (defun density-matrix-purity (qvm)
   "Compute the purity aka tr(ρ^2)."
   (let* ((n (expt 2 (number-of-qubits qvm)))
-         (density-mat (magicl:from-list (qvm::amplitudes qvm)
+         (density-mat (magicl:from-array (qvm::amplitudes qvm)
                                         (list n n)
                                         :type '(complex double-float)))
          (squared     (magicl:@ density-mat density-mat)))
