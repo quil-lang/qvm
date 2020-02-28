@@ -108,31 +108,29 @@
 
 (defun check-kraus-ops (kraus-ops)
   "Verify that a list KRAUS-OPS of Kraus operators given as MAGICL:MATRIX objects encodes a proper kraus map. In particular, we require that the Kraus operators are all of equal matrix dimension with equal numbers of rows and columns. Furthermore, to ensure that the Kraus map preserves trace, they must be normalized such that sum_{j=1}^n K_j^H K_j = I, where I is the identity matrix of equal dimensions."
-  (let* ((m (magicl:matrix-rows (first kraus-ops)))
-         (n (magicl:matrix-cols (first kraus-ops)))
-         (kraus-sum (magicl:make-zero-matrix m n)))
+  (let* ((m (magicl:nrows (first kraus-ops)))
+         (n (magicl:ncols (first kraus-ops)))
+         (kraus-sum (magicl:zeros (list m n) :type '(complex double-float))))
     (assert (= m n) ((first kraus-ops)) "The Kraus operators be square matrices.")
     (loop :for k :in kraus-ops
           :do
-             (assert (= m (magicl:matrix-rows k) (magicl:matrix-cols k))
+             (assert (= m (magicl:nrows k) (magicl:ncols k))
                      (k)
                      "All Kraus operators must have matching dimensions")
-             ;; This MAGICL provided BLAS:ZGEMM call effectively performs the following operation
              ;; KRAUS-SUM -> KRAUS-SUM + K^H . K
-             (magicl.blas-cffi:%zgemm
-              "C" "N" m m m
-              (complex 1d0) (magicl::matrix-data k) m (magicl::matrix-data k) m
-              (complex 1d0) (magicl::matrix-data kraus-sum) m))
+             (magicl:mult k k
+                          :transa :c
+                          :beta #C(1d0 0d0)
+                          :target kraus-sum))
 
     ;; Warning, if this consistently leads to assertion errors increase the
     ;; tolerance *DEFAULT-ZERO-COMPARISON-EPSILON*
-    (let ((magicl::*default-zero-comparison-epsilon* 1d-5))
-      (assert
-       (magicl:identityp kraus-sum)
-       (kraus-sum)
-       "The Kraus map must preserve trace or equivalently this matrix ~
-        ~S must be equal to the identity"
-       kraus-sum))) t)
+    (assert
+     (magicl:identity-matrix-p kraus-sum 1d-5)
+     (kraus-sum)
+     "The Kraus map must preserve trace or equivalently this matrix ~
+        ~S must be equal to the identity" 
+     kraus-sum)) t)
 
 (defun check-all-kraus-ops (seq)
   "Call CHECK-KRAUS-OPS on each element of SEQ."

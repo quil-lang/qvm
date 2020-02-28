@@ -15,8 +15,8 @@
   "Generalized matrix-matrix multiplication routine.")
 
 (defun compute-matrix-vector-products (matrix input-array output-array start-offset end-offset)
-  (magicl.cffi-types:with-array-pointers ((ptr-a (magicl::matrix-data matrix)))
-    (let* ((m (magicl:matrix-cols matrix))
+  (magicl.cffi-types:with-array-pointers ((ptr-a (magicl::storage matrix)))
+    (let* ((m (magicl:ncols matrix))
            (n (/ (- end-offset start-offset) m))
            (pos (* start-offset qvm::+octets-per-cflonum+))
            (ptr-x (static-vector-pointer input-array :offset pos))

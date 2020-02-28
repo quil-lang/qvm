@@ -10,7 +10,7 @@
   "Compute the matrix of the parsed program PP by way of simulating it on every basis element."
   (let* ((n (quil:qubits-needed pp))
          (dim (expt 2 n))
-         (m (magicl:make-zero-matrix dim dim)))
+         (m (magicl:zeros (list dim dim))))
     (dotimes (basis-state dim m)
       (let ((q (make-qvm n)))
         (rotatef (aref (amplitudes q) 0)
@@ -19,5 +19,5 @@
         (run q)
         ;; write out the amplitudes
         (dotimes (row dim)
-          (setf (magicl:ref m row basis-state)
+          (setf (magicl:tref m row basis-state)
                 (aref (amplitudes q) row)))))))

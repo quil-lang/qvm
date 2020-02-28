@@ -98,18 +98,18 @@
          (k2 (qvm::damping-kraus-map 3 7))
          (kron (qvm::kraus-kron k1 k2)))
     (loop :for k in kron
-          :do (is (= 4 (magicl::matrix-rows (nth 0 kron))))
-          :do (is (= 4 (magicl::matrix-cols (nth 0 kron)))))
+          :do (is (= 4 (magicl:nrows (nth 0 kron))))
+          :do (is (= 4 (magicl:ncols (nth 0 kron)))))
     (is (= 4 (length kron))))
   (let* ((k (qvm::damping-kraus-map 2 5))
          (kron-first (qvm::kraus-kron k nil))
          (kron-second (qvm::kraus-kron nil k)))
     (loop :for elem in kron-first
-          :do (is (= 4  (magicl::matrix-rows elem)))
-          :do (is (= 4 (magicl::matrix-cols elem))))
+          :do (is (= 4  (magicl:nrows elem)))
+          :do (is (= 4 (magicl:ncols elem))))
     (loop :for elem in kron-second
-          :do (is (= 4 (magicl::matrix-rows elem)))
-          :do (is (= 4 (magicl::matrix-cols elem))))
+          :do (is (= 4 (magicl:nrows elem)))
+          :do (is (= 4 (magicl:ncols elem))))
     (is (= 2 (length kron-first)))
     (is (= 2 (length kron-second)))
     (is (null (qvm::kraus-kron nil nil)))))
@@ -188,8 +188,14 @@
   (let* ((gate-time (+ 1 (random 3))) ; gate-time between 1 and 4
          (t1 (+ gate-time (random 6))) ; random t1 > gate-time
          (kraus (qvm::damping-kraus-map t1 gate-time))
-         (k0 (magicl:make-complex-matrix 2 2 (list 0 0 (sqrt (- 1 (exp (/ (- gate-time) t1)))) 0)))
-         (k1 (magicl:make-complex-matrix 2 2 (list 1 0 0 (sqrt (- 1 (- 1 (exp (/ (- gate-time) t1)))))))))
+         (k0 (magicl:from-list (list 0 0 (sqrt (- 1 (exp (/ (- gate-time) t1)))) 0)
+                               '(2 2)
+                               :type '(complex double-float)
+                               :input-layout :column-major))
+         (k1 (magicl:from-list (list 1 0 0 (sqrt (- 1 (- 1 (exp (/ (- gate-time) t1))))))
+                               '(2 2)
+                               :type '(complex double-float)
+                               :input-layout :column-majorq)))
     (is (cl-quil::matrix-equality (nth 0 kraus) k0))
     (is (cl-quil::matrix-equality (nth 1 kraus) k1))))
 
@@ -217,12 +223,14 @@
          (kraus (qvm::dephasing-kraus-map tphi gate-time))
          (prob (- 1 (exp (/ (- gate-time)
                             tphi))))
-         (k0 (magicl:scale (sqrt (/ prob 2)) (quil:gate-matrix
-                                              (quil:gate-definition-to-gate
-                                               (quil:lookup-standard-gate "I")))))
-         (k1 (magicl:scale (sqrt (- 1 (/ prob  2))) (quil:gate-matrix
-                                                     (quil:gate-definition-to-gate
-                                                      (quil:lookup-standard-gate "Z"))))))
+         (k0 (magicl:scale (quil:gate-matrix
+                            (quil:gate-definition-to-gate
+                             (quil:lookup-standard-gate "I")))
+                           (sqrt (/ prob 2))))
+         (k1 (magicl:scale (quil:gate-matrix
+                            (quil:gate-definition-to-gate
+                             (quil:lookup-standard-gate "Z")))
+                           (sqrt (- 1 (/ prob 2))))))
     (is (cl-quil::matrix-equality (nth 0 kraus) k0))
     (is (cl-quil::matrix-equality (nth 1 kraus) k1))))
 
@@ -230,18 +238,22 @@
   ;; Test that the depolarizing map is properly constructed.
   (let* ((prob (+ .001 (random .9))) ; random probabilitiy between .001 and .9001
          (kraus (qvm::depolarizing-kraus-map prob))
-         (k0 (magicl:scale (sqrt (- 1 (/ (* 3 prob) 4))) (quil:gate-matrix
-                                                          (quil:gate-definition-to-gate
-                                                           (quil:lookup-standard-gate "I")))))
-         (k1 (magicl:scale (sqrt ( / prob 4)) (quil:gate-matrix
-                                               (quil:gate-definition-to-gate
-                                                (quil:lookup-standard-gate "X")))))
-         (k2 (magicl:scale (sqrt ( / prob 4)) (quil:gate-matrix
-                                               (quil:gate-definition-to-gate
-                                                (quil:lookup-standard-gate "Y")))))
-         (k3 (magicl:scale (sqrt ( / prob 4)) (quil:gate-matrix
-                                               (quil:gate-definition-to-gate
-                                                (quil:lookup-standard-gate "Z"))))))
+         (k0 (magicl:scale (quil:gate-matrix
+                            (quil:gate-definition-to-gate
+                             (quil:lookup-standard-gate "I")))
+                           (sqrt (- 1 (/ (* 3 prob) 4)))))
+         (k1 (magicl:scale (quil:gate-matrix
+                            (quil:gate-definition-to-gate
+                             (quil:lookup-standard-gate "X")))
+                           (sqrt ( / prob 4))))
+         (k2 (magicl:scale (quil:gate-matrix
+                            (quil:gate-definition-to-gate
+                             (quil:lookup-standard-gate "Y")))
+                           (sqrt ( / prob 4))))
+         (k3 (magicl:scale (quil:gate-matrix
+                            (quil:gate-definition-to-gate
+                             (quil:lookup-standard-gate "Z")))
+                           (sqrt ( / prob 4)))))
     (is (cl-quil::matrix-equality (nth 0 kraus) k0))
     (is (cl-quil::matrix-equality (nth 1 kraus) k1))
     (is (cl-quil::matrix-equality (nth 2 kraus) k2))

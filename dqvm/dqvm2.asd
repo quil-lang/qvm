@@ -19,7 +19,7 @@
                ;; Command line argument parsing
                #:command-line-arguments
                ;; Matrix algebra
-               (:version #:magicl "0.6.1")
+               (:version #:magicl "0.7.0")
                ;; Quantum virtual machine
                #:qvm
                ;; Allocation of C vectors
