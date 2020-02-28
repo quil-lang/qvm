@@ -249,7 +249,7 @@ The function will just return NIL, and modify the contents of RESULT."
   (:method ((gate quil:simple-gate))
     (make-instance 'quil:simple-gate
                    :name (concatenate 'string (quil:gate-name gate) "*")
-                   :matrix (magicl:map! #'conjugate (quil:gate-matrix gate))))
+                   :matrix (magicl:map #'conjugate (quil:gate-matrix gate))))
   (:method ((gate quil:permutation-gate))
     (make-instance 'quil:permutation-gate
                    :name (concatenate 'string (quil:gate-name gate) "*")
@@ -259,5 +259,5 @@ The function will just return NIL, and modify the contents of RESULT."
                    :name (concatenate 'string (quil:gate-name gate) "*")
                    :dimension (quil:gate-dimension gate)
                    :matrix-function #'(lambda (&rest parameters)
-                                        (magicl:map! #'conjugate
-                                                     (apply #'quil:gate-matrix gate parameters))))))
+                                        (magicl:map #'conjugate
+                                                    (apply #'quil:gate-matrix gate parameters))))))
