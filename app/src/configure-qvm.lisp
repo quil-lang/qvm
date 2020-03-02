@@ -159,9 +159,10 @@ statements and convert them into a hash-table with keys
                                        (cl-quil::pragma-qubit-arguments instr))
                                  kraus-ops)
                         (append existing-ops
-                                (list (cl-quil::make-row-major-matrix
-                                       d d
-                                       (cl-quil::pragma-matrix-entries instr))))))
+                                (list (magicl:from-list
+                                       (cl-quil::pragma-matrix-entries instr)
+                                       (list d d)
+                                       :type '(complex double-float))))))
                 ;; change to no-op to prevent the QVM from logging
                 ;; warnings about these pragmas
                 (change-class instr 'cl-quil:no-operation))
