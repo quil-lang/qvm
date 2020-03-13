@@ -40,7 +40,9 @@
                ;; HTTP requests for version info
                #:drakma
                ;; Portable *features*
-               #:trivial-features)
+               #:trivial-features
+               ;; Regular expressions
+               #:cl-ppcre)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-app-tests)))
   :pathname "app/src/"
   :serial t
@@ -68,4 +70,5 @@
                (:file "benchmark-programs")
                (:file "server-abstraction")
                (:file "handle-request")
+               (:file "debugger")
                (:file "entry-point")))
