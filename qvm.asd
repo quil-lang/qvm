@@ -92,4 +92,9 @@
                (:file "density-qvm")
                (:file "noisy-qvm")
                (:file "depolarizing-noise")
-               (:file "unitary-qvm")))
+               (:file "unitary-qvm")
+               (:module "error"
+                :serial t
+                :components ((:file "package")
+                             (:file "fowler-noise")
+                             (:file "error-qvm")))))
