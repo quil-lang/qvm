@@ -172,6 +172,25 @@ Ensure that the job is deleted afterwards."
 (defun request-job-status (url job-token)
   (gethash "status" (yason:parse (simple-request url :type "job-info" :job-token job-token))))
 
+(defun wait-for (expected thunk
+                 &key (repeat 5)
+                      (initial-delay 0.001)
+                      (backoff 2)
+                      (test #'string=)
+                      (final-assert-p t))
+  "Wait for THUNK to return a result that is equal to EXPECTED according to TEST.
+
+Repeat the call to THUNK REPEAT times. If the first call fails, then try again after INITIAL-DELAY seconds, then (* BACKOFF INITIAL-DELAY) and so on.
+
+If FINAL-ASSERT-P is T, then assert that the TEST is satisfied before returning."
+  (loop :repeat repeat
+        :for result := (funcall thunk)
+        :for delay := initial-delay :then (* backoff delay)
+        :until (funcall test expected result)
+        :do (sleep delay)
+        :finally (when final-assert-p
+                   (is (funcall test expected result)))))
+
 (deftest test-rpc-api-invalid-request ()
   "Requests without a valid JSON request body return 400 Bad Request."
   (with-rpc-server (url)
@@ -587,15 +606,11 @@ Failed to find key #1# in SAFETY-HASH")))))
                                                          :addresses ,+all-ro-addresses+)))
                                       :status 202))))
 
-      ;; Wait for the persistent qvm to enter the READY state
-      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
-            :until (string= state "WAITING")
-            :finally (is (string= state "WAITING")))
+      ;; Wait for the persistent qvm to enter the WAITING state
+      (wait-for "WAITING" (lambda () (request-qvm-state url qvm-token)))
 
       ;; the associated JOB should now be RUNNING
-      (loop :repeat 10 :for state = (request-job-status url job-token)
-            :until (string= state "RUNNING")
-            :finally (is (string= state "RUNNING")))
+      (wait-for "RUNNING" (lambda () (request-job-status url job-token)))
 
       ;; run-program on a persistent qvm in a non-READY state is disallowed
       (check-request (simple-request url
@@ -621,14 +636,10 @@ Failed to find key #1# in SAFETY-HASH")))))
                                      (member value '("RESUMING" "RUNNING" "READY") :test #'string=))))))
 
       ;; Wait for the persistent qvm to enter the READY state
-      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
-            :until (string= state "READY")
-            :finally (is (string= state "READY")))
+      (wait-for "READY" (lambda () (request-qvm-state url qvm-token)))
 
       ;; Wait for the job to finish
-      (loop :repeat 10 :for state = (request-job-status url job-token)
-            :until (string= state "FINISHED")
-            :finally (is (string= state "FINISHED")))
+      (wait-for "FINISHED" (lambda () (request-job-status url job-token)))
 
       (check-request (simple-request url
                                      :type "read-memory"
@@ -698,14 +709,10 @@ Failed to find key #1# in SAFETY-HASH")))))
                                     (member value '("RESUMING" "RUNNING" "READY") :test #'string=))))))
 
       ;; Wait for the persistent qvm to enter the READY state
-      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
-            :until (string= state "READY")
-            :finally (is (string= state "READY")))
+      (wait-for "READY" (lambda () (request-qvm-state url qvm-token)))
 
       ;; Wait for the job to finish
-      (loop :repeat 10 :for state = (request-job-status url job-token)
-            :until (string= state "FINISHED")
-            :finally (is (string= state "FINISHED")))
+      (wait-for "FINISHED" (lambda () (request-job-status url job-token)))
 
       (check-request (job-request url
                                   :type "read-memory"
@@ -777,9 +784,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                      :response-re "{}")
 
       ;; Wait for the persistent qvm to enter the READY state
-      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
-            :until (string= state "READY")
-            :finally (is (string= state "READY")))
+      (wait-for "READY" (lambda () (request-qvm-state url qvm-token)))
 
       ;; registers can now be read
       (check-request (simple-request url
@@ -862,9 +867,7 @@ Failed to find key #1# in SAFETY-HASH")))))
                      :response-re "{}")
 
       ;; Wait for the persistent qvm to enter the READY state
-      (loop :repeat 10 :for state = (request-qvm-state url qvm-token)
-            :until (string= state "READY")
-            :finally (is (string= state "READY")))
+      (wait-for "READY" (lambda () (request-qvm-state url qvm-token)))
 
       ;; registers can now be written to and read from
       (loop :for (write-memory expected)
