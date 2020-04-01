@@ -112,8 +112,9 @@ docker-sdk-barebones: docker
 
  .PHONY: install
 install: qvm qvm-ng
-	install qvm $(DESTDIR)$(PREFIX)/bin
-	install qvm-ng $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(PREFIX)/bin/
+	install qvm $(DESTDIR)$(PREFIX)/bin/
+	install qvm-ng $(DESTDIR)$(PREFIX)/bin/
 
  .PHONY: uninstall
 uninstall:
