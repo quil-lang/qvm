@@ -14,7 +14,7 @@ ARG build_target
 # build the qvm app
 ADD . /src/qvm
 WORKDIR /src/qvm
-RUN git clean -fdx && make ${build_target} && make install
+RUN git clean -fdx && make ${build_target} install
 
 EXPOSE 5000
 
