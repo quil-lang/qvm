@@ -75,8 +75,13 @@ NOTE: Note that the finalizer may close over the allocated vector."))
               :initial-element (cflonum 0)))
 
 (defmethod allocate-vector ((descr lisp-allocation))
-  (values (make-lisp-cflonum-vector (allocation-length descr))
-          #'dummy-finalizer))
+  (handler-case
+      (values (make-lisp-cflonum-vector (allocation-length descr))
+              #'dummy-finalizer)
+    #+sbcl
+    (sb-kernel::heap-exhausted-error ()
+      (error "Cannot allocate enough memory for ~DQ state."
+             (floor (log (allocation-length descr) 2))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;; Foreign Memory Allocation ;;;;;;;;;;;;;;;;;;;;;;
