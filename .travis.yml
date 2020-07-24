@@ -1,0 +1,11 @@
+env:
+  - TARGET=lib
+  - TARGET=app
+
+services:
+  - docker
+
+script:
+  - docker build -t rigetti/qvm:${TRAVIS_COMMIT} .
+  - docker run --rm --entrypoint=make rigetti/qvm:${TRAVIS_COMMIT} test-${TARGET} DISABLE_SHARED_MEMORY_QVM_TESTS=1 RIGETTI_LISP_LIBRARY_HOME=/src
+  - docker rmi rigetti/qvm:${TRAVIS_COMMIT}
