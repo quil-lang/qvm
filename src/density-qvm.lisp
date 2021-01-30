@@ -63,11 +63,12 @@
     (set-to-zero-state (state qvm))))
 
 
-(defun make-density-qvm (num-qubits &key (allocation nil) &allow-other-keys)
-  (make-instance 'density-qvm :number-of-qubits num-qubits 
-                              :state (make-density-matrix-state 
-                                      num-qubits  
-                                      :allocation allocation)))
+(defun make-density-qvm (num-qubits &rest kws &key (allocation nil) &allow-other-keys)
+  (apply #'make-instance
+         'density-qvm
+         :number-of-qubits num-qubits
+         :state (make-density-matrix-state num-qubits :allocation allocation)
+         kws))
 
 
 (defmethod reset-quantum-state ((qvm density-qvm))
