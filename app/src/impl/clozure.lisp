@@ -2,10 +2,6 @@
 
 (in-package #:qvm-app)
 
-(defun zap-info ()
-  ;; No-op on Clozure
-  )
-
 (defun start-shm-info-server (name length)
   "Start a thread with a socket listening on the local socket
   /tmp/<NAME>. For any incoming connection, read a single octet, then
