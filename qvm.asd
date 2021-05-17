@@ -18,7 +18,7 @@
                ;; Parallelization utilities
                #:lparallel
                ;; Matrix algebra
-               (:version #:magicl "0.7.0")
+               #:magicl/core
                ;; weak hash tables
                #:trivial-garbage
                ;; static globals
@@ -30,7 +30,7 @@
                ;; Finalizers and portable GC calls
                #:trivial-garbage
                ;; Quil parsing and analysis
-               (:version #:cl-quil "1.17.0")
+               #:cl-quil
                ;; Portable random number generator
                #:mt19937
                ;; For allocation info.
