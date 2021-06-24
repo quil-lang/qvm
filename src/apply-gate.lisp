@@ -11,7 +11,7 @@
 
 ;;; Warm the cache at compile time.
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (warm-apply-matrix-operator-cache :max-qubits 30))
+  (warm-apply-matrix-operator-cache :max-qubits *compile-time-operator-cache-limit*))
 
 (defun %evolve-pure-state-stochastically (kraus-map state qubits)
   " Uniformly at random select one of the kraus operators in KRAUS-MAP to apply for the PURE-STATE STATE. Randomly select one of the Kraus operators by inverse transform sampling (cf [1]): We divide the unit interval [0,1] into n bins where the j-th bin size equals the probability p_j with which the j-th Kraus operator k_j should be applied. We know that the Kraus operators are normalized such that p_j = <psi|k_j^H k_j |psi> where x^H denotes hermitian conjugation of x and can therefore perform this sampling lazily: 

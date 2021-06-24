@@ -311,6 +311,7 @@ QUBITS should be a NAT-TUPLE of qubits representing the Hilbert space."
 
 ;;;;;;;;;;;;;;;;;;;;;;; APPLY OPERATOR CACHING ;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; For debugging, reset this with CLRHASH.
 (global-vars:define-global-var **apply-matrix-operator-functions**
     (make-hash-table :test 'equal)
   "A table mapping lists of qubit indexes representing Hilbert spaces to their compiled gate application functions.
