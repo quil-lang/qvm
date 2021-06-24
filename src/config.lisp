@@ -25,6 +25,16 @@ See also *QUBIT-LIMIT-FOR-USING-SERIAL-KERNELS*.")
   (max *qubit-limit-for-using-serial-kernels*
        *qubits-required-for-parallelization*))
 
+(defvar *compile-time-operator-cache-limit* 8
+  "At compile time, a cache of optimized \"matrix application\" operators are computed. Further ones will be cached at runtime. This configuration parameter controls how many qubits this cache is warmed for.
+
+This parameter should be optimized for developer convenience.")
+
+(defvar *executable-time-operator-cache-limit* 30
+  "Like *COMPILE-TIME-OPERATOR-CACHE-LIMIT*, but the amount of cache to warm before an executable is created. (There is no guarantee executable creation software will respect this suggested parameter.)
+
+This parameter should be optimized for end-user convenience.")
+
 (defvar *transition-verbose* nil
   "Controls whether each transition is printed with a timing.")
 

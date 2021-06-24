@@ -36,6 +36,7 @@
     (load-systems-table)
     (push #'local-system-search asdf:*system-definition-search-functions*)
     (asdf:load-system "qvm-app")
+    (load "app/src/build-configuration.lisp")
     (funcall (read-from-string "qvm-app::setup-debugger"))
     (when (find "--qvm-sdk" sb-ext:*posix-argv* :test 'string=)
       (load "app/src/mangle-shared-objects.lisp"))
