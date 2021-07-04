@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  test-qvm-lib:
+    name: Test QVM library
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run QVM library tests
+        run: |
+          sudo apt install sbcl
+          make quicklisp
+          sudo make install-test-deps
+          make test-lib
+
+

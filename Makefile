@@ -50,6 +50,19 @@ system-index.txt: $(QUICKLISP_SETUP)
 # DEPENDENCIES
 ###############################################################################
 
+install-test-deps:
+ifeq ($(UNAME_S),Linux)
+ifeq ($(shell sed -n "s/^ID=//p" /etc/os-release),debian)
+	apt-get update && apt-get install -y git libblas-dev libffi-dev liblapack-dev libzmq3-dev
+else ifeq ($(shell sed -n "s/^ID=//p" /etc/os-release),ubuntu)
+	apt update && apt install -y git libblas-dev libffi-dev liblapack-dev libzmq3-dev
+else
+	echo "Centos-based platforms unsupported"
+endif
+else
+	echo "Non-Linux-based platforms unsupported"
+endif
+
 dump-version-info:
 	$(QUICKLISP) \
 		--eval '(format t "~A ~A" (lisp-implementation-type) (lisp-implementation-version))' \
