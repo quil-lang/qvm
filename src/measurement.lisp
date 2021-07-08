@@ -90,11 +90,15 @@
           "Trying to measure qubit ~D on a QVM with only ~D qubit~:P."
           q
           (number-of-qubits qvm))
-  (let* ((r (random 1.0d0))
-         (excited-probability (get-excited-state-probability (state qvm) q))
-         (cbit (if (<= r excited-probability)
-                   1
-                   0)))
+  (let* ((excited-probability (get-excited-state-probability (state qvm) q))
+         ;; If we had access to truly uniform random variables, the
+         ;; standard "inverse transform sampling" would be enough
+         ;; here. But due to finite precision we force an extra
+         ;; consideration: measurements with probability zero or one
+         ;; should be deterministic.
+         (cbit (cond ((zerop excited-probability) 0)
+                     ((<= (random 1d0) excited-probability) 1)
+                     (t 0))))
     ;; Force the non-deterministic measurement.
     (force-measurement cbit q (state qvm) excited-probability)
     ;; Return the qvm.
