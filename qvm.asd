@@ -84,4 +84,5 @@
                (:file "basic-noise-qvm")
                (:file "density-qvm")
                (:file "noisy-qvm")
-               (:file "depolarizing-noise")))
+               (:file "depolarizing-noise")
+               (:file "unitary-qvm")))

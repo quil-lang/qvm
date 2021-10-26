@@ -40,5 +40,6 @@
                (:file "noise-model-tests")
                (:file "channel-qvm-tests")
                (:file "basic-noise-qvm-tests")
+               (:file "unitary-tests")
                (:file "parallel-tests")
                (:file "qvm-avx-intrinsics" :if-feature (:and :qvm-intrinsics :avx2))))

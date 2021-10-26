@@ -228,4 +228,11 @@
   (:export
    #:program-matrix                     ; FUNCTION
    )
+
+  ;; unitary-matrix-qvm.lisp
+  (:export
+   #:unitary-qvm
+   #:make-unitary-qvm
+   #:unitary-qvm-underlying-matrix
+   #:parsed-program-unitary-matrix)
   )
