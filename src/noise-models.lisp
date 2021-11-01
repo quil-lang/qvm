@@ -237,14 +237,14 @@
   (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (quil::plain-operator-p (quil:application-operator instr))
-         (string= gate (cl-quil::application-operator-root-name instr)))))
+         (string= gate (quil::application-operator-root-name instr)))))
 
 (defun match-any-gates (&rest gates)
   "The returned function is true if there is any intersection between the instruction's gate and GATES."
   (lambda (instr)
     (and (typep instr 'quil:gate-application)
          (quil::plain-operator-p (quil:application-operator instr))
-         (member (cl-quil::application-operator-root-name instr) gates :test #'string=))))
+         (member (quil::application-operator-root-name instr) gates :test #'string=))))
 
 (defun match-all-nq-gates (n)
   "The returned function is true if the instruction operates on N qubits."
@@ -277,4 +277,4 @@
 (defun match-instr-idxs (parsed-prog &rest idxs)
   "The returned function is true if the index of the INSTR in the program PARSED-PROG matches IDXS."
   (lambda (instr)
-    (member (position instr (cl-quil::parsed-program-executable-code parsed-prog) :test 'eq) idxs)))
+    (member (position instr (quil::parsed-program-executable-code parsed-prog) :test 'eq) idxs)))

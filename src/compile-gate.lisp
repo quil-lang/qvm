@@ -541,11 +541,11 @@ If the gate can't be compiled, return (VALUES NIL NIL).")
             :documentation "A list of qubit-mref pairs to store, in order."))
   (:documentation "A pseudo-instruction for measuring all qubits simultaneously."))
 
-(defmethod cl-quil::%max-qubit ((isn measure-all))
+(defmethod quil::%max-qubit ((isn measure-all))
   (loop :for qubit-mref :in (measure-all-storage isn)
         :maximize (car qubit-mref)))
 
-(defmethod cl-quil::print-instruction-generic ((instr measure-all) stream)
+(defmethod quil::print-instruction-generic ((instr measure-all) stream)
   (format stream "{ MEASURE-ALL to ~D location~:P }"
           (length (measure-all-storage instr))))
 

@@ -127,7 +127,7 @@
   (:documentation "A gate application that's actually a Clifford."))
 
 (defmethod quil::print-instruction-generic ((instr clifford-application) stream)
-  (format stream "<clifford>~{ ~/cl-quil:instruction-fmt/~}"
+  (format stream "<clifford>~{ ~/quil:instruction-fmt/~}"
           (quil:application-arguments instr)))
 
 (defmethod print-object ((o clifford-application) stream)
