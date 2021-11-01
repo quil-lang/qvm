@@ -10,6 +10,9 @@
   (:shadowing-import-from #:mt19937
                           #:random)
 
+  #+(or sbcl ecl ccl)
+  (:local-nicknames (:quil :cl-quil.frontend))
+
   ;; config.lisp
   (:export
    #:parallelization-limit              ; TYPE

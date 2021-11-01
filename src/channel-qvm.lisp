@@ -201,8 +201,8 @@
     (check-type p01 (double-float 0.0d0 1.0d0))
     (check-type p10 (double-float 0.0d0 1.0d0))
     (check-type p11 (double-float 0.0d0 1.0d0))
-    (assert (cl-quil::double= 1.0d0 (+ p00 p10)))
-    (assert (cl-quil::double= 1.0d0 (+ p01 p11)))))
+    (assert (quil::double= 1.0d0 (+ p00 p10)))
+    (assert (quil::double= 1.0d0 (+ p01 p11)))))
 
 (defun check-all-povms (seq)
   "Call CHECK-POVM on each element of SEQ."

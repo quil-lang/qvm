@@ -73,8 +73,8 @@
          (rule-1-match (qvm::find-matching-rule rules test-gate-1 posn))
          (rule-2-match (qvm::find-matching-rule rules test-gate-2 posn)))
     ;; Check that the kraus operators returned (gate-x-match) are correct.
-    (is (every #'cl-quil::matrix-equality (first (qvm::operation-elements rule-1-match)) kraus1))
-    (is (every #'cl-quil::matrix-equality (first (qvm::operation-elements rule-2-match)) kraus2))
+    (is (every #'quil::matrix-equality (first (qvm::operation-elements rule-1-match)) kraus1))
+    (is (every #'quil::matrix-equality (first (qvm::operation-elements rule-2-match)) kraus2))
     (is (qvm::find-matching-rule rules test-gate-2 posn))
     (is (not (qvm::find-matching-rule rules test-gate-3 posn)))))
 
@@ -193,14 +193,14 @@
 
 (defun noisy-program-strings (parsed-program qvm)
   "Return a list of strings representing a noisy program. The returned list consists of the original program instructions as strings interjected with the NOISE-PRED NAMEs of the NOISE-RULES in the QVM's NOISE-MODEL."
-  (let ((parsed-instructions (cl-quil::parsed-program-executable-code parsed-program))
+  (let ((parsed-instructions (quil::parsed-program-executable-code parsed-program))
         (rules (qvm::noise-rules (qvm::noise-model qvm))))
     (loop :for instr :across parsed-instructions
           :for rule-before-instr := (qvm::find-matching-rule rules instr :before)
           :for rule-after-instr := (qvm:: find-matching-rule rules instr :after)
           :when rule-before-instr
             :collect (qvm::name (qvm::noise-predicate rule-before-instr))
-          :collect (cl-quil::print-instruction-to-string instr)
+          :collect (quil::print-instruction-to-string instr)
           :when rule-after-instr
             :collect (qvm::name (qvm::noise-predicate rule-after-instr)))))
 

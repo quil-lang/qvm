@@ -9,7 +9,7 @@
   :version (:read-file-form "VERSION.txt")
   :depends-on (
                ;; Quil parsing
-               (:version #:cl-quil "1.17.0")
+               (:version #:cl-quil/frontend "1.26.0")
                ;; Command line argument parsing
                #:command-line-arguments
                ;; ASDF-companion utility library
