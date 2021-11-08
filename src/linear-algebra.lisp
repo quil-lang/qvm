@@ -32,7 +32,7 @@
                                     :initial-element (cflonum 0))
         :for i :from 0
         :for raw-element :in elements
-        :for element :of-type cflonum := (cflonum raw-element)
+        :for element #-allegro :of-type #-allegro cflonum := (cflonum raw-element)
         :do (setf (row-major-aref matrix i) element)
         :finally (return matrix)))
 
