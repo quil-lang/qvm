@@ -1,10 +1,10 @@
-# qvm: The Rigetti Quantum Virtual Machine
+# qvm: A High-Performance Quantum Virtual Machine
 
 [![github release](https://img.shields.io/github/release/rigetti/qvm.svg)](https://github.com/rigetti/qvm/releases)
 [![docker pulls](https://img.shields.io/docker/pulls/rigetti/qvm.svg)](https://hub.docker.com/r/rigetti/qvm)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3677538.svg)](https://doi.org/10.5281/zenodo.3677538)
 
-The Rigetti Quantum Virtual Machine (QVM) is a flexible and efficient simulator for [Quil](https://github.com/rigetti/quil).
+This is the official Quil-Lang *Quantum Virtual Machine* (QVM), a flexible and efficient simulator for [Quil](https://github.com/quil-lang/quil).
 
 This directory contains two projects. The first, `qvm`, is a classical
 implementation of the Quantum Abstract Machine (QAM), called a
