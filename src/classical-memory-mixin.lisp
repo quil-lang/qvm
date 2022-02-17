@@ -36,7 +36,7 @@
    :classical-memory-subsystem (make-instance 'qvm:classical-memory-subsystem)
    :wait-function 'warning-wait-function
    ;; XXX FIXME: To be superseded by some notion of environments.
-   :gate-definitions (copy-hash-table quil::**default-gate-definitions**))
+   :gate-definitions (copy-hash-table cl-quil.frontend::**default-gate-definitions**))
   (:metaclass abstract-class)
   (:documentation "A mixin for quantum abstract machines making use of a classical memory subsystem and a program vector."))
 
