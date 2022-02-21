@@ -170,10 +170,10 @@ Note: This function is raw and unsafe. Pass bad data => get a crash."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; One Qubit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#-(and qvm-intrinsics avx2)
+#-(and qvm-intrinsics qvm-avx2)
 (define-serial-kernel apply-1q-operator 1)
 
-#+(and qvm-intrinsics avx2)
+#+(and qvm-intrinsics qvm-avx2)
 (defun apply-1q-operator (operator wavefunction q)
   "Apply the matrix operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubit Q."
   (declare (inline qvm-intrinsics::2x2matrix-to-simd
@@ -204,10 +204,10 @@ Note: This function is raw and unsafe. Pass bad data => get a crash."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Two Qubits ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#-(and qvm-intrinsics avx2)
+#-(and qvm-intrinsics qvm-avx2)
 (define-serial-kernel apply-2q-operator 2)
 
-#+(and qvm-intrinsics avx2)
+#+(and qvm-intrinsics qvm-avx2)
 (defun apply-2q-operator (operator wavefunction q0 q1)
   "Apply the matrix operator OPERATOR to the amplitudes of WAVEFUNCTION specified by the qubits Q0 and Q1."
   (declare (inline qvm-intrinsics::2x4matrix-to-simd

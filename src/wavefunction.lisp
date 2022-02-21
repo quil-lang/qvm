@@ -319,7 +319,7 @@ up to amplitude ordering."
        (apply kernel matrix wavefunction (coerce qubits 'list)))
       ;; Call the 1q or 2q kernel in the case of intrinsics, in which
       ;; case parallelization will work.
-      #+(and qvm-intrinsics avx2)
+      #+(and qvm-intrinsics qvm-avx2)
       ((and kernel (or (= k 1) (= k 2)))
        (apply kernel matrix wavefunction (coerce qubits 'list)))
       (t
