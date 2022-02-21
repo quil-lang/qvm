@@ -2,6 +2,11 @@
 ;;;;
 ;;;; Author: Robert Smith
 
+#+sbcl
+#.(when (sb-alien:extern-alien "avx2_supported" sb-alien:int)
+    (cl:push :qvm-avx2 cl:*features*)
+    (values))
+
 (asdf:defsystem #:qvm
   :description "An implementation of the Quantum Abstract Machine."
   :author "Robert Smith <robert@rigetti.com>"
@@ -52,7 +57,8 @@
                (:file "impl/clozure" :if-feature :clozure)
                (:file "impl/sbcl" :if-feature :sbcl)
                (:file "impl/sbcl-intrinsics" :if-feature (:and :sbcl :qvm-intrinsics))
-               (:file "impl/sbcl-avx-vops" :if-feature (:and :sbcl :qvm-intrinsics :avx2))
+               (:file "impl/sbcl-avx-vops"
+                :if-feature (:and :sbcl :qvm-intrinsics :qvm-avx2))
                (:file "impl/sbcl-x86-vops" :if-feature (:and :sbcl :qvm-intrinsics))
                (:file "impl/linear-algebra-intrinsics" :if-feature :qvm-intrinsics)
                (:file "impl/prefetch-intrinsics" :if-feature :qvm-intrinsics)

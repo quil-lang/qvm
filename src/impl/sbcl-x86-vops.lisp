@@ -36,10 +36,5 @@
   (:results)
   (:info type disp stride)
   (:generator 1
-              (inst prefetch type
-                    (make-ea :byte :base base
-                                   :index index
-                                   :scale (ash stride
-                                               (- n-fixnum-tag-bits))
-                                   :disp disp))))
+    (inst prefetch type (ea disp base index (ash stride (- n-fixnum-tag-bits))))))
 

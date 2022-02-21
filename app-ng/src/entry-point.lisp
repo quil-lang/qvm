@@ -105,7 +105,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           (list                         ; List of features
                 #+qvm-intrinsics
                 "qvm-intrinsics"
-                #+(and qvm-intrinsics avx2)
+                #+qvm-avx2
                 "avx2")))
     (format *error-output* "(Features enabled: ~{~a~^, ~})~2%"
             (or qvm-features (list "none"))))

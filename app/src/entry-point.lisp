@@ -223,11 +223,12 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
           (length qvm::*available-kernels*)
           (qvm::qubit-limit-for-using-serial-kernels))
   (let ((qvm-features
-          (list                         ; List of features
-                #+qvm-intrinsics
-                "qvm-intrinsics"
-                #+(and qvm-intrinsics avx2)
-                "avx2")))
+          (list
+           ;; List of features
+           #+qvm-intrinsics
+           "qvm-intrinsics"
+           #+qvm-avx2
+           "avx2")))
     (format t "(Features enabled: ~{~a~^, ~})~2%"
             (or qvm-features (list "none"))))
   nil)
