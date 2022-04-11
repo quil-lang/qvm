@@ -119,6 +119,17 @@ First generate a uniformly sampled random number r in [0,1]. Next, find j such t
       (apply #'quil:gate-matrix gate parameters))
      (state-elements state)
      (apply #'nat-tuple qubits)))
+
+  (:method ((gate quil:sequence-gate) (state pure-state) qubits &rest parameters)
+    ;; TODO: We should another option for execution here would be to
+    ;; apply each gate of the sequence one-by-one. It may be that a
+    ;; relatively complex sequence gate would create a matrix that is
+    ;; far too large to handle.
+    (apply-matrix-operator
+     (magicl-matrix-to-quantum-operator
+      (apply #'quil:gate-matrix gate parameters))
+     (state-elements state)
+     (apply #'nat-tuple qubits)))
   
   (:method ((gate quil:permutation-gate) (state pure-state) qubits &rest parameters)
     (assert (null parameters) (parameters) "Parameters don't make sense for simple gates.")
