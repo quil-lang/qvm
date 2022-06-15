@@ -8,8 +8,8 @@
     (values))
 
 (asdf:defsystem #:qvm
-  :description "An implementation of the Quantum Abstract Machine."
-  :author "Robert Smith <robert@rigetti.com>"
+  :description "An implementation of the Quantum/Quil Abstract Machine."
+  :author "Robert Smith, Rigetti Computing, and Quil-Lang Contributors"
   :license "Apache License 2.0 (See LICENSE.txt)"
   :version (:read-file-form "VERSION.txt")
   :defsystem-depends-on (#:cffi-grovel)
@@ -24,7 +24,6 @@
                #:lparallel
                ;; Matrix algebra
                (:version #:magicl/core "0.9.0")
-               #:magicl/ext-lapack
                ;; weak hash tables
                #:trivial-garbage
                ;; static globals
@@ -40,7 +39,7 @@
                ;; Portable random number generator
                #:mt19937
                ;; For allocation info.
-               #+sbcl #:sb-introspect
+               (:feature :sbcl #:sb-introspect)
                ;; Portable *features*
                #:trivial-features)
   :in-order-to ((asdf:test-op (asdf:test-op #:qvm-tests)))
