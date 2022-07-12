@@ -16,32 +16,32 @@
 COST-HAM should consist of commuting Pauli terms only. (This is *not* checked.)"
   (check-type p (integer 1))
   ;; Every Pauli in COST-HAM should have the same number of qubits.
-  (let* ((n (cl-quil.clifford:num-qubits
-             (alexandria:extremum cost-ham #'> :key #'cl-quil.clifford:num-qubits)))
-         (quil (quil:parse-quil (format nil "DECLARE beta REAL[~D]; DECLARE gamma REAL[~D]" p p)))
+  (let* ((n (cl-quil/clifford:num-qubits
+             (alexandria:extremum cost-ham #'> :key #'cl-quil/clifford:num-qubits)))
+         (quil (cl-quil:parse-quil (format nil "DECLARE beta REAL[~D]; DECLARE gamma REAL[~D]" p p)))
          ;; Parameters
-         (betas (loop :for i :below p :collect (quil:mref "beta" i)))
-         (gammas (loop :for i :below p :collect (quil:mref "gamma" i)))
+         (betas (loop :for i :below p :collect (cl-quil:mref "beta" i)))
+         (gammas (loop :for i :below p :collect (cl-quil:mref "gamma" i)))
          ;; Hamiltonian
          (driver-ham (loop :for q :below n
-                           :collect (cl-quil.clifford:embed cl-quil.clifford:+X+ n (list q))))
-         (isns (quil:with-inst ()
+                           :collect (cl-quil/clifford:embed cl-quil/clifford:+X+ n (list q))))
+         (isns (cl-quil:with-inst ()
                  ;; Initialize
                  (dotimes (q n)
-                   (quil:inst "H" () q))
+                   (cl-quil:inst "H" () q))
                  (loop :for beta :in betas
                        :for gamma :in gammas
                        :do
-                          (let ((beta (quil::make-delayed-expression nil nil beta))
-                                (gamma (quil::make-delayed-expression nil nil gamma)))
+                          (let ((beta (cl-quil::make-delayed-expression nil nil beta))
+                                (gamma (cl-quil::make-delayed-expression nil nil gamma)))
                             ;; Cost. All the terms are assumed to commute.
                             (dolist (pauli cost-ham)
-                              (mapc #'quil:inst (cl-quil.clifford::exp-pauli pauli gamma)))
+                              (mapc #'cl-quil:inst (cl-quil/clifford::exp-pauli pauli gamma)))
 
                             ;; Driver
                             (dolist (pauli driver-ham)
-                              (mapc #'quil:inst (cl-quil.clifford::exp-pauli pauli beta))))))))
-    (setf (quil:parsed-program-executable-code quil) (coerce isns 'simple-vector))
+                              (mapc #'cl-quil:inst (cl-quil/clifford::exp-pauli pauli beta))))))))
+    (setf (cl-quil:parsed-program-executable-code quil) (coerce isns 'simple-vector))
     (values quil betas gammas)))
 
 (defun maxcut (graph)
@@ -50,9 +50,9 @@ COST-HAM should consist of commuting Pauli terms only. (This is *not* checked.)"
 GRAPH should be a list of edges, each represented as a pair (A B) of integer vertices."
   (loop :with n := (1+ (loop :for (from to) :in graph
                              :maximize (max from to)))
-        :with ZZ := (cl-quil.clifford:pauli-from-string "ZZ")
+        :with ZZ := (cl-quil/clifford:pauli-from-string "ZZ")
         :for vertex :in graph
-        :collect (cl-quil.clifford:embed ZZ n vertex)))
+        :collect (cl-quil/clifford:embed ZZ n vertex)))
 
 (defun complete-graph (n)
   "Build a complete graph of N vertices."
@@ -93,7 +93,7 @@ After FILE is created, one may plot the data with gnuplot. The following command
            (finish-output)))
     (out "writing program")
     (multiple-value-bind (program betas gammas) (qaoa 1 (maxcut graph))
-      (let* ((n (quil:qubits-needed program))
+      (let* ((n (cl-quil:qubits-needed program))
              (beta (first betas))
              (gamma (first gammas))
              (qvm (qvm:make-qvm n)))
@@ -130,7 +130,7 @@ After FILE is created, one may plot the data with gnuplot. The following command
 
 (defun produce-qvm-for-qaoa-problem (graph)
   (multiple-value-bind (program betas gammas) (qaoa 1 (maxcut graph))
-    (let* ((n (quil:qubits-needed program))
+    (let* ((n (cl-quil:qubits-needed program))
            (qvm (qvm:make-qvm n)))
       (qvm:load-program qvm program :supersede-memory-subsystem t)
       ;(qvm::enable-all-qvm-optimizations)

@@ -37,8 +37,8 @@
         :collect (string-downcase k) :collect v))
 
 (defun plist->json (plist)
-  (with-output-to-string (*standard-output*)
-    (yason:encode-plist (plist-lowercase-keys plist))))
+  (with-output-to-string (s)
+    (yason:encode-plist (plist-lowercase-keys plist) s)))
 
 (defun plist->hash-table (plist &key (test 'equal))
   "Like ALEXANDRIA:PLIST-HASH-TABLE but with TEST defaulting to EQUAL.
@@ -228,8 +228,8 @@ Invalid persistent QVM token. Expected a v4 UUID. Got \"5e2e05f0-f91c-5f02-96ef-
                                      :qvm-token "5e2e05f0-f91c-4f02-96ef-361ffc55a0fa")
                      :status 500
                      :response-callback (response-error-checker "QVM RPC Error: Internal Server Error
-Failed to find persistent QVM #1=5e2e05f0-f91c-4f02-96ef-361ffc55a0fa
-Failed to find key #1# in SAFETY-HASH")))))
+Failed to find persistent QVM 5e2e05f0-f91c-4f02-96ef-361ffc55a0fa
+Failed to find key 5e2e05f0-f91c-4f02-96ef-361ffc55a0fa in SAFETY-HASH")))))
 
 (deftest test-rpc-api-404 ()
   "Requests for URIs other than \"/\" or for non-existent RPC methods return 404 Not Found."

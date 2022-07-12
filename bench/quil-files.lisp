@@ -10,7 +10,7 @@
 
 (defun timed-run (file)
   "Load the Quil file designated by FILE and time its execution."
-  (let ((quil::*allow-unresolved-applications* t))
+  (let ((cl-quil::*allow-unresolved-applications* t))
     (let* ((program (cl-quil:read-quil-file
                      (merge-pathnames file *bench-files-directory*)))
            (qvm (qvm:make-qvm (cl-quil:qubits-needed program))))

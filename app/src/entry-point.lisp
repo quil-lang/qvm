@@ -530,7 +530,7 @@ Copyright (c) 2016-2019 Rigetti Computing.~2%")
      (start-server-app host port))
 
     ;; Interactive debugger mode.
-    (debugger (qvm-app.debugger:debugger))
+    (debugger (qvm-app/debugger:debugger))
 
     ;; Batch mode.
     (t

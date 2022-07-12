@@ -6,6 +6,7 @@
 
 (defpackage #:qvm-app-ng
   (:use #:cl #:qvm)
+  (:local-nicknames (#:quil   #:cl-quil))
 
   ;; job.lisp
   (:export

@@ -4,8 +4,7 @@
 
 (fiasco:define-test-package #:qvm-tests
   (:use #:qvm)
-  #+(or sbcl ecl ccl)
-  (:local-nicknames (:quil :cl-quil.frontend))
+  (:local-nicknames (#:quil #:cl-quil/frontend))
   
   ;; suite.lisp
   (:export

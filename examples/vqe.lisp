@@ -202,21 +202,21 @@ DEFCIRCUIT ANSATZ:
                                           0.18620984259247159d0))
               "Coefficients of the Pauli operators present in the Hamiltonian.")
 
-(defparameter *operators* (mapcar #'quil:parse-quil '("I 0"
-                                                      "Z 0"
-                                                      "Z 1"
-                                                      "Z 2"
-                                                      "Z 3"
-                                                      "Z 0; Z 1"
-                                                      "Y 0; X 1; X 2; Y 3"
-                                                      "X 0; X 1; Y 2; Y 3"
-                                                      "Y 0; Y 1; X 2; X 3"
-                                                      "X 0; Y 1; Y 2; X 3"
-                                                      "Z 0; Z 2"
-                                                      "Z 0; Z 3"
-                                                      "Z 1; Z 2"
-                                                      "Z 1; Z 3"
-                                                      "Z 2; Z 3"))
+(defparameter *operators* (mapcar #'cl-quil:parse-quil '("I 0"
+                                                         "Z 0"
+                                                         "Z 1"
+                                                         "Z 2"
+                                                         "Z 3"
+                                                         "Z 0; Z 1"
+                                                         "Y 0; X 1; X 2; Y 3"
+                                                         "X 0; X 1; Y 2; Y 3"
+                                                         "Y 0; Y 1; X 2; X 3"
+                                                         "X 0; Y 1; Y 2; X 3"
+                                                         "Z 0; Z 2"
+                                                         "Z 0; Z 3"
+                                                         "Z 1; Z 2"
+                                                         "Z 1; Z 3"
+                                                         "Z 2; Z 3"))
   "Pauli operators in the Hamiltonian.")
 
 (defparameter *initial-thetas* #(0.0d0 -0.036014483d0)
@@ -242,7 +242,7 @@ DEFCIRCUIT ANSATZ:
   "Return a new HAMILTONIAN with an extra term of the form COEFFICIENT times OPERATOR."
   (declare (type hamiltonian hamiltonian)
            (type qvm:flonum coefficient)
-           (type quil:parsed-program operator operator))
+           (type cl-quil:parsed-program operator operator))
   (make-instance 'hamiltonian
                  :coefficients (cons coefficient (slot-value hamiltonian 'coefficients))
                  :operators (cons operator (slot-value hamiltonian 'operators))))
@@ -304,7 +304,7 @@ DEFCIRCUIT ANSATZ:
     (flet ((objective-function (thetas)
              "Compute the energy based on the values of THETAS."
              (loop :with quil := (format nil "DECLARE theta REAL[2]~%~A~%~A~%~A~%" reference-state ansatz (make-ansatz-string thetas))
-                   :with state-prep := (quil:parse-quil quil)
+                   :with state-prep := (cl-quil:parse-quil quil)
                    :with expectations := (qvm-app::perform-expectation 'qvm-app::pure-state state-prep operators number-of-qubits)
                    :for u :of-type qvm:flonum :in coefficients
                    :for v :of-type qvm:flonum :in expectations
@@ -320,7 +320,7 @@ In other words, we return a program implementing the operator A(θ₂)† A(θ�
                       (slot-value vqe-problem 'ansatz)
                       (make-ansatz-string thetas-1)
                       (make-ansatz-string thetas-2 :dagger dagger))))
-    (quil:parse-quil quil)))
+    (cl-quil:parse-quil quil)))
 
 (defun find-inverse-ansatz (vqe-problem thetas initial-values)
   "Let A = A(θ) be the ANSATZ determined by THETAS. Return the value of η that maximizes ⟨0|A(η) A(θ)|0⟩.
@@ -329,6 +329,6 @@ The value of η is used to implement the penalty term in the deflation method. I
   (let ((number-of-qubits (slot-value vqe-problem 'number-of-qubits)))
     (flet ((objective-function (etas)
              (let ((operators (list (make-penalty-term vqe-problem thetas etas :dagger nil)))
-                   (empty-state-prep (quil:parse-quil "DECLARE theta REAL[2]")))
+                   (empty-state-prep (cl-quil:parse-quil "DECLARE theta REAL[2]")))
                (first (qvm-app::perform-expectation 'qvm-app::pure-state empty-state-prep operators number-of-qubits)))))
       (cl-grnm:grnm-optimize #'objective-function initial-values))))
