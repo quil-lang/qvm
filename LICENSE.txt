@@ -1,15 +1,13 @@
 Copyright 2016-2019 Rigetti Computing
 
 
-All source code, except that which is contained in the `app` and
-`app-ng` directories and subdirectories thereof, is licensed under 
-the Apache License version 2.0, contained in the remainder of this
-file.
+All source code, except that which is contained in the `app`
+directories and subdirectories thereof, is licensed under the Apache
+License version 2.0, contained in the remainder of this file.
 
-Source code contained in the `app` and `app-ng` directories and 
-subdirectories thereof is licensed under the GNU Affero General 
-Public License version 3.0. See (`app/LICENSE.txt`)[app/LICENSE.txt]
-and (`app-ng/LICENSE.txt`)[app-ng/LICENSE.txt], respectively.
+Source code contained in the `app` directories and subdirectories
+thereof is licensed under the GNU Affero General Public License
+version 3.0. See (`app/LICENSE.txt`)[app/LICENSE.txt].
 
 N.B. All of the ASDF systems are documented with their license:
 
@@ -24,8 +22,6 @@ N.B. All of the ASDF systems are documented with their license:
     QVM-TESTS is licensed under Apache License 2.0 (See LICENSE.txt)
     QVM-APP is licensed under GNU Affero General Public License v3.0 (See app/LICENSE.txt)
     QVM-APP-TESTS is licensed under GNU Affero General Public License v3.0 (See app/LICENSE.txt)
-    QVM-APP-NG is licensed under GNU Affero General Public License v3.0 (See app-ng/LICENSE.txt)
-    QVM-APP-NG-TESTS is licensed under GNU Affero General Public License v3.0 (See app-ng/LICENSE.txt)
 
 
                               * * * * *
