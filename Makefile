@@ -146,7 +146,7 @@ testsafe:
 		 --eval '(ql:quickload :qvm-tests)' \
 		 --eval '(asdf:test-system :qvm)'
 
-test: test-lib test-app test-app-ng
+test: test-lib test-app
 
 test-lib: QVM_FEATURES=qvm-intrinsics
 test-lib:
