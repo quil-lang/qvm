@@ -286,7 +286,7 @@ Return a JSON-RESPONSE that contains a HASH-TABLE of the contents of the memory 
        (run-program-on-persistent-qvm qvm-token compiled-quil addresses)
        (run-program-on-qvm (make-requested-qvm simulation-method
                                                allocation-method
-                                               (quil:qubits-needed compiled-quil)
+                                               (cl-quil:qubits-needed compiled-quil)
                                                gate-noise
                                                measurement-noise)
                            compiled-quil

@@ -14,7 +14,7 @@
   "Map string gate name to a CLIFFORD object.")
 
 (global-vars:define-global-var **clifford-operations**
-    (quil.clifford:make-clifford-hash-table)
+    (clifford:make-clifford-hash-table)
   "Map a CLIFFORD to a compiled tableau function.")
 
 (defclass stabilizer-qvm (classical-memory-mixin)
@@ -26,13 +26,13 @@
   (check-type num-qubits unsigned-byte)
   (check-type classical-memory-model quil:memory-model)
   (make-instance 'stabilizer-qvm
-                 :tableau (cl-quil.clifford::make-tableau-zero-state num-qubits)
+                 :tableau (clifford::make-tableau-zero-state num-qubits)
                  :classical-memory-subsystem (make-instance 'classical-memory-subsystem
                                                              :classical-memory-model
                                                              classical-memory-model)))
 
 (defmethod number-of-qubits ((qvm stabilizer-qvm))
-  (cl-quil.clifford::tableau-qubits (stabilizer-qvm-tableau qvm)))
+  (clifford::tableau-qubits (stabilizer-qvm-tableau qvm)))
 
 (defun gate-application-to-clifford (gate-app)
   (check-type gate-app quil:gate-application)
@@ -43,17 +43,17 @@
            (gethash name **cliffords**)
          (unless exists?
            (setf (gethash name **cliffords**)
-                 (quil.clifford:matrix-to-clifford
+                 (clifford:matrix-to-clifford
                   (quil:gate-matrix
                    (pull-teeth-to-get-a-gate gate-app))))
            (setf clifford (gethash name **cliffords**)))
          clifford)))
-    (t (quil.clifford:matrix-to-clifford
+    (t (clifford:matrix-to-clifford
         (quil:gate-matrix
          (pull-teeth-to-get-a-gate gate-app))))))
 
 (defun compile-clifford (c &key (cache t))
-  (check-type c quil.clifford:clifford)
+  (check-type c clifford:clifford)
   (multiple-value-bind (compiled exists?)
       (gethash c **clifford-operations**)
     (cond
@@ -61,7 +61,7 @@
       (t
        (when *transition-verbose*
          (format *trace-output* "~&;      compiling Clifford gate...~%"))
-       (let ((compiled (compile-lambda (cl-quil.clifford::compile-tableau-operation c))))
+       (let ((compiled (compile-lambda (clifford::compile-tableau-operation c))))
          (when cache
            (setf (gethash c **clifford-operations**) compiled))
          compiled)))))
@@ -70,10 +70,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;; TRANSITION Methods ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod measure ((qvm stabilizer-qvm) q)
-  (values qvm (cl-quil.clifford::tableau-measure (stabilizer-qvm-tableau qvm) q)))
+  (values qvm (clifford::tableau-measure (stabilizer-qvm-tableau qvm) q)))
 
 (defmethod transition ((qvm stabilizer-qvm) (instr quil:reset))
-  (cl-quil.clifford::zero-out-tableau (stabilizer-qvm-tableau qvm))
+  (clifford::zero-out-tableau (stabilizer-qvm-tableau qvm))
   (incf (pc qvm))
   qvm)
 
@@ -104,7 +104,7 @@
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
-          (expected-qubits (quil.clifford:num-qubits clifford)))
+          (expected-qubits (clifford:num-qubits clifford)))
       (unless (= given-qubits expected-qubits)
         (error 'invalid-instruction-encountered
                :instruction instr
@@ -127,17 +127,17 @@
   (:documentation "A gate application that's actually a Clifford."))
 
 (defmethod quil::print-instruction-generic ((instr clifford-application) stream)
-  (format stream "<clifford>~{ ~/quil:instruction-fmt/~}"
+  (format stream "<clifford>~{ ~/cl-quil:instruction-fmt/~}"
           (quil:application-arguments instr)))
 
 (defmethod print-object ((o clifford-application) stream)
   (print-unreadable-object (o stream :type t :identity t)
-    (format stream "~Dq" (quil.clifford:num-qubits
+    (format stream "~Dq" (clifford:num-qubits
                           (clifford-application-clifford o)))))
 
 (defun make-clifford-application (clifford &rest qubits)
-  (check-type clifford quil.clifford:clifford)
-  (assert (= (quil.clifford:num-qubits clifford) (length qubits)))
+  (check-type clifford clifford:clifford)
+  (assert (= (clifford:num-qubits clifford) (length qubits)))
   (make-instance 'clifford-application :clifford clifford
                                        :arguments (mapcar #'quil:qubit qubits)))
 
@@ -161,7 +161,7 @@
       (let ((arity (random-range 1 (1+ max-clifford-arity))))
         (setf (aref code i)
               (apply #'make-clifford-application
-                     (cl-quil.clifford:random-clifford arity)
+                     (clifford:random-clifford arity)
                      (loop :for q :from (1- arity) :downto 0 :collect q)))))
     (when measure
       (dotimes (i num-qubits)
@@ -177,7 +177,7 @@
          (qubits (mapcar #'quil:qubit-index (quil:application-arguments instr))))
     ;; Do some error checking.
     (let ((given-qubits (length qubits))
-          (expected-qubits (quil.clifford:num-qubits clifford)))
+          (expected-qubits (clifford:num-qubits clifford)))
       (unless (= given-qubits expected-qubits)
         (error 'invalid-instruction-encountered
                :instruction instr
@@ -193,7 +193,7 @@
 
 (defmethod transition ((qvm pure-state-qvm) (instr clifford-application))
   (transition qvm (make-instance 'quil:gate-application
-                                 :operator (quil:named-operator "dummy")
-                                 :gate (make-instance 'quil:simple-gate :matrix (cl-quil.clifford::clifford-to-matrix (clifford-application-clifford instr)))
-                                 :parameters nil
-                                 :arguments (quil:application-arguments instr))))
+                    :operator (quil:named-operator "dummy")
+                    :gate (make-instance 'quil:simple-gate :matrix (clifford::clifford-to-matrix (clifford-application-clifford instr)))
+                    :parameters nil
+                    :arguments (quil:application-arguments instr))))

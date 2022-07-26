@@ -4,6 +4,7 @@
 
 (fiasco:define-test-package #:qvm-app-tests
   (:use #:qvm-app)
+  (:local-nicknames (#:quil #:cl-quil))
   
   ;; suite.lisp
   (:export

@@ -11,7 +11,7 @@
 
 (defun instruction->string (instruction)
   "Return string representation of INSTRUCTION."
-  (format nil "~/quil:instruction-fmt/" instruction))
+  (format nil "~/cl-quil:instruction-fmt/" instruction))
 
 (defun string->instruction (string)
   "Return instruction corresponding to STRING."

@@ -3,4 +3,5 @@
 ;;;; Author: Robert Smith
 
 (defpackage #:qvm-app
-  (:use #:cl #:qvm))
+  (:use #:cl #:qvm)
+  (:local-nicknames (#:quil #:cl-quil)))
