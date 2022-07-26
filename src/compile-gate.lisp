@@ -368,7 +368,7 @@ This function will compile new ones on-demand."
 (:metaclass abstract-class))
 
 (defmethod quil::print-instruction-generic ((instr compiled-instruction) stream)
-  (format stream "compiled{ ~/quil:instruction-fmt/ }" (source-instruction instr))
+  (format stream "compiled{ ~/cl-quil:instruction-fmt/ }" (source-instruction instr))
   nil)
 
 (defclass compiled-gate-application (compiled-instruction quil:gate-application)

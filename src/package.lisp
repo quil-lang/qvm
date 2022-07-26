@@ -10,8 +10,8 @@
   (:shadowing-import-from #:mt19937
                           #:random)
 
-  #+(or sbcl ecl ccl)
-  (:local-nicknames (:quil :cl-quil.frontend))
+  (:local-nicknames (#:quil     #:cl-quil.frontend)
+                    (#:clifford #:cl-quil.clifford))
 
   ;; config.lisp
   (:export

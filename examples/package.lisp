@@ -4,6 +4,7 @@
 
 (defpackage #:qvm-examples
   (:use #:cl #:qvm)
+  (:local-nicknames (#:quil #:cl-quil))
 
   ;; qft.lisp
   (:export

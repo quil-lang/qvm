@@ -122,9 +122,9 @@ Return T if MEMORY-CONTENTS is a HASH-TABLE whose keys are STRINGs denoting DECL
   (flet ((no-includes (path)
            (user-input-error
             "Invalid Quil string. INCLUDE is disabled. Refusing to include ~A" path)))
-    (let ((quil:*resolve-include-pathname* #'no-includes)
-          (quil::*allow-unresolved-applications* t))
-      (quil:parse-quil string))))
+    (let ((cl-quil:*resolve-include-pathname* #'no-includes)
+          (cl-quil::*allow-unresolved-applications* t))
+      (cl-quil:parse-quil string))))
 
 (defun parse-pauli-noise (noise)
   (unless (and (alexandria:proper-list-p noise)

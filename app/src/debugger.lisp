@@ -145,7 +145,7 @@ Run the next instruction and stop."
     ((program-finished-p)
      (format t "Finished program execution.~%"))
     (t
-     (format t "~/quil:instruction-fmt/~%" (qvm::current-instruction *qvm*))
+     (format t "~/cl-quil:instruction-fmt/~%" (qvm::current-instruction *qvm*))
      (setf *qvm* (qvm:transition *qvm* (qvm::current-instruction *qvm*)))
      (when *display*
        (print-amplitudes)))))
@@ -166,7 +166,7 @@ Resume program execution from the current instruction."
            :until (or (program-finished-p) breakpoint-p) :do
              (setf *qvm* (qvm:transition *qvm* (qvm::current-instruction *qvm*)))
            :finally (when breakpoint-p
-                      (format t "Stopping at breakpoint in instruction ~D:~%~/quil:instruction-fmt/~%"
+                      (format t "Stopping at breakpoint in instruction ~D:~%~/cl-quil:instruction-fmt/~%"
                               pc (qvm::current-instruction *qvm*)))
                     (return *qvm*)))))
 
@@ -176,13 +176,13 @@ Resume program execution from the current instruction."
 Load a program and instantiate a suitable QVM."
   (unless filename
     (error "File name not specified."))
-  (let* ((program (quil:read-quil-file (string-trim " " filename)))
-         (number-of-qubits (quil:qubits-needed program)))
+  (let* ((program (cl-quil:read-quil-file (string-trim " " filename)))
+         (number-of-qubits (cl-quil:qubits-needed program)))
     (format t "Read ~A using ~D qubits.~%" filename number-of-qubits)
     (setf *source-filename* filename
           *qvm* (qvm:make-qvm number-of-qubits
                               :classical-memory-model (qvm:memory-descriptors-to-qvm-memory-model
-                                                       (quil:parsed-program-memory-definitions program)))
+                                                       (cl-quil:parsed-program-memory-definitions program)))
           *breakpoints* nil)
     (qvm:load-program *qvm* program)))
 

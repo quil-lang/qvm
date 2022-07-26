@@ -15,7 +15,7 @@
        (multiple-value-prog1 (qvm::measuring-gc (gc-time bytes-alloc) (call-next-method))
          ;; (format-log :debug "~A" qvm)
 
-         (format-log :debug "Transition ~/quil:instruction-fmt/ took ~D ms (gc: ~D ms; alloc: ~D bytes)"
+         (format-log :debug "Transition ~/cl-quil:instruction-fmt/ took ~D ms (gc: ~D ms; alloc: ~D bytes)"
                      instr
                      (round (* (/ 1000 internal-time-units-per-second)
                                (- (get-internal-real-time) start)))
