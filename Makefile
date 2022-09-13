@@ -1,5 +1,5 @@
 # Heap space for QVM in MiB.
-QVM_WORKSPACE ?= 2048
+QVM_WORKSPACE ?= 4096
 THIS_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 LISP_CACHE ?= `sbcl --noinform --non-interactive --eval '(princ asdf:*user-cache*)'`
 QVM_LISP_CACHE ?= $(LISP_CACHE)$(THIS_DIR)
