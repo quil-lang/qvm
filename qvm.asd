@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Author: Robert Smith
 
-#+sbcl
+#+(and sbcl x86-64)
 #.(when (sb-alien:extern-alien "avx2_supported" sb-alien:int)
     (cl:push :qvm-avx2 cl:*features*)
     (values))
