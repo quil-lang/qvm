@@ -20,13 +20,16 @@
     :type unsigned-byte
     :reader error-qvm-num-qubits
     :initarg :num-qubits))
-  (:documentation "A QVM that can efficiently the propagation of Pauli errors through gates drawn from the CNOT-dihedral group of order 8."))
+  (:documentation "A noisy QVM that can efficiently the propagation of Pauli errors through gates drawn from the CNOT-dihedral group of order 8.  See FOWLER-QVM for a description of the noise model and parameters."))
 
 (defun make-error-qvm (num-qubits
                        &key
                          (classical-memory-model quil::**empty-memory-model**)
                          (noise-probability 0d0)
                          (noise-class 0))
+  "Constructs a fresh instance of a specialized QVM which efficiently simulates Pauli error propagation through CNOT-dihedral circuits.
+
+See ERROR-QVM for a description of the noise model and noise keyword arguments."
   (check-type num-qubits unsigned-byte)
   (check-type classical-memory-model quil:memory-model)
   (let* ((subsystem (make-instance 'classical-memory-subsystem
@@ -37,8 +40,8 @@
                              :classical-memory-subsystem subsystem
                              :noise-probability noise-probability
                              :noise-class noise-class)))
-    (setf (error-qvm-X-vector qvm) (make-array num-qubits :element-type 'bit)
-          (error-qvm-Z-vector qvm) (make-array num-qubits :element-type 'bit))
+    (setf (error-qvm-X-vector qvm) (make-array num-qubits :element-type 'bit :initial-element 0)
+          (error-qvm-Z-vector qvm) (make-array num-qubits :element-type 'bit :initial-element 0))
     qvm))
 
 (defmethod number-of-qubits ((qvm error-qvm))
@@ -51,8 +54,8 @@
 
 (defmethod transition ((qvm error-qvm) (instr quil:reset))
   (let ((num-qubits (number-of-qubits qvm)))
-    (setf (error-qvm-X-vector qvm) (make-array num-qubits :element-type 'bit)
-          (error-qvm-Z-vector qvm) (make-array num-qubits :element-type 'bit))
+    (setf (error-qvm-X-vector qvm) (make-array num-qubits :element-type 'bit :initial-element 0)
+          (error-qvm-Z-vector qvm) (make-array num-qubits :element-type 'bit :initial-element 0))
     (incf (qvm::pc qvm))
     qvm))
 

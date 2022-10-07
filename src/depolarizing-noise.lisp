@@ -30,12 +30,12 @@
     :accessor probability-measure-z
     :documentation "Probability of a Pauli Z gate happening before a measurement."))
   (:documentation "A quantum virtual machine with parametric depolarizing noise.")
-  (:default-initargs :x 0.0
-                     :y 0.0
-                     :z 0.0
-                     :measure-x 0.0
-                     :measure-y 0.0
-                     :measure-z 0.0))
+  (:default-initargs :x 0d0
+                     :y 0d0
+                     :z 0d0
+                     :measure-x 0d0
+                     :measure-y 0d0
+                     :measure-z 0d0))
 
 (defgeneric add-depolarizing-noise (qvm qubits px py pz)
   (:documentation

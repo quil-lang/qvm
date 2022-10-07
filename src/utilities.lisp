@@ -130,7 +130,7 @@ NOTE: This will not copy any multiprocessing aspects."
 
 (defmacro multiprobabilistically (&body clauses)
   "Given several `CLAUSES' of the form (PROB &BODY BODY), pick a given clause with probability `PROB', execute its `BODY', and return."
-  (let ((amount-names (loop :for clause :in clauses :collect (gensym)))
+  (let ((amount-names (loop :for clause :in clauses :collect (gensym "AMOUNT")))
         (block-name (gensym))
         (random-name (gensym)))
     `(block ,block-name

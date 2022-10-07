@@ -76,24 +76,36 @@ WARNING: Deep copy does _not_ include the classical memory subsystem. Writes to 
 (defmethod compile-loaded-program ((qvm fowler-qvm))
   qvm)
 
+(define-condition unknown-depolarizing-effect (error)
+   ((instruction :reader unknown-depolarizing-effect-instruction :initarg :instruction))
+   (:report (lambda (condition stream)
+              (format stream "FOWLER-QVM doesn't know how to follow ~a with depolarizing noise" 
+                      (unknown-depolarizing-effect-instruction condition)))))
+
 ;;;
 ;;; read individual flags out of the error-type bitvector
 ;;;
 
-(defmacro fowler-qvm-noise-identity? (qvm)
-  `(logbitp 0 (fowler-qvm-noise-class ,qvm)))
+(declaim (inline fowler-qvm-noise-identity?
+                 fowler-qvm-noise-1Q-gate?
+                 fowler-qvm-noise-2Q-gate?
+                 fowler-qvm-noise-reset?
+                 fowler-qvm-noise-readout?))
 
-(defmacro fowler-qvm-noise-1Q-gate? (qvm)
-  `(logbitp 1 (fowler-qvm-noise-class ,qvm)))
+(defun fowler-qvm-noise-identity? (qvm)
+  (logbitp 0 (fowler-qvm-noise-class qvm)))
 
-(defmacro fowler-qvm-noise-2Q-gate? (qvm)
-  `(logbitp 2 (fowler-qvm-noise-class ,qvm)))
+(defun fowler-qvm-noise-1Q-gate? (qvm)
+  (logbitp 1 (fowler-qvm-noise-class qvm)))
 
-(defmacro fowler-qvm-noise-reset? (qvm)
-  `(logbitp 3 (fowler-qvm-noise-class ,qvm)))
+(defun fowler-qvm-noise-2Q-gate? (qvm)
+  (logbitp 2 (fowler-qvm-noise-class qvm)))
 
-(defmacro fowler-qvm-noise-readout? (qvm)
-  `(logbitp 4 (fowler-qvm-noise-class ,qvm)))
+(defun fowler-qvm-noise-reset? (qvm)
+  (logbitp 3 (fowler-qvm-noise-class qvm)))
+
+(defun fowler-qvm-noise-readout? (qvm)
+  (logbitp 4 (fowler-qvm-noise-class qvm)))
 
 ;;;
 ;;; basic qvm behavior definitions
@@ -123,7 +135,7 @@ WARNING: Deep copy does _not_ include the classical memory subsystem. Writes to 
                 (cl-quil::application-operator instr))
         (when (fowler-qvm-noise-identity? qvm)
           (let ((qubit (quil:qubit-index (first (cl-quil::application-arguments instr))))
-                (p/3 (/ (fowler-qvm-noise-probability qvm) 3)))
+                (p/3 (* 1/3 (fowler-qvm-noise-probability qvm))))
             (multiprobabilistically
               (p/3 (%fast-apply qvm "X" qubit))
               (p/3 (%fast-apply qvm "Y" qubit))
@@ -144,12 +156,12 @@ WARNING: Deep copy does _not_ include the classical memory subsystem. Writes to 
     (2
      (cond
        ((equalp (quil::named-operator "CNOT")
-                     (cl-quil::application-operator instr))
+                (cl-quil::application-operator instr))
         (when (fowler-qvm-noise-2Q-gate? qvm)
           ;; apply a non-II pauli each w/ probability p/15
           (let ((p (quil:qubit-index (first  (cl-quil::application-arguments instr))))
                 (q (quil:qubit-index (second (cl-quil::application-arguments instr))))
-                (p/15 (/ (fowler-qvm-noise-probability qvm) 15)))
+                (p/15 (* 1/15 (fowler-qvm-noise-probability qvm))))
             (multiprobabilistically
               (p/15 (%fast-apply qvm "X" p))
               (p/15 (%fast-apply qvm "Y" p))
@@ -167,13 +179,11 @@ WARNING: Deep copy does _not_ include the classical memory subsystem. Writes to 
               (p/15 (%fast-apply qvm "Z" p) (%fast-apply qvm "Y" q))
               (p/15 (%fast-apply qvm "Z" p) (%fast-apply qvm "Z" q))))))
        (t
-        (break)
-        (warn "FOWLER-QVM doesn't know how to follow ~a with depolarizing noise"
-              instr))))
+        (cerror "FOWLER-QVM doesn't know how to follow ~a with depolarizing noise"
+                'unknown-depolarizing-effect :instruction instr))))
     (otherwise
-     (break)
-     (warn "FOWLER-QVM doesn't know how to follow ~a with depolarizing noise"
-           instr))))
+     (cerror "FOWLER-QVM doesn't know how to follow ~a with depolarizing noise"
+             'unknown-depolarizing-effect :instruction instr))))
 
 (defmethod transition :after ((qvm fowler-qvm) (instr cl-quil:reset-qubit))
   ;; attempt to initialize to |g>, but initialize instead to |e> w/ probability p
