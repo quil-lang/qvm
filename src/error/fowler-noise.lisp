@@ -111,6 +111,9 @@ WARNING: Deep copy does _not_ include the classical memory subsystem. Writes to 
 ;;; basic qvm behavior definitions
 ;;;
 
+(defgeneric %fast-apply (qvm instr-name qubit)
+  (:documentation "Convenience routine for applying a gate in a way that dodges an active noise model."))
+
 (defmethod %fast-apply ((qvm fowler-pure-state-qvm) instr-name qubit)
   (let* ((gate (quil:gate-definition-to-gate (quil:lookup-standard-gate instr-name)))
          (pure-state (qvm::state qvm)))
@@ -150,7 +153,6 @@ WARNING: Deep copy does _not_ include the classical memory subsystem. Writes to 
               (p/3 (%fast-apply qvm "Y" qubit))
               (p/3 (%fast-apply qvm "Z" qubit))))))
        (t
-        (break)
         (warn "FOWLER-QVM doesn't know how to follow ~a with depolarizing noise"
               instr))))
     (2
@@ -183,18 +185,21 @@ WARNING: Deep copy does _not_ include the classical memory subsystem. Writes to 
                 'unknown-depolarizing-effect :instruction instr))))
     (otherwise
      (cerror "FOWLER-QVM doesn't know how to follow ~a with depolarizing noise"
-             'unknown-depolarizing-effect :instruction instr))))
+             'unknown-depolarizing-effect :instruction instr)))
+  qvm)
 
 (defmethod transition :after ((qvm fowler-qvm) (instr cl-quil:reset-qubit))
   ;; attempt to initialize to |g>, but initialize instead to |e> w/ probability p
   (when (fowler-qvm-noise-reset? qvm)
     (qvm::probabilistically (fowler-qvm-noise-probability qvm)
       (let ((qubit (quil:qubit-index (quil::reset-qubit-target instr))))
-        (%fast-apply qvm "X" qubit)))))
+        (%fast-apply qvm "X" qubit))))
+  qvm)
 
 (defmethod transition :before ((qvm fowler-qvm) (instr cl-quil:measurement))
   ;; attempt to perform Z-meas, but report and project to wrong state w/ probability p
   (when (fowler-qvm-noise-readout? qvm)
     (qvm::probabilistically (fowler-qvm-noise-probability qvm)
       (let ((qubit (quil:qubit-index (cl-quil:measurement-qubit instr))))
-        (%fast-apply qvm "X" qubit)))))
+        (%fast-apply qvm "X" qubit))))
+  qvm)
