@@ -128,6 +128,25 @@ NOTE: This will not copy any multiprocessing aspects."
   `(when (< (random 1.0) ,p)
      ,@body))
 
+(defmacro multiprobabilistically (&body clauses)
+  "Given several `CLAUSES' of the form (PROB &BODY BODY), pick a given clause with probability `PROB', execute its `BODY', and return."
+  (let ((amount-names (loop :for clause :in clauses :collect (gensym "AMOUNT")))
+        (block-name (gensym))
+        (random-name (gensym)))
+    `(block ,block-name
+       (let* (,@(loop :for amount-name :in amount-names
+                      :for (probability . body) :in clauses
+                      :collect `(,amount-name ,probability)))
+         (assert (<= (+ ,@amount-names) 1d0))
+         (let ((,random-name (random 1d0)))
+           ,@(loop :for amount-name :in amount-names
+                   :for (probability . body) :in clauses
+                   :collect `(when (< ,random-name ,amount-name)
+                               ,@body
+                               (return-from ,block-name))
+                   :collect `(decf ,random-name ,amount-name))
+           nil)))))
+
 (defmacro defun-inlinable (name lambda-list &body body)
   "Define an INLINE-able function."
   `(progn
