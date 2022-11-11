@@ -30,12 +30,12 @@
     :accessor probability-measure-z
     :documentation "Probability of a Pauli Z gate happening before a measurement."))
   (:documentation "A quantum virtual machine with parametric depolarizing noise.")
-  (:default-initargs :x 0d0
-                     :y 0d0
-                     :z 0d0
-                     :measure-x 0d0
-                     :measure-y 0d0
-                     :measure-z 0d0))
+  (:default-initargs :x 0.0d0
+                     :y 0.0d0
+                     :z 0.0d0
+                     :measure-x 0.0d0
+                     :measure-y 0.0d0
+                     :measure-z 0.0d0))
 
 (defgeneric add-depolarizing-noise (qvm qubits px py pz)
   (:documentation
@@ -56,7 +56,7 @@ It should be that PX + PY + PZ <= 1.")
         (setf px (/ px sum)
               py (/ py sum)
               pz (/ pz sum))
-        (let ((r (random 1.0))
+        (let ((r (random 1.0d0))
               (pure-state (state qvm)))
           (when (< r px)
             (apply-gate-to-state X pure-state qubits)
@@ -132,12 +132,12 @@ It should be that PX + PY + PZ <= 1.")
     :accessor probability-measure-z
     :documentation "Probability of a Pauli Z gate happening before a measurement."))
   (:documentation "A quantum virtual machine with parametric depolarizing noise.")
-  (:default-initargs :x 0.0
-                     :y 0.0
-                     :z 0.0
-                     :measure-x 0.0
-                     :measure-y 0.0
-                     :measure-z 0.0))
+  (:default-initargs :x 0.0d0
+                     :y 0.0d0
+                     :z 0.0d0
+                     :measure-x 0.0d0
+                     :measure-y 0.0d0
+                     :measure-z 0.0d0))
 
 (defmethod transition :after ((qvm depolarizing-stabilizer-qvm) (instr cl-quil:application))
   (dolist (arg (cl-quil:application-arguments instr))
@@ -181,7 +181,7 @@ It should be that PX + PY + PZ <= 1.")
         (setf px (/ px sum)
               py (/ py sum)
               pz (/ pz sum))
-        (let ((r (random 1.0)))
+        (let ((r (random 1.0d0)))
           (when (< r px)
             (apply-gate X)
             (return-from add-depolarizing-noise))

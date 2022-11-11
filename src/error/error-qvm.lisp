@@ -25,7 +25,7 @@
 (defun make-error-qvm (num-qubits
                        &key
                          (classical-memory-model quil::**empty-memory-model**)
-                         (noise-probability 0d0)
+                         (noise-probability 0.0d0)
                          (noise-class 0))
   "Constructs a fresh instance of a specialized QVM which efficiently simulates Pauli error propagation through CNOT-dihedral circuits.
 

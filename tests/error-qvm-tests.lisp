@@ -53,7 +53,7 @@ CLAUSES is a sequence of clauses, each of the form ( SETF-FORM . INSTRUCTIONS ),
              (maphash (lambda (key true-value)
                         (let* ((recorded-hits (gethash key ,histogram 0d0))
                                (estimated-value (/ recorded-hits ,trials)))
-                          (format *error-output* "Checking ~8b: ~5f < ~5f < ~5f, estimated mean: ~d / ~d = ~5f~%"
+                          (format *error-output* "~&Checking ~8b: ~5f < ~5f < ~5f, estimated mean: ~d / ~d = ~5f~%"
                                   key
                                   (- estimated-value ,confidence-window)
                                   true-value
