@@ -1,19 +1,50 @@
-# specify the dependency versions (can be overriden with --build_arg)
-ARG quilc_version=1.17.0
-ARG quicklisp_version=2020-02-18
+FROM ubuntu:20.04
 
-# use multi-stage builds to independently pull dependency versions
-FROM rigetti/quilc:$quilc_version as quilc
-FROM rigetti/lisp:$quicklisp_version
+# build variables
+ARG QUICKLISP_VERSION=2022-04-01
+ARG QUICKLISP_URL=http://beta.quicklisp.org/dist/quicklisp/${QUICKLISP_VERSION}/distinfo.txt
 
-# copy over quilc source from the first build stage
-COPY --from=quilc /src/quilc /src/quilc
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y \
+    curl \
+    wget \
+    git \
+    build-essential \
+    cmake \
+    libblas-dev \
+    libffi-dev \
+    liblapack-dev \
+    libz-dev \
+    libzmq3-dev \
+    rlwrap \
+    sbcl \
+    ca-certificates \
+    sed
 
-ARG build_target
 
-# build the qvm app
-ADD . /src/qvm
+WORKDIR /src
+
+RUN wget -P /tmp/ 'https://beta.quicklisp.org/quicklisp.lisp' \
+    && sbcl --noinform --non-interactive --load /tmp/quicklisp.lisp \
+    --eval "(quicklisp-quickstart:install :dist-url \"${QUICKLISP_URL}\")" \
+    && sbcl --noinform --non-interactive --load ~/quicklisp/setup.lisp \
+    --eval '(ql-util:without-prompting (ql:add-to-init-file))' \
+    && echo '#+quicklisp(push "/src" ql:*local-project-directories*)' >> ~/.sbclrc \
+    && rm -f /tmp/quicklisp.lisp
+
+
+RUN git clone https://github.com/quil-lang/quilc.git
+RUN cd ~/quicklisp/local-projects/ && git clone https://github.com/quil-lang/magicl.git
+RUN cd ~/quicklisp/local-projects/ && git clone https://github.com/cffi/cffi.git
+
+RUN sed -i '74s/#-x86-64/#+ARM64/' ~/quicklisp/local-projects/cffi/libffi/libffi-types.lisp
+RUN sed -i '76s/#+x86-64/#-ARM64/' ~/quicklisp/local-projects/cffi/libffi/libffi-types.lisp
+
+# build the quilc app
+COPY . /src/qvm
 WORKDIR /src/qvm
+
 RUN git clean -fdx && make ${build_target} install
 
 EXPOSE 5000
