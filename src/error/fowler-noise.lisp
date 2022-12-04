@@ -39,10 +39,10 @@ HIGH |    4    |   3   |  2 |  1 |   0  | LOW
 This noise model carries a set of flags that select certain subsets of operations (see `FOWLER-NOISE').  When a flag is set, this noise model applies spatially-uniform depolarizing noise to the corresponding operations.")
   (:default-initargs :noise-probability 0d0))
 
-(defclass fowler-pure-state-qvm (fowler-qvm pure-state-qvm)
+(defclass fowler-pure-state-qvm (fowler-qvm qvm::pure-state-qvm)
   ())
 
-(defclass fowler-stabilizer-qvm (fowler-qvm stabilizer-qvm)
+(defclass fowler-stabilizer-qvm (fowler-qvm qvm::stabilizer-qvm)
   ())
 
 (defmethod copy-fowler-qvm ((qvm fowler-pure-state-qvm))
