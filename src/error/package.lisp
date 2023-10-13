@@ -5,7 +5,7 @@
 
 (defpackage #:qvm.error
   (:use #:cl
-        #:abstract-classes
+        #:org.tfeb.hax.abstract-classes
         #:qvm)
   (:import-from #:qvm #:multiprobabilistically)
   (:local-nicknames (#:quil     #:cl-quil.frontend))
