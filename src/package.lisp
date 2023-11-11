@@ -5,7 +5,7 @@
 (defpackage #:qvm
   (:documentation "Package containing an implementation of a quantum virtual machine.")
   (:use #:cl
-        #:abstract-classes)
+        #:org.tfeb.hax.abstract-classes)
 
   (:shadowing-import-from #:mt19937
                           #:random)

@@ -17,7 +17,7 @@
                ;; General utilities
                #:alexandria
                ;; Abstract classes
-               #:abstract-classes
+               #:org.tfeb.hax.abstract-classes
                ;; IEEE-754 float parsing
                #:ieee-floats
                ;; Parallelization utilities
