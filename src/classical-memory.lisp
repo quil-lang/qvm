@@ -287,7 +287,7 @@ If BYPASS-SIZE-LIMIT is T (default: NIL), then the size limit dictated by **CLAS
                         ;; model is right.
                         8)
           :do
-             (check-type size (integer 1) "The SIZE wasn't a multiple of 8.")
+             (check-type size (integer 1) "a multiple of 8")
              ;; Record this allocation
              (decf size-left size)
              ;; Check we haven't overflowed.
