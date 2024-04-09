@@ -22,7 +22,7 @@ HIGH |    4    |   3   |  2 |  1 |   0  | LOW
      | READOUT | RESET | 2Q | 1Q | IDLE |"
   '(unsigned-byte 5))
 
-(define-abstract-class fowler-qvm ()
+(defclass fowler-qvm ()
   ((noise-probability
     :initarg :noise-probability
     :accessor fowler-qvm-noise-probability
@@ -34,6 +34,7 @@ HIGH |    4    |   3   |  2 |  1 |   0  | LOW
     :accessor fowler-qvm-noise-class
     :type fowler-noise
     :documentation "Noise events of class <= NOISE-CLASS will be applied."))
+  (:metaclass abstract-class)
   (:documentation "A quantum virtual machine with noise as specified on page 11 of /1208.0928.
 
 This noise model carries a set of flags that select certain subsets of operations (see `FOWLER-NOISE').  When a flag is set, this noise model applies spatially-uniform depolarizing noise to the corresponding operations.")
