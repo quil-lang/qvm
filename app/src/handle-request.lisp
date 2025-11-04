@@ -22,10 +22,25 @@ The mapping vector V specifies that the qubit as specified in the program V[i] h
       (quil::transform 'quil::compress-qubits quil))
     (values quil mapping)))
 
+(defun integer->ub32-vector (x &key (endianness :little) length)
+  "Convert non-negative integer X into a vector of (unsigned-byte 32).
+  ENDIANNESS is :BIG or :LITTLE (default :LITTLE).
+  If LENGTH is provided, pad with zeros to at least that many 32-bit words."
+  (check-type x (integer 0 *))
+  (let* ((needed (max 1 (ceiling (integer-length x) 32)))
+         (n (if length (max length needed) needed))
+         (vec (make-array n :element-type '(unsigned-byte 32))))
+    (loop for i from 0 below n
+          for word = (ldb (byte 32 (* 32 i)) x) ; low→high words
+          do (setf (aref vec (if (eq endianness :big) i (- n 1 i)))
+                   word))
+    vec))
+
 (defun get-random-state (arg)
   (etypecase arg
     (null (qvm:seeded-random-state nil))
-    (unsigned-byte (qvm:seeded-random-state arg))))
+    ((unsigned-byte 32) (qvm:seeded-random-state arg))
+    (unsigned-byte (qvm:seeded-random-state (integer->ub32-vector arg)))))
 
 (defun check-required-fields (hash-table &rest fields)
   (dolist (field fields t)
